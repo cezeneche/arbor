@@ -1,0 +1,3 @@
+Utility Statement
+Electricity: 170,000 kWh
+Natural Gas: 75,000 kWh

@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: scope3_postgres
+    environment:
+      POSTGRES_USER: scope3
+      POSTGRES_PASSWORD: scope3_password
+      POSTGRES_DB: scope3
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: scope3_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin_password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: scope3_n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - N8N_ENCRYPTION_KEY=3b8c2e8c9f1d4b3a9c7e1f0a8d6c5b4e1a2f3c4d5e6f7a8b
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=Etc/UTC
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - postgres
+      - minio
+
+volumes:
+  postgres_data:
+  minio_data:
+  n8n_data:
+

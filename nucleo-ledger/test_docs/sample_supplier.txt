@@ -1,0 +1,12 @@
+Supplier: Alpha Steel Ltd
+Reporting Period: Jan 2024 - Dec 2024
+
+Energy Consumption:
+Electricity: 150,000 kWh
+Natural Gas: 75,000 kWh
+
+Production Volume:
+Finished steel components: 12,000 units
+
+Transport:
+Inbound raw materials transported 12,000 km by road.

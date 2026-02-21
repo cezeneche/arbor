@@ -1,0 +1,9 @@
+{
+  "name": "uk_v1_placeholder",
+  "unit": "kgco2e_per_kwh",
+  "factors": {
+    "electricity": 0.20,
+    "natural_gas": 0.18
+  },
+  "notes": "PLACEHOLDER values for pipeline testing. Replace with UK DEFRA/BEIS and CBAM-aligned methodology."
+}
