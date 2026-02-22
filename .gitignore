@@ -8,3 +8,7 @@
 
 # Env files
 **/.env
+
+narrative_output.json
+*.log
+.env
