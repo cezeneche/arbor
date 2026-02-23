@@ -12,6 +12,7 @@ from app.api.bundle import router as bundle_router
 from app.api.gaps import router as gaps_router
 from app.api.resolve import router as resolve_router
 from app.api.report_package import router as report_package_router
+from app.api.cbam import router as cbam_router
 
 app = FastAPI(title="núcleo ledger", version="0.1.0")
 
@@ -28,6 +29,7 @@ app.include_router(bundle_router, prefix="/api")
 app.include_router(gaps_router, prefix="/api")
 app.include_router(resolve_router, prefix="/api")
 app.include_router(report_package_router, prefix="/api")
+app.include_router(cbam_router, prefix="/api")
 
 @app.get("/")
 def root():
