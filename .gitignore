@@ -1,14 +1,30 @@
-# Python
+# Environment files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# Virtual environments
+venv/
+**/venv/
+
+# Python caches
+__pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
 
-# Virtual envs
-**/venv/
-
-# Env files
-**/.env
-
-narrative_output.json
+# Logs / outputs
 *.log
-.env
+narrative_output.json
+**/narrative_output.json
+
+# Tooling / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Test / typecheck caches
+.pytest_cache/
+.mypy_cache/
