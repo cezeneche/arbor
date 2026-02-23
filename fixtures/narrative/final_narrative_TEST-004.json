@@ -1,0 +1,25 @@
+{
+  "executive_summary": "For Alpha Steel Ltd (GB), total greenhouse gas emissions for the reporting period 1 January 2024 to 31 December 2024 were 47,500.0 kgCO2e, comprising Scope 1 emissions from natural gas combustion of 13,500.0 kgCO2e and Scope 2 emissions from purchased electricity of 34,000.0 kgCO2e. Activity data inputs were 170,000.0 kWh of electricity consumption and 75,000.0 kWh of natural gas consumption. Based on a production volume of 12,000.0 units, the resulting emissions intensity is 3.9583333333333335 kgCO2e per unit. Overall data quality confidence is 88.33 against a target of 95.0. Electricity consumption and production volume are both below the target confidence threshold and should be treated as lower-confidence inputs in any audit assessment.",
+  "limitations": "This report is limited to the inputs and outputs contained within the provided data packet. Coverage is restricted to Scope 1 emissions from natural gas combustion and Scope 2 emissions from purchased electricity; no additional emission sources or scopes are included. The factor set \"uk_v1_placeholder\" is identified by name, file path, and sha256 hash (84af88b9ca14bfae6d8b9606e9662146f1ae5b64109d06174442fbeb20b72e9b) only; underlying factor values are not provided in the packet and cannot be independently verified beyond these identifiers. Overall data quality confidence of 88.33 falls below the 95.0 target, with electricity_kwh and production_units both flagged as low-confidence inputs. The prior conflict on electricity_kwh, resolved by human selection of the utility statement, may reduce audit assurance notwithstanding the selection of an authoritative source document.",
+  "methodology": "Emissions were calculated using calculation method version \"calc_v3_gated_on_conflicts\" (calculation version 4) and factor set \"uk_v1_placeholder\" (unit: kgco2e_per_kwh; sha256: 84af88b9ca14bfae6d8b9606e9662146f1ae5b64109d06174442fbeb20b72e9b). Activity data inputs for the reporting period 1 January 2024 to 31 December 2024 were electricity_kwh = 170,000.0 and natural_gas_kwh = 75,000.0. Scope allocation follows the provided results structure: natural gas combustion is reported under Scope 1 and purchased electricity under Scope 2. A documented conflict for the electricity_kwh input was resolved under policy \"human_selected_value_v1\", selecting 170,000.0 kWh from the utility statement (chosen_source_doc_id: 90f4fe1c-e5ab-4123-806c-ba15fc38b312) on the basis that it is the authoritative source covering the full reporting period. Emissions intensity was derived using production_units = 12,000.0 and the intensity result recorded in the results structure.",
+  "open_gaps": [
+    {
+      "current_confidence": 85.0,
+      "field": "electricity_kwh",
+      "issue": "low_confidence",
+      "target_confidence": 95.0
+    },
+    {
+      "current_confidence": 85.0,
+      "field": "production_units",
+      "issue": "low_confidence",
+      "target_confidence": 95.0
+    }
+  ],
+  "results": {
+    "intensity_kgco2e_per_unit": 3.9583333333333335,
+    "scope_1_kgco2e": 13500.0,
+    "scope_2_kgco2e": 34000.0,
+    "total_emissions_kgco2e": 47500.0
+  }
+}

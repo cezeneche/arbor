@@ -23,10 +23,10 @@ def run_pipeline(case_id: str):
 
     result = {
         "case_id": case_id,
-        "draft_openai_md": None,
-        "claude_review_md": None,
+        "draft_openai_json": None,
+        "claude_review_json": None,
         "gemini_gate": None,
-        "final_narrative_md": None,
+        "final_narrative_json": None,
         "human_review_required": True,
         "stage_errors": [],
     }
@@ -34,7 +34,7 @@ def run_pipeline(case_id: str):
     # 2) Draft narrative (OpenAI) — draft only
     try:
         draft = generate_draft(packet)
-        result["draft_openai_md"] = draft
+        result["draft_openai_json"] = draft
     except Exception as e:
         result["stage_errors"].append({"stage": "openai_draft", "error": str(e)})
         # Can't proceed without a draft
@@ -42,24 +42,31 @@ def run_pipeline(case_id: str):
 
     # 3) Review/refine (Claude)
     try:
-        claude_revised = review_narrative(result["draft_openai_md"])
-        result["claude_review_md"] = claude_revised
+        claude_revised = review_narrative(result["draft_openai_json"])
+
+        # Defensive: reviewer must return a JSON object (dict)
+        if not isinstance(claude_revised, dict):
+            raise ValueError(
+                f"Claude reviewer returned non-JSON type: {type(claude_revised).__name__}"
+            )
+
+        result["claude_review_json"] = claude_revised
     except Exception as e:
         result["stage_errors"].append({"stage": "claude_review", "error": str(e)})
         # Fall back to the OpenAI draft for Gemini gating (optional)
-        result["claude_review_md"] = result["draft_openai_md"]
+        result["claude_review_json"] = result["draft_openai_json"]
 
     # 4) Gate (Gemini) — approve/flag
     try:
-        gem = gate(packet, result["claude_review_md"])
+        gem = gate(packet, result["claude_review_json"])
         result["gemini_gate"] = gem
         approved = bool(gem.get("approved", False))
-        result["final_narrative_md"] = result["claude_review_md"] if approved else None
+        result["final_narrative_json"] = result["claude_review_json"] if approved else None
         result["human_review_required"] = (not approved)
     except Exception as e:
         result["stage_errors"].append({"stage": "gemini_gate", "error": str(e)})
         # If gating fails, require human review and do not publish final
         result["human_review_required"] = True
-        result["final_narrative_md"] = None
+        result["final_narrative_json"] = None
 
     return result

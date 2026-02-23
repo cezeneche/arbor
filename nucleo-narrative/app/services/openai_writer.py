@@ -4,25 +4,61 @@ from app.core.config import settings
 
 def _writer_prompt(packet: dict) -> str:
     return (
-        "Write an auditor-friendly emissions narrative in British English.\n"
-        "Use ONLY the JSON packet. Do not invent numbers, documents, dates, or sources.\n"
-        "If data is missing or low confidence, say so explicitly and reference the packet sections.\n\n"
-        "Output markdown with headings:\n"
-        "## Executive summary\n"
-        "## Inputs and evidence\n"
-        "## Method and factor set\n"
-        "## Results\n"
-        "## Data quality and controls\n"
-        "## Open gaps and next actions\n\n"
+        "You are generating an audit-grade carbon emissions narrative.\n"
+        "Return ONLY valid JSON. Do not include markdown, explanations, or commentary.\n"
+        "Use ONLY the provided JSON packet. Do not invent numbers, documents, dates, or sources.\n"
+        "If data is missing or low confidence, state this clearly in the appropriate fields.\n\n"
+        "The JSON MUST follow this exact schema:\n"
+        "{\n"
+        '  "executive_summary": "string",\n'
+        '  "methodology": "string",\n'
+        '  "results": {\n'
+        '    "total_emissions_kgco2e": number,\n'
+        '    "scope_1_kgco2e": number,\n'
+        '    "scope_2_kgco2e": number,\n'
+        '    "intensity_kgco2e_per_unit": number\n'
+        '  },\n'
+        '  "limitations": "string",\n'
+        '  "open_gaps": [\n'
+        '    {\n'
+        '      "field": "string",\n'
+        '      "issue": "string",\n'
+        '      "current_confidence": number,\n'
+        '      "target_confidence": number\n'
+        '    }\n'
+        '  ]\n'
+        "}\n\n"
         "JSON packet:\n"
         + json.dumps(packet, indent=2)
     )
 
-def generate_draft(packet: dict) -> str:
+def generate_draft(packet: dict) -> dict:
     client = OpenAI(api_key=settings.openai_api_key)
+
     resp = client.responses.create(
         model=settings.openai_model,
         input=_writer_prompt(packet),
         temperature=0.2,
+        text={"format": {"type": "json_object"}},
     )
-    return resp.output_text or ""
+
+    raw = resp.output_text or ""
+
+    try:
+        parsed = json.loads(raw)
+    except Exception as e:
+        raise ValueError(f"OpenAI draft did not return valid JSON: {e}")
+
+    required_keys = [
+        "executive_summary",
+        "methodology",
+        "results",
+        "limitations",
+        "open_gaps",
+    ]
+
+    for key in required_keys:
+        if key not in parsed:
+            raise ValueError(f"OpenAI draft missing required key: {key}")
+
+    return parsed
