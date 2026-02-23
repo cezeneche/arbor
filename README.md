@@ -1,15 +1,5 @@
 # Scope 3 Agentic Platform
 
-Monorepo structure:
-
-- copilot-service/        Parsing + calculations API (Python/Node)
-- orchestration-n8n/      n8n workflows + notes
-- db/                    Postgres schema + migrations
-- infra/                 Docker / deployment config
-- docs/                  PRD, prompts, runbooks, audit approach
-
-# Scope 3 Agentic Platform
-
 A lightweight monorepo for an **audit-ready** Scope 3 workflow:
 
 - **nucleo-ledger**: stores cases, builds report packages (audit packs), runs calculations, and records conflict resolution.
