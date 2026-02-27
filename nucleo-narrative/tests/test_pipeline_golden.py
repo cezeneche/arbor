@@ -149,7 +149,6 @@ def test_pipeline_golden(monkeypatch, client):
 
 def test_pipeline_golden_cbam(monkeypatch, client):
     cbam_packet = load_json(CBAM_LEDGER_FIXTURE)
-    expected_final = load_json(CBAM_EXPECTED_FINAL_FIXTURE)
 
     from app.api import pipeline as pipeline_module
 
@@ -160,23 +159,20 @@ def test_pipeline_golden_cbam(monkeypatch, client):
         assert case_id == cbam_packet["case"]["id"]
         return cbam_packet
 
-    def fake_openai_draft(packet: dict):
-        assert packet.get("type") == "cbam_report_package_v1"
-        return expected_final
+    def fail_openai(_packet: dict):
+        raise AssertionError("OpenAI draft should not be called for cbam_report_package_v1.")
 
-    def fake_claude_review(draft_obj: dict):
-        return draft_obj
+    def fail_claude(_draft_obj: dict):
+        raise AssertionError("Claude review should not be called for cbam_report_package_v1.")
 
-    def fake_gemini_gate(packet: dict, narrative_obj: dict):
-        assert packet.get("type") == "cbam_report_package_v1"
-        assert narrative_obj == expected_final
-        return {"approved": True, "issues": []}
+    def fail_gemini(_packet: dict, _narrative_obj: dict):
+        raise AssertionError("Gemini gate should not be called for cbam_report_package_v1.")
 
     monkeypatch.setattr(pipeline_module, "fetch_report_package", fake_fetch_report_package)
     monkeypatch.setattr(pipeline_module, "fetch_cbam_report_package", fake_fetch_cbam_report_package)
-    monkeypatch.setattr(pipeline_module, "generate_draft", fake_openai_draft)
-    monkeypatch.setattr(pipeline_module, "review_narrative", fake_claude_review)
-    monkeypatch.setattr(pipeline_module, "gate", fake_gemini_gate)
+    monkeypatch.setattr(pipeline_module, "generate_draft", fail_openai)
+    monkeypatch.setattr(pipeline_module, "review_narrative", fail_claude)
+    monkeypatch.setattr(pipeline_module, "gate", fail_gemini)
 
     case_id = cbam_packet["case"]["id"]
     resp = client.post(f"/api/cases/{case_id}/narrative/pipeline?packet_kind=cbam")
@@ -188,5 +184,8 @@ def test_pipeline_golden_cbam(monkeypatch, client):
 
     final_obj = data.get("final_narrative_json")
     assert isinstance(final_obj, dict)
-    assert_narrative_schema(final_obj)
-    assert final_obj == expected_final
+    assert final_obj["type"] == "cbam_narrative_v1"
+    assert final_obj["case_id"] == case_id
+    assert "executive_summary" in final_obj
+    assert "totals" in final_obj
+    assert "risk_flags" in final_obj

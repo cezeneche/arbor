@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
 import app.api.cbam as cbam_api
+import app.api.report_package as report_package_api
 
 
 class _Result:
@@ -232,6 +233,7 @@ def _client_with_fake_engine() -> tuple[TestClient, FakeConnection]:
 
     app = FastAPI()
     app.include_router(cbam_api.router, prefix="/api")
+    app.include_router(report_package_api.router, prefix="/api")
     return TestClient(app), conn
 
 
@@ -444,3 +446,264 @@ def test_report_package_unknown_case_returns_404():
     response = client.get("/api/cbam/cases/00000000-0000-0000-0000-000000000222/report-package")
     assert response.status_code == 404
     assert response.json() == {"detail": "Not Found"}
+
+
+def test_data_quality_blocking_when_emissions_missing():
+    client, _ = _client_with_fake_engine()
+
+    case_res = client.post(
+        "/api/cbam/cases",
+        json={
+            "importer_eori": "GB777888999",
+            "reporting_year": 2025,
+            "reporting_quarter": 1,
+        },
+    )
+    assert case_res.status_code == 201
+    case_id = case_res.json()["id"]
+
+    shipment_res = client.post(
+        "/api/cbam/shipments",
+        json={
+            "cbam_case_id": case_id,
+            "origin_country": "CN",
+            "customs_procedure": "40",
+        },
+    )
+    assert shipment_res.status_code == 201
+    shipment_id = shipment_res.json()["id"]
+
+    goods_res = client.post(
+        "/api/cbam/goods-lines",
+        json={
+            "shipment_id": shipment_id,
+            "cn_code": "720711",
+            "product_description": "Hot rolled steel coil",
+            "net_mass_kg": 10000,
+        },
+    )
+    assert goods_res.status_code == 201
+
+    summary_res = client.get(f"/api/cbam/cases/{case_id}/summary")
+    assert summary_res.status_code == 200
+    dq = summary_res.json()["data_quality"]
+    assert dq["blocking"] is True
+    assert any("missing_emissions" in entry for entry in dq["missing"])
+    assert isinstance(dq["score"], float)
+
+
+def test_data_quality_blocking_when_origin_country_missing():
+    client, _ = _client_with_fake_engine()
+
+    case_res = client.post(
+        "/api/cbam/cases",
+        json={
+            "importer_eori": "GB444555666",
+            "reporting_year": 2025,
+            "reporting_quarter": 1,
+        },
+    )
+    assert case_res.status_code == 201
+    case_id = case_res.json()["id"]
+
+    shipment_res = client.post(
+        "/api/cbam/shipments",
+        json={
+            "cbam_case_id": case_id,
+            "origin_country": None,
+            "customs_procedure": "40",
+        },
+    )
+    assert shipment_res.status_code == 201
+    shipment_id = shipment_res.json()["id"]
+
+    goods_res = client.post(
+        "/api/cbam/goods-lines",
+        json={
+            "shipment_id": shipment_id,
+            "cn_code": "720711",
+            "product_description": "Hot rolled steel coil",
+            "net_mass_kg": 10000,
+        },
+    )
+    assert goods_res.status_code == 201
+    goods_line_id = goods_res.json()["id"]
+
+    emissions_res = client.post(
+        "/api/cbam/emissions",
+        json={
+            "goods_line_id": goods_line_id,
+            "direct_emissions_kgco2e": 50000,
+            "indirect_emissions_kgco2e": 10000,
+            "calculation_method": "actual",
+            "version": 1,
+        },
+    )
+    assert emissions_res.status_code == 201
+
+    report_res = client.get(f"/api/cbam/cases/{case_id}/report-package")
+    assert report_res.status_code == 200
+    dq = report_res.json()["data_quality"]
+    assert dq["blocking"] is True
+    assert any("origin_country_missing" in entry for entry in dq["missing"])
+
+
+def test_data_quality_warning_when_installation_id_missing():
+    client, _ = _client_with_fake_engine()
+
+    case_res = client.post(
+        "/api/cbam/cases",
+        json={
+            "importer_eori": "GB333222111",
+            "reporting_year": 2025,
+            "reporting_quarter": 1,
+        },
+    )
+    assert case_res.status_code == 201
+    case_id = case_res.json()["id"]
+
+    shipment_res = client.post(
+        "/api/cbam/shipments",
+        json={
+            "cbam_case_id": case_id,
+            "origin_country": "CN",
+            "customs_procedure": "40",
+        },
+    )
+    assert shipment_res.status_code == 201
+    shipment_id = shipment_res.json()["id"]
+
+    goods_res = client.post(
+        "/api/cbam/goods-lines",
+        json={
+            "shipment_id": shipment_id,
+            "cn_code": "720711",
+            "product_description": "Hot rolled steel coil",
+            "net_mass_kg": 10000,
+        },
+    )
+    assert goods_res.status_code == 201
+    goods_line_id = goods_res.json()["id"]
+
+    emissions_res = client.post(
+        "/api/cbam/emissions",
+        json={
+            "goods_line_id": goods_line_id,
+            "direct_emissions_kgco2e": 50000,
+            "indirect_emissions_kgco2e": 10000,
+            "calculation_method": "actual",
+            "version": 1,
+        },
+    )
+    assert emissions_res.status_code == 201
+
+    report_res = client.get(f"/api/cbam/cases/{case_id}/report-package")
+    assert report_res.status_code == 200
+    dq = report_res.json()["data_quality"]
+    assert dq["blocking"] is False
+    assert any("installation_id_missing" in entry for entry in dq["warnings"])
+    assert all("method_not_actual" not in entry for entry in dq["warnings"])
+    assert isinstance(dq["score"], float)
+
+
+def test_legacy_report_package_route_delegates_to_cbam_package():
+    client, _ = _client_with_fake_engine()
+
+    case_res = client.post(
+        "/api/cbam/cases",
+        json={
+            "importer_eori": "GB111222333",
+            "reporting_year": 2025,
+            "reporting_quarter": 1,
+        },
+    )
+    assert case_res.status_code == 201
+    case_id = case_res.json()["id"]
+
+    legacy_res = client.get(f"/api/cases/{case_id}/report-package")
+    cbam_res = client.get(f"/api/cbam/cases/{case_id}/report-package")
+
+    assert legacy_res.status_code == 200
+    assert cbam_res.status_code == 200
+
+    legacy_payload = legacy_res.json()
+    cbam_payload = cbam_res.json()
+
+    assert legacy_payload["type"] == "cbam_report_package_v1"
+    assert legacy_payload["case"]["id"] == case_id
+
+    legacy_payload.pop("generated_at", None)
+    cbam_payload.pop("generated_at", None)
+    assert legacy_payload == cbam_payload
+
+
+def test_legacy_report_package_route_returns_404_when_case_missing():
+    client, _ = _client_with_fake_engine()
+    response = client.get("/api/cases/00000000-0000-0000-0000-000000000333/report-package")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not Found"}
+
+
+def test_draft_from_parsed_invoice_reuses_case_and_shipment_without_duplicates():
+    client, conn = _client_with_fake_engine()
+    payload = {
+        "importer": {"name": "Acme Imports Ltd", "eori": "GB123456789"},
+        "invoice": {
+            "invoice_number": "INV-2025-001",
+            "invoice_date": "2025-01-15",
+            "origin_country": "CN",
+            "incoterm": "FOB",
+            "entry_reference": "ER-001",
+        },
+        "lines": [
+            {
+                "cn_code": "720711",
+                "description": "Hot rolled steel coil",
+                "quantity": 10000,
+                "quantity_unit": "kg",
+                "net_mass_kg": 10000,
+            }
+        ],
+        "emissions": {
+            "method": "actual",
+            "direct_embedded_kgco2e": 50000,
+            "indirect_embedded_kgco2e": 10000,
+        },
+    }
+
+    first = client.post("/api/cbam/drafts/from-parsed-invoice", json=payload)
+    assert first.status_code == 201
+    first_body = first.json()
+    assert len(first_body["goods_line_ids"]) >= 1
+    assert len(first_body["emissions_ids"]) >= 1
+
+    second = client.post("/api/cbam/drafts/from-parsed-invoice", json=payload)
+    assert second.status_code == 201
+    second_body = second.json()
+
+    assert second_body["case_id"] == first_body["case_id"]
+    assert second_body["shipment_id"] == first_body["shipment_id"]
+    assert second_body["goods_line_ids"] == first_body["goods_line_ids"]
+    assert second_body["emissions_ids"] == first_body["emissions_ids"]
+    assert len(conn.cases) == 1
+    assert len(conn.shipments) == 1
+    assert len(conn.goods_lines) == 1
+    assert len(conn.emissions) == 1
+
+
+def test_draft_from_parsed_invoice_invalid_method_returns_422():
+    client, _ = _client_with_fake_engine()
+    response = client.post(
+        "/api/cbam/drafts/from-parsed-invoice",
+        json={
+            "importer": {"name": "Acme Imports Ltd", "eori": "GB123456789"},
+            "invoice": {"invoice_number": "INV-2025-001", "invoice_date": "2025-01-15"},
+            "lines": [{"cn_code": "720711"}],
+            "emissions": {
+                "method": "actual_data",
+                "direct_embedded_kgco2e": 50000,
+                "indirect_embedded_kgco2e": 10000,
+            },
+        },
+    )
+    assert response.status_code == 422

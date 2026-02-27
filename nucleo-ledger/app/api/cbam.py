@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+import tempfile
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import engine
+from app.services.cbam_data_quality import evaluate_cbam_data_quality
 from app.services.cbam_extractor import extract as extract_cbam_document
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
@@ -51,6 +54,43 @@ class CBAMEmissionsCreate(BaseModel):
     indirect_emissions_kgco2e: Decimal
     calculation_method: EmissionsMethod
     version: int = Field(..., ge=1)
+
+
+class ParsedInvoiceImporter(BaseModel):
+    name: str | None = None
+    eori: str = Field(..., min_length=1)
+
+
+class ParsedInvoiceMetadata(BaseModel):
+    invoice_number: str | None = None
+    invoice_date: date
+    origin_country: str | None = None
+    incoterm: str | None = None
+    entry_reference: str | None = None
+
+
+class ParsedInvoiceLine(BaseModel):
+    cn_code: str = Field(..., min_length=1)
+    description: str | None = None
+    quantity: Decimal | None = None
+    quantity_unit: str | None = None
+    net_mass_kg: Decimal | None = None
+    method: EmissionsMethod | None = None
+    direct_embedded_kgco2e: Decimal | None = None
+    indirect_embedded_kgco2e: Decimal | None = None
+
+
+class ParsedInvoiceEmissions(BaseModel):
+    method: EmissionsMethod | None = None
+    direct_embedded_kgco2e: Decimal | None = None
+    indirect_embedded_kgco2e: Decimal | None = None
+
+
+class CBAMDraftFromParsedInvoiceRequest(BaseModel):
+    importer: ParsedInvoiceImporter
+    invoice: ParsedInvoiceMetadata
+    lines: list[ParsedInvoiceLine] = Field(..., min_length=1)
+    emissions: ParsedInvoiceEmissions | None = None
 
 
 def _bad_request(message: str) -> HTTPException:
@@ -102,6 +142,252 @@ def _manual_fk_check(conn: Connection, table_name: str, record_id: UUID, label: 
     ).scalar_one_or_none()
     if exists is None:
         raise _bad_request(f"Invalid reference: {label} does not exist.")
+
+
+def _quarter_from_date(value: date) -> int:
+    return ((value.month - 1) // 3) + 1
+
+
+def _infer_sector_from_cn_code(cn_code: str) -> str:
+    normalized = "".join(ch for ch in cn_code if ch.isdigit())
+    if normalized.startswith("2523"):
+        return "cement"
+    if normalized.startswith("2716"):
+        return "electricity"
+    if normalized.startswith("2804"):
+        return "hydrogen"
+    if normalized.startswith("31"):
+        return "fertilisers"
+    if normalized.startswith("76"):
+        return "aluminium"
+    if normalized.startswith(("72", "73")):
+        return "iron_steel"
+    return "iron_steel"
+
+
+def _parse_iso_date(value: object) -> date | None:
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _coerce_float(value, field_name: str) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float, Decimal)):
+        return float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        try:
+            return float(stripped)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid numeric value for {field_name}",
+            ) from exc
+    raise HTTPException(
+        status_code=422,
+        detail=f"Invalid numeric value for {field_name}",
+    )
+
+
+def _normalize_line_text(value: object) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().lower()
+
+
+def _normalize_line_mass(value: object) -> str:
+    numeric = _coerce_float(value, "line_mass")
+    if numeric is None:
+        return ""
+    # Stable textual numeric representation for duplicate detection.
+    return format(Decimal(str(numeric)).normalize(), "f")
+
+
+def _line_fingerprint(
+    cn_code: object,
+    description: object,
+    mass_value: object,
+    quantity_unit: object,
+) -> tuple[str, str, str, str]:
+    # Deterministic duplicate key per shipment:
+    # (cn_code, description, mass, quantity_unit)
+    # These are stable across repeated ingestion of the same invoice line.
+    return (
+        _normalize_line_text(cn_code),
+        _normalize_line_text(description),
+        _normalize_line_mass(mass_value),
+        _normalize_line_text(quantity_unit),
+    )
+
+
+def _build_parsed_invoice_request_from_extraction(
+    extraction: dict[str, object],
+    importer_name: str | None,
+    importer_eori: str | None,
+    reporting_year: int | None,
+    reporting_quarter: int | None,
+) -> tuple[CBAMDraftFromParsedInvoiceRequest, int, int, list[str]]:
+    warnings: list[str] = []
+
+    structured = extraction.get("structured")
+    structured_data = structured if isinstance(structured, dict) else {}
+    importer_data = extraction.get("importer")
+    invoice_data = extraction.get("invoice")
+    lines_data = extraction.get("lines")
+    emissions_data = extraction.get("emissions")
+
+    parsed_importer_name = (
+        importer_name
+        or (importer_data.get("name") if isinstance(importer_data, dict) else None)
+        or structured_data.get("importer_name")
+    )
+    parsed_importer_eori = (
+        importer_eori
+        or (importer_data.get("eori") if isinstance(importer_data, dict) else None)
+        or structured_data.get("importer_eori")
+    )
+    if not parsed_importer_eori:
+        raise ValueError("importer_eori is required but was not found in form fields or extracted document.")
+
+    parsed_invoice_number = None
+    parsed_origin_country = None
+    parsed_incoterm = None
+    parsed_entry_reference = None
+    parsed_invoice_date: date | None = None
+
+    if isinstance(invoice_data, dict):
+        parsed_invoice_number = invoice_data.get("invoice_number")
+        parsed_origin_country = invoice_data.get("origin_country")
+        parsed_incoterm = invoice_data.get("incoterm")
+        parsed_entry_reference = invoice_data.get("entry_reference")
+        parsed_invoice_date = _parse_iso_date(invoice_data.get("invoice_date"))
+
+    if parsed_origin_country is None:
+        parsed_origin_country = structured_data.get("origin_country")
+    if parsed_invoice_date is None:
+        parsed_invoice_date = _parse_iso_date(structured_data.get("invoice_date"))
+
+    resolved_reporting_year = reporting_year
+    resolved_reporting_quarter = reporting_quarter
+
+    if resolved_reporting_year is None and parsed_invoice_date is not None:
+        resolved_reporting_year = parsed_invoice_date.year
+    if resolved_reporting_quarter is None and parsed_invoice_date is not None:
+        resolved_reporting_quarter = _quarter_from_date(parsed_invoice_date)
+
+    if resolved_reporting_year is None:
+        resolved_reporting_year = date.today().year
+        warnings.append("Missing reporting_year; defaulted to current year.")
+    if resolved_reporting_quarter is None:
+        resolved_reporting_quarter = 1
+        warnings.append("Missing reporting_quarter; defaulted to Q1.")
+    if resolved_reporting_quarter not in (1, 2, 3, 4):
+        raise ValueError("reporting_quarter must be between 1 and 4.")
+
+    if parsed_invoice_date is None:
+        quarter_start_month = ((resolved_reporting_quarter - 1) * 3) + 1
+        parsed_invoice_date = date(resolved_reporting_year, quarter_start_month, 1)
+        warnings.append("Missing invoice_date; defaulted to first day of the resolved reporting quarter.")
+
+    parsed_lines: list[dict[str, object]] = []
+    if isinstance(lines_data, list) and lines_data:
+        for line in lines_data:
+            if isinstance(line, dict):
+                quantity_value = _coerce_float(line.get("quantity"), "quantity")
+                net_mass_value = _coerce_float(line.get("net_mass_kg"), "net_mass_kg")
+                line_direct_value = _coerce_float(
+                    line.get("direct_embedded_kgco2e"),
+                    "direct_embedded_kgco2e",
+                )
+                line_indirect_value = _coerce_float(
+                    line.get("indirect_embedded_kgco2e"),
+                    "indirect_embedded_kgco2e",
+                )
+                parsed_lines.append(
+                    {
+                        "cn_code": line.get("cn_code"),
+                        "description": line.get("description"),
+                        "quantity": quantity_value,
+                        "quantity_unit": line.get("quantity_unit"),
+                        "net_mass_kg": net_mass_value,
+                        "method": line.get("method"),
+                        "direct_embedded_kgco2e": line_direct_value,
+                        "indirect_embedded_kgco2e": line_indirect_value,
+                    }
+                )
+    else:
+        cn_code = structured_data.get("cn_code")
+        if cn_code:
+            structured_mass = _coerce_float(structured_data.get("net_mass_kg"), "net_mass_kg")
+            parsed_lines.append(
+                {
+                    "cn_code": cn_code,
+                    "description": None,
+                    "quantity": structured_mass,
+                    "quantity_unit": "kg",
+                    "net_mass_kg": structured_mass,
+                    "method": None,
+                    "direct_embedded_kgco2e": None,
+                    "indirect_embedded_kgco2e": None,
+                }
+            )
+
+    if not parsed_lines:
+        raise ValueError("No invoice lines were extracted from the document.")
+
+    parsed_emissions: dict[str, object] | None = None
+    if isinstance(emissions_data, dict):
+        parsed_emissions = {
+            "method": emissions_data.get("method"),
+            "direct_embedded_kgco2e": _coerce_float(
+                emissions_data.get("direct_embedded_kgco2e"),
+                "direct_embedded_kgco2e",
+            ),
+            "indirect_embedded_kgco2e": _coerce_float(
+                emissions_data.get("indirect_embedded_kgco2e"),
+                "indirect_embedded_kgco2e",
+            ),
+        }
+    elif (
+        structured_data.get("method") is not None
+        or structured_data.get("direct_embedded_kgco2e") is not None
+        or structured_data.get("indirect_embedded_kgco2e") is not None
+    ):
+        parsed_emissions = {
+            "method": structured_data.get("method"),
+            "direct_embedded_kgco2e": _coerce_float(
+                structured_data.get("direct_embedded_kgco2e"),
+                "direct_embedded_kgco2e",
+            ),
+            "indirect_embedded_kgco2e": _coerce_float(
+                structured_data.get("indirect_embedded_kgco2e"),
+                "indirect_embedded_kgco2e",
+            ),
+        }
+
+    payload = CBAMDraftFromParsedInvoiceRequest(
+        importer={
+            "name": parsed_importer_name,
+            "eori": str(parsed_importer_eori),
+        },
+        invoice={
+            "invoice_number": parsed_invoice_number,
+            "invoice_date": parsed_invoice_date,
+            "origin_country": parsed_origin_country,
+            "incoterm": parsed_incoterm,
+            "entry_reference": parsed_entry_reference,
+        },
+        lines=parsed_lines,
+        emissions=parsed_emissions,
+    )
+    return payload, resolved_reporting_year, resolved_reporting_quarter, warnings
 
 
 def _insert_returning(
@@ -175,6 +461,83 @@ def _build_case_summary(conn: Connection, case_id: UUID) -> dict[str, object]:
         "total_indirect_emissions_kgco2e": indirect,
         "total_embedded_emissions_kgco2e": direct + indirect,
     }
+
+
+def _build_case_shipments_payload(conn: Connection, case_id: UUID) -> list[dict[str, object]]:
+    shipments_cols = _table_columns(conn, "cbam_shipments")
+    goods_cols = _table_columns(conn, "cbam_goods_lines")
+    emissions_cols = _table_columns(conn, "cbam_emissions")
+
+    case_fk_column = _pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
+    if not case_fk_column:
+        raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
+
+    shipment_order_by = "created_at ASC, id ASC" if "created_at" in shipments_cols else "id ASC"
+    shipment_rows = conn.execute(
+        text(
+            f"""
+            SELECT *
+            FROM cbam.cbam_shipments
+            WHERE {case_fk_column} = :case_id
+            ORDER BY {shipment_order_by}
+            """
+        ),
+        {"case_id": str(case_id)},
+    ).mappings().all()
+
+    goods_order_by = "created_at ASC, id ASC" if "created_at" in goods_cols else "id ASC"
+    emissions_order_by_parts: list[str] = ["version DESC"]
+    if "created_at" in emissions_cols:
+        emissions_order_by_parts.append("created_at DESC")
+    emissions_order_by_parts.append("id DESC")
+    emissions_order_by = ", ".join(emissions_order_by_parts)
+
+    shipments_payload: list[dict[str, object]] = []
+    for shipment_row in shipment_rows:
+        shipment = dict(shipment_row)
+        goods_rows = conn.execute(
+            text(
+                f"""
+                SELECT *
+                FROM cbam.cbam_goods_lines
+                WHERE shipment_id = :shipment_id
+                ORDER BY {goods_order_by}
+                """
+            ),
+            {"shipment_id": str(shipment["id"])},
+        ).mappings().all()
+
+        goods_payload: list[dict[str, object]] = []
+        for goods_line_row in goods_rows:
+            goods_line = dict(goods_line_row)
+            emissions_rows = conn.execute(
+                text(
+                    f"""
+                    SELECT *
+                    FROM cbam.cbam_emissions
+                    WHERE goods_line_id = :goods_line_id
+                    ORDER BY {emissions_order_by}
+                    LIMIT 1
+                    """
+                ),
+                {"goods_line_id": str(goods_line["id"])},
+            ).mappings().all()
+            latest_emissions = dict(emissions_rows[0]) if emissions_rows else None
+            goods_payload.append(
+                {
+                    "goods_line": goods_line,
+                    "latest_emissions": latest_emissions,
+                }
+            )
+
+        shipments_payload.append(
+            {
+                "shipment": shipment,
+                "goods_lines": goods_payload,
+            }
+        )
+
+    return shipments_payload
 
 
 @router.post("/cases", status_code=status.HTTP_201_CREATED)
@@ -288,6 +651,378 @@ async def create_cbam_document(case_id: UUID, file: UploadFile = File(...)):
     }
 
 
+def _create_cbam_draft_from_parsed_invoice_payload(
+    payload: CBAMDraftFromParsedInvoiceRequest,
+    reporting_year_override: int | None = None,
+    reporting_quarter_override: int | None = None,
+    warn_on_missing_emissions: bool = False,
+) -> dict[str, object]:
+    with engine.begin() as conn:
+        case_columns = _table_columns(conn, "cbam_cases")
+        shipment_columns = _table_columns(conn, "cbam_shipments")
+        goods_columns = _table_columns(conn, "cbam_goods_lines")
+        emissions_columns = _table_columns(conn, "cbam_emissions")
+
+        reporting_year = (
+            reporting_year_override
+            if reporting_year_override is not None
+            else payload.invoice.invoice_date.year
+        )
+        reporting_quarter = (
+            reporting_quarter_override
+            if reporting_quarter_override is not None
+            else _quarter_from_date(payload.invoice.invoice_date)
+        )
+        warnings: list[str] = []
+
+        existing_case_rows = conn.execute(
+            text(
+                """
+                SELECT *
+                FROM cbam.cbam_cases
+                WHERE importer_eori = :importer_eori
+                  AND reporting_year = :reporting_year
+                  AND reporting_quarter = :reporting_quarter
+                ORDER BY created_at DESC
+                LIMIT 1
+                """
+            ),
+            {
+                "importer_eori": payload.importer.eori,
+                "reporting_year": reporting_year,
+                "reporting_quarter": reporting_quarter,
+            },
+        ).mappings().all()
+
+        if existing_case_rows:
+            case_id = str(existing_case_rows[0]["id"])
+        else:
+            case_insert: dict[str, object] = {
+                "id": str(uuid4()),
+                "importer_eori": payload.importer.eori,
+                "reporting_year": reporting_year,
+                "reporting_quarter": reporting_quarter,
+            }
+            if "importer_name" in case_columns:
+                case_insert["importer_name"] = payload.importer.name or payload.importer.eori
+            if "status" in case_columns:
+                case_insert["status"] = "draft"
+
+            case_row = _insert_returning(conn, "cbam_cases", case_insert)
+            case_id = str(case_row["id"])
+
+        case_fk_column = _pick_existing(shipment_columns, ["cbam_case_id", "case_id"])
+        if not case_fk_column:
+            raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
+
+        invoice_number = payload.invoice.invoice_number
+        matched_shipment: dict[str, object] | None = None
+        if invoice_number:
+            shipment_order_by = "created_at DESC, id DESC" if "created_at" in shipment_columns else "id DESC"
+            existing_shipments = conn.execute(
+                text(
+                    f"""
+                    SELECT *
+                    FROM cbam.cbam_shipments
+                    WHERE {case_fk_column} = :case_id
+                    ORDER BY {shipment_order_by}
+                    """
+                ),
+                {"case_id": case_id},
+            ).mappings().all()
+
+            for row in existing_shipments:
+                shipment = dict(row)
+                if "invoice_number" in shipment_columns and shipment.get("invoice_number") == invoice_number:
+                    matched_shipment = shipment
+                    break
+                if shipment.get("entry_reference") == invoice_number:
+                    matched_shipment = shipment
+                    break
+
+        if matched_shipment is not None:
+            shipment_id = str(matched_shipment["id"])
+            warnings.append(
+                f"Reused existing shipment for invoice_number={invoice_number}."
+            )
+        else:
+            shipment_insert: dict[str, object] = {
+                "id": str(uuid4()),
+                case_fk_column: case_id,
+            }
+
+            if "origin_country" in shipment_columns:
+                shipment_insert["origin_country"] = payload.invoice.origin_country
+            if "incoterm" in shipment_columns:
+                shipment_insert["incoterm"] = payload.invoice.incoterm
+            if "invoice_number" in shipment_columns:
+                shipment_insert["invoice_number"] = payload.invoice.invoice_number
+            if "entry_reference" in shipment_columns:
+                shipment_insert["entry_reference"] = (
+                    payload.invoice.invoice_number
+                    if payload.invoice.invoice_number
+                    else payload.invoice.entry_reference
+                )
+            if _needs_explicit_value(shipment_columns, "import_date") or "import_date" in shipment_columns:
+                shipment_insert["import_date"] = payload.invoice.invoice_date
+
+            shipment_row = _insert_returning(conn, "cbam_shipments", shipment_insert)
+            shipment_id = str(shipment_row["id"])
+
+        direct_col = _pick_existing(
+            emissions_columns, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"]
+        )
+        indirect_col = _pick_existing(
+            emissions_columns, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"]
+        )
+        method_col = _pick_existing(emissions_columns, ["calculation_method", "method"])
+        goods_line_fk_column = _pick_existing(emissions_columns, ["goods_line_id"])
+
+        goods_order_by = "created_at ASC, id ASC" if "created_at" in goods_columns else "id ASC"
+        existing_goods_rows = conn.execute(
+            text(
+                f"""
+                SELECT *
+                FROM cbam.cbam_goods_lines
+                WHERE shipment_id = :shipment_id
+                ORDER BY {goods_order_by}
+                """
+            ),
+            {"shipment_id": shipment_id},
+        ).mappings().all()
+        existing_goods_by_fp: dict[tuple[str, str, str, str], str] = {}
+        description_col = "product_description" if "product_description" in goods_columns else "description"
+        mass_col = "net_mass_kg" if "net_mass_kg" in goods_columns else "quantity"
+        for row in existing_goods_rows:
+            fp = _line_fingerprint(
+                row.get("cn_code"),
+                row.get(description_col),
+                row.get(mass_col),
+                row.get("quantity_unit"),
+            )
+            if fp not in existing_goods_by_fp:
+                existing_goods_by_fp[fp] = str(row["id"])
+
+        goods_line_ids: list[str] = []
+        emissions_ids: list[str] = []
+
+        for line in payload.lines:
+            line_quantity = _coerce_float(line.quantity, "quantity")
+            line_net_mass = _coerce_float(line.net_mass_kg, "net_mass_kg")
+            line_mass = line_net_mass if line_net_mass is not None else line_quantity
+            line_unit = line.quantity_unit or "kg"
+            line_fp = _line_fingerprint(
+                line.cn_code,
+                line.description,
+                line_mass,
+                line_unit,
+            )
+
+            if line_fp in existing_goods_by_fp:
+                goods_line_id = existing_goods_by_fp[line_fp]
+                warnings.append(f"goods_line_reused:{line.cn_code}")
+            else:
+                goods_insert: dict[str, object] = {
+                    "id": str(uuid4()),
+                    "shipment_id": shipment_id,
+                    "cn_code": line.cn_code,
+                }
+
+                if "product_description" in goods_columns:
+                    goods_insert["product_description"] = line.description
+                elif "description" in goods_columns:
+                    goods_insert["description"] = line.description
+
+                if "net_mass_kg" in goods_columns:
+                    mass = line_net_mass if line_net_mass is not None else line_quantity
+                    if mass is None:
+                        mass = Decimal("0")
+                        warnings.append(
+                            f"No quantity or net_mass_kg provided for cn_code={line.cn_code}; defaulted net_mass_kg to 0."
+                        )
+                    goods_insert["net_mass_kg"] = mass
+                elif "quantity" in goods_columns:
+                    quantity = line_quantity if line_quantity is not None else line_net_mass
+                    if quantity is None:
+                        quantity = Decimal("0")
+                        warnings.append(
+                            f"No quantity or net_mass_kg provided for cn_code={line.cn_code}; defaulted quantity to 0."
+                        )
+                    goods_insert["quantity"] = quantity
+                    if "quantity_unit" in goods_columns:
+                        goods_insert["quantity_unit"] = line.quantity_unit or "kg"
+
+                if "quantity_unit" in goods_columns and "quantity_unit" not in goods_insert:
+                    goods_insert["quantity_unit"] = line.quantity_unit or "kg"
+
+                if _needs_explicit_value(goods_columns, "sector") or "sector" in goods_columns:
+                    goods_insert["sector"] = _infer_sector_from_cn_code(line.cn_code)
+
+                goods_row = _insert_returning(conn, "cbam_goods_lines", goods_insert)
+                goods_line_id = str(goods_row["id"])
+                existing_goods_by_fp[line_fp] = goods_line_id
+
+            goods_line_ids.append(goods_line_id)
+
+            emissions_payload = payload.emissions
+            line_method = line.method if line.method is not None else (
+                emissions_payload.method if emissions_payload else None
+            )
+            line_direct_source = (
+                line.direct_embedded_kgco2e
+                if line.direct_embedded_kgco2e is not None
+                else (emissions_payload.direct_embedded_kgco2e if emissions_payload else None)
+            )
+            line_indirect_source = (
+                line.indirect_embedded_kgco2e
+                if line.indirect_embedded_kgco2e is not None
+                else (emissions_payload.indirect_embedded_kgco2e if emissions_payload else None)
+            )
+
+            if (
+                line_method is not None
+                and direct_col
+                and indirect_col
+                and method_col
+                and goods_line_fk_column
+            ):
+                existing_line_emissions = conn.execute(
+                    text(
+                        """
+                        SELECT *
+                        FROM cbam.cbam_emissions
+                        WHERE goods_line_id = :goods_line_id
+                        ORDER BY version DESC, id DESC
+                        """
+                    ),
+                    {"goods_line_id": goods_line_id},
+                ).mappings().all()
+                existing_same_version = next(
+                    (row for row in existing_line_emissions if int(row.get("version") or 0) == 1),
+                    None,
+                )
+                if existing_same_version is not None:
+                    emissions_ids.append(str(existing_same_version["id"]))
+                    warnings.append(f"emissions_reused:{goods_line_id}")
+                    continue
+
+                direct_value = _coerce_float(line_direct_source, "direct_embedded_kgco2e")
+                indirect_value = _coerce_float(line_indirect_source, "indirect_embedded_kgco2e")
+                emissions_insert: dict[str, object] = {
+                    "id": str(uuid4()),
+                    goods_line_fk_column: goods_line_id,
+                    direct_col: direct_value if direct_value is not None else Decimal("0"),
+                    indirect_col: indirect_value if indirect_value is not None else Decimal("0"),
+                    method_col: line_method.value,
+                    "version": 1,
+                }
+                emissions_row = _insert_returning(conn, "cbam_emissions", emissions_insert)
+                emissions_ids.append(str(emissions_row["id"]))
+            elif warn_on_missing_emissions:
+                warnings.append("emissions_missing")
+
+        return {
+            "case_id": case_id,
+            "shipment_id": shipment_id,
+            "goods_line_ids": goods_line_ids,
+            "emissions_ids": emissions_ids,
+            "warnings": warnings,
+        }
+
+
+@router.post("/drafts/from-parsed-invoice", status_code=status.HTTP_201_CREATED)
+def create_cbam_draft_from_parsed_invoice(payload: CBAMDraftFromParsedInvoiceRequest):
+    try:
+        return _create_cbam_draft_from_parsed_invoice_payload(payload)
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "cbam_draft_create_failed", "message": str(exc.orig) if exc.orig else str(exc)},
+        )
+
+
+@router.post("/drafts/from-document", status_code=status.HTTP_201_CREATED)
+async def create_cbam_draft_from_document(
+    file: UploadFile = File(...),
+    importer_name: str | None = Form(default=None),
+    importer_eori: str | None = Form(default=None),
+    reporting_year: int | None = Form(default=None),
+    reporting_quarter: int | None = Form(default=None),
+):
+    if not file.filename:
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "File name is required.", "stage": "extract"},
+        )
+
+    safe_filename = Path(file.filename).name or "upload.bin"
+    tmp_path: Path | None = None
+
+    try:
+        with tempfile.NamedTemporaryFile(prefix="cbam_invoice_", suffix=f"_{safe_filename}", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+            tmp.write(await file.read())
+
+        extraction = extract_cbam_document(str(tmp_path))
+        if not isinstance(extraction, dict):
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "Extractor returned an invalid response.", "stage": "extract"},
+            )
+
+        extraction_status = extraction.get("status")
+        if extraction_status in {"error", "llamaindex_not_available", "not_implemented"}:
+            detail_message = extraction.get("message") or f"Extraction status: {extraction_status}"
+            return JSONResponse(
+                status_code=422,
+                content={"detail": str(detail_message), "stage": "extract"},
+            )
+
+        try:
+            parsed_payload, resolved_year, resolved_quarter, parse_warnings = (
+                _build_parsed_invoice_request_from_extraction(
+                    extraction=extraction,
+                    importer_name=importer_name,
+                    importer_eori=importer_eori,
+                    reporting_year=reporting_year,
+                    reporting_quarter=reporting_quarter,
+                )
+            )
+        except HTTPException as exc:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail, "stage": "extract"},
+            )
+        except Exception as exc:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": str(exc), "stage": "extract"},
+            )
+
+        try:
+            created = _create_cbam_draft_from_parsed_invoice_payload(
+                parsed_payload,
+                reporting_year_override=resolved_year,
+                reporting_quarter_override=resolved_quarter,
+                warn_on_missing_emissions=True,
+            )
+        except Exception as exc:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": str(exc), "stage": "draft"},
+            )
+
+        merged_warnings = parse_warnings + list(created.get("warnings", []))
+        return {
+            "parsed": parsed_payload.model_dump(mode="json"),
+            "created": created,
+            "warnings": merged_warnings,
+        }
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
+
+
 @router.post("/shipments", status_code=status.HTTP_201_CREATED)
 def create_cbam_shipment(payload: CBAMShipmentCreate):
     with engine.begin() as conn:
@@ -395,7 +1130,21 @@ def create_cbam_emissions(payload: CBAMEmissionsCreate):
 def get_cbam_case_summary(case_id: UUID):
     with engine.begin() as conn:
         _manual_fk_check(conn, "cbam_cases", case_id, "case_id")
-        return _build_case_summary(conn, case_id)
+        case_row = conn.execute(
+            text(
+                """
+                SELECT *
+                FROM cbam.cbam_cases
+                WHERE id = :id
+                LIMIT 1
+                """
+            ),
+            {"id": str(case_id)},
+        ).mappings().one()
+        shipments_payload = _build_case_shipments_payload(conn, case_id)
+        summary = _build_case_summary(conn, case_id)
+        summary["data_quality"] = evaluate_cbam_data_quality(dict(case_row), shipments_payload)
+        return summary
 
 
 @router.get("/cases/{case_id}/report-package")
@@ -417,83 +1166,8 @@ def get_cbam_report_package(case_id: UUID):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
         case_row = dict(case_rows[0])
-        shipments_cols = _table_columns(conn, "cbam_shipments")
-        goods_cols = _table_columns(conn, "cbam_goods_lines")
-        emissions_cols = _table_columns(conn, "cbam_emissions")
-
-        case_fk_column = _pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
-        if not case_fk_column:
-            raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
-
-        shipment_order_by = "created_at ASC, id ASC" if "created_at" in shipments_cols else "id ASC"
-        shipment_rows = conn.execute(
-            text(
-                f"""
-                SELECT *
-                FROM cbam.cbam_shipments
-                WHERE {case_fk_column} = :case_id
-                ORDER BY {shipment_order_by}
-                """
-            ),
-            {"case_id": str(case_id)},
-        ).mappings().all()
-
-        goods_order_by = "created_at ASC, id ASC" if "created_at" in goods_cols else "id ASC"
-        emissions_order_by_parts: list[str] = ["version DESC"]
-        if "created_at" in emissions_cols:
-            emissions_order_by_parts.append("created_at DESC")
-        emissions_order_by_parts.append("id DESC")
-        emissions_order_by = ", ".join(emissions_order_by_parts)
-
-        warnings: list[str] = []
-        shipments_payload: list[dict[str, object]] = []
-        for shipment_row in shipment_rows:
-            shipment = dict(shipment_row)
-            goods_rows = conn.execute(
-                text(
-                    f"""
-                    SELECT *
-                    FROM cbam.cbam_goods_lines
-                    WHERE shipment_id = :shipment_id
-                    ORDER BY {goods_order_by}
-                    """
-                ),
-                {"shipment_id": str(shipment["id"])},
-            ).mappings().all()
-
-            goods_payload: list[dict[str, object]] = []
-            for goods_line_row in goods_rows:
-                goods_line = dict(goods_line_row)
-                emissions_rows = conn.execute(
-                    text(
-                        f"""
-                        SELECT *
-                        FROM cbam.cbam_emissions
-                        WHERE goods_line_id = :goods_line_id
-                        ORDER BY {emissions_order_by}
-                        LIMIT 1
-                        """
-                    ),
-                    {"goods_line_id": str(goods_line["id"])},
-                ).mappings().all()
-
-                latest_emissions = dict(emissions_rows[0]) if emissions_rows else None
-                if latest_emissions is None:
-                    warnings.append(f"Missing emissions for goods_line_id={goods_line['id']}")
-
-                goods_payload.append(
-                    {
-                        "goods_line": goods_line,
-                        "latest_emissions": latest_emissions,
-                    }
-                )
-
-            shipments_payload.append(
-                {
-                    "shipment": shipment,
-                    "goods_lines": goods_payload,
-                }
-            )
+        shipments_payload = _build_case_shipments_payload(conn, case_id)
+        data_quality = evaluate_cbam_data_quality(case_row, shipments_payload)
 
         return {
             "type": "cbam_report_package_v1",
@@ -501,8 +1175,5 @@ def get_cbam_report_package(case_id: UUID):
             "case": case_row,
             "shipments": shipments_payload,
             "summary": _build_case_summary(conn, case_id),
-            "data_quality": {
-                "missing": [],
-                "warnings": warnings,
-            },
+            "data_quality": data_quality,
         }
