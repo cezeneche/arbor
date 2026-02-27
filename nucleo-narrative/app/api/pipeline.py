@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from app.services.ledger_client import fetch_report_package
+from typing import Literal
+
+from app.services.ledger_client import fetch_cbam_report_package, fetch_report_package
 from app.services.openai_writer import generate_draft
 from app.services.claude_reviewer import review_narrative
 from app.services.gemini_gate import gate
@@ -7,10 +9,14 @@ from app.services.gemini_gate import gate
 router = APIRouter()
 
 @router.post("/cases/{case_id}/narrative/pipeline")
-def run_pipeline(case_id: str):
+def run_pipeline(case_id: str, packet_kind: Literal["legacy", "cbam"] = "legacy"):
     # 1) Fetch structured packet from núcleo-ledger
     try:
-        packet = fetch_report_package(case_id)
+        packet = (
+            fetch_cbam_report_package(case_id)
+            if packet_kind == "cbam"
+            else fetch_report_package(case_id)
+        )
     except Exception as e:
         raise HTTPException(
             status_code=502,
@@ -18,6 +24,7 @@ def run_pipeline(case_id: str):
                 "message": "Failed to fetch report-package from nucleo-ledger",
                 "error": str(e),
                 "case_id": case_id,
+                "packet_kind": packet_kind,
             },
         )
 

@@ -60,6 +60,23 @@ def _extract_json(resp: Any) -> Dict[str, Any]:
         snippet = text[:500]
         raise RuntimeError(f"Claude did not return valid JSON: {e}. Snippet: {snippet}")
 
+def _validate_narrative_shape(narrative: Dict[str, Any]) -> None:
+    required = [
+        "executive_summary",
+        "methodology",
+        "results",
+        "limitations",
+        "open_gaps",
+    ]
+    for key in required:
+        if key not in narrative:
+            raise RuntimeError(f"Narrative missing required key: {key}")
+
+    if not isinstance(narrative["results"], dict):
+        raise RuntimeError("Narrative key 'results' must be an object.")
+    if not isinstance(narrative["open_gaps"], list):
+        raise RuntimeError("Narrative key 'open_gaps' must be a list.")
+
 
 def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -99,8 +116,10 @@ def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
 
     reviewed = _extract_json(resp)
 
+    _validate_narrative_shape(draft_json)
+
     # Defensive: ensure required top-level keys exist.
-    for key in ["executive_summary", "methodology", "limitations"]:
+    for key in ["executive_summary", "methodology", "results", "limitations", "open_gaps"]:
         if key not in reviewed or reviewed.get(key) is None:
             reviewed[key] = draft_json.get(key)
 
@@ -109,5 +128,6 @@ def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
     # Force these to exactly match the draft payload to prevent rounding/drift.
     reviewed["results"] = draft_json.get("results")
     reviewed["open_gaps"] = draft_json.get("open_gaps")
+    _validate_narrative_shape(reviewed)
 
     return reviewed

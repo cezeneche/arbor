@@ -1,4 +1,6 @@
 import json
+from decimal import Decimal, InvalidOperation
+from typing import Any
 
 from google import genai
 from google.genai.types import GenerateContentConfig
@@ -39,7 +41,94 @@ def _extract_text(resp) -> str:
 
     return ""
 
+def _validate_narrative_shape(narrative_json: dict) -> list[dict]:
+    issues: list[dict] = []
+    for key in ["executive_summary", "methodology", "results", "limitations", "open_gaps"]:
+        if key not in narrative_json:
+            issues.append({"detail": f"Narrative missing required key: {key}"})
+    if "results" in narrative_json and not isinstance(narrative_json.get("results"), dict):
+        issues.append({"detail": "Narrative key 'results' must be an object."})
+    if "open_gaps" in narrative_json and not isinstance(narrative_json.get("open_gaps"), list):
+        issues.append({"detail": "Narrative key 'open_gaps' must be a list."})
+    return issues
+
+
+def _to_decimal(value: Any) -> Decimal | None:
+    if isinstance(value, (int, float, str, Decimal)):
+        try:
+            return Decimal(str(value))
+        except (InvalidOperation, ValueError):
+            return None
+    return None
+
+
+def _expected_results(packet: dict) -> dict[str, Decimal | int]:
+    if packet.get("type") == "cbam_report_package_v1":
+        summary = packet.get("summary") or {}
+        return {
+            "total_direct_embedded_kgco2e": _to_decimal(summary.get("total_direct_emissions_kgco2e")) or Decimal("0"),
+            "total_indirect_embedded_kgco2e": _to_decimal(summary.get("total_indirect_emissions_kgco2e")) or Decimal("0"),
+            "total_embedded_kgco2e": _to_decimal(summary.get("total_embedded_emissions_kgco2e")) or Decimal("0"),
+            "total_net_mass_kg": _to_decimal(summary.get("total_net_mass_kg")) or Decimal("0"),
+            "goods_lines_count": int(summary.get("total_goods_lines") or 0),
+        }
+
+    results = packet.get("results") or {}
+    return {
+        "total_emissions_kgco2e": _to_decimal(results.get("total_kgco2e")) or Decimal("0"),
+        "scope_1_kgco2e": _to_decimal(results.get("scope_1_natural_gas_kgco2e")) or Decimal("0"),
+        "scope_2_kgco2e": _to_decimal(results.get("scope_2_electricity_kgco2e")) or Decimal("0"),
+        "intensity_kgco2e_per_unit": _to_decimal(results.get("kgco2e_per_unit")) or Decimal("0"),
+    }
+
+
+def _strict_numeric_issues(packet: dict, narrative_json: dict) -> list[dict]:
+    issues: list[dict] = []
+    expected = _expected_results(packet)
+    got_results = narrative_json.get("results")
+    if not isinstance(got_results, dict):
+        return [{"detail": "Narrative key 'results' must be an object."}]
+
+    for key, expected_value in expected.items():
+        if key not in got_results:
+            issues.append({"detail": f"Narrative results missing key: {key}"})
+            continue
+
+        got_value = got_results.get(key)
+        if isinstance(expected_value, int):
+            if not isinstance(got_value, (int, float)) or int(got_value) != expected_value:
+                issues.append(
+                    {
+                        "detail": (
+                            f"Numeric mismatch for results.{key}: "
+                            f"expected {expected_value}, got {got_value}"
+                        )
+                    }
+                )
+            continue
+
+        got_decimal = _to_decimal(got_value)
+        if got_decimal is None or got_decimal != expected_value:
+            issues.append(
+                {
+                    "detail": (
+                        f"Numeric mismatch for results.{key}: "
+                        f"expected {expected_value}, got {got_value}"
+                    )
+                }
+            )
+
+    return issues
+
+
 def gate(packet: dict, narrative_json: dict) -> dict:
+    local_shape_issues = _validate_narrative_shape(narrative_json)
+    local_numeric_issues = _strict_numeric_issues(packet, narrative_json)
+    local_issues = local_shape_issues + local_numeric_issues
+
+    if local_issues:
+        return {"approved": False, "issues": local_issues}
+
     client = genai.Client(api_key=settings.gemini_api_key)
     resp = client.models.generate_content(
         model=settings.gemini_model,
