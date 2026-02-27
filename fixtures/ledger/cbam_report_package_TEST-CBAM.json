@@ -1,0 +1,83 @@
+{
+  "type": "cbam_report_package_v1",
+  "generated_at": "2026-02-27T15:30:00+00:00",
+  "case": {
+    "id": "TEST-CBAM",
+    "importer_name": "Alpha Steel Ltd",
+    "importer_eori": "GB1709050000",
+    "reporting_year": 2025,
+    "reporting_quarter": 1,
+    "status": "draft",
+    "created_at": "2026-02-27T15:00:00+00:00",
+    "updated_at": "2026-02-27T15:00:00+00:00"
+  },
+  "shipments": [
+    {
+      "shipment": {
+        "id": "SHIP-TEST-CBAM-1",
+        "case_id": "TEST-CBAM",
+        "import_date": "2025-01-15",
+        "entry_reference": "ENT-001",
+        "incoterm": "DAP",
+        "origin_country": "TR",
+        "created_at": "2026-02-27T15:01:00+00:00"
+      },
+      "goods_lines": [
+        {
+          "goods_line": {
+            "id": "GL-TEST-CBAM-1",
+            "shipment_id": "SHIP-TEST-CBAM-1",
+            "cn_code": "720711",
+            "sector": "iron_steel",
+            "description": "Hot rolled steel coil",
+            "quantity": 10000,
+            "quantity_unit": "kg",
+            "installation_name": null,
+            "installation_id": null,
+            "created_at": "2026-02-27T15:02:00+00:00"
+          },
+          "latest_emissions": {
+            "id": "EM-TEST-CBAM-1",
+            "goods_line_id": "GL-TEST-CBAM-1",
+            "method": "actual",
+            "direct_embedded_kgco2e": 50000,
+            "indirect_embedded_kgco2e": 10000,
+            "data_quality_score": null,
+            "notes": "computed_total_kgco2e=60000",
+            "version": 1,
+            "created_at": "2026-02-27T15:03:00+00:00"
+          }
+        },
+        {
+          "goods_line": {
+            "id": "GL-TEST-CBAM-2",
+            "shipment_id": "SHIP-TEST-CBAM-1",
+            "cn_code": "720712",
+            "sector": "iron_steel",
+            "description": "Slab",
+            "quantity": 5000,
+            "quantity_unit": "kg",
+            "installation_name": null,
+            "installation_id": null,
+            "created_at": "2026-02-27T15:02:30+00:00"
+          },
+          "latest_emissions": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "case_id": "TEST-CBAM",
+    "total_goods_lines": 2,
+    "total_net_mass_kg": 15000,
+    "total_direct_emissions_kgco2e": 50000,
+    "total_indirect_emissions_kgco2e": 10000,
+    "total_embedded_emissions_kgco2e": 60000
+  },
+  "data_quality": {
+    "missing": [],
+    "warnings": [
+      "Missing emissions for goods_line_id=GL-TEST-CBAM-2"
+    ]
+  }
+}
