@@ -40,3 +40,6 @@ echo "EMISSIONS_ID=$EMISSIONS_ID"
 
 echo "SUMMARY:"
 curl -s "$API/api/cbam/cases/$CASE_ID/summary" | python3 -m json.tool
+
+echo "REPORT PACKAGE:"
+curl -s "$API/api/cbam/cases/$CASE_ID/report-package" | python3 -m json.tool

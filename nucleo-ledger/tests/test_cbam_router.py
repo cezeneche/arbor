@@ -112,6 +112,27 @@ class FakeConnection:
             row = self.cases.get(params["id"])
             return _Result(rows=[row] if row else [])
 
+        if "SELECT *" in sql and "FROM cbam.cbam_shipments" in sql and "WHERE case_id = :case_id" in sql:
+            rows = [r for r in self.shipments.values() if r.get("case_id") == params.get("case_id")]
+            rows = sorted(rows, key=lambda r: (r.get("created_at"), r.get("id")))
+            return _Result(rows=rows)
+
+        if "SELECT *" in sql and "FROM cbam.cbam_goods_lines" in sql and "WHERE shipment_id = :shipment_id" in sql:
+            rows = [r for r in self.goods_lines.values() if r.get("shipment_id") == params.get("shipment_id")]
+            rows = sorted(rows, key=lambda r: (r.get("created_at"), r.get("id")))
+            return _Result(rows=rows)
+
+        if "SELECT *" in sql and "FROM cbam.cbam_emissions" in sql and "WHERE goods_line_id = :goods_line_id" in sql:
+            rows = [r for r in self.emissions.values() if r.get("goods_line_id") == params.get("goods_line_id")]
+            rows = sorted(
+                rows,
+                key=lambda r: (int(r.get("version") or 0), r.get("created_at"), r.get("id")),
+                reverse=True,
+            )
+            if "LIMIT 1" in sql:
+                rows = rows[:1]
+            return _Result(rows=rows)
+
         if "SELECT *" in sql and "FROM cbam.cbam_cases" in sql and "ORDER BY" in sql:
             rows = list(self.cases.values())
             if "importer_eori = :importer_eori" in sql:
@@ -362,5 +383,64 @@ def test_get_unknown_case_returns_404():
     client, _ = _client_with_fake_engine()
 
     response = client.get("/api/cbam/cases/00000000-0000-0000-0000-000000000111")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not Found"}
+
+
+def test_report_package_has_required_keys():
+    client, _ = _client_with_fake_engine()
+
+    case_res = client.post(
+        "/api/cbam/cases",
+        json={
+            "importer_eori": "GB999888777",
+            "reporting_year": 2025,
+            "reporting_quarter": 1,
+        },
+    )
+    assert case_res.status_code == 201
+    case_id = case_res.json()["id"]
+
+    shipment_res = client.post(
+        "/api/cbam/shipments",
+        json={
+            "cbam_case_id": case_id,
+            "origin_country": "CN",
+            "customs_procedure": "40",
+        },
+    )
+    assert shipment_res.status_code == 201
+    shipment_id = shipment_res.json()["id"]
+
+    goods_res = client.post(
+        "/api/cbam/goods-lines",
+        json={
+            "shipment_id": shipment_id,
+            "cn_code": "720711",
+            "product_description": "Hot rolled steel coil",
+            "net_mass_kg": 10000,
+        },
+    )
+    assert goods_res.status_code == 201
+
+    report_res = client.get(f"/api/cbam/cases/{case_id}/report-package")
+    assert report_res.status_code == 200
+    body = report_res.json()
+
+    assert body["type"] == "cbam_report_package_v1"
+    assert "generated_at" in body
+    assert "case" in body
+    assert "shipments" in body
+    assert "summary" in body
+    assert "data_quality" in body
+    assert "missing" in body["data_quality"]
+    assert "warnings" in body["data_quality"]
+    assert isinstance(body["shipments"], list)
+    assert len(body["data_quality"]["warnings"]) >= 1
+
+
+def test_report_package_unknown_case_returns_404():
+    client, _ = _client_with_fake_engine()
+    response = client.get("/api/cbam/cases/00000000-0000-0000-0000-000000000222/report-package")
     assert response.status_code == 404
     assert response.json() == {"detail": "Not Found"}

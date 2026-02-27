@@ -1,20 +1,23 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
+from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import engine
+from app.services.cbam_extractor import extract as extract_cbam_document
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
 ALLOWED_EMISSIONS_METHODS = ("actual", "default", "estimated")
+CBAM_STORAGE_ROOT = Path("storage") / "cbam"
 
 
 class EmissionsMethod(str, Enum):
@@ -115,6 +118,65 @@ def _insert_returning(
     return dict(row)
 
 
+def _build_case_summary(conn: Connection, case_id: UUID) -> dict[str, object]:
+    shipments_cols = _table_columns(conn, "cbam_shipments")
+    goods_cols = _table_columns(conn, "cbam_goods_lines")
+    emissions_cols = _table_columns(conn, "cbam_emissions")
+
+    case_fk_column = _pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
+    if not case_fk_column:
+        raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
+
+    net_mass_col = _pick_existing(goods_cols, ["net_mass_kg", "quantity"])
+    if not net_mass_col:
+        raise HTTPException(status_code=500, detail="No goods mass column found on cbam_goods_lines.")
+
+    direct_col = _pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
+    indirect_col = _pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
+    if not direct_col or not indirect_col:
+        raise HTTPException(status_code=500, detail="Expected emissions columns not found on cbam_emissions.")
+
+    summary = conn.execute(
+        text(
+            f"""
+            WITH latest_emissions AS (
+                SELECT e.goods_line_id, e.{direct_col} AS direct_emissions, e.{indirect_col} AS indirect_emissions
+                FROM cbam.cbam_emissions e
+                INNER JOIN (
+                    SELECT goods_line_id, MAX(version) AS max_version
+                    FROM cbam.cbam_emissions
+                    GROUP BY goods_line_id
+                ) mx
+                    ON mx.goods_line_id = e.goods_line_id
+                   AND mx.max_version = e.version
+            )
+            SELECT
+                COUNT(gl.id) AS total_goods_lines,
+                COALESCE(SUM(gl.{net_mass_col}), 0) AS total_net_mass_kg,
+                COALESCE(SUM(le.direct_emissions), 0) AS total_direct_emissions_kgco2e,
+                COALESCE(SUM(le.indirect_emissions), 0) AS total_indirect_emissions_kgco2e
+            FROM cbam.cbam_goods_lines gl
+            INNER JOIN cbam.cbam_shipments s ON s.id = gl.shipment_id
+            LEFT JOIN latest_emissions le ON le.goods_line_id = gl.id
+            WHERE s.{case_fk_column} = :case_id
+            """
+        ),
+        {"case_id": str(case_id)},
+    ).mappings().one()
+
+    direct = Decimal(summary["total_direct_emissions_kgco2e"] or 0)
+    indirect = Decimal(summary["total_indirect_emissions_kgco2e"] or 0)
+
+    return {
+        "case_id": str(case_id),
+        "total_goods_lines": int(summary["total_goods_lines"] or 0),
+        "total_net_mass_kg": Decimal(summary["total_net_mass_kg"] or 0),
+        "total_direct_emissions_kgco2e": direct,
+        "total_indirect_emissions_kgco2e": indirect,
+        "total_embedded_emissions_kgco2e": direct + indirect,
+    }
+
+
 @router.post("/cases", status_code=status.HTTP_201_CREATED)
 def create_cbam_case(payload: CBAMCaseCreate):
     with engine.begin() as conn:
@@ -198,6 +260,32 @@ def list_cbam_cases(
         ).mappings().all()
 
         return [dict(row) for row in rows]
+
+
+@router.post("/cases/{case_id}/documents", status_code=status.HTTP_201_CREATED)
+async def create_cbam_document(case_id: UUID, file: UploadFile = File(...)):
+    with engine.begin() as conn:
+        _manual_fk_check(conn, "cbam_cases", case_id, "case_id")
+
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File name is required.")
+
+    document_id = str(uuid4())
+    safe_filename = Path(file.filename).name
+    target_dir = CBAM_STORAGE_ROOT / str(case_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    stored_path = target_dir / f"{document_id}_{safe_filename}"
+
+    content = await file.read()
+    stored_path.write_bytes(content)
+    extraction = extract_cbam_document(str(stored_path))
+
+    return {
+        "case_id": str(case_id),
+        "document_id": document_id,
+        "stored_path": str(stored_path),
+        "extraction": extraction,
+    }
 
 
 @router.post("/shipments", status_code=status.HTTP_201_CREATED)
@@ -307,7 +395,28 @@ def create_cbam_emissions(payload: CBAMEmissionsCreate):
 def get_cbam_case_summary(case_id: UUID):
     with engine.begin() as conn:
         _manual_fk_check(conn, "cbam_cases", case_id, "case_id")
+        return _build_case_summary(conn, case_id)
 
+
+@router.get("/cases/{case_id}/report-package")
+def get_cbam_report_package(case_id: UUID):
+    with engine.begin() as conn:
+        case_rows = conn.execute(
+            text(
+                """
+                SELECT *
+                FROM cbam.cbam_cases
+                WHERE id = :id
+                LIMIT 1
+                """
+            ),
+            {"id": str(case_id)},
+        ).mappings().all()
+
+        if not case_rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+        case_row = dict(case_rows[0])
         shipments_cols = _table_columns(conn, "cbam_shipments")
         goods_cols = _table_columns(conn, "cbam_goods_lines")
         emissions_cols = _table_columns(conn, "cbam_emissions")
@@ -316,51 +425,84 @@ def get_cbam_case_summary(case_id: UUID):
         if not case_fk_column:
             raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
 
-        net_mass_col = _pick_existing(goods_cols, ["net_mass_kg", "quantity"])
-        if not net_mass_col:
-            raise HTTPException(status_code=500, detail="No goods mass column found on cbam_goods_lines.")
-
-        direct_col = _pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
-        indirect_col = _pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
-        if not direct_col or not indirect_col:
-            raise HTTPException(status_code=500, detail="Expected emissions columns not found on cbam_emissions.")
-
-        summary = conn.execute(
+        shipment_order_by = "created_at ASC, id ASC" if "created_at" in shipments_cols else "id ASC"
+        shipment_rows = conn.execute(
             text(
                 f"""
-                WITH latest_emissions AS (
-                    SELECT e.goods_line_id, e.{direct_col} AS direct_emissions, e.{indirect_col} AS indirect_emissions
-                    FROM cbam.cbam_emissions e
-                    INNER JOIN (
-                        SELECT goods_line_id, MAX(version) AS max_version
-                        FROM cbam.cbam_emissions
-                        GROUP BY goods_line_id
-                    ) mx
-                        ON mx.goods_line_id = e.goods_line_id
-                       AND mx.max_version = e.version
-                )
-                SELECT
-                    COUNT(gl.id) AS total_goods_lines,
-                    COALESCE(SUM(gl.{net_mass_col}), 0) AS total_net_mass_kg,
-                    COALESCE(SUM(le.direct_emissions), 0) AS total_direct_emissions_kgco2e,
-                    COALESCE(SUM(le.indirect_emissions), 0) AS total_indirect_emissions_kgco2e
-                FROM cbam.cbam_goods_lines gl
-                INNER JOIN cbam.cbam_shipments s ON s.id = gl.shipment_id
-                LEFT JOIN latest_emissions le ON le.goods_line_id = gl.id
-                WHERE s.{case_fk_column} = :case_id
+                SELECT *
+                FROM cbam.cbam_shipments
+                WHERE {case_fk_column} = :case_id
+                ORDER BY {shipment_order_by}
                 """
             ),
             {"case_id": str(case_id)},
-        ).mappings().one()
+        ).mappings().all()
 
-        direct = Decimal(summary["total_direct_emissions_kgco2e"] or 0)
-        indirect = Decimal(summary["total_indirect_emissions_kgco2e"] or 0)
+        goods_order_by = "created_at ASC, id ASC" if "created_at" in goods_cols else "id ASC"
+        emissions_order_by_parts: list[str] = ["version DESC"]
+        if "created_at" in emissions_cols:
+            emissions_order_by_parts.append("created_at DESC")
+        emissions_order_by_parts.append("id DESC")
+        emissions_order_by = ", ".join(emissions_order_by_parts)
+
+        warnings: list[str] = []
+        shipments_payload: list[dict[str, object]] = []
+        for shipment_row in shipment_rows:
+            shipment = dict(shipment_row)
+            goods_rows = conn.execute(
+                text(
+                    f"""
+                    SELECT *
+                    FROM cbam.cbam_goods_lines
+                    WHERE shipment_id = :shipment_id
+                    ORDER BY {goods_order_by}
+                    """
+                ),
+                {"shipment_id": str(shipment["id"])},
+            ).mappings().all()
+
+            goods_payload: list[dict[str, object]] = []
+            for goods_line_row in goods_rows:
+                goods_line = dict(goods_line_row)
+                emissions_rows = conn.execute(
+                    text(
+                        f"""
+                        SELECT *
+                        FROM cbam.cbam_emissions
+                        WHERE goods_line_id = :goods_line_id
+                        ORDER BY {emissions_order_by}
+                        LIMIT 1
+                        """
+                    ),
+                    {"goods_line_id": str(goods_line["id"])},
+                ).mappings().all()
+
+                latest_emissions = dict(emissions_rows[0]) if emissions_rows else None
+                if latest_emissions is None:
+                    warnings.append(f"Missing emissions for goods_line_id={goods_line['id']}")
+
+                goods_payload.append(
+                    {
+                        "goods_line": goods_line,
+                        "latest_emissions": latest_emissions,
+                    }
+                )
+
+            shipments_payload.append(
+                {
+                    "shipment": shipment,
+                    "goods_lines": goods_payload,
+                }
+            )
 
         return {
-            "case_id": str(case_id),
-            "total_goods_lines": int(summary["total_goods_lines"] or 0),
-            "total_net_mass_kg": Decimal(summary["total_net_mass_kg"] or 0),
-            "total_direct_emissions_kgco2e": direct,
-            "total_indirect_emissions_kgco2e": indirect,
-            "total_embedded_emissions_kgco2e": direct + indirect,
+            "type": "cbam_report_package_v1",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "case": case_row,
+            "shipments": shipments_payload,
+            "summary": _build_case_summary(conn, case_id),
+            "data_quality": {
+                "missing": [],
+                "warnings": warnings,
+            },
         }
