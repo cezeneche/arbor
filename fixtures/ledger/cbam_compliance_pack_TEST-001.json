@@ -1,0 +1,159 @@
+{
+    "type": "cbam_compliance_pack_v1",
+    "case_id": "6dd73f27-3f57-4661-a878-43f4907dabd8",
+    "generated_at": "2026-02-27T19:00:08.029123+00:00",
+    "report_package": {
+        "type": "cbam_report_package_v1",
+        "generated_at": "2026-02-27T19:00:07.974294+00:00",
+        "case": {
+            "id": "6dd73f27-3f57-4661-a878-43f4907dabd8",
+            "importer_name": "Alpha Steel Ltd",
+            "importer_eori": "GB9991112222",
+            "reporting_year": 2026,
+            "reporting_quarter": 1,
+            "status": "draft",
+            "created_at": "2026-02-27T16:37:14.487924",
+            "updated_at": "2026-02-27T16:37:14.487924"
+        },
+        "shipments": [
+            {
+                "shipment": {
+                    "id": "95bc7a2d-0dcd-4cfe-8800-870761fe79a0",
+                    "case_id": "6dd73f27-3f57-4661-a878-43f4907dabd8",
+                    "import_date": "2026-02-27",
+                    "entry_reference": "INV-TEST-001",
+                    "incoterm": "FOB",
+                    "origin_country": "TR",
+                    "created_at": "2026-02-27T16:37:14.487924"
+                },
+                "goods_lines": [
+                    {
+                        "goods_line": {
+                            "id": "2a43e355-4326-4bfa-a252-92c7ab5efd0c",
+                            "shipment_id": "95bc7a2d-0dcd-4cfe-8800-870761fe79a0",
+                            "cn_code": "720711",
+                            "sector": "iron_steel",
+                            "description": "Steel billets",
+                            "quantity": 10000,
+                            "quantity_unit": "kg",
+                            "installation_name": null,
+                            "installation_id": null,
+                            "created_at": "2026-02-27T16:37:14.487924"
+                        },
+                        "latest_emissions": {
+                            "id": "2715b671-e47e-4200-b1cb-8e8665248473",
+                            "goods_line_id": "2a43e355-4326-4bfa-a252-92c7ab5efd0c",
+                            "method": "actual",
+                            "direct_embedded_kgco2e": 50000,
+                            "indirect_embedded_kgco2e": 10000,
+                            "data_quality_score": null,
+                            "notes": null,
+                            "version": 1,
+                            "created_at": "2026-02-27T16:37:14.487924"
+                        }
+                    }
+                ]
+            },
+            {
+                "shipment": {
+                    "id": "0af1277c-7b40-40da-a6c1-66dde64c528e",
+                    "case_id": "6dd73f27-3f57-4661-a878-43f4907dabd8",
+                    "import_date": "2026-02-27",
+                    "entry_reference": "INV-TEST-001",
+                    "incoterm": "FOB",
+                    "origin_country": "TR",
+                    "created_at": "2026-02-27T16:41:45.037244"
+                },
+                "goods_lines": [
+                    {
+                        "goods_line": {
+                            "id": "05cb5e27-e048-46b4-b062-eaf33aefcbb2",
+                            "shipment_id": "0af1277c-7b40-40da-a6c1-66dde64c528e",
+                            "cn_code": "720711",
+                            "sector": "iron_steel",
+                            "description": "Steel billets",
+                            "quantity": 10000,
+                            "quantity_unit": "kg",
+                            "installation_name": null,
+                            "installation_id": null,
+                            "created_at": "2026-02-27T16:41:45.037244"
+                        },
+                        "latest_emissions": {
+                            "id": "9093cd89-4081-4ae5-ace5-00cbefe057cb",
+                            "goods_line_id": "05cb5e27-e048-46b4-b062-eaf33aefcbb2",
+                            "method": "actual",
+                            "direct_embedded_kgco2e": 50000,
+                            "indirect_embedded_kgco2e": 10000,
+                            "data_quality_score": null,
+                            "notes": null,
+                            "version": 1,
+                            "created_at": "2026-02-27T16:41:45.037244"
+                        }
+                    }
+                ]
+            }
+        ],
+        "summary": {
+            "case_id": "6dd73f27-3f57-4661-a878-43f4907dabd8",
+            "total_goods_lines": 2,
+            "total_net_mass_kg": 20000,
+            "total_direct_emissions_kgco2e": 100000,
+            "total_indirect_emissions_kgco2e": 20000,
+            "total_embedded_emissions_kgco2e": 120000
+        },
+        "data_quality": {
+            "missing": [],
+            "warnings": []
+        }
+    },
+    "narrative": {
+        "type": "cbam_narrative_v1",
+        "case_id": "6dd73f27-3f57-4661-a878-43f4907dabd8",
+        "executive_summary": "CBAM report for Alpha Steel Ltd (2026 Q1) includes 2 shipments and 2 goods lines. Total embedded emissions are 120000.00 kgCO2e (100000.00 direct, 20000.00 indirect).",
+        "totals": {
+            "total_direct_emissions_kgco2e": 100000.0,
+            "total_indirect_emissions_kgco2e": 20000.0,
+            "total_embedded_emissions_kgco2e": 120000.0,
+            "total_net_mass_kg": 20000.0,
+            "total_goods_lines": 2,
+            "shipments_count": 2
+        },
+        "risk_flags": []
+    },
+    "data_quality_flags": [
+        "shipment:95bc7a2d-0dcd-4cfe-8800-870761fe79a0:invoice_number_missing",
+        "goods_line:2a43e355-4326-4bfa-a252-92c7ab5efd0c:installation_id_missing",
+        "shipment:0af1277c-7b40-40da-a6c1-66dde64c528e:invoice_number_missing",
+        "goods_line:05cb5e27-e048-46b4-b062-eaf33aefcbb2:installation_id_missing"
+    ],
+    "tables": {
+        "goods_lines": [
+            {
+                "shipment": "INV-TEST-001",
+                "goods_line_id": "2a43e355-4326-4bfa-a252-92c7ab5efd0c",
+                "cn_code": "720711",
+                "mass_kg": 10000.0,
+                "direct_embedded_kgco2e": 50000.0,
+                "indirect_embedded_kgco2e": 10000.0,
+                "method": "actual"
+            },
+            {
+                "shipment": "INV-TEST-001",
+                "goods_line_id": "05cb5e27-e048-46b4-b062-eaf33aefcbb2",
+                "cn_code": "720711",
+                "mass_kg": 10000.0,
+                "direct_embedded_kgco2e": 50000.0,
+                "indirect_embedded_kgco2e": 10000.0,
+                "method": "actual"
+            }
+        ],
+        "totals": {
+            "total_goods_lines": 2,
+            "total_net_mass_kg": 20000.0,
+            "total_direct_emissions_kgco2e": 100000.0,
+            "total_indirect_emissions_kgco2e": 20000.0,
+            "total_embedded_emissions_kgco2e": 120000.0,
+            "shipments_count": 2
+        }
+    }
+}
