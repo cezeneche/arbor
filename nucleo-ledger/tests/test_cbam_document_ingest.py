@@ -62,9 +62,14 @@ def _client_with_fake_engine(storage_root: Path, case_id: str) -> TestClient:
     return TestClient(app)
 
 
-def test_cbam_document_ingest_upload_returns_expected_keys(tmp_path: Path):
+def test_cbam_document_ingest_upload_returns_expected_keys(tmp_path: Path, monkeypatch):
     case_id = str(uuid4())
     client = _client_with_fake_engine(tmp_path / "storage" / "cbam", case_id)
+    monkeypatch.setattr(
+        cbam_api,
+        "extract_cbam_document",
+        lambda _file_path: {"status": "parsed", "structured": {}, "lines": []},
+    )
 
     response = client.post(
         f"/api/cbam/cases/{case_id}/documents",

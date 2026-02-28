@@ -193,13 +193,51 @@ def test_invalid_numeric_raises_422(monkeypatch):
     assert body["detail"] == "Invalid numeric value for quantity"
 
 
-def test_multiline_document_creates_two_goods_lines_and_emissions():
+def test_multiline_document_creates_two_goods_lines_and_emissions(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
         Path(__file__).resolve().parents[2]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST_MULTILINE.txt"
+    )
+    monkeypatch.setattr(
+        cbam_api,
+        "extract_cbam_document",
+        lambda _path: {
+            "status": "parsed",
+            "importer": {"name": "Alpha Steel Ltd", "eori": "GB123456789"},
+            "invoice": {
+                "invoice_number": "INV-TEST-MULTI-001",
+                "invoice_date": "2025-01-15",
+                "origin_country": "TR",
+                "incoterm": "FOB",
+                "entry_reference": "ENTRY-MULTI-001",
+            },
+            "lines": [
+                {
+                    "cn_code": "720711",
+                    "description": "Hot rolled steel coil",
+                    "quantity": 10000,
+                    "quantity_unit": "kg",
+                    "net_mass_kg": 10000,
+                    "method": "actual",
+                    "direct_embedded_kgco2e": 50000,
+                    "indirect_embedded_kgco2e": 10000,
+                },
+                {
+                    "cn_code": "730890",
+                    "description": "Structural steel section",
+                    "quantity": 5000,
+                    "quantity_unit": "kg",
+                    "net_mass_kg": 5000,
+                    "method": "actual",
+                    "direct_embedded_kgco2e": 25000,
+                    "indirect_embedded_kgco2e": 5000,
+                },
+            ],
+            "emissions": None,
+        },
     )
 
     response = client.post(

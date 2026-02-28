@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.session import engine
 from app.services.cbam_data_quality import evaluate_cbam_data_quality
+from app.services.document_text_extractor import extract_text_from_upload
 from app.services.cbam_extractor import extract as extract_cbam_document
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
@@ -959,9 +960,22 @@ async def create_cbam_draft_from_document(
     tmp_path: Path | None = None
 
     try:
-        with tempfile.NamedTemporaryFile(prefix="cbam_invoice_", suffix=f"_{safe_filename}", delete=False) as tmp:
+        file_bytes = await file.read()
+        try:
+            raw_text = extract_text_from_upload(
+                filename=safe_filename,
+                content_type=file.content_type,
+                data=file_bytes,
+            )
+        except HTTPException as exc:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail, "stage": "extract"},
+            )
+
+        with tempfile.NamedTemporaryFile(prefix="cbam_invoice_", suffix=".txt", delete=False) as tmp:
             tmp_path = Path(tmp.name)
-            tmp.write(await file.read())
+            tmp.write(raw_text.encode("utf-8"))
 
         extraction = extract_cbam_document(str(tmp_path))
         if not isinstance(extraction, dict):
