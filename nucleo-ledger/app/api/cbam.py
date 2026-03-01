@@ -15,9 +15,13 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import engine
+from app.services.cbam_arbiter import arbitrate_parsed_invoice
 from app.services.cbam_data_quality import evaluate_cbam_data_quality
-from app.services.document_text_extractor import extract_text_from_upload
+from app.services.cbam_repair import repair_parsed_invoice
+from app.services.document_text_extractor import extract_document_from_upload
 from app.services.cbam_extractor import extract as extract_cbam_document
+from app.services.llama_structured_extractor import compare_extractions
+from app.services.llama_structured_extractor import extract_structured_invoice
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
 ALLOWED_EMISSIONS_METHODS = ("actual", "default", "estimated")
@@ -389,6 +393,135 @@ def _build_parsed_invoice_request_from_extraction(
         emissions=parsed_emissions,
     )
     return payload, resolved_reporting_year, resolved_reporting_quarter, warnings
+
+
+def _llama_candidate_from_structured_invoice(
+    rule_candidate: dict[str, object],
+    llama_output,
+    raw_text: str,
+    layout_payload: dict[str, object] | None,
+) -> dict[str, object] | None:
+    if llama_output is None:
+        return None
+
+    if hasattr(llama_output, "model_dump"):
+        llama_data = llama_output.model_dump()
+    elif isinstance(llama_output, dict):
+        llama_data = llama_output
+    else:
+        return None
+
+    if not isinstance(llama_data, dict):
+        return None
+
+    line_items = llama_data.get("line_items")
+    normalized_lines: list[dict[str, object]] = []
+    if isinstance(line_items, list):
+        for item in line_items:
+            if not isinstance(item, dict):
+                continue
+            quantity = item.get("quantity")
+            normalized_lines.append(
+                {
+                    "cn_code": item.get("cn_code"),
+                    "description": item.get("description"),
+                    "quantity": quantity,
+                    "quantity_unit": "kg" if quantity is not None else None,
+                    "net_mass_kg": quantity,
+                }
+            )
+
+    has_signal = any(
+        llama_data.get(field)
+        for field in ("importer_name", "invoice_number", "invoice_date", "origin_country")
+    ) or bool(normalized_lines)
+    if not has_signal:
+        return None
+
+    base_importer = rule_candidate.get("importer")
+    base_invoice = rule_candidate.get("invoice")
+    base_importer_eori = base_importer.get("eori") if isinstance(base_importer, dict) else None
+    base_incoterm = base_invoice.get("incoterm") if isinstance(base_invoice, dict) else None
+    base_entry_reference = base_invoice.get("entry_reference") if isinstance(base_invoice, dict) else None
+
+    return {
+        "source": "llama",
+        "importer": {
+            "name": llama_data.get("importer_name"),
+            "eori": base_importer_eori,
+        },
+        "invoice": {
+            "invoice_number": llama_data.get("invoice_number"),
+            "invoice_date": llama_data.get("invoice_date"),
+            "origin_country": llama_data.get("origin_country"),
+            "incoterm": base_incoterm,
+            "entry_reference": base_entry_reference,
+        },
+        "lines": normalized_lines,
+        "emissions": rule_candidate.get("emissions"),
+        "structured": rule_candidate.get("structured"),
+        "layout": layout_payload,
+        "full_text": raw_text,
+    }
+
+
+def _parsed_data_quality_precheck_from_payload(
+    payload: CBAMDraftFromParsedInvoiceRequest,
+    reporting_year: int,
+    reporting_quarter: int,
+) -> dict[str, object]:
+    case_row: dict[str, object] = {
+        "id": "draft_case",
+        "importer_eori": payload.importer.eori,
+        "reporting_year": reporting_year,
+        "reporting_quarter": reporting_quarter,
+    }
+
+    shipment_row: dict[str, object] = {
+        "id": "draft_shipment",
+        "origin_country": payload.invoice.origin_country,
+        "invoice_number": payload.invoice.invoice_number or payload.invoice.entry_reference,
+        "entry_reference": payload.invoice.entry_reference,
+        "incoterm": payload.invoice.incoterm,
+    }
+
+    goods_payload: list[dict[str, object]] = []
+    for idx, line in enumerate(payload.lines):
+        goods_line = {
+            "id": f"draft_goods_{idx}",
+            "cn_code": line.cn_code,
+            "quantity": _coerce_float(line.quantity, "quantity"),
+            "net_mass_kg": _coerce_float(line.net_mass_kg, "net_mass_kg"),
+            "installation_id": None,
+        }
+        latest_emissions = None
+        if (
+            line.method is not None
+            or line.direct_embedded_kgco2e is not None
+            or line.indirect_embedded_kgco2e is not None
+        ):
+            latest_emissions = {
+                "method": line.method.value if line.method is not None else None,
+                "direct_embedded_kgco2e": _coerce_float(line.direct_embedded_kgco2e, "direct_embedded_kgco2e"),
+                "indirect_embedded_kgco2e": _coerce_float(line.indirect_embedded_kgco2e, "indirect_embedded_kgco2e"),
+            }
+        elif payload.emissions is not None:
+            latest_emissions = {
+                "method": payload.emissions.method.value if payload.emissions.method is not None else None,
+                "direct_embedded_kgco2e": _coerce_float(
+                    payload.emissions.direct_embedded_kgco2e,
+                    "direct_embedded_kgco2e",
+                ),
+                "indirect_embedded_kgco2e": _coerce_float(
+                    payload.emissions.indirect_embedded_kgco2e,
+                    "indirect_embedded_kgco2e",
+                ),
+            }
+
+        goods_payload.append({"goods_line": goods_line, "latest_emissions": latest_emissions})
+
+    shipments_payload = [{"shipment": shipment_row, "goods_lines": goods_payload}]
+    return evaluate_cbam_data_quality(case_row, shipments_payload)
 
 
 def _insert_returning(
@@ -962,11 +1095,14 @@ async def create_cbam_draft_from_document(
     try:
         file_bytes = await file.read()
         try:
-            raw_text = extract_text_from_upload(
+            extracted_document = extract_document_from_upload(
                 filename=safe_filename,
                 content_type=file.content_type,
                 data=file_bytes,
             )
+            raw_text = str(extracted_document.get("raw_text", ""))
+            layout = extracted_document.get("layout")
+            layout_payload = layout if isinstance(layout, dict) else None
         except HTTPException as exc:
             return JSONResponse(
                 status_code=exc.status_code,
@@ -977,7 +1113,11 @@ async def create_cbam_draft_from_document(
             tmp_path = Path(tmp.name)
             tmp.write(raw_text.encode("utf-8"))
 
-        extraction = extract_cbam_document(str(tmp_path))
+        try:
+            extraction = extract_cbam_document(str(tmp_path), layout=layout_payload)
+        except TypeError:
+            # Backward-compatible path for simple one-argument stubs used in tests.
+            extraction = extract_cbam_document(str(tmp_path))
         if not isinstance(extraction, dict):
             return JSONResponse(
                 status_code=422,
@@ -993,9 +1133,50 @@ async def create_cbam_draft_from_document(
             )
 
         try:
+            arbiter_warnings: list[str] = []
+            repair_warnings: list[str] = []
+            rule_candidate = dict(extraction)
+            rule_candidate["source"] = "rule"
+            rule_candidate["layout"] = layout_payload
+            rule_candidate["full_text"] = raw_text
+
+            llama_output = extract_structured_invoice(raw_text)
+            extraction_validation = compare_extractions(rule_candidate, llama_output)
+
+            candidates: list[dict[str, object]] = [rule_candidate]
+            llama_candidate = _llama_candidate_from_structured_invoice(
+                rule_candidate=rule_candidate,
+                llama_output=llama_output,
+                raw_text=raw_text,
+                layout_payload=layout_payload,
+            )
+            if llama_candidate is not None:
+                candidates.append(llama_candidate)
+
+            if len(candidates) > 1:
+                arbitrated_candidate, arbiter_warnings = arbitrate_parsed_invoice(candidates)
+            else:
+                arbitrated_candidate, arbiter_warnings = rule_candidate, []
+
+            repaired_candidate, repair_warnings = repair_parsed_invoice(arbitrated_candidate)
+
+            extraction_validation.update(
+                {
+                    "arbiter_warnings": arbiter_warnings,
+                    "repair_warnings": repair_warnings,
+                }
+            )
+        except Exception:
+            extraction_validation = {
+                "match_score": 0.0,
+                "differences": ["llama_structured_extraction_unavailable"],
+            }
+            repaired_candidate = extraction
+
+        try:
             parsed_payload, resolved_year, resolved_quarter, parse_warnings = (
                 _build_parsed_invoice_request_from_extraction(
-                    extraction=extraction,
+                    extraction=repaired_candidate,
                     importer_name=importer_name,
                     importer_eori=importer_eori,
                     reporting_year=reporting_year,
@@ -1014,6 +1195,25 @@ async def create_cbam_draft_from_document(
             )
 
         try:
+            dq_precheck = _parsed_data_quality_precheck_from_payload(
+                payload=parsed_payload,
+                reporting_year=resolved_year,
+                reporting_quarter=resolved_quarter,
+            )
+        except HTTPException as exc:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail, "stage": "extract"},
+            )
+        except Exception as exc:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": str(exc), "stage": "extract"},
+            )
+
+        extraction_validation["data_quality"] = dq_precheck
+
+        try:
             created = _create_cbam_draft_from_parsed_invoice_payload(
                 parsed_payload,
                 reporting_year_override=resolved_year,
@@ -1026,11 +1226,26 @@ async def create_cbam_draft_from_document(
                 content={"detail": str(exc), "stage": "draft"},
             )
 
-        merged_warnings = parse_warnings + list(created.get("warnings", []))
+        repair_warns = extraction_validation.get("repair_warnings", [])
+        arbiter_warns = extraction_validation.get("arbiter_warnings", [])
+        dq_warns = []
+        if isinstance(extraction_validation.get("data_quality"), dict):
+            dq_data = extraction_validation["data_quality"]
+            dq_warns.extend(f"dq_missing:{item}" for item in dq_data.get("missing", []))
+            dq_warns.extend(f"dq_warning:{item}" for item in dq_data.get("warnings", []))
+
+        merged_warnings = (
+            parse_warnings
+            + list(repair_warns if isinstance(repair_warns, list) else [])
+            + list(arbiter_warns if isinstance(arbiter_warns, list) else [])
+            + dq_warns
+            + list(created.get("warnings", []))
+        )
         return {
             "parsed": parsed_payload.model_dump(mode="json"),
             "created": created,
             "warnings": merged_warnings,
+            "extraction_validation": extraction_validation,
         }
     finally:
         if tmp_path and tmp_path.exists():

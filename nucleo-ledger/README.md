@@ -24,3 +24,16 @@ curl -sS -X POST "http://127.0.0.1:8000/api/cbam/drafts/from-document" \
 
 Optional form fields: `reporting_year`, `reporting_quarter`.
 OCR/vision extraction is currently best-effort; tests may stub extraction for deterministic runs.
+
+## Repair + Arbiter (Extraction Validation)
+
+`POST /api/cbam/drafts/from-document` now runs a repair + arbitration pass before draft creation:
+- `arbiter`: resolves field conflicts across extraction candidates (rule vs structured LLM).
+- `repair`: fills only high-confidence missing fields from layout/text (no hallucinated values).
+
+Common warning codes:
+- `arbiter_conflict:<field>:<source_a>!=<source_b>`
+- `repair_failed:<field>`
+- `repair_failed:lines[<idx>].<field>`
+- `dq_missing:<rule_code>`
+- `dq_warning:<rule_code>`

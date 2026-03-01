@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections import defaultdict
+from io import BytesIO
 
 from fastapi import HTTPException
 
@@ -15,6 +17,11 @@ def _is_image(filename: str, content_type: str | None) -> bool:
     return lower_name.endswith((".png", ".jpg", ".jpeg")) or bool(
         content_type and content_type.startswith("image/")
     )
+
+
+def _is_pdf(filename: str, content_type: str | None) -> bool:
+    lower_name = filename.lower()
+    return lower_name.endswith(".pdf") or content_type == "application/pdf"
 
 
 def _decode_text_bytes(data: bytes) -> str:
@@ -56,25 +63,65 @@ def _bbox_to_xy(bbox) -> tuple[float, float] | None:
     return None
 
 
-def _normalize_ocr_result(result) -> list[tuple[float, float, str]]:
-    rows: list[tuple[float, float, str]] = []
-    seen: set[tuple[float, float, str]] = set()
+def _to_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
-    def add_text(text, bbox=None) -> None:
+
+def _bbox_to_rect(bbox) -> list[float] | None:
+    seq = _to_sequence(bbox)
+    if not seq:
+        return None
+
+    if len(seq) >= 4 and all(not isinstance(x, (list, tuple, dict)) for x in seq[:4]):
+        x1 = _to_float(seq[0])
+        y1 = _to_float(seq[1])
+        x2 = _to_float(seq[2])
+        y2 = _to_float(seq[3])
+        return [x1, y1, x2, y2]
+
+    points: list[tuple[float, float]] = []
+    for item in seq:
+        point = _to_sequence(item)
+        if point and len(point) >= 2:
+            points.append((_to_float(point[0]), _to_float(point[1])))
+
+    if not points:
+        if len(seq) >= 2:
+            x = _to_float(seq[0])
+            y = _to_float(seq[1])
+            return [x, y, x, y]
+        return None
+
+    xs = [pt[0] for pt in points]
+    ys = [pt[1] for pt in points]
+    return [min(xs), min(ys), max(xs), max(ys)]
+
+
+def _normalize_ocr_lines(result) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    seen: set[tuple[str, tuple[float, float, float, float]]] = set()
+
+    def add_line(text, bbox=None, confidence=None) -> None:
         if text is None:
             return
         text_value = str(text).strip()
         if not text_value:
             return
-        coords = _bbox_to_xy(bbox)
-        if coords is None:
-            item = (1e12, 1e12, text_value)
-        else:
-            x, y = coords
-            item = (y, x, text_value)
-        if item not in seen:
-            seen.add(item)
-            rows.append(item)
+        rect = _bbox_to_rect(bbox) or [0.0, 0.0, 0.0, 0.0]
+        key = (text_value, (rect[0], rect[1], rect[2], rect[3]))
+        if key in seen:
+            return
+        seen.add(key)
+        rows.append(
+            {
+                "text": text_value,
+                "bbox": rect,
+                "confidence": _to_float(confidence),
+            }
+        )
 
     def walk(node) -> None:
         if node is None:
@@ -93,7 +140,11 @@ def _normalize_ocr_result(result) -> list[tuple[float, float, str]]:
                 polys = _to_sequence(poly_candidates) or []
                 for idx, text_item in enumerate(rec_texts):
                     bbox_item = polys[idx] if idx < len(polys) else None
-                    add_text(text_item, bbox_item)
+                    score_item = None
+                    rec_scores = node.get("rec_scores")
+                    if isinstance(rec_scores, (list, tuple)) and idx < len(rec_scores):
+                        score_item = rec_scores[idx]
+                    add_line(text_item, bbox_item, score_item)
 
             text = node.get("rec_text") or node.get("text") or node.get("label")
             bbox = (
@@ -103,8 +154,9 @@ def _normalize_ocr_result(result) -> list[tuple[float, float, str]]:
                 or node.get("box")
                 or node.get("points")
             )
+            confidence = node.get("score") or node.get("confidence")
             if text is not None:
-                add_text(text, bbox)
+                add_line(text, bbox, confidence)
 
             for value in node.values():
                 if isinstance(value, (list, tuple, dict)):
@@ -116,12 +168,15 @@ def _normalize_ocr_result(result) -> list[tuple[float, float, str]]:
                 bbox = node[0]
                 text_info = node[1]
                 text = None
+                confidence = None
                 if isinstance(text_info, (list, tuple)) and text_info:
                     text = text_info[0]
+                    if len(text_info) > 1:
+                        confidence = text_info[1]
                 elif isinstance(text_info, str):
                     text = text_info
                 if text is not None:
-                    add_text(text, bbox)
+                    add_line(text, bbox, confidence)
                     return
 
             for item in node:
@@ -129,11 +184,40 @@ def _normalize_ocr_result(result) -> list[tuple[float, float, str]]:
                     walk(item)
 
     walk(result)
-    rows.sort(key=lambda row: (row[0], row[1]))
+    rows.sort(key=lambda row: (_to_float(row["bbox"][1]), _to_float(row["bbox"][0])))
     return rows
 
 
-def _extract_text_with_paddleocr(data: bytes) -> str:
+def _build_layout_blocks(
+    ocr_lines: list[dict[str, object]],
+    image_height: int,
+) -> dict[str, list[dict[str, object]]]:
+    grouped: dict[str, list[int]] = defaultdict(list)
+    safe_height = max(image_height, 1)
+
+    for idx, line in enumerate(ocr_lines):
+        bbox = line.get("bbox")
+        rect = bbox if isinstance(bbox, list) and len(bbox) == 4 else [0.0, 0.0, 0.0, 0.0]
+        y_center = (_to_float(rect[1]) + _to_float(rect[3])) / 2.0
+        ratio = y_center / float(safe_height)
+        if ratio <= 0.25:
+            grouped["header"].append(idx)
+        elif ratio >= 0.80:
+            grouped["footer"].append(idx)
+        else:
+            grouped["body"].append(idx)
+
+    blocks: list[dict[str, object]] = []
+    for block_type in ("header", "body", "footer"):
+        idxs = grouped.get(block_type, [])
+        if not idxs:
+            continue
+        text = " ".join(str(ocr_lines[i].get("text", "")).strip() for i in idxs).strip()
+        blocks.append({"type": block_type, "text": text, "lines_idx": idxs})
+    return {"blocks": blocks}
+
+
+def _extract_image_document_with_paddleocr(data: bytes) -> dict[str, object]:
     try:
         import cv2  # type: ignore
         import numpy as np  # type: ignore
@@ -145,6 +229,7 @@ def _extract_text_with_paddleocr(data: bytes) -> str:
     image = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if image is None:
         raise HTTPException(status_code=422, detail="Unable to decode image data")
+    image_height = int(image.shape[0]) if getattr(image, "shape", None) is not None else 1
 
     try:
         ocr = PaddleOCR(use_textline_orientation=True, lang="en")
@@ -158,19 +243,72 @@ def _extract_text_with_paddleocr(data: bytes) -> str:
         # older versions
         result = ocr.ocr(image)
 
-    normalized = _normalize_ocr_result(result)
-    if not normalized:
-        return ""
-    return "\n".join(text for _, _, text in normalized)
+    ocr_lines = _normalize_ocr_lines(result)
+    raw_text = "\n".join(str(line["text"]) for line in ocr_lines).strip()
+    return {
+        "raw_text": raw_text,
+        "ocr_lines": ocr_lines,
+        "layout": _build_layout_blocks(ocr_lines, image_height=image_height),
+    }
 
 
-def extract_text_from_upload(filename: str, content_type: str | None, data: bytes) -> str:
+def _extract_text_with_paddleocr(data: bytes) -> str:
+    return str(_extract_image_document_with_paddleocr(data).get("raw_text", ""))
+
+
+def _extract_text_from_pdf_bytes(data: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="pypdf not installed") from exc
+
+    try:
+        reader = PdfReader(BytesIO(data))
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="Unable to read PDF file") from exc
+
+    page_texts: list[str] = []
+    for page in reader.pages:
+        text = page.extract_text() or ""
+        normalized = text.strip()
+        if normalized:
+            page_texts.append(normalized)
+
+    if not page_texts:
+        raise HTTPException(status_code=422, detail="No extractable text found in PDF.")
+
+    return "\n\n".join(page_texts)
+
+
+def extract_document_from_upload(filename: str, content_type: str | None, data: bytes) -> dict[str, object]:
     if _is_text(filename, content_type):
-        return _decode_text_bytes(data)
+        raw_text = _decode_text_bytes(data)
+        return {
+            "raw_text": raw_text,
+            "ocr_lines": [],
+            "layout": {"blocks": []},
+        }
+
+    if _is_pdf(filename, content_type):
+        raw_text = _extract_text_from_pdf_bytes(data)
+        return {
+            "raw_text": raw_text,
+            "ocr_lines": [],
+            "layout": {"blocks": []},
+        }
 
     if _is_image(filename, content_type):
         if os.getenv("OCR_DISABLED") == "1":
-            return ""
-        return _extract_text_with_paddleocr(data)
+            return {"raw_text": "", "ocr_lines": [], "layout": {"blocks": []}}
+        return _extract_image_document_with_paddleocr(data)
 
     raise HTTPException(status_code=415, detail="Unsupported file type")
+
+
+def extract_text_from_upload(filename: str, content_type: str | None, data: bytes) -> str:
+    extracted = extract_document_from_upload(
+        filename=filename,
+        content_type=content_type,
+        data=data,
+    )
+    return str(extracted.get("raw_text", ""))
