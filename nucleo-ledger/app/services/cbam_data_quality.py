@@ -32,7 +32,7 @@ def _check_shipment(
     shipment_id = shipment.get("id")
     if not shipment.get("origin_country"):
         _add_unique(missing, f"shipment:{shipment_id}:origin_country_missing")
-    if not shipment.get("invoice_number"):
+    if not shipment.get("invoice_number") and not shipment.get("entry_reference"):
         _add_unique(warnings, f"shipment:{shipment_id}:invoice_number_missing")
     if not shipment.get("entry_reference"):
         _add_unique(warnings, f"shipment:{shipment_id}:entry_reference_missing")
