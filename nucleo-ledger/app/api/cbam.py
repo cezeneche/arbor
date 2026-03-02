@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import tempfile
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
@@ -24,6 +23,7 @@ from app.services.cbam_extractor import extract as extract_cbam_document
 from app.services.gemini_structured_extractor import extract_structured_with_gemini
 from app.services.llama_structured_extractor import compare_extractions
 from app.services.llama_orchestrator import LlamaOrchestrator
+from app.services.orchestration import llama_orchestrator as ingest_orchestrator
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
 ALLOWED_EMISSIONS_METHODS = ("actual", "default", "estimated")
@@ -1102,73 +1102,60 @@ async def create_cbam_draft_from_document(
         )
 
     safe_filename = Path(file.filename).name or "upload.bin"
-    tmp_path: Path | None = None
 
     try:
         file_bytes = await file.read()
         try:
-            extracted_document = extract_document_from_upload(
+            # Keep these assignments explicit so test monkeypatches on cbam_api symbols
+            # continue to control the orchestration flow.
+            ingest_orchestrator.extract_document_from_upload = extract_document_from_upload
+            ingest_orchestrator.extract_cbam_document = extract_cbam_document
+            ingest_orchestrator.LlamaOrchestrator = LlamaOrchestrator
+            ingest_plan = ingest_orchestrator.run_document_ingest_plan(
                 filename=safe_filename,
                 content_type=file.content_type,
                 data=file_bytes,
             )
-            raw_text = str(extracted_document.get("raw_text", ""))
-            pages_payload = extracted_document.get("pages")
-            layout = extracted_document.get("layout")
-            layout_payload = layout if isinstance(layout, dict) else None
         except HTTPException as exc:
             return JSONResponse(
                 status_code=exc.status_code,
                 content={"detail": exc.detail, "stage": "extract"},
             )
+        except Exception as exc:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": str(exc), "stage": "extract"},
+            )
 
-        with tempfile.NamedTemporaryFile(prefix="cbam_invoice_", suffix=".txt", delete=False) as tmp:
-            tmp_path = Path(tmp.name)
-            tmp.write(raw_text.encode("utf-8"))
+        raw_text = str(ingest_plan.get("raw_text", ""))
+        layout = ingest_plan.get("layout")
+        layout_payload = layout if isinstance(layout, dict) else None
+        routing_trace = ingest_plan.get("routing_trace")
+        if not isinstance(routing_trace, dict):
+            routing_trace = {}
 
-        try:
-            extraction = extract_cbam_document(str(tmp_path), layout=layout_payload)
-        except TypeError:
-            # Backward-compatible path for simple one-argument stubs used in tests.
-            extraction = extract_cbam_document(str(tmp_path))
-        if not isinstance(extraction, dict):
+        raw_candidates = ingest_plan.get("candidates")
+        if not isinstance(raw_candidates, list):
             return JSONResponse(
                 status_code=422,
                 content={"detail": "Extractor returned an invalid response.", "stage": "extract"},
             )
-
-        extraction_status = extraction.get("status")
-        if extraction_status in {"error", "llamaindex_not_available", "not_implemented"}:
-            detail_message = extraction.get("message") or f"Extraction status: {extraction_status}"
+        candidates = [candidate for candidate in raw_candidates if isinstance(candidate, dict)]
+        if not candidates:
             return JSONResponse(
                 status_code=422,
-                content={"detail": str(detail_message), "stage": "extract"},
+                content={"detail": "Extractor returned no candidates.", "stage": "extract"},
             )
 
         try:
             arbiter_warnings: list[str] = []
             repair_warnings: list[str] = []
-            rule_candidate = dict(extraction)
-            rule_candidate["source"] = "rule"
-            rule_candidate["layout"] = layout_payload
-            rule_candidate["full_text"] = raw_text
-
-            llama_output, llama_nodes = LlamaOrchestrator().extract_structured(
-                raw_text,
-                metadata={"filename": safe_filename, "content_type": file.content_type},
-                pages=pages_payload if isinstance(pages_payload, list) else None,
-            )
-            extraction_validation = compare_extractions(rule_candidate, llama_output)
-
-            candidates: list[dict[str, object]] = [rule_candidate]
-            llama_candidate = _llama_candidate_from_structured_invoice(
-                rule_candidate=rule_candidate,
-                llama_output=llama_output,
-                raw_text=raw_text,
-                layout_payload=layout_payload,
-            )
-            if llama_candidate is not None:
-                candidates.append(llama_candidate)
+            rule_candidate = candidates[0]
+            llama_output = routing_trace.get("llama_output")
+            if llama_output is not None:
+                extraction_validation = compare_extractions(rule_candidate, llama_output)
+            else:
+                extraction_validation = {"match_score": 100.0, "differences": []}
 
             if len(candidates) > 1:
                 arbitrated_candidate, arbiter_warnings = arbitrate_parsed_invoice(candidates)
@@ -1183,16 +1170,18 @@ async def create_cbam_draft_from_document(
                     "repair_warnings": repair_warnings,
                     "fallback_sources": [],
                     "gemini_fallback_used": False,
+                    "routing_trace": routing_trace,
                 }
             )
-        except Exception:
+        except Exception as exc:
             extraction_validation = {
                 "match_score": 0.0,
-                "differences": ["llama_structured_extraction_unavailable"],
+                "differences": [f"ingest_orchestration_error:{exc}"],
                 "fallback_sources": [],
                 "gemini_fallback_used": False,
+                "routing_trace": routing_trace,
             }
-            repaired_candidate = extraction
+            repaired_candidate = candidates[0]
 
         try:
             parsed_payload, resolved_year, resolved_quarter, parse_warnings = (
@@ -1249,7 +1238,7 @@ async def create_cbam_draft_from_document(
             gemini_output = extract_structured_with_gemini(raw_text)
             if gemini_output:
                 gemini_candidate = _llama_candidate_from_structured_invoice(
-                    rule_candidate=rule_candidate if "rule_candidate" in locals() else dict(extraction),
+                    rule_candidate=rule_candidate if "rule_candidate" in locals() else candidates[0],
                     llama_output=gemini_output,
                     raw_text=raw_text,
                     layout_payload=layout_payload,
@@ -1327,8 +1316,7 @@ async def create_cbam_draft_from_document(
             "extraction_validation": extraction_validation,
         }
     finally:
-        if tmp_path and tmp_path.exists():
-            tmp_path.unlink(missing_ok=True)
+        pass
 
 
 @router.post("/shipments", status_code=status.HTTP_201_CREATED)
