@@ -3,8 +3,12 @@ from __future__ import annotations
 import os
 from collections import defaultdict
 from io import BytesIO
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 
 def _is_text(filename: str, content_type: str | None) -> bool:
@@ -256,28 +260,93 @@ def _extract_text_with_paddleocr(data: bytes) -> str:
     return str(_extract_image_document_with_paddleocr(data).get("raw_text", ""))
 
 
-def _extract_text_from_pdf_bytes(data: bytes) -> str:
+def _extract_text_with_paddleocr_image(image: "Image.Image") -> str:
     try:
-        from pypdf import PdfReader
+        import cv2  # type: ignore
+        import numpy as np  # type: ignore
+        from paddleocr import PaddleOCR  # type: ignore
     except Exception as exc:
-        raise HTTPException(status_code=500, detail="pypdf not installed") from exc
+        raise HTTPException(status_code=500, detail="paddleocr not installed") from exc
+
+    image_rgb = image.convert("RGB")
+    image_np = np.array(image_rgb)
+    image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
 
     try:
-        reader = PdfReader(BytesIO(data))
+        ocr = PaddleOCR(use_textline_orientation=True, lang="en")
+    except TypeError:
+        # older PaddleOCR constructors
+        ocr = PaddleOCR(use_angle_cls=True, lang="en")
+
+    try:
+        result = ocr.predict(image_bgr)
+    except TypeError:
+        # older versions
+        result = ocr.ocr(image_bgr)
+
+    ocr_lines = _normalize_ocr_lines(result)
+    return "\n".join(str(line["text"]) for line in ocr_lines).strip()
+
+
+def _extract_pdf_document_hybrid(data: bytes) -> dict[str, object]:
+    try:
+        import pdfplumber  # type: ignore
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="pdfplumber not installed") from exc
+
+    pages_text: list[dict[str, object]] = []
+    try:
+        with pdfplumber.open(BytesIO(data)) as pdf:
+            for page_idx, page in enumerate(pdf.pages, start=1):
+                text = (page.extract_text() or "").strip()
+                pages_text.append(
+                    {
+                        "page_number": page_idx,
+                        "text": text,
+                        "source": "pdf_text",
+                    }
+                )
     except Exception as exc:
         raise HTTPException(status_code=422, detail="Unable to read PDF file") from exc
 
-    page_texts: list[str] = []
-    for page in reader.pages:
-        text = page.extract_text() or ""
-        normalized = text.strip()
-        if normalized:
-            page_texts.append(normalized)
+    combined_text = "\n\n".join(str(page["text"]) for page in pages_text if str(page["text"]).strip()).strip()
+    if len(combined_text) >= 100:
+        return {
+            "raw_text": combined_text,
+            "pages": pages_text,
+            "layout": None,
+        }
 
-    if not page_texts:
+    try:
+        from pdf2image import convert_from_bytes  # type: ignore
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="pdf2image not installed") from exc
+
+    try:
+        images = convert_from_bytes(data)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="Unable to rasterize PDF for OCR") from exc
+
+    pages_ocr: list[dict[str, object]] = []
+    for page_idx, image in enumerate(images, start=1):
+        page_text = _extract_text_with_paddleocr_image(image).strip()
+        pages_ocr.append(
+            {
+                "page_number": page_idx,
+                "text": page_text,
+                "source": "pdf_ocr",
+            }
+        )
+
+    combined_ocr_text = "\n\n".join(str(page["text"]) for page in pages_ocr if str(page["text"]).strip()).strip()
+    if not combined_ocr_text:
         raise HTTPException(status_code=422, detail="No extractable text found in PDF.")
 
-    return "\n\n".join(page_texts)
+    return {
+        "raw_text": combined_ocr_text,
+        "pages": pages_ocr,
+        "layout": None,
+    }
 
 
 def extract_document_from_upload(filename: str, content_type: str | None, data: bytes) -> dict[str, object]:
@@ -290,12 +359,7 @@ def extract_document_from_upload(filename: str, content_type: str | None, data: 
         }
 
     if _is_pdf(filename, content_type):
-        raw_text = _extract_text_from_pdf_bytes(data)
-        return {
-            "raw_text": raw_text,
-            "ocr_lines": [],
-            "layout": {"blocks": []},
-        }
+        return _extract_pdf_document_hybrid(data)
 
     if _is_image(filename, content_type):
         if os.getenv("OCR_DISABLED") == "1":

@@ -103,10 +103,36 @@ def test_extract_text_from_upload_image_when_ocr_disabled(monkeypatch):
 
 
 def test_extract_text_from_upload_pdf_returns_invoice_token():
-    pdf_bytes = _build_minimal_pdf_with_text("Invoice INV-PDF-001")
+    pdf_bytes = _build_minimal_pdf_with_text(
+        "Invoice INV-PDF-001 "
+        "Line one for deterministic extraction path "
+        "with enough characters to exceed one hundred total "
+        "so hybrid PDF extraction keeps pdf_text source."
+    )
     text = document_text_extractor.extract_text_from_upload(
         filename="invoice_TEST.pdf",
         content_type="application/pdf",
         data=pdf_bytes,
     )
     assert "INV-PDF-001" in text
+
+
+def test_extract_document_from_upload_pdf_returns_pages_metadata():
+    pdf_bytes = _build_minimal_pdf_with_text(
+        "Invoice INV-PDF-META-001 "
+        "This text is intentionally long so the hybrid extractor "
+        "uses pdfplumber text output and returns page metadata cleanly."
+    )
+    payload = document_text_extractor.extract_document_from_upload(
+        filename="invoice_meta_TEST.pdf",
+        content_type="application/pdf",
+        data=pdf_bytes,
+    )
+    assert isinstance(payload.get("raw_text"), str)
+    assert payload["raw_text"].strip()
+    pages = payload.get("pages")
+    assert isinstance(pages, list)
+    assert len(pages) >= 1
+    assert "page_number" in pages[0]
+    assert pages[0]["source"] == "pdf_text"
+    assert payload.get("layout") is None

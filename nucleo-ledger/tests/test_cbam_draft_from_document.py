@@ -370,13 +370,24 @@ def test_from_document_extraction_validation_uses_mocked_llama(monkeypatch):
     )
     monkeypatch.setattr(
         cbam_api,
-        "extract_structured_invoice",
-        lambda _text: InvoiceSchema(
-            importer_name="Alpha Steel Ltd",
-            invoice_number="INV-VALID-001",
-            invoice_date="2025-01-15",
-            line_items=[LineItemSchema(cn_code="720711", quantity=10000)],
-        ),
+        "LlamaOrchestrator",
+        lambda: type(
+            "_StubOrchestrator",
+            (),
+            {
+                "extract_structured": staticmethod(
+                    lambda _text, metadata=None, pages=None: (
+                        InvoiceSchema(
+                            importer_name="Alpha Steel Ltd",
+                            invoice_number="INV-VALID-001",
+                            invoice_date="2025-01-15",
+                            line_items=[LineItemSchema(cn_code="720711", quantity=10000)],
+                        ),
+                        ["node-1"],
+                    )
+                )
+            },
+        )(),
     )
 
     response = client.post(
@@ -387,6 +398,7 @@ def test_from_document_extraction_validation_uses_mocked_llama(monkeypatch):
     validation = response.json()["extraction_validation"]
     assert validation["match_score"] == 100.0
     assert validation["differences"] == []
+    assert validation["gemini_fallback_used"] is False
 
 
 def test_from_document_data_quality_uses_final_payload_with_form_overrides(monkeypatch):
@@ -425,14 +437,25 @@ def test_from_document_data_quality_uses_final_payload_with_form_overrides(monke
     )
     monkeypatch.setattr(
         cbam_api,
-        "extract_structured_invoice",
-        lambda _text: InvoiceSchema(
-            importer_name="Unknown Importer",
-            invoice_number="INV-CONFLICT-001",
-            invoice_date="2025-01-15",
-            origin_country=None,
-            line_items=[LineItemSchema(cn_code="720711", quantity=None)],
-        ),
+        "LlamaOrchestrator",
+        lambda: type(
+            "_StubOrchestrator",
+            (),
+            {
+                "extract_structured": staticmethod(
+                    lambda _text, metadata=None, pages=None: (
+                        InvoiceSchema(
+                            importer_name="Unknown Importer",
+                            invoice_number="INV-CONFLICT-001",
+                            invoice_date="2025-01-15",
+                            origin_country=None,
+                            line_items=[LineItemSchema(cn_code="720711", quantity=None)],
+                        ),
+                        ["node-1"],
+                    )
+                )
+            },
+        )(),
     )
 
     response = client.post(
@@ -447,3 +470,88 @@ def test_from_document_data_quality_uses_final_payload_with_form_overrides(monke
     assert "shipment:draft_shipment:origin_country_missing" in dq["missing"]
     assert "goods_line:draft_goods_0:mass_missing_or_non_positive" in dq["missing"]
     assert "goods_line:draft_goods_0:missing_emissions" in dq["missing"]
+
+
+def test_from_document_uses_gemini_fallback_when_low_match_and_blocking(monkeypatch):
+    client, _ = _client_with_fake_engine()
+    fixture_path = (
+        Path(__file__).resolve().parents[1]
+        / "fixtures"
+        / "documents"
+        / "sample_invoice_CONFLICT_TEST.txt"
+    )
+
+    monkeypatch.setattr(cbam_api, "ENABLE_GEMINI_FALLBACK", True)
+    monkeypatch.setattr(cbam_api, "GEMINI_MATCH_THRESHOLD", 0.4)
+    monkeypatch.setattr(
+        cbam_api,
+        "compare_extractions",
+        lambda _rule, _llama: {"match_score": 0.0, "differences": ["forced_low_match"]},
+    )
+    monkeypatch.setattr(
+        cbam_api,
+        "extract_cbam_document",
+        lambda _path: {
+            "status": "parsed",
+            "importer": {"name": "Unknown Importer", "eori": "GB123456789"},
+            "invoice": {
+                "invoice_number": "INV-CONFLICT-001",
+                "invoice_date": "2025-01-15",
+                "origin_country": None,
+                "incoterm": None,
+                "entry_reference": None,
+            },
+            "lines": [
+                {
+                    "cn_code": "720711",
+                    "description": "Conflicted steel line",
+                    "quantity": None,
+                    "quantity_unit": "kg",
+                    "net_mass_kg": None,
+                }
+            ],
+            "emissions": None,
+        },
+    )
+    monkeypatch.setattr(
+        cbam_api,
+        "LlamaOrchestrator",
+        lambda: type(
+            "_StubOrchestrator",
+            (),
+            {
+                "extract_structured": staticmethod(
+                    lambda _text, metadata=None, pages=None: (
+                        InvoiceSchema(
+                            importer_name="Unknown Importer",
+                            invoice_number="INV-CONFLICT-001",
+                            invoice_date="2025-01-15",
+                            origin_country=None,
+                            line_items=[LineItemSchema(cn_code="720711", quantity=None)],
+                        ),
+                        ["node-1"],
+                    )
+                )
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        cbam_api,
+        "extract_structured_with_gemini",
+        lambda _text: {
+            "importer_name": "Unknown Importer",
+            "invoice_number": "INV-CONFLICT-001",
+            "invoice_date": "2025-01-15",
+            "origin_country": "TR",
+            "line_items": [{"cn_code": "720711", "description": "Steel", "quantity": 1000}],
+        },
+    )
+
+    response = client.post(
+        "/api/cbam/drafts/from-document",
+        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
+    )
+    assert response.status_code == 201, response.text
+    validation = response.json()["extraction_validation"]
+    assert validation["gemini_fallback_used"] is True
+    assert "gemini" in validation.get("fallback_sources", [])

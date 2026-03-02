@@ -6,4 +6,5 @@ pydantic-settings
 python-dotenv
 
 openai
+anthropic
 google-genai

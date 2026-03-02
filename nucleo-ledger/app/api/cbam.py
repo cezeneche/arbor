@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -20,12 +21,23 @@ from app.services.cbam_data_quality import evaluate_cbam_data_quality
 from app.services.cbam_repair import repair_parsed_invoice
 from app.services.document_text_extractor import extract_document_from_upload
 from app.services.cbam_extractor import extract as extract_cbam_document
+from app.services.gemini_structured_extractor import extract_structured_with_gemini
 from app.services.llama_structured_extractor import compare_extractions
-from app.services.llama_structured_extractor import extract_structured_invoice
+from app.services.llama_orchestrator import LlamaOrchestrator
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
 ALLOWED_EMISSIONS_METHODS = ("actual", "default", "estimated")
 CBAM_STORAGE_ROOT = Path("storage") / "cbam"
+ENABLE_GEMINI_FALLBACK = os.getenv("ENABLE_GEMINI_FALLBACK", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+try:
+    GEMINI_MATCH_THRESHOLD = float(os.getenv("GEMINI_MATCH_THRESHOLD", "0.4"))
+except ValueError:
+    GEMINI_MATCH_THRESHOLD = 0.4
 
 
 class EmissionsMethod(str, Enum):
@@ -1101,6 +1113,7 @@ async def create_cbam_draft_from_document(
                 data=file_bytes,
             )
             raw_text = str(extracted_document.get("raw_text", ""))
+            pages_payload = extracted_document.get("pages")
             layout = extracted_document.get("layout")
             layout_payload = layout if isinstance(layout, dict) else None
         except HTTPException as exc:
@@ -1140,7 +1153,11 @@ async def create_cbam_draft_from_document(
             rule_candidate["layout"] = layout_payload
             rule_candidate["full_text"] = raw_text
 
-            llama_output = extract_structured_invoice(raw_text)
+            llama_output, llama_nodes = LlamaOrchestrator().extract_structured(
+                raw_text,
+                metadata={"filename": safe_filename, "content_type": file.content_type},
+                pages=pages_payload if isinstance(pages_payload, list) else None,
+            )
             extraction_validation = compare_extractions(rule_candidate, llama_output)
 
             candidates: list[dict[str, object]] = [rule_candidate]
@@ -1164,12 +1181,16 @@ async def create_cbam_draft_from_document(
                 {
                     "arbiter_warnings": arbiter_warnings,
                     "repair_warnings": repair_warnings,
+                    "fallback_sources": [],
+                    "gemini_fallback_used": False,
                 }
             )
         except Exception:
             extraction_validation = {
                 "match_score": 0.0,
                 "differences": ["llama_structured_extraction_unavailable"],
+                "fallback_sources": [],
+                "gemini_fallback_used": False,
             }
             repaired_candidate = extraction
 
@@ -1212,6 +1233,64 @@ async def create_cbam_draft_from_document(
             )
 
         extraction_validation["data_quality"] = dq_precheck
+
+        match_score = extraction_validation.get("match_score", 0.0)
+        try:
+            match_score_value = float(match_score)
+        except (TypeError, ValueError):
+            match_score_value = 0.0
+        dq_blocking = bool(dq_precheck.get("blocking", False))
+
+        if (
+            ENABLE_GEMINI_FALLBACK
+            and match_score_value < GEMINI_MATCH_THRESHOLD
+            and dq_blocking
+        ):
+            gemini_output = extract_structured_with_gemini(raw_text)
+            if gemini_output:
+                gemini_candidate = _llama_candidate_from_structured_invoice(
+                    rule_candidate=rule_candidate if "rule_candidate" in locals() else dict(extraction),
+                    llama_output=gemini_output,
+                    raw_text=raw_text,
+                    layout_payload=layout_payload,
+                )
+                if gemini_candidate is not None:
+                    gemini_candidate["source"] = "gemini"
+                    if "candidates" in locals() and isinstance(candidates, list):
+                        candidates.append(gemini_candidate)
+                    else:
+                        candidates = [dict(extraction), gemini_candidate]
+
+                    extraction_validation["gemini_fallback_used"] = True
+                    fallback_sources = extraction_validation.get("fallback_sources")
+                    if not isinstance(fallback_sources, list):
+                        fallback_sources = []
+                    fallback_sources.append("gemini")
+                    extraction_validation["fallback_sources"] = fallback_sources
+
+                    if len(candidates) > 1:
+                        arbitrated_candidate, arbiter_warnings = arbitrate_parsed_invoice(candidates)
+                    else:
+                        arbitrated_candidate, arbiter_warnings = candidates[0], []
+                    repaired_candidate, repair_warnings = repair_parsed_invoice(arbitrated_candidate)
+
+                    parsed_payload, resolved_year, resolved_quarter, parse_warnings = (
+                        _build_parsed_invoice_request_from_extraction(
+                            extraction=repaired_candidate,
+                            importer_name=importer_name,
+                            importer_eori=importer_eori,
+                            reporting_year=reporting_year,
+                            reporting_quarter=reporting_quarter,
+                        )
+                    )
+                    dq_precheck = _parsed_data_quality_precheck_from_payload(
+                        payload=parsed_payload,
+                        reporting_year=resolved_year,
+                        reporting_quarter=resolved_quarter,
+                    )
+                    extraction_validation["data_quality"] = dq_precheck
+                    extraction_validation["arbiter_warnings"] = arbiter_warnings
+                    extraction_validation["repair_warnings"] = repair_warnings
 
         try:
             created = _create_cbam_draft_from_parsed_invoice_payload(

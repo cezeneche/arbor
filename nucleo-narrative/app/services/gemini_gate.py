@@ -2,9 +2,6 @@ import json
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from google import genai
-from google.genai.types import GenerateContentConfig
-
 from app.core.config import settings
 
 def _gate_prompt(packet: dict, narrative_json: dict) -> str:
@@ -128,6 +125,27 @@ def gate(packet: dict, narrative_json: dict) -> dict:
 
     if local_issues:
         return {"approved": False, "issues": local_issues}
+
+    if not settings.gemini_api_key:
+        return {
+            "approved": False,
+            "issues": [{"detail": "GEMINI_API_KEY is missing; Gemini gate not executed."}],
+        }
+
+    try:
+        try:
+            import google.genai as genai
+            from google.genai.types import GenerateContentConfig
+        except Exception:
+            # Compatibility fallback for environments where `google-genai`
+            # exposes `genai` as `from google import genai`.
+            from google import genai  # type: ignore
+            from google.genai.types import GenerateContentConfig  # type: ignore
+    except Exception:
+        return {
+            "approved": False,
+            "issues": [{"detail": "google-genai is not installed; Gemini gate not executed."}],
+        }
 
     client = genai.Client(api_key=settings.gemini_api_key)
     resp = client.models.generate_content(

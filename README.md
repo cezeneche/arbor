@@ -73,6 +73,36 @@ Optional:
 
 > Run each service in its own terminal.
 
+### Root `.venv` setup (recommended)
+
+1. Create virtual environment at repo root:
+
+```bash
+python3 -m venv .venv
+```
+
+2. Install dependencies for both services:
+
+```bash
+./scripts/install_all.sh
+```
+
+3. Start `nucleo-ledger` on port `8000`:
+
+```bash
+source .venv/bin/activate
+cd nucleo-ledger
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+4. Start `nucleo-narrative` on port `8001` (new terminal):
+
+```bash
+source .venv/bin/activate
+cd nucleo-narrative
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+```
+
 ### 1) nucleo-ledger
 
 ```bash

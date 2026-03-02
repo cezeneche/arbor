@@ -12,7 +12,10 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_model: str = "gpt-5.2"
 
-    gemini_api_key: str
+    gemini_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY"),
+    )
     gemini_model: str = "gemini-3.1-pro"
 
 settings = Settings()
