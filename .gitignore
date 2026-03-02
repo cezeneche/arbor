@@ -33,3 +33,6 @@ narrative_output.json
 # Generated CBAM demo outputs
 fixtures/ledger/cbam_*_TEST-*.json
 fixtures/narrative/cbam_*_TEST-*.json
+
+# safety: never add outer workspace repo
+/../Agentic_CBAM/
