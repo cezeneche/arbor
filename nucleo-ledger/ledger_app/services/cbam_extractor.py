@@ -6,9 +6,18 @@ from pathlib import Path
 from typing import Any
 from typing import Protocol
 
+from ledger_app.schemas.evidence import EvidenceAtom
+from ledger_app.schemas.evidence import EvidenceBBox
+from ledger_app.schemas.evidence import EvidenceSpan
+
 
 class CBAMExtractor(Protocol):
-    def extract(self, file_path: str, layout: dict[str, Any] | None = None) -> dict:
+    def extract(
+        self,
+        file_path: str,
+        layout: dict[str, Any] | None = None,
+        pages: list[dict[str, Any]] | None = None,
+    ) -> dict:
         ...
 
 
@@ -70,7 +79,192 @@ def _layout_text(layout: dict[str, Any] | None, zone: str) -> str:
     return ""
 
 
-def _extract_lines_from_text(raw_text: str) -> list[dict[str, Any]]:
+def _snippet_from_span(text: str, start: int, end: int, radius: int = 40) -> str:
+    safe_start = max(start, 0)
+    safe_end = max(end, safe_start)
+    left = max(0, safe_start - radius)
+    right = min(len(text), safe_end + radius)
+    return text[left:right].strip()
+
+
+def _normalize_token(value: str) -> str:
+    return re.sub(r"[^a-z0-9\-_\/]", "", value.lower())
+
+
+def _find_page_bbox_for_value(
+    pages: list[dict[str, Any]] | None,
+    value: Any,
+) -> tuple[int | None, dict[str, float] | None]:
+    if not isinstance(pages, list) or value in (None, ""):
+        return None, None
+
+    target = _normalize_token(str(value))
+    if not target:
+        return None, None
+
+    for page in pages:
+        if not isinstance(page, dict):
+            continue
+        page_number = page.get("page_number")
+        words = page.get("words")
+        if not isinstance(words, list):
+            continue
+        for word in words:
+            if not isinstance(word, dict):
+                continue
+            token = _normalize_token(str(word.get("text", "")))
+            if not token:
+                continue
+            if token == target or target in token or token in target:
+                try:
+                    bbox = {
+                        "x0": float(word.get("x0")),
+                        "y0": float(word.get("y0")),
+                        "x1": float(word.get("x1")),
+                        "y1": float(word.get("y1")),
+                    }
+                except (TypeError, ValueError):
+                    bbox = None
+                return int(page_number) if page_number is not None else None, bbox
+    return None, None
+
+
+def _append_evidence_atom(
+    evidence: list[dict[str, Any]] | None,
+    *,
+    field: str,
+    value: Any,
+    source: str,
+    text: str | None = None,
+    start: int | None = None,
+    end: int | None = None,
+    page: int | None = None,
+    bbox: dict[str, float] | None = None,
+    confidence: float | None = None,
+    snippet: str | None = None,
+) -> None:
+    if evidence is None or value in (None, ""):
+        return
+
+    span = None
+    if start is not None and end is not None:
+        span = EvidenceSpan(start=max(start, 0), end=max(end, max(start, 0)))
+
+    bbox_model = None
+    if isinstance(bbox, dict):
+        try:
+            bbox_model = EvidenceBBox(
+                x0=float(bbox.get("x0")),
+                y0=float(bbox.get("y0")),
+                x1=float(bbox.get("x1")),
+                y1=float(bbox.get("y1")),
+            )
+        except (TypeError, ValueError):
+            bbox_model = None
+
+    snippet_value = snippet
+    if snippet_value is None and text is not None and span is not None:
+        snippet_value = _snippet_from_span(text, span.start, span.end)
+
+    atom = EvidenceAtom(
+        field=field,
+        value=value,
+        source=source,
+        page=page,
+        span=span,
+        bbox=bbox_model,
+        confidence=confidence,
+        snippet=snippet_value,
+    )
+    evidence.append(atom.model_dump(mode="json"))
+
+
+def _append_regex_evidence(
+    evidence: list[dict[str, Any]] | None,
+    *,
+    field: str,
+    value: Any,
+    source_text: str,
+    match: re.Match[str],
+    group_index: int = 1,
+    source: str = "rule_regex",
+    confidence: float = 0.96,
+    pages: list[dict[str, Any]] | None = None,
+) -> None:
+    if evidence is None:
+        return
+
+    try:
+        start = match.start(group_index)
+        end = match.end(group_index)
+    except IndexError:
+        start = match.start(0)
+        end = match.end(0)
+
+    page, bbox = _find_page_bbox_for_value(pages, value)
+    _append_evidence_atom(
+        evidence,
+        field=field,
+        value=value,
+        source=source,
+        text=source_text,
+        start=start,
+        end=end,
+        page=page,
+        bbox=bbox,
+        confidence=confidence,
+    )
+
+
+def _has_evidence_for_field(evidence: list[dict[str, Any]] | None, field: str) -> bool:
+    if not isinstance(evidence, list):
+        return False
+    for atom in evidence:
+        if isinstance(atom, dict) and atom.get("field") == field:
+            return True
+    return False
+
+
+def _ensure_value_evidence(
+    evidence: list[dict[str, Any]] | None,
+    *,
+    field: str,
+    value: Any,
+    text: str,
+    source: str,
+    pages: list[dict[str, Any]] | None = None,
+) -> None:
+    if evidence is None or value in (None, "") or _has_evidence_for_field(evidence, field):
+        return
+    target = str(value).strip()
+    if not target:
+        return
+
+    match = re.search(re.escape(target), text, flags=re.IGNORECASE)
+    if not match:
+        return
+
+    page, bbox = _find_page_bbox_for_value(pages, value)
+    _append_evidence_atom(
+        evidence,
+        field=field,
+        value=value,
+        source=source,
+        text=text,
+        start=match.start(0),
+        end=match.end(0),
+        page=page,
+        bbox=bbox,
+        confidence=0.85,
+    )
+
+
+def _extract_lines_from_text(
+    raw_text: str,
+    evidence: list[dict[str, Any]] | None = None,
+    field_prefix: str = "lines",
+    pages: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     parsed_lines: list[dict[str, Any]] = []
     line_matches = re.finditer(r"^\s*Line\s+\d+\s*:\s*(.+)$", raw_text, flags=re.IGNORECASE | re.MULTILINE)
 
@@ -132,6 +326,7 @@ def _extract_lines_from_text(raw_text: str) -> list[dict[str, Any]]:
             method = _normalize_method(method_match.group(1))
 
         if cn_code:
+            line_index = len(parsed_lines)
             parsed_lines.append(
                 {
                     "cn_code": cn_code,
@@ -144,6 +339,29 @@ def _extract_lines_from_text(raw_text: str) -> list[dict[str, Any]]:
                     "method": method,
                 }
             )
+            _append_regex_evidence(
+                evidence,
+                field=f"{field_prefix}[{line_index}].cn_code",
+                value=cn_code,
+                source_text=raw_text,
+                match=match,
+                group_index=1,
+                source="rule_regex_line",
+                pages=pages,
+            )
+            if description:
+                description_match = re.search(re.escape(description), payload, flags=re.IGNORECASE)
+                if description_match:
+                    _append_evidence_atom(
+                        evidence,
+                        field=f"{field_prefix}[{line_index}].description",
+                        value=description,
+                        source="rule_regex_line",
+                        text=payload,
+                        start=description_match.start(0),
+                        end=description_match.end(0),
+                        confidence=0.92,
+                    )
 
     return parsed_lines
 
@@ -180,7 +398,13 @@ def _extract_global_emissions_from_text(raw_text: str) -> dict[str, Any] | None:
     }
 
 
-def _parse_structured_response(raw: str, raw_text: str, layout: dict[str, Any] | None = None) -> dict[str, Any]:
+def _parse_structured_response(
+    raw: str,
+    raw_text: str,
+    layout: dict[str, Any] | None = None,
+    evidence: list[dict[str, Any]] | None = None,
+    pages: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     fields = [
         "importer_name",
         "importer_eori",
@@ -221,14 +445,40 @@ def _parse_structured_response(raw: str, raw_text: str, layout: dict[str, Any] |
         match = re.search(r"importer(?:\s+name)?\s*[:\-]\s*(.+)", full_text, flags=re.IGNORECASE)
         if match:
             structured["importer_name"] = match.group(1).strip()
+            _append_regex_evidence(
+                evidence,
+                field="importer.name",
+                value=structured["importer_name"],
+                source_text=full_text,
+                match=match,
+                pages=pages,
+            )
     if not structured.get("importer_eori"):
         match = re.search(r"\b[A-Z]{2}\d{6,}\b", full_text)
         if match:
             structured["importer_eori"] = match.group(0)
+            _append_regex_evidence(
+                evidence,
+                field="importer.eori",
+                value=structured["importer_eori"],
+                source_text=full_text,
+                match=match,
+                group_index=0,
+                pages=pages,
+            )
     if not structured.get("cn_code"):
         match = re.search(r"\b\d{6,8}\b", full_text)
         if match:
             structured["cn_code"] = match.group(0)
+            _append_regex_evidence(
+                evidence,
+                field="lines[0].cn_code",
+                value=structured["cn_code"],
+                source_text=full_text,
+                match=match,
+                group_index=0,
+                pages=pages,
+            )
     if structured.get("net_mass_kg") is None:
         match = re.search(
             r"(?:net\s*mass(?:\s*kg)?|quantity)\D*([0-9]+(?:\.[0-9]+)?)",
@@ -237,24 +487,53 @@ def _parse_structured_response(raw: str, raw_text: str, layout: dict[str, Any] |
         )
         if match:
             structured["net_mass_kg"] = float(match.group(1))
+            _append_regex_evidence(
+                evidence,
+                field="lines[0].net_mass_kg",
+                value=structured["net_mass_kg"],
+                source_text=full_text,
+                match=match,
+                pages=pages,
+            )
     if not structured.get("origin_country"):
         match = re.search(r"origin\s*country\s*[:\-]\s*([A-Z]{2})", full_text, flags=re.IGNORECASE)
         if match:
             structured["origin_country"] = match.group(1)
+            _append_regex_evidence(
+                evidence,
+                field="invoice.origin_country",
+                value=structured["origin_country"],
+                source_text=full_text,
+                match=match,
+                pages=pages,
+            )
     if not structured.get("invoice_number"):
-        match = re.search(
+        header_match = re.search(
             r"invoice\s*(?:number|no\.?)\s*[:\-]\s*([A-Za-z0-9\-_/]+)",
             header_text,
             flags=re.IGNORECASE,
         )
+        full_match = None
+        match = header_match
+        source_text = header_text
         if not match:
-            match = re.search(
+            full_match = re.search(
                 r"invoice\s*(?:number|no\.?)\s*[:\-]\s*([A-Za-z0-9\-_/]+)",
                 full_text,
                 flags=re.IGNORECASE,
             )
+            match = full_match
+            source_text = full_text
         if match:
             structured["invoice_number"] = match.group(1)
+            _append_regex_evidence(
+                evidence,
+                field="invoice.invoice_number",
+                value=structured["invoice_number"],
+                source_text=source_text,
+                match=match,
+                pages=pages,
+            )
     if not structured.get("entry_reference"):
         match = re.search(
             r"(?:entry\s*reference|entry\s*ref(?:erence)?)\s*[:\-]\s*([A-Za-z0-9\-_/]+)",
@@ -263,10 +542,26 @@ def _parse_structured_response(raw: str, raw_text: str, layout: dict[str, Any] |
         )
         if match:
             structured["entry_reference"] = match.group(1)
+            _append_regex_evidence(
+                evidence,
+                field="invoice.entry_reference",
+                value=structured["entry_reference"],
+                source_text=full_text,
+                match=match,
+                pages=pages,
+            )
     if not structured.get("incoterm"):
         match = re.search(r"incoterm\s*[:\-]\s*([A-Za-z]{3})", full_text, flags=re.IGNORECASE)
         if match:
             structured["incoterm"] = match.group(1).upper()
+            _append_regex_evidence(
+                evidence,
+                field="invoice.incoterm",
+                value=structured["incoterm"],
+                source_text=full_text,
+                match=match,
+                pages=pages,
+            )
     if not structured.get("method"):
         match = re.search(
             r"(?:calculation\s*method|emissions\s*method|method)\s*[:\-]\s*([A-Za-z_ -]+)",
@@ -285,6 +580,14 @@ def _parse_structured_response(raw: str, raw_text: str, layout: dict[str, Any] |
         )
         if match:
             structured["direct_embedded_kgco2e"] = _parse_number(match.group(1))
+            _append_regex_evidence(
+                evidence,
+                field="emissions.direct_embedded_kgco2e",
+                value=structured["direct_embedded_kgco2e"],
+                source_text=full_text,
+                match=match,
+                pages=pages,
+            )
     else:
         structured["direct_embedded_kgco2e"] = _parse_number(str(structured.get("direct_embedded_kgco2e")))
     if structured.get("indirect_embedded_kgco2e") is None:
@@ -295,14 +598,36 @@ def _parse_structured_response(raw: str, raw_text: str, layout: dict[str, Any] |
         )
         if match:
             structured["indirect_embedded_kgco2e"] = _parse_number(match.group(1))
+            _append_regex_evidence(
+                evidence,
+                field="emissions.indirect_embedded_kgco2e",
+                value=structured["indirect_embedded_kgco2e"],
+                source_text=full_text,
+                match=match,
+                pages=pages,
+            )
     else:
         structured["indirect_embedded_kgco2e"] = _parse_number(str(structured.get("indirect_embedded_kgco2e")))
     if not structured.get("invoice_date"):
-        match = re.search(r"\b\d{4}-\d{2}-\d{2}\b", header_text)
+        header_match = re.search(r"\b\d{4}-\d{2}-\d{2}\b", header_text)
+        full_match = None
+        match = header_match
+        source_text = header_text
         if not match:
-            match = re.search(r"\b\d{4}-\d{2}-\d{2}\b", full_text)
+            full_match = re.search(r"\b\d{4}-\d{2}-\d{2}\b", full_text)
+            match = full_match
+            source_text = full_text
         if match:
             structured["invoice_date"] = match.group(0)
+            _append_regex_evidence(
+                evidence,
+                field="invoice.invoice_date",
+                value=structured["invoice_date"],
+                source_text=source_text,
+                match=match,
+                group_index=0,
+                pages=pages,
+            )
 
     return structured
 
@@ -311,11 +636,27 @@ def _build_extraction_payload(
     raw_text: str,
     structured: dict[str, Any],
     layout: dict[str, Any] | None = None,
+    evidence: list[dict[str, Any]] | None = None,
+    pages: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     body_text = _layout_text(layout, "body")
-    extracted_lines = _extract_lines_from_text(body_text) if body_text else []
+    extracted_lines = (
+        _extract_lines_from_text(
+            body_text,
+            evidence=evidence,
+            field_prefix="lines",
+            pages=pages,
+        )
+        if body_text
+        else []
+    )
     if not extracted_lines:
-        extracted_lines = _extract_lines_from_text(raw_text)
+        extracted_lines = _extract_lines_from_text(
+            raw_text,
+            evidence=evidence,
+            field_prefix="lines",
+            pages=pages,
+        )
     if not extracted_lines and structured.get("cn_code"):
         extracted_lines = [
             {
@@ -359,6 +700,31 @@ def _build_extraction_payload(
                     "indirect_embedded_kgco2e": indirect,
                 }
 
+    _ensure_value_evidence(
+        evidence,
+        field="invoice.invoice_number",
+        value=structured.get("invoice_number"),
+        text=raw_text,
+        source="rule_value",
+        pages=pages,
+    )
+    _ensure_value_evidence(
+        evidence,
+        field="invoice.invoice_date",
+        value=structured.get("invoice_date"),
+        text=raw_text,
+        source="rule_value",
+        pages=pages,
+    )
+    _ensure_value_evidence(
+        evidence,
+        field="importer.eori",
+        value=structured.get("importer_eori"),
+        text=raw_text,
+        source="rule_value",
+        pages=pages,
+    )
+
     return {
         "status": "parsed",
         "raw_text_preview": (raw_text or "")[:500],
@@ -376,6 +742,7 @@ def _build_extraction_payload(
         "lines": extracted_lines,
         "emissions": emissions,
         "structured": structured,
+        "evidence": evidence or [],
     }
 
 
@@ -390,20 +757,38 @@ def _read_raw_text(path: Path) -> str:
 
 
 class LlamaIndexCBAMExtractor:
-    def extract(self, file_path: str, layout: dict[str, Any] | None = None) -> dict:
+    def extract(
+        self,
+        file_path: str,
+        layout: dict[str, Any] | None = None,
+        pages: list[dict[str, Any]] | None = None,
+    ) -> dict:
         path = Path(file_path)
         if not path.exists():
             return {"status": "error", "message": f"File not found: {file_path}"}
 
         raw_text_for_fallback = _read_raw_text(path)
+        evidence: list[dict[str, Any]] = []
         try:
             from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
             from llama_index.core.embeddings import MockEmbedding
             from llama_index.core.llms.mock import MockLLM
             from llama_index.core.schema import Document
         except Exception:
-            structured = _parse_structured_response("{}", raw_text_for_fallback, layout=layout)
-            payload = _build_extraction_payload(raw_text_for_fallback, structured, layout=layout)
+            structured = _parse_structured_response(
+                "{}",
+                raw_text_for_fallback,
+                layout=layout,
+                evidence=evidence,
+                pages=pages,
+            )
+            payload = _build_extraction_payload(
+                raw_text_for_fallback,
+                structured,
+                layout=layout,
+                evidence=evidence,
+                pages=pages,
+            )
             payload["status"] = "parsed"
             payload["fallback"] = "regex_only"
             return payload
@@ -433,8 +818,20 @@ class LlamaIndexCBAMExtractor:
                 "direct_embedded_kgco2e, indirect_embedded_kgco2e. "
                 "Use method values actual/default/estimated and null for missing values."
             )
-            structured = _parse_structured_response(str(response), raw_text, layout=layout)
-            return _build_extraction_payload(raw_text, structured, layout=layout)
+            structured = _parse_structured_response(
+                str(response),
+                raw_text,
+                layout=layout,
+                evidence=evidence,
+                pages=pages,
+            )
+            return _build_extraction_payload(
+                raw_text,
+                structured,
+                layout=layout,
+                evidence=evidence,
+                pages=pages,
+            )
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
@@ -442,8 +839,15 @@ class LlamaIndexCBAMExtractor:
 _EXTRACTOR: CBAMExtractor = LlamaIndexCBAMExtractor()
 
 
-def extract(file_path: str, layout: dict[str, Any] | None = None) -> dict:
+def extract(
+    file_path: str,
+    layout: dict[str, Any] | None = None,
+    pages: list[dict[str, Any]] | None = None,
+) -> dict:
     try:
-        return _EXTRACTOR.extract(file_path, layout=layout)
+        return _EXTRACTOR.extract(file_path, layout=layout, pages=pages)
     except TypeError:
-        return _EXTRACTOR.extract(file_path)
+        try:
+            return _EXTRACTOR.extract(file_path, layout=layout)
+        except TypeError:
+            return _EXTRACTOR.extract(file_path)

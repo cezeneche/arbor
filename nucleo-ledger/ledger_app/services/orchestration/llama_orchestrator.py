@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from ledger_app.schemas.evidence import EvidenceAtom
 from ledger_app.services.cbam_extractor import extract as extract_cbam_document
 from ledger_app.services.document_text_extractor import extract_document_from_upload
 from ledger_app.services.llama_orchestrator import LlamaOrchestrator
@@ -158,6 +159,27 @@ def _llama_candidate_from_structured(
     base_importer_eori = base_importer.get("eori") if isinstance(base_importer, dict) else None
     base_incoterm = base_invoice.get("incoterm") if isinstance(base_invoice, dict) else None
     base_entry_reference = base_invoice.get("entry_reference") if isinstance(base_invoice, dict) else None
+    evidence: list[dict[str, Any]] = []
+
+    def _append_llm_evidence(field: str, value: Any) -> None:
+        if value in (None, ""):
+            return
+        evidence.append(
+            EvidenceAtom(
+                field=field,
+                value=value,
+                source="llm",
+                confidence=0.35,
+                snippet=None,
+            ).model_dump(mode="json")
+        )
+
+    _append_llm_evidence("invoice.invoice_number", llama_data.get("invoice_number"))
+    _append_llm_evidence("invoice.invoice_date", llama_data.get("invoice_date"))
+    _append_llm_evidence("invoice.origin_country", llama_data.get("origin_country"))
+    for idx, line in enumerate(normalized_lines):
+        _append_llm_evidence(f"lines[{idx}].cn_code", line.get("cn_code"))
+        _append_llm_evidence(f"lines[{idx}].net_mass_kg", line.get("net_mass_kg"))
 
     return {
         "source": "llama",
@@ -177,6 +199,7 @@ def _llama_candidate_from_structured(
         "structured": rule_candidate.get("structured"),
         "layout": layout_payload,
         "full_text": raw_text,
+        "evidence": evidence,
     }
 
 
@@ -197,10 +220,14 @@ def run_document_ingest_plan(filename: str, content_type: str | None, data: byte
             tmp_path = Path(tmp.name)
             tmp.write(raw_text.encode("utf-8"))
 
+        pages_for_extract = pages_payload if isinstance(pages_payload, list) else None
         try:
-            extraction = extract_cbam_document(str(tmp_path), layout=layout_payload)
+            extraction = extract_cbam_document(str(tmp_path), layout=layout_payload, pages=pages_for_extract)
         except TypeError:
-            extraction = extract_cbam_document(str(tmp_path))
+            try:
+                extraction = extract_cbam_document(str(tmp_path), layout=layout_payload)
+            except TypeError:
+                extraction = extract_cbam_document(str(tmp_path))
 
         if not isinstance(extraction, dict):
             raise HTTPException(status_code=422, detail="Extractor returned an invalid response.")
@@ -214,6 +241,8 @@ def run_document_ingest_plan(filename: str, content_type: str | None, data: byte
         rule_candidate["source"] = "rule"
         rule_candidate["layout"] = layout_payload
         rule_candidate["full_text"] = raw_text
+        if not isinstance(rule_candidate.get("evidence"), list):
+            rule_candidate["evidence"] = []
 
         candidates: list[dict[str, Any]] = [rule_candidate]
         should_run, route_reasons = _should_run_llama(rule_candidate, layout_payload)
@@ -257,6 +286,7 @@ def run_document_ingest_plan(filename: str, content_type: str | None, data: byte
         return {
             "raw_text": raw_text,
             "layout": layout_payload,
+            "pages": pages_for_extract,
             "candidates": candidates,
             "routing_trace": routing_trace,
         }

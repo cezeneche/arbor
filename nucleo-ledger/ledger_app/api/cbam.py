@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -15,8 +16,11 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from ledger_app.db.session import engine
+from ledger_app.schemas.evidence import EvidenceAtom
 from ledger_app.services.cbam_arbiter import arbitrate_parsed_invoice
 from ledger_app.services.cbam_data_quality import evaluate_cbam_data_quality
+from ledger_app.services.cbam_explain import explain_field
+from ledger_app.services.cbam_explain import explain_metric
 from ledger_app.services.cbam_repair import repair_parsed_invoice
 from ledger_app.services.document_text_extractor import extract_document_from_upload
 from ledger_app.services.cbam_extractor import extract as extract_cbam_document
@@ -24,6 +28,9 @@ from ledger_app.services.gemini_structured_extractor import extract_structured_w
 from ledger_app.services.llama_structured_extractor import compare_extractions
 from ledger_app.services.llama_orchestrator import LlamaOrchestrator
 from ledger_app.services.orchestration import llama_orchestrator as ingest_orchestrator
+from ledger_app.services.snapshot_store import canonical_json
+from ledger_app.services.snapshot_store import get_snapshot_store
+from ledger_app.services.snapshot_store import sha256_hex
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
 ALLOWED_EMISSIONS_METHODS = ("actual", "default", "estimated")
@@ -244,6 +251,116 @@ def _line_fingerprint(
     )
 
 
+def _normalized_evidence(evidence: object) -> list[dict[str, object]]:
+    if not isinstance(evidence, list):
+        return []
+    normalized: list[dict[str, object]] = []
+    for atom in evidence:
+        if isinstance(atom, EvidenceAtom):
+            normalized.append(atom.model_dump(mode="json"))
+        elif isinstance(atom, dict):
+            normalized.append(dict(atom))
+    return normalized
+
+
+def _append_llm_evidence(
+    evidence: list[dict[str, object]],
+    *,
+    field: str,
+    value: object,
+    source: str = "llm",
+    confidence: float = 0.35,
+) -> None:
+    if value in (None, ""):
+        return
+    evidence.append(
+        EvidenceAtom(
+            field=field,
+            value=value,
+            source=source,
+            confidence=confidence,
+            snippet=None,
+        ).model_dump(mode="json")
+    )
+
+
+def _safe_snapshot_write(
+    *,
+    case_id: str,
+    stage: str,
+    payload: object,
+    parent_hash: str | None = None,
+    algo_versions: dict[str, object] | None = None,
+    model_versions: dict[str, object] | None = None,
+) -> str | None:
+    try:
+        snapshot = get_snapshot_store().append_snapshot(
+            case_id=case_id,
+            stage=stage,
+            payload=payload,
+            parent_hash=parent_hash,
+            algo_versions=algo_versions,
+            model_versions=model_versions,
+        )
+        return snapshot.payload_hash
+    except Exception:
+        # Snapshot persistence is additive and must not break API behavior.
+        return parent_hash
+
+
+def snapshot_cbam_compliance_pack(case_id: str, compliance_pack: object, parent_hash: str | None = None) -> str | None:
+    return _safe_snapshot_write(
+        case_id=case_id,
+        stage="compliance_pack_v1",
+        payload=compliance_pack,
+        parent_hash=parent_hash,
+        algo_versions={"compliance_pack_builder": "v1"},
+        model_versions={},
+    )
+
+
+def _document_sha256_from_extraction_snapshot(case_id: str) -> str | None:
+    try:
+        snapshot = get_snapshot_store().latest_snapshot_by_stage(case_id, "extraction_v1")
+    except Exception:
+        return None
+    if snapshot is None:
+        return None
+
+    try:
+        payload = json.loads(snapshot.payload_json)
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    raw_text = payload.get("raw_text")
+    if not isinstance(raw_text, str) or not raw_text:
+        return None
+    return sha256_hex(raw_text)
+
+
+def _report_package_audit_block(
+    *,
+    case_id: str,
+    artifact_payload: dict[str, object],
+    generated_at: str,
+    snapshot_hash: str | None,
+    parent_hash: str | None,
+    algo_versions: dict[str, object] | None = None,
+    model_versions: dict[str, object] | None = None,
+) -> dict[str, object]:
+    return {
+        "document_sha256": _document_sha256_from_extraction_snapshot(case_id),
+        "payload_hash": sha256_hex(canonical_json(artifact_payload)),
+        "snapshot_hash": snapshot_hash,
+        "parent_hash": parent_hash,
+        "algo_versions": algo_versions or {},
+        "model_versions": model_versions or {},
+        "generated_at": generated_at,
+    }
+
+
 def _build_parsed_invoice_request_from_extraction(
     extraction: dict[str, object],
     importer_name: str | None,
@@ -455,6 +572,14 @@ def _llama_candidate_from_structured_invoice(
     base_importer_eori = base_importer.get("eori") if isinstance(base_importer, dict) else None
     base_incoterm = base_invoice.get("incoterm") if isinstance(base_invoice, dict) else None
     base_entry_reference = base_invoice.get("entry_reference") if isinstance(base_invoice, dict) else None
+    evidence: list[dict[str, object]] = []
+
+    _append_llm_evidence(evidence, field="invoice.invoice_number", value=llama_data.get("invoice_number"))
+    _append_llm_evidence(evidence, field="invoice.invoice_date", value=llama_data.get("invoice_date"))
+    _append_llm_evidence(evidence, field="invoice.origin_country", value=llama_data.get("origin_country"))
+    for idx, line in enumerate(normalized_lines):
+        _append_llm_evidence(evidence, field=f"lines[{idx}].cn_code", value=line.get("cn_code"))
+        _append_llm_evidence(evidence, field=f"lines[{idx}].net_mass_kg", value=line.get("net_mass_kg"))
 
     return {
         "source": "llama",
@@ -474,6 +599,7 @@ def _llama_candidate_from_structured_invoice(
         "structured": rule_candidate.get("structured"),
         "layout": layout_payload,
         "full_text": raw_text,
+        "evidence": evidence,
     }
 
 
@@ -1168,6 +1294,7 @@ async def create_cbam_draft_from_document(
                 {
                     "arbiter_warnings": arbiter_warnings,
                     "repair_warnings": repair_warnings,
+                    "evidence": _normalized_evidence(repaired_candidate.get("evidence")),
                     "fallback_sources": [],
                     "gemini_fallback_used": False,
                     "routing_trace": routing_trace,
@@ -1177,11 +1304,13 @@ async def create_cbam_draft_from_document(
             extraction_validation = {
                 "match_score": 0.0,
                 "differences": [f"ingest_orchestration_error:{exc}"],
+                "evidence": [],
                 "fallback_sources": [],
                 "gemini_fallback_used": False,
                 "routing_trace": routing_trace,
             }
             repaired_candidate = candidates[0]
+            arbitrated_candidate = candidates[0]
 
         try:
             parsed_payload, resolved_year, resolved_quarter, parse_warnings = (
@@ -1280,6 +1409,7 @@ async def create_cbam_draft_from_document(
                     extraction_validation["data_quality"] = dq_precheck
                     extraction_validation["arbiter_warnings"] = arbiter_warnings
                     extraction_validation["repair_warnings"] = repair_warnings
+                    extraction_validation["evidence"] = _normalized_evidence(repaired_candidate.get("evidence"))
 
         try:
             created = _create_cbam_draft_from_parsed_invoice_payload(
@@ -1293,6 +1423,46 @@ async def create_cbam_draft_from_document(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"detail": str(exc), "stage": "draft"},
             )
+
+        case_id_for_snapshot = str(created.get("case_id"))
+        parent_hash: str | None = None
+        extraction_stage_payload = {
+            "raw_text": raw_text,
+            "layout": layout_payload,
+            "routing_trace": routing_trace,
+            "candidates": candidates,
+            "extraction_validation": {
+                "match_score": extraction_validation.get("match_score"),
+                "differences": extraction_validation.get("differences"),
+                "fallback_sources": extraction_validation.get("fallback_sources"),
+                "gemini_fallback_used": extraction_validation.get("gemini_fallback_used"),
+            },
+        }
+        parent_hash = _safe_snapshot_write(
+            case_id=case_id_for_snapshot,
+            stage="extraction_v1",
+            payload=extraction_stage_payload,
+            parent_hash=parent_hash,
+            algo_versions={"rule_extractor": "v1", "layout": "v1"},
+            model_versions={
+                "llama": str(os.getenv("LLAMA_STRUCTURED_MODEL", "unknown")),
+                "gemini_enabled": bool(ENABLE_GEMINI_FALLBACK),
+            },
+        )
+        parent_hash = _safe_snapshot_write(
+            case_id=case_id_for_snapshot,
+            stage="arbitrated_v1",
+            payload=arbitrated_candidate,
+            parent_hash=parent_hash,
+            algo_versions={"arbiter": "v1"},
+        )
+        parent_hash = _safe_snapshot_write(
+            case_id=case_id_for_snapshot,
+            stage="repaired_v1",
+            payload=repaired_candidate,
+            parent_hash=parent_hash,
+            algo_versions={"repair": "v1"},
+        )
 
         repair_warns = extraction_validation.get("repair_warnings", [])
         arbiter_warns = extraction_validation.get("arbiter_warnings", [])
@@ -1464,12 +1634,75 @@ def get_cbam_report_package(case_id: UUID):
         case_row = dict(case_rows[0])
         shipments_payload = _build_case_shipments_payload(conn, case_id)
         data_quality = evaluate_cbam_data_quality(case_row, shipments_payload)
-
-        return {
+        generated_at = datetime.now(timezone.utc).isoformat()
+        report_package = {
             "type": "cbam_report_package_v1",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": generated_at,
             "case": case_row,
             "shipments": shipments_payload,
             "summary": _build_case_summary(conn, case_id),
             "data_quality": data_quality,
         }
+        snapshot_hash: str | None = None
+        parent_hash: str | None = None
+        algo_versions: dict[str, object] = {"report_package_builder": "v1"}
+        model_versions: dict[str, object] = {}
+
+        try:
+            snapshot = get_snapshot_store().append_snapshot(
+                case_id=str(case_id),
+                stage="report_package_v1",
+                payload=report_package,
+                algo_versions=algo_versions,
+                model_versions=model_versions,
+            )
+            snapshot_hash = snapshot.payload_hash
+            parent_hash = snapshot.parent_hash
+            algo_versions = dict(snapshot.algo_versions)
+            model_versions = dict(snapshot.model_versions)
+        except Exception:
+            pass
+
+        report_package["audit"] = _report_package_audit_block(
+            case_id=str(case_id),
+            artifact_payload=report_package,
+            generated_at=generated_at,
+            snapshot_hash=snapshot_hash,
+            parent_hash=parent_hash,
+            algo_versions=algo_versions,
+            model_versions=model_versions,
+        )
+        return report_package
+
+
+@router.get("/cases/{case_id}/explain")
+def get_cbam_case_explain(
+    case_id: UUID,
+    metric: str | None = Query(default=None),
+    field: str | None = Query(default=None),
+):
+    if bool(metric) == bool(field):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide exactly one of metric or field.",
+        )
+
+    snapshot_store = get_snapshot_store()
+    case_id_str = str(case_id)
+
+    try:
+        if metric:
+            return explain_metric(
+                store=snapshot_store,
+                case_id=case_id_str,
+                metric=metric,
+            )
+        return explain_field(
+            store=snapshot_store,
+            case_id=case_id_str,
+            field_path=str(field),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found") from exc

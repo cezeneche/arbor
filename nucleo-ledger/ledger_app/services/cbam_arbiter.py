@@ -226,6 +226,29 @@ def _pick_lines(candidates: list[dict[str, Any]], warnings: list[str]) -> list[d
     return deepcopy(best_lines)
 
 
+def _merge_candidate_evidence(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for candidate in candidates:
+        evidence = candidate.get("evidence")
+        if not isinstance(evidence, list):
+            continue
+        for atom in evidence:
+            if not isinstance(atom, dict):
+                continue
+            key = (
+                str(atom.get("field")),
+                str(atom.get("value")),
+                str(atom.get("source")),
+                str(atom.get("page")),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(deepcopy(atom))
+    return merged
+
+
 def arbitrate_parsed_invoice(candidates: list[dict]) -> tuple[dict, list[str]]:
     """
     Arbitrate conflicting parsed candidates into a single best invoice draft.
@@ -248,5 +271,6 @@ def arbitrate_parsed_invoice(candidates: list[dict]) -> tuple[dict, list[str]]:
         invoice[field] = _pick_field(field, normalized_candidates, warnings)
 
     merged["lines"] = _pick_lines(normalized_candidates, warnings)
+    merged["evidence"] = _merge_candidate_evidence(normalized_candidates)
 
     return merged, warnings

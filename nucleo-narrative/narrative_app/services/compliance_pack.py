@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import datetime, timezone
 
 
@@ -12,6 +14,14 @@ def _to_float(value) -> float:
         return float(value or 0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _canonical_json(payload: object) -> str:
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _sha256_hex(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _build_data_quality_flags(report_package: dict) -> list[str]:
@@ -91,6 +101,7 @@ def build_cbam_compliance_pack(case_id: str, report_package: dict, narrative: di
     summary = report_package.get("summary") or {}
     goods_lines = _build_goods_lines_table(report_package)
     data_quality_flags = _build_data_quality_flags(report_package)
+    generated_at = _now_utc_iso()
 
     totals = {
         "total_goods_lines": int(summary.get("total_goods_lines") or len(goods_lines)),
@@ -101,10 +112,10 @@ def build_cbam_compliance_pack(case_id: str, report_package: dict, narrative: di
         "shipments_count": len(report_package.get("shipments") or []),
     }
 
-    return {
+    pack = {
         "type": "cbam_compliance_pack_v1",
         "case_id": case_id,
-        "generated_at": _now_utc_iso(),
+        "generated_at": generated_at,
         "report_package": report_package,
         "narrative": narrative,
         "data_quality_flags": data_quality_flags,
@@ -113,3 +124,21 @@ def build_cbam_compliance_pack(case_id: str, report_package: dict, narrative: di
             "totals": totals,
         },
     }
+
+    report_audit = report_package.get("audit") if isinstance(report_package, dict) else None
+    report_audit = report_audit if isinstance(report_audit, dict) else {}
+    pack["audit"] = {
+        "document_sha256": report_audit.get("document_sha256"),
+        "payload_hash": _sha256_hex(_canonical_json(pack)),
+        "snapshot_hash": report_audit.get("snapshot_hash"),
+        "parent_hash": report_audit.get("parent_hash"),
+        "algo_versions": {
+            "compliance_pack_builder": "v1",
+            "report_package": report_audit.get("algo_versions") if isinstance(report_audit.get("algo_versions"), dict) else {},
+        },
+        "model_versions": {
+            "report_package": report_audit.get("model_versions") if isinstance(report_audit.get("model_versions"), dict) else {},
+        },
+        "generated_at": generated_at,
+    }
+    return pack

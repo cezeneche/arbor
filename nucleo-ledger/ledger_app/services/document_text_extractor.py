@@ -299,11 +299,30 @@ def _extract_pdf_document_hybrid(data: bytes) -> dict[str, object]:
         with pdfplumber.open(BytesIO(data)) as pdf:
             for page_idx, page in enumerate(pdf.pages, start=1):
                 text = (page.extract_text() or "").strip()
+                words_payload: list[dict[str, object]] = []
+                try:
+                    words = page.extract_words() or []
+                    if isinstance(words, list):
+                        for word in words:
+                            if not isinstance(word, dict):
+                                continue
+                            words_payload.append(
+                                {
+                                    "text": str(word.get("text", "")).strip(),
+                                    "x0": _to_float(word.get("x0"), 0.0),
+                                    "y0": _to_float(word.get("top"), 0.0),
+                                    "x1": _to_float(word.get("x1"), 0.0),
+                                    "y1": _to_float(word.get("bottom"), 0.0),
+                                }
+                            )
+                except Exception:
+                    words_payload = []
                 pages_text.append(
                     {
                         "page_number": page_idx,
                         "text": text,
                         "source": "pdf_text",
+                        "words": words_payload,
                     }
                 )
     except Exception as exc:

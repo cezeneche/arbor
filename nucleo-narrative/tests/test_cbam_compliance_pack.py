@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import sys
 
 import pytest
@@ -59,7 +60,10 @@ def test_cbam_compliance_pack_golden(monkeypatch, client):
 
     response = client.post("/api/cbam/cases/TEST-CBAM/compliance-pack")
     assert response.status_code == 200, response.text
-    assert response.json() == expected
+    body = response.json()
+    assert body == expected
+    assert "audit" in body
+    assert re.fullmatch(r"[0-9a-f]{64}", str(body["audit"]["payload_hash"]))
 
 
 def test_cbam_compliance_pack_blocking_returns_422(monkeypatch, client):

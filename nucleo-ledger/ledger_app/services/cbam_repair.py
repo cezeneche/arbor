@@ -4,6 +4,9 @@ from copy import deepcopy
 import re
 from typing import Any
 
+from ledger_app.schemas.evidence import EvidenceAtom
+from ledger_app.schemas.evidence import EvidenceSpan
+
 
 def _layout_text(layout: dict[str, Any] | None, zone: str) -> str:
     if not isinstance(layout, dict):
@@ -140,6 +143,31 @@ def _extract_lines_from_text(text: str) -> list[dict[str, Any]]:
     return parsed_lines
 
 
+def _append_repair_evidence(
+    evidence: list[dict[str, Any]],
+    *,
+    field: str,
+    value: Any,
+    text: str,
+    source: str,
+) -> None:
+    if value in (None, "") or not text:
+        return
+    match = re.search(re.escape(str(value)), text, flags=re.IGNORECASE)
+    if not match:
+        return
+    evidence.append(
+        EvidenceAtom(
+            field=field,
+            value=value,
+            source=source,
+            span=EvidenceSpan(start=match.start(0), end=match.end(0)),
+            snippet=text[max(0, match.start(0) - 40) : min(len(text), match.end(0) + 40)].strip(),
+            confidence=0.82,
+        ).model_dump(mode="json")
+    )
+
+
 def repair_parsed_invoice(parsed: dict) -> tuple[dict, list[str]]:
     """
     Repair missing parsed invoice fields without hallucinating values.
@@ -151,6 +179,10 @@ def repair_parsed_invoice(parsed: dict) -> tuple[dict, list[str]]:
     """
     repaired = deepcopy(parsed if isinstance(parsed, dict) else {})
     warnings: list[str] = []
+    evidence = repaired.get("evidence")
+    if not isinstance(evidence, list):
+        evidence = []
+        repaired["evidence"] = evidence
 
     invoice = repaired.get("invoice")
     if not isinstance(invoice, dict):
@@ -166,6 +198,13 @@ def repair_parsed_invoice(parsed: dict) -> tuple[dict, list[str]]:
         value = _extract_invoice_number(header_text) or _extract_invoice_number(full_text)
         if value:
             invoice["invoice_number"] = value
+            _append_repair_evidence(
+                evidence,
+                field="invoice.invoice_number",
+                value=value,
+                text=header_text or full_text,
+                source="repair_regex",
+            )
         else:
             warnings.append("repair_failed:invoice_number")
 
@@ -173,6 +212,13 @@ def repair_parsed_invoice(parsed: dict) -> tuple[dict, list[str]]:
         value = _extract_invoice_date(header_text) or _extract_invoice_date(full_text)
         if value:
             invoice["invoice_date"] = value
+            _append_repair_evidence(
+                evidence,
+                field="invoice.invoice_date",
+                value=value,
+                text=header_text or full_text,
+                source="repair_regex",
+            )
         else:
             warnings.append("repair_failed:invoice_date")
 
@@ -180,6 +226,13 @@ def repair_parsed_invoice(parsed: dict) -> tuple[dict, list[str]]:
         value = _extract_origin_country(full_text)
         if value:
             invoice["origin_country"] = value
+            _append_repair_evidence(
+                evidence,
+                field="invoice.origin_country",
+                value=value,
+                text=full_text,
+                source="repair_regex",
+            )
         else:
             warnings.append("repair_failed:origin_country")
 
@@ -187,6 +240,13 @@ def repair_parsed_invoice(parsed: dict) -> tuple[dict, list[str]]:
         value = _extract_incoterm(full_text)
         if value:
             invoice["incoterm"] = value
+            _append_repair_evidence(
+                evidence,
+                field="invoice.incoterm",
+                value=value,
+                text=full_text,
+                source="repair_regex",
+            )
         else:
             warnings.append("repair_failed:incoterm")
 
@@ -212,6 +272,13 @@ def repair_parsed_invoice(parsed: dict) -> tuple[dict, list[str]]:
 
         if not line.get("cn_code") and fallback_line.get("cn_code"):
             line["cn_code"] = fallback_line.get("cn_code")
+            _append_repair_evidence(
+                evidence,
+                field=f"lines[{idx}].cn_code",
+                value=line["cn_code"],
+                text=body_text or full_text,
+                source="repair_regex",
+            )
         if line.get("quantity") is None and fallback_line.get("quantity") is not None:
             line["quantity"] = fallback_line.get("quantity")
         if line.get("net_mass_kg") is None:

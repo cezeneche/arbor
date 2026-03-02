@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -435,10 +436,13 @@ def test_report_package_has_required_keys():
     assert "shipments" in body
     assert "summary" in body
     assert "data_quality" in body
+    assert "audit" in body
     assert "missing" in body["data_quality"]
     assert "warnings" in body["data_quality"]
     assert isinstance(body["shipments"], list)
     assert len(body["data_quality"]["warnings"]) >= 1
+    assert re.fullmatch(r"[0-9a-f]{64}", str(body["audit"]["payload_hash"]))
+    assert re.fullmatch(r"[0-9a-f]{64}", str(body["audit"]["snapshot_hash"]))
 
 
 def test_report_package_unknown_case_returns_404():
@@ -634,6 +638,8 @@ def test_legacy_report_package_route_delegates_to_cbam_package():
 
     legacy_payload.pop("generated_at", None)
     cbam_payload.pop("generated_at", None)
+    legacy_payload.pop("audit", None)
+    cbam_payload.pop("audit", None)
     assert legacy_payload == cbam_payload
 
 

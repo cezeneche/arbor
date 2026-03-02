@@ -556,3 +556,28 @@ def test_from_document_uses_gemini_fallback_when_low_match_and_blocking(monkeypa
     validation = response.json()["extraction_validation"]
     assert validation["gemini_fallback_used"] is True
     assert "gemini" in validation.get("fallback_sources", [])
+
+
+def test_from_document_includes_invoice_evidence_without_hallucinated_bbox(monkeypatch):
+    client, _ = _client_with_fake_engine()
+    fixture_path = (
+        Path(__file__).resolve().parents[1]
+        / "fixtures"
+        / "documents"
+        / "sample_invoice_TEST.txt"
+    )
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    response = client.post(
+        "/api/cbam/drafts/from-document",
+        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
+    )
+    assert response.status_code == 201, response.text
+    validation = response.json()["extraction_validation"]
+
+    evidence = validation.get("evidence")
+    assert isinstance(evidence, list)
+    invoice_atoms = [atom for atom in evidence if atom.get("field") == "invoice.invoice_number"]
+    assert invoice_atoms
+    assert invoice_atoms[0].get("value") == "INV-TEST-001"
+    assert invoice_atoms[0].get("bbox") is None
