@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
-import app.api.cbam as cbam_api
+import ledger_app.api.cbam as cbam_api
 
 
 class _Result:

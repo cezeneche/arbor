@@ -5,10 +5,10 @@ from pathlib import Path
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
-import app.api.cbam as cbam_api
-import app.services.cbam_extractor as cbam_extractor
-from app.services.llama_structured_extractor import InvoiceSchema
-from app.services.llama_structured_extractor import LineItemSchema
+import ledger_app.api.cbam as cbam_api
+import ledger_app.services.cbam_extractor as cbam_extractor
+from ledger_app.services.llama_structured_extractor import InvoiceSchema
+from ledger_app.services.llama_structured_extractor import LineItemSchema
 from tests.test_cbam_router import _client_with_fake_engine
 
 
@@ -483,6 +483,7 @@ def test_from_document_uses_gemini_fallback_when_low_match_and_blocking(monkeypa
 
     monkeypatch.setattr(cbam_api, "ENABLE_GEMINI_FALLBACK", True)
     monkeypatch.setattr(cbam_api, "GEMINI_MATCH_THRESHOLD", 0.4)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(
         cbam_api,
         "compare_extractions",

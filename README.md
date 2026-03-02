@@ -49,7 +49,11 @@ Key endpoints:
 
 ## Environment variables
 
-Each service has its own `.env` (not committed). Copy from `.env.example`.
+Use the root `.env` for local + docker-compose:
+
+```bash
+cp .env.example .env
+```
 
 ### nucleo-ledger (.env)
 
@@ -59,15 +63,13 @@ Required (typical):
 ### nucleo-narrative (.env)
 
 Required:
-- `NUCLEO_LEDGER_URL` (e.g., `http://127.0.0.1:8000`)
-- `OPENAI_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `GEMINI_API_KEY`
+- `LEDGER_URL` or `LEDGER_BASE_URL` (e.g., `http://127.0.0.1:8000`)
 
 Optional:
-- `OPENAI_MODEL` (defaults in code)
-- `ANTHROPIC_MODEL` (defaults in code)
-- `GEMINI_MODEL` (defaults in code)
+- `OPENAI_API_KEY` (needed only for OpenAI draft stage)
+- `ANTHROPIC_API_KEY` (Claude review is skipped if missing)
+- `GEMINI_API_KEY` (Gemini gate is skipped if missing)
+- `OPENAI_MODEL`, `ANTHROPIC_MODEL`, `GEMINI_MODEL` (defaults in code)
 
 ## Local run (venv)
 
@@ -92,7 +94,7 @@ python3 -m venv .venv
 ```bash
 source .venv/bin/activate
 cd nucleo-ledger
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+python -m uvicorn ledger_app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 4. Start `nucleo-narrative` on port `8001` (new terminal):
@@ -100,7 +102,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```bash
 source .venv/bin/activate
 cd nucleo-narrative
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+python -m uvicorn narrative_app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
 ### 1) nucleo-ledger
@@ -110,7 +112,7 @@ cd nucleo-ledger
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+python -m uvicorn ledger_app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Health check:
@@ -126,7 +128,7 @@ cd nucleo-narrative
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+python -m uvicorn narrative_app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
 Health check:
@@ -142,6 +144,27 @@ Replace `{case_id}` with a real case UUID:
 ```bash
 curl -s -X POST http://127.0.0.1:8001/api/cases/{case_id}/narrative/pipeline | python -m json.tool
 ```
+
+## Docker Compose
+
+Run both APIs plus Postgres from the repo root:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Services exposed:
+- `nucleo-ledger`: `http://127.0.0.1:8000`
+- `nucleo-narrative`: `http://127.0.0.1:8001`
+
+Health checks:
+- Ledger readiness: `http://127.0.0.1:8000/ready`
+- Narrative health: `http://127.0.0.1:8001/health`
+
+Notes:
+- `docker-compose.yml` uses `.env` for configuration.
+- Narrative waits on Ledger health before startup and also uses retry/backoff in its ledger HTTP client for transient startup/network issues.
 
 ## Next milestones
 

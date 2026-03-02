@@ -10,7 +10,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 @pytest.fixture()
 def client():
-    from app.main import app
+    from narrative_app.main import app
 
     return TestClient(app)
 
@@ -35,7 +35,7 @@ def test_cbam_packet_generates_narrative(monkeypatch, client):
         },
     }
 
-    from app.api import pipeline as pipeline_module
+    from narrative_app.api import pipeline as pipeline_module
 
     def fake_fetch_report_package(_case_id: str):
         raise AssertionError("Legacy fetch should not be used for packet_kind=cbam")
@@ -90,7 +90,7 @@ def test_cbam_packet_blocking_returns_422(monkeypatch, client):
         },
     }
 
-    from app.api import pipeline as pipeline_module
+    from narrative_app.api import pipeline as pipeline_module
 
     def fake_fetch_report_package(_case_id: str):
         raise AssertionError("Legacy fetch should not be used for packet_kind=cbam")

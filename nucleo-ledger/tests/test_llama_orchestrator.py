@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import app.api.cbam as cbam_api
-import app.services.llama_orchestrator as llama_orchestrator
-from app.services.llama_structured_extractor import InvoiceSchema
-from app.services.llama_structured_extractor import LineItemSchema
+import ledger_app.api.cbam as cbam_api
+import ledger_app.services.llama_orchestrator as llama_orchestrator
+from ledger_app.services.llama_structured_extractor import InvoiceSchema
+from ledger_app.services.llama_structured_extractor import LineItemSchema
 from tests.test_cbam_router import _client_with_fake_engine
 
 

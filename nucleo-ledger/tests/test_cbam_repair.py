@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.cbam_repair import repair_parsed_invoice
+from ledger_app.services.cbam_repair import repair_parsed_invoice
 
 
 def test_repair_fills_invoice_number_and_date_from_header():

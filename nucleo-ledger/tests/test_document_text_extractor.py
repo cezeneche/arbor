@@ -4,7 +4,7 @@ from io import BytesIO
 
 from PIL import Image, ImageDraw
 
-from app.services import document_text_extractor
+from ledger_app.services import document_text_extractor
 
 
 def _build_minimal_pdf_with_text(text: str) -> bytes:

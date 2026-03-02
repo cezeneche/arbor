@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from app.services.llama_structured_extractor import InvoiceSchema
-from app.services.llama_structured_extractor import LineItemSchema
-from app.services.llama_structured_extractor import compare_extractions
+from ledger_app.services.llama_structured_extractor import InvoiceSchema
+from ledger_app.services.llama_structured_extractor import LineItemSchema
+from ledger_app.services.llama_structured_extractor import compare_extractions
 
 
 def test_compare_extractions_all_fields_match():

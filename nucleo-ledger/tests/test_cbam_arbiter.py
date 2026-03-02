@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.cbam_arbiter import arbitrate_parsed_invoice
+from ledger_app.services.cbam_arbiter import arbitrate_parsed_invoice
 
 
 def test_arbiter_picks_invoice_date_from_header_locality():

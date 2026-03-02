@@ -61,7 +61,7 @@ def assert_narrative_schema(final_obj: dict) -> None:
 @pytest.fixture()
 def client():
     # Import app lazily so fixture paths resolve and env isn't required at import time
-    from app.main import app
+    from narrative_app.main import app
 
     return TestClient(app)
 
@@ -79,7 +79,7 @@ def test_pipeline_golden(monkeypatch, client):
     expected_final = load_json(EXPECTED_FINAL_FIXTURE)
 
     # --- Patch dependencies where pipeline.py uses them (it imports directly) ---
-    from app.api import pipeline as pipeline_module
+    from narrative_app.api import pipeline as pipeline_module
 
     # 1) Ledger fetch: return fixture
     def fake_fetch_report_package(case_id: str):
@@ -150,7 +150,7 @@ def test_pipeline_golden(monkeypatch, client):
 def test_pipeline_golden_cbam(monkeypatch, client):
     cbam_packet = load_json(CBAM_LEDGER_FIXTURE)
 
-    from app.api import pipeline as pipeline_module
+    from narrative_app.api import pipeline as pipeline_module
 
     def fake_fetch_report_package(_case_id: str):
         raise AssertionError("Legacy fetch should not be used for packet_kind=cbam.")

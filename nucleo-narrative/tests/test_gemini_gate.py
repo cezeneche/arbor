@@ -10,7 +10,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 
 def test_gemini_gate_import_and_missing_key_graceful(monkeypatch):
-    gemini_gate = importlib.import_module("app.services.gemini_gate")
+    gemini_gate = importlib.import_module("narrative_app.services.gemini_gate")
     monkeypatch.setattr(gemini_gate.settings, "gemini_api_key", None, raising=False)
 
     packet = {

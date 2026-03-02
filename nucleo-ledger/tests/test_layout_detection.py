@@ -4,7 +4,7 @@ from io import BytesIO
 
 from PIL import Image, ImageDraw
 
-from app.services import document_text_extractor
+from ledger_app.services import document_text_extractor
 
 
 def test_layout_detection_v1_groups_header_body_footer_from_synthetic_image():

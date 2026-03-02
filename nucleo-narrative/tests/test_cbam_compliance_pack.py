@@ -25,7 +25,7 @@ def load_json(path: Path):
 
 @pytest.fixture()
 def client():
-    from app.main import app
+    from narrative_app.main import app
 
     return TestClient(app)
 
@@ -35,8 +35,8 @@ def test_cbam_compliance_pack_golden(monkeypatch, client):
     final_narrative = load_json(CBAM_NARRATIVE_FIXTURE)
     expected = load_json(CBAM_COMPLIANCE_FIXTURE)
 
-    from app.api import cbam_compliance as compliance_module
-    from app.services import compliance_pack as compliance_service
+    from narrative_app.api import cbam_compliance as compliance_module
+    from narrative_app.services import compliance_pack as compliance_service
 
     monkeypatch.setattr(
         compliance_module,
@@ -74,7 +74,7 @@ def test_cbam_compliance_pack_blocking_returns_422(monkeypatch, client):
         },
     }
 
-    from app.api import cbam_compliance as compliance_module
+    from narrative_app.api import cbam_compliance as compliance_module
 
     def fake_fetch_cbam_report_package(case_id: str):
         assert case_id == "TEST-CBAM-BLOCK"

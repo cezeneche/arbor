@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import app.services.orchestration.llama_orchestrator as ingest_orchestrator
-from app.services.llama_structured_extractor import InvoiceSchema
-from app.services.llama_structured_extractor import LineItemSchema
+import ledger_app.services.orchestration.llama_orchestrator as ingest_orchestrator
+from ledger_app.services.llama_structured_extractor import InvoiceSchema
+from ledger_app.services.llama_structured_extractor import LineItemSchema
 
 
 def test_run_document_ingest_plan_skips_llama_without_api_key(monkeypatch):

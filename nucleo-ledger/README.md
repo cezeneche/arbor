@@ -2,6 +2,23 @@
 
 núcleo ledger — deterministic carbon calculation engine with audit traceability.
 
+## Environment
+
+From repo root:
+
+```bash
+cp .env.example .env
+```
+
+Core boot requirement:
+- `DATABASE_URL`
+
+Optional for storage endpoints:
+- `S3_ENDPOINT_URL`
+- `S3_ACCESS_KEY`
+- `S3_SECRET_KEY`
+- `S3_BUCKET`
+
 ## CBAM Document Upload
 
 Upload a CBAM document (invoice image/PDF) for extraction:

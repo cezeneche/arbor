@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import app.services.cbam_extractor as cbam_extractor
+import ledger_app.services.cbam_extractor as cbam_extractor
 
 
 def test_llama_extractor_returns_dict(tmp_path: Path, monkeypatch):

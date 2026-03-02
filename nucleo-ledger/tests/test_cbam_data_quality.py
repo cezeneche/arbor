@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.cbam_data_quality import evaluate_cbam_data_quality
+from ledger_app.services.cbam_data_quality import evaluate_cbam_data_quality
 
 
 def test_invoice_number_missing_not_triggered_when_only_entry_reference_present():
