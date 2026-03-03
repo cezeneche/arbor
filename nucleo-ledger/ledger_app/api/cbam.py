@@ -25,6 +25,8 @@ from ledger_app.services.cbam_repair import repair_parsed_invoice
 from ledger_app.services.document_text_extractor import extract_document_from_upload
 from ledger_app.services.cbam_extractor import extract as extract_cbam_document
 from ledger_app.services.cbam_emission_factors import compute_see_from_defaults, validate_against_defaults
+from ledger_app.services.cbam_calculation_service import compute_cbam_liability
+from ledger_app.services.cbam_installation_registry import validate_installation_id
 from ledger_app.services.cbam_taric import CBAMCodeNotInScope, lookup_sector
 from ledger_app.services.gemini_structured_extractor import extract_structured_with_gemini
 from ledger_app.services.llama_structured_extractor import compare_extractions
@@ -83,6 +85,21 @@ class CBAMEmissionsCreate(BaseModel):
     # Optional: supply for iron/steel, aluminium, or hydrogen to select the
     # correct Annex VI default value (e.g. "BF_BOF", "EAF", "primary", "SMR").
     production_route: str | None = None
+
+
+class CBAMLiabilityRequest(BaseModel):
+    """Input for POST /cases/{case_id}/liability (EU 2023/956 Arts. 9 & 21)."""
+    eu_ets_price_eur: Decimal = Field(
+        ..., gt=0,
+        description="EU ETS allowance price for the reporting period (EUR/tCO2e).",
+    )
+    carbon_price_paid_eur: Decimal = Field(
+        default=Decimal("0"), ge=0,
+        description=(
+            "Effective carbon price already paid in origin country (EUR/tCO2e). "
+            "0 when no recognised equivalent scheme applies (EU 2023/956 Art. 9)."
+        ),
+    )
 
 
 class ParsedInvoiceImporter(BaseModel):
@@ -1584,20 +1601,24 @@ def create_cbam_emissions(payload: CBAMEmissionsCreate):
             if not direct_col or not indirect_col or not method_col:
                 raise HTTPException(status_code=500, detail="Expected emissions columns not found on cbam_emissions.")
 
-            # ── Annex VI factor integration ───────────────────────────────────
-            # Fetch goods_line to obtain cn_code and net mass for factor lookup.
+            # ── Annex VI factor + installation registry integration ────────────
+            # Fetch goods_line for cn_code, net mass, and installation_id.
             gl_cols = _table_columns(conn, "cbam_goods_lines")
             cn_col = _pick_existing(gl_cols, ["cn_code"])
             mass_col = _pick_existing(gl_cols, ["net_mass_kg", "quantity"])
+            install_col = _pick_existing(gl_cols, ["installation_id"])
 
             factor_warnings: list[str] = []
             direct_value: Decimal | None = payload.direct_emissions_kgco2e
             indirect_value: Decimal | None = payload.indirect_emissions_kgco2e
 
             if cn_col and mass_col:
+                select_cols = f"{cn_col}, {mass_col}"
+                if install_col:
+                    select_cols += f", {install_col}"
                 gl_row = conn.execute(
                     text(
-                        f"SELECT {cn_col}, {mass_col} "
+                        f"SELECT {select_cols} "
                         f"FROM cbam.cbam_goods_lines WHERE id = :id LIMIT 1"
                     ),
                     {"id": str(payload.goods_line_id)},
@@ -1609,6 +1630,19 @@ def create_cbam_emissions(payload: CBAMEmissionsCreate):
                     net_mass_kg: Decimal | None = (
                         Decimal(str(raw_mass)) if raw_mass is not None else None
                     )
+
+                    # ── Installation registry check (EU 2023/956 Art. 10) ─────
+                    # Missing/invalid installation_id is reported as a factor
+                    # warning here (blocking enforcement is via data quality).
+                    if install_col:
+                        inst_id = gl_row.get(install_col)
+                        ir = validate_installation_id(
+                            installation_id=str(inst_id) if inst_id else None,
+                            method=payload.calculation_method.value,
+                            goods_line_id=str(payload.goods_line_id),
+                        )
+                        factor_warnings.extend(ir.missing)
+                        factor_warnings.extend(ir.warnings)
 
                     if (
                         payload.calculation_method == EmissionsMethod.default
@@ -1760,6 +1794,127 @@ def get_cbam_report_package(case_id: UUID):
             model_versions=model_versions,
         )
         return report_package
+
+
+@router.post("/cases/{case_id}/liability")
+def compute_case_liability(case_id: UUID, payload: CBAMLiabilityRequest):
+    """Compute CBAM liability (SEE formula + certificate count) for a case.
+
+    Fetches the latest emission record for every goods line in the case,
+    computes Specific Embedded Emissions (tCO2e/t) per EU 2023/1773 Art. 3,
+    then calculates the net CBAM liability and certificate count per
+    EU 2023/956 Arts. 9 and 21.
+
+    The EU ETS price must be provided by the caller (weekly average price
+    for the reporting quarter; source: EEX or ICE).  Carbon price already paid
+    in the origin country defaults to 0 (no deduction) when not supplied.
+    """
+    with engine.begin() as conn:
+        _manual_fk_check(conn, "cbam_cases", case_id, "case_id")
+
+        shipments_cols = _table_columns(conn, "cbam_shipments")
+        goods_cols = _table_columns(conn, "cbam_goods_lines")
+        emissions_cols = _table_columns(conn, "cbam_emissions")
+
+        case_fk_col = _pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
+        if not case_fk_col:
+            raise HTTPException(status_code=500, detail="No case FK column on cbam_shipments.")
+
+        mass_col = _pick_existing(goods_cols, ["net_mass_kg", "quantity"])
+        cn_col = _pick_existing(goods_cols, ["cn_code"])
+        if not mass_col or not cn_col:
+            raise HTTPException(status_code=500, detail="Expected columns not found on cbam_goods_lines.")
+
+        direct_col = _pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
+        indirect_col = _pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
+        if not direct_col or not indirect_col:
+            raise HTTPException(status_code=500, detail="Expected emission columns not found.")
+
+        rows = conn.execute(
+            text(
+                f"""
+                WITH latest_emissions AS (
+                    SELECT e.goods_line_id,
+                           e.{direct_col}   AS direct_kgco2e,
+                           e.{indirect_col} AS indirect_kgco2e
+                    FROM cbam.cbam_emissions e
+                    INNER JOIN (
+                        SELECT goods_line_id, MAX(version) AS max_ver
+                        FROM cbam.cbam_emissions
+                        GROUP BY goods_line_id
+                    ) mx ON mx.goods_line_id = e.goods_line_id
+                        AND mx.max_ver = e.version
+                )
+                SELECT
+                    gl.id          AS goods_line_id,
+                    gl.{cn_col}    AS cn_code,
+                    gl.{mass_col}  AS net_mass_kg,
+                    COALESCE(le.direct_kgco2e, 0)   AS direct_kgco2e,
+                    COALESCE(le.indirect_kgco2e, 0) AS indirect_kgco2e
+                FROM cbam.cbam_goods_lines gl
+                INNER JOIN cbam.cbam_shipments s ON s.id = gl.shipment_id
+                LEFT  JOIN latest_emissions le ON le.goods_line_id = gl.id
+                WHERE s.{case_fk_col} = :case_id
+                ORDER BY gl.id
+                """
+            ),
+            {"case_id": str(case_id)},
+        ).mappings().all()
+
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No goods lines found for this case. Upload a document and record emissions first.",
+        )
+
+    goods_lines = [
+        {
+            "goods_line_id": str(row["goods_line_id"]),
+            "cn_code": str(row["cn_code"] or ""),
+            "net_mass_kg": Decimal(str(row["net_mass_kg"] or 0)),
+            "direct_kgco2e": Decimal(str(row["direct_kgco2e"] or 0)),
+            "indirect_kgco2e": Decimal(str(row["indirect_kgco2e"] or 0)),
+        }
+        for row in rows
+    ]
+
+    result = compute_cbam_liability(
+        goods_lines=goods_lines,
+        eu_ets_price_eur=payload.eu_ets_price_eur,
+        carbon_price_paid_eur=payload.carbon_price_paid_eur,
+    )
+
+    return {
+        "case_id": str(case_id),
+        "eu_ets_price_eur": result.eu_ets_price_eur,
+        "carbon_price_paid_eur": result.carbon_price_paid_eur,
+        "goods_lines": [
+            {
+                "goods_line_id": gl.goods_line_id,
+                "cn_code": gl.cn_code,
+                "net_mass_kg": gl.net_mass_kg,
+                "net_mass_t": gl.net_mass_t,
+                "direct_kgco2e": gl.direct_kgco2e,
+                "indirect_kgco2e": gl.indirect_kgco2e,
+                "total_kgco2e": gl.total_kgco2e,
+                "see_direct_tco2e_per_t": gl.see_direct_tco2e_per_t,
+                "see_indirect_tco2e_per_t": gl.see_indirect_tco2e_per_t,
+                "see_total_tco2e_per_t": gl.see_total_tco2e_per_t,
+                "embedded_tco2e": gl.embedded_tco2e,
+            }
+            for gl in result.goods_lines
+        ],
+        "total_net_mass_t": result.total_net_mass_t,
+        "total_direct_kgco2e": result.total_direct_kgco2e,
+        "total_indirect_kgco2e": result.total_indirect_kgco2e,
+        "total_embedded_tco2e": result.total_embedded_tco2e,
+        "carbon_price_deduction_tco2e": result.carbon_price_deduction_tco2e,
+        "net_liability_tco2e": result.net_liability_tco2e,
+        "gross_financial_liability_eur": result.gross_financial_liability_eur,
+        "net_financial_liability_eur": result.net_financial_liability_eur,
+        "cbam_certificates": result.cbam_certificates,
+        "regulation_refs": result.regulation_refs,
+    }
 
 
 @router.get("/cases/{case_id}/explain")

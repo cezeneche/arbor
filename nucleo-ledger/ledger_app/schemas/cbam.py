@@ -129,3 +129,54 @@ class CBAMCaseSummaryRead(BaseModel):
     case_id: UUID
     totals: CBAMSummaryTotals
     goods_lines: list[CBAMGoodsLineSummary]
+
+
+# ── Liability calculation schemas ─────────────────────────────────────────────
+
+class CBAMLiabilityRequest(BaseModel):
+    """Input for CBAM liability calculation (EU 2023/956 Arts. 9 and 21)."""
+    eu_ets_price_eur: Decimal = Field(
+        ..., gt=0,
+        description="EU ETS allowance price for the reporting period (EUR/tCO2e).",
+    )
+    carbon_price_paid_eur: Decimal = Field(
+        default=Decimal("0"), ge=0,
+        description=(
+            "Effective carbon price already paid in the origin country (EUR/tCO2e). "
+            "0 when no recognised equivalent carbon pricing scheme applies "
+            "(EU 2023/956 Art. 9)."
+        ),
+    )
+
+
+class GoodsLineSEERead(BaseModel):
+    """SEE breakdown for a single goods line."""
+    goods_line_id: str
+    cn_code: str
+    net_mass_kg: Decimal
+    net_mass_t: Decimal
+    direct_kgco2e: Decimal
+    indirect_kgco2e: Decimal
+    total_kgco2e: Decimal
+    see_direct_tco2e_per_t: Decimal
+    see_indirect_tco2e_per_t: Decimal
+    see_total_tco2e_per_t: Decimal
+    embedded_tco2e: Decimal
+
+
+class CBAMLiabilityRead(BaseModel):
+    """Full CBAM liability calculation result."""
+    case_id: str
+    eu_ets_price_eur: Decimal
+    carbon_price_paid_eur: Decimal
+    goods_lines: list[GoodsLineSEERead]
+    total_net_mass_t: Decimal
+    total_direct_kgco2e: Decimal
+    total_indirect_kgco2e: Decimal
+    total_embedded_tco2e: Decimal
+    carbon_price_deduction_tco2e: Decimal
+    net_liability_tco2e: Decimal
+    gross_financial_liability_eur: Decimal
+    net_financial_liability_eur: Decimal
+    cbam_certificates: int
+    regulation_refs: list[str]
