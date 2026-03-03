@@ -83,6 +83,16 @@ def sha256_hex(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def bytes_sha256_hex(data: bytes) -> str:
+    """SHA-256 of raw binary data (e.g. original PDF bytes).
+
+    Use this — not sha256_hex() — when hashing file uploads.  sha256_hex()
+    first encodes a string to UTF-8, so it cannot reliably round-trip binary
+    content and would not produce the standard IETF/X.509 file hash.
+    """
+    return hashlib.sha256(data).hexdigest()
+
+
 class FileSystemSnapshotStore:
     def __init__(self, root_dir: Path):
         self.root_dir = root_dir

@@ -37,6 +37,7 @@ from ledger_app.services.gemini_structured_extractor import extract_structured_w
 from ledger_app.services.llama_structured_extractor import compare_extractions
 from ledger_app.services.llama_orchestrator import LlamaOrchestrator
 from ledger_app.services.orchestration import llama_orchestrator as ingest_orchestrator
+from ledger_app.services.snapshot_store import bytes_sha256_hex
 from ledger_app.services.snapshot_store import canonical_json
 from ledger_app.services.snapshot_store import get_snapshot_store
 from ledger_app.services.snapshot_store import sha256_hex
@@ -366,6 +367,12 @@ def snapshot_cbam_compliance_pack(case_id: str, compliance_pack: object, parent_
 
 
 def _document_sha256_from_extraction_snapshot(case_id: str) -> str | None:
+    """Return the SHA-256 of the source document for this case.
+
+    Prefers the ``document_sha256`` field written at upload time (hash of the
+    raw binary file bytes).  Falls back to ``sha256_hex(raw_text)`` for
+    snapshots created before task #9 was implemented.
+    """
     try:
         snapshot = get_snapshot_store().latest_snapshot_by_stage(case_id, "extraction_v1")
     except Exception:
@@ -380,6 +387,12 @@ def _document_sha256_from_extraction_snapshot(case_id: str) -> str | None:
     if not isinstance(payload, dict):
         return None
 
+    # Prefer the raw-bytes hash written at upload time (task #9).
+    doc_sha256 = payload.get("document_sha256")
+    if isinstance(doc_sha256, str) and doc_sha256:
+        return doc_sha256
+
+    # Legacy fallback: derive from extracted text.
     raw_text = payload.get("raw_text")
     if not isinstance(raw_text, str) or not raw_text:
         return None
@@ -1021,6 +1034,7 @@ async def create_cbam_document(case_id: UUID, file: UploadFile = File(...)):
     stored_path = target_dir / f"{document_id}_{safe_filename}"
 
     content = await file.read()
+    document_sha256 = bytes_sha256_hex(content)
     stored_path.write_bytes(content)
     extraction = extract_cbam_document(str(stored_path))
 
@@ -1028,6 +1042,7 @@ async def create_cbam_document(case_id: UUID, file: UploadFile = File(...)):
         "case_id": str(case_id),
         "document_id": document_id,
         "stored_path": str(stored_path),
+        "document_sha256": document_sha256,
         "extraction": extraction,
     }
 
@@ -1348,6 +1363,9 @@ async def create_cbam_draft_from_document(
 
     try:
         file_bytes = await file.read()
+        # Hash the raw bytes immediately — this becomes the immutable chain root
+        # for the entire audit trail (EU 2023/1773 auditability requirement).
+        document_sha256_at_upload = bytes_sha256_hex(file_bytes)
         try:
             # Keep these assignments explicit so test monkeypatches on cbam_api symbols
             # continue to control the orchestration flow.
@@ -1544,6 +1562,10 @@ async def create_cbam_draft_from_document(
         case_id_for_snapshot = str(created.get("case_id"))
         parent_hash: str | None = None
         extraction_stage_payload = {
+            # document_sha256: SHA-256 of the raw upload bytes — immutable chain root.
+            # This field makes the snapshot chain cryptographically traceable back to
+            # the original source file (EU 2023/1773 Art. 6 auditability requirement).
+            "document_sha256": document_sha256_at_upload,
             "raw_text": raw_text,
             "layout": layout_payload,
             "routing_trace": routing_trace,
@@ -1601,6 +1623,7 @@ async def create_cbam_draft_from_document(
             "created": created,
             "warnings": merged_warnings,
             "extraction_validation": extraction_validation,
+            "document_sha256": document_sha256_at_upload,
         }
     finally:
         pass
