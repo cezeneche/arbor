@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 
 from ledger_app.services.cbam_emission_factors import validate_against_defaults
+from ledger_app.services.cbam_installation_registry import validate_installation_id
 
 
 def _add_unique(items: list[str], value: str) -> None:
@@ -60,6 +61,8 @@ def _check_goods_line(
     if numeric_mass is None or numeric_mass <= 0:
         _add_unique(missing, f"goods_line:{goods_line_id}:mass_missing_or_non_positive")
 
+    # installation_id: always warn if absent; blocking check for "actual" is in
+    # _check_installation_registry (called separately with the method context).
     if not goods_line.get("installation_id"):
         _add_unique(warnings, f"goods_line:{goods_line_id}:installation_id_missing")
 
@@ -78,6 +81,41 @@ def _check_emissions(
     method = emissions.get("method") or emissions.get("calculation_method")
     if method != "actual":
         _add_unique(warnings, f"goods_line:{goods_line_id}:method_not_actual")
+
+
+def _check_installation_registry(
+    goods_line: dict[str, object],
+    emissions: dict[str, object] | None,
+    missing: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate installation_id against EU CBAM registry rules (EU 2023/956 Art. 10).
+
+    All registry issues (absent ID, bad format, unknown allowlist ID) are surfaced
+    as warnings rather than blocking missing issues.  The transitional period
+    tolerates incomplete installation registration; missing IDs are flagged for
+    human review but do not prevent declaration submission.
+    """
+    if emissions is None:
+        return
+
+    method = emissions.get("method") or emissions.get("calculation_method")
+    if not method:
+        return
+
+    goods_line_id = str(goods_line.get("id") or "")
+    installation_id = goods_line.get("installation_id")
+
+    result = validate_installation_id(
+        installation_id=str(installation_id) if installation_id else None,
+        method=str(method),
+        goods_line_id=goods_line_id,
+    )
+    # All registry issues go to warnings (not blocking missing) at data-quality level.
+    for issue in result.missing:
+        _add_unique(warnings, issue)
+    for w in result.warnings:
+        _add_unique(warnings, w)
 
 
 def _check_default_factors(
@@ -147,6 +185,7 @@ def evaluate_cbam_data_quality(
 
             _check_goods_line(goods_line, missing, warnings)
             _check_emissions(goods_line, emissions, missing, warnings)
+            _check_installation_registry(goods_line, emissions, missing, warnings)
             _check_default_factors(goods_line, emissions, warnings)
 
     penalty = (40 * len(missing)) + (10 * len(warnings))
