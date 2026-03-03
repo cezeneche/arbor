@@ -26,6 +26,10 @@ from ledger_app.services.document_text_extractor import extract_document_from_up
 from ledger_app.services.cbam_extractor import extract as extract_cbam_document
 from ledger_app.services.cbam_emission_factors import compute_see_from_defaults, validate_against_defaults
 from ledger_app.services.cbam_calculation_service import compute_cbam_liability
+from ledger_app.services.cbam_carbon_pricing import (
+    get_all_recognised_schemes,
+    lookup_carbon_pricing_scheme,
+)
 from ledger_app.services.cbam_installation_registry import validate_installation_id
 from ledger_app.services.cbam_scope import ScopeStatus, determine_cbam_scope
 from ledger_app.services.cbam_taric import CBAMCodeNotInScope, lookup_sector
@@ -99,6 +103,13 @@ class CBAMLiabilityRequest(BaseModel):
         description=(
             "Effective carbon price already paid in origin country (EUR/tCO2e). "
             "0 when no recognised equivalent scheme applies (EU 2023/956 Art. 9)."
+        ),
+    )
+    origin_country: str | None = Field(
+        default=None,
+        description=(
+            "ISO 3166-1 alpha-2 origin country. When provided, the system "
+            "auto-detects whether a recognised Art. 9 carbon pricing scheme applies."
         ),
     )
 
@@ -878,6 +889,35 @@ def cbam_scope_check(payload: CBAMScopeCheckRequest):
         "importer_eori": result.importer_eori,
         "reasons": result.reasons,
         "regulation_refs": result.regulation_refs,
+    }
+
+
+@router.get("/carbon-pricing-schemes")
+def list_carbon_pricing_schemes():
+    """List all third-country carbon pricing schemes recognised for Art. 9 deduction.
+
+    Returns the table of origin countries that have a carbon pricing mechanism
+    recognised by the EU under EU Regulation 2023/956 Article 9.  When goods
+    originate from one of these countries and a carbon price has been paid, the
+    CBAM liability can be reduced proportionally.
+
+    Countries whose ETS is *linked* to the EU ETS (Annex II: IS, LI, NO, CH)
+    are excluded from CBAM entirely and therefore do not appear in this list.
+    """
+    schemes = get_all_recognised_schemes()
+    return {
+        "schemes": [
+            {
+                "country_code": s.country_code,
+                "scheme_name": s.scheme_name,
+                "scheme_type": s.scheme_type,
+                "regulation_ref": s.regulation_ref,
+                "notes": s.notes,
+            }
+            for s in schemes
+        ],
+        "count": len(schemes),
+        "regulation_ref": "EU Regulation 2023/956, Article 9",
     }
 
 
@@ -1930,16 +1970,26 @@ def compute_case_liability(case_id: UUID, payload: CBAMLiabilityRequest):
         for row in rows
     ]
 
+    # Auto-detect recognised Art. 9 carbon pricing scheme for origin country
+    scheme = lookup_carbon_pricing_scheme(payload.origin_country)
+
     result = compute_cbam_liability(
         goods_lines=goods_lines,
         eu_ets_price_eur=payload.eu_ets_price_eur,
         carbon_price_paid_eur=payload.carbon_price_paid_eur,
+        origin_country=payload.origin_country,
+        carbon_pricing_scheme_name=scheme.scheme_name if scheme else None,
+        carbon_pricing_scheme_type=scheme.scheme_type if scheme else None,
     )
 
     return {
         "case_id": str(case_id),
         "eu_ets_price_eur": result.eu_ets_price_eur,
         "carbon_price_paid_eur": result.carbon_price_paid_eur,
+        "origin_country": result.origin_country,
+        "carbon_pricing_scheme_applies": scheme is not None,
+        "carbon_pricing_scheme_name": result.carbon_pricing_scheme_name,
+        "carbon_pricing_scheme_type": result.carbon_pricing_scheme_type,
         "goods_lines": [
             {
                 "goods_line_id": gl.goods_line_id,

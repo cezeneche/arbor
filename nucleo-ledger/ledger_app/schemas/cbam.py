@@ -147,6 +147,13 @@ class CBAMLiabilityRequest(BaseModel):
             "(EU 2023/956 Art. 9)."
         ),
     )
+    origin_country: str | None = Field(
+        default=None,
+        description=(
+            "ISO 3166-1 alpha-2 origin country code. When supplied, the system "
+            "auto-detects whether a recognised Art. 9 carbon pricing scheme applies."
+        ),
+    )
 
 
 class GoodsLineSEERead(BaseModel):
@@ -169,6 +176,10 @@ class CBAMLiabilityRead(BaseModel):
     case_id: str
     eu_ets_price_eur: Decimal
     carbon_price_paid_eur: Decimal
+    origin_country: str | None
+    carbon_pricing_scheme_applies: bool
+    carbon_pricing_scheme_name: str | None
+    carbon_pricing_scheme_type: str | None
     goods_lines: list[GoodsLineSEERead]
     total_net_mass_t: Decimal
     total_direct_kgco2e: Decimal

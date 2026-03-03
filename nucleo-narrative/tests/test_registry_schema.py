@@ -273,6 +273,22 @@ class TestEmissionsDetermination:
     def test_carbon_price_paid_defaults_none(self):
         assert self._det()["carbonPricePaidEurPerTco2e"] is None
 
+    def test_carbon_price_paid_populated_when_set(self):
+        """carbon_price_paid_eur_per_tco2e at pack level flows into each goods line."""
+        pack = _make_pack()
+        pack["carbon_price_paid_eur_per_tco2e"] = 45.0
+        result = serialise_to_registry_schema(pack)
+        det = result["importEntries"][0]["goods"][0]["emissionsDetermination"]
+        assert det["carbonPricePaidEurPerTco2e"] == 45.0
+
+    def test_carbon_price_paid_zero_stays_none(self):
+        """Explicit 0 is treated as 'no scheme applies' → None."""
+        pack = _make_pack()
+        pack["carbon_price_paid_eur_per_tco2e"] = 0.0
+        result = serialise_to_registry_schema(pack)
+        det = result["importEntries"][0]["goods"][0]["emissionsDetermination"]
+        assert det["carbonPricePaidEurPerTco2e"] is None
+
     def test_zero_emissions_when_no_record(self):
         det = self._det(method=None)
         assert det["directEmbeddedEmissionsTco2e"] == 0.0

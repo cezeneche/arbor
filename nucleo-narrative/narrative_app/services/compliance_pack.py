@@ -166,6 +166,14 @@ def serialise_to_registry_schema(compliance_pack: dict) -> dict:
     year = int(case.get("reporting_year") or 0)
     quarter = int(case.get("reporting_quarter") or 0)
 
+    # EU 2023/956 Art. 9 — carbon price paid in origin country (EUR/tCO2e).
+    # Set at compliance pack level; applies uniformly to all goods lines.
+    # None when no recognised equivalent carbon pricing scheme applies.
+    _cpp_raw = compliance_pack.get("carbon_price_paid_eur_per_tco2e")
+    _carbon_price_paid: float | None = (
+        float(_cpp_raw) if _cpp_raw is not None and float(_cpp_raw) > 0 else None
+    )
+
     # ── Import entries ────────────────────────────────────────────────────────
     import_entries: list[dict] = []
     for shipment_bundle in (rp.get("shipments") or []):
@@ -209,9 +217,10 @@ def serialise_to_registry_schema(compliance_pack: dict) -> dict:
                     "directEmbeddedEmissionsTco2e": _kg_to_tco2e(direct_kg),
                     "indirectEmbeddedEmissionsTco2e": _kg_to_tco2e(indirect_kg),
                     "totalEmbeddedEmissionsTco2e": _kg_to_tco2e(total_kg),
-                    # Populated by caller if a carbon price deduction applies
-                    # (EU 2023/956 Art. 9); None = no recognised scheme in origin.
-                    "carbonPricePaidEurPerTco2e": None,
+                    # EU 2023/956 Art. 9: carbon price already paid in origin country.
+                    # Populated from compliance_pack["carbon_price_paid_eur_per_tco2e"]
+                    # when a recognised third-country scheme applies; None otherwise.
+                    "carbonPricePaidEurPerTco2e": _carbon_price_paid,
                 },
             })
 

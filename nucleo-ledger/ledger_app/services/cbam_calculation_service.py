@@ -90,6 +90,11 @@ class CBAMLiabilityResult:
     # CBAM certificates: 1 certificate = 1 tCO2e, rounded up (Art. 22(5))
     cbam_certificates: int
 
+    # Origin-country carbon pricing scheme (Art. 9 deduction context)
+    origin_country: str | None = None
+    carbon_pricing_scheme_name: str | None = None
+    carbon_pricing_scheme_type: str | None = None
+
     regulation_refs: list[str] = field(default_factory=lambda: [
         "EU Regulation 2023/956, Article 9 (carbon price deduction)",
         "EU Regulation 2023/956, Article 21 (CBAM certificates to surrender)",
@@ -139,6 +144,9 @@ def compute_cbam_liability(
     goods_lines: list[Mapping[str, Any]],
     eu_ets_price_eur: Decimal,
     carbon_price_paid_eur: Decimal = _ZERO,
+    origin_country: str | None = None,
+    carbon_pricing_scheme_name: str | None = None,
+    carbon_pricing_scheme_type: str | None = None,
 ) -> CBAMLiabilityResult:
     """Compute CBAM liability for a reporting case.
 
@@ -245,6 +253,9 @@ def compute_cbam_liability(
         gross_financial_liability_eur=gross_financial,
         net_financial_liability_eur=net_financial,
         cbam_certificates=certificates,
+        origin_country=origin_country,
+        carbon_pricing_scheme_name=carbon_pricing_scheme_name,
+        carbon_pricing_scheme_type=carbon_pricing_scheme_type,
     )
 
 

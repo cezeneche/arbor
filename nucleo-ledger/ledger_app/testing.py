@@ -190,6 +190,32 @@ class FakeConnection:
 
             return _Result(rows=[row])
 
+        if "WITH latest_emissions AS" in sql and "AS goods_line_id" in sql:
+            # Per-goods-line query from POST /cases/{id}/liability
+            case_id = params["case_id"]
+            shipment_ids = [s["id"] for s in self.shipments.values() if s.get("case_id") == case_id]
+            goods = sorted(
+                [g for g in self.goods_lines.values() if g.get("shipment_id") in shipment_ids],
+                key=lambda g: g.get("id", ""),
+            )
+            rows = []
+            for g in goods:
+                goods_em = [e for e in self.emissions.values() if e.get("goods_line_id") == g["id"]]
+                if goods_em:
+                    latest = sorted(goods_em, key=lambda x: int(x.get("version") or 0), reverse=True)[0]
+                    direct = latest.get("direct_embedded_kgco2e", 0)
+                    indirect = latest.get("indirect_embedded_kgco2e", 0)
+                else:
+                    direct = indirect = 0
+                rows.append({
+                    "goods_line_id": g["id"],
+                    "cn_code": g.get("cn_code", ""),
+                    "net_mass_kg": g.get("quantity", 0),
+                    "direct_kgco2e": direct,
+                    "indirect_kgco2e": indirect,
+                })
+            return _Result(rows=rows)
+
         if "WITH latest_emissions AS" in sql:
             case_id = params["case_id"]
             shipment_ids = [s["id"] for s in self.shipments.values() if s.get("case_id") == case_id]
