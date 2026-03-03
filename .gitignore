@@ -31,6 +31,9 @@ narrative_output.json
 .mypy_cache/
 
 
+# Runtime storage (uploaded files, processing artifacts)
+storage/
+
 # Generated CBAM demo outputs
 fixtures/ledger/cbam_*_TEST-*.json
 fixtures/narrative/cbam_*_TEST-*.json

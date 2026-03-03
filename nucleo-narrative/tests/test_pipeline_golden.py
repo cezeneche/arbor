@@ -59,11 +59,11 @@ def assert_narrative_schema(final_obj: dict) -> None:
 
 
 @pytest.fixture()
-def client():
+def client(make_auth_headers):
     # Import app lazily so fixture paths resolve and env isn't required at import time
     from narrative_app.main import app
 
-    return TestClient(app)
+    return TestClient(app, headers=make_auth_headers(scopes=["narrative:run"]))
 
 
 def test_pipeline_golden(monkeypatch, client):

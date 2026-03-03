@@ -10,9 +10,15 @@ sys.path.insert(0, str(BASE_DIR))
 
 from narrative_app.main import app
 from narrative_app.services.ledger_client import LedgerClientError
+from shared_auth.testing import make_test_token
 
 
-client = TestClient(app)
+client = TestClient(
+    app,
+    headers={
+        "Authorization": f"Bearer {make_test_token(scopes=['narrative:run'])}",
+    },
+)
 
 
 def test_pipeline_returns_structured_ledger_error(monkeypatch):

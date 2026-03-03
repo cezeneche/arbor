@@ -36,7 +36,7 @@ class _FakeClient:
     def __exit__(self, exc_type, exc, tb):
         return False
 
-    def get(self, _url: str):
+    def get(self, _url: str, headers=None):
         self.calls += 1
         if not self._steps:
             raise AssertionError("No fake response step left")

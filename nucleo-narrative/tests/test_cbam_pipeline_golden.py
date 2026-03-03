@@ -9,10 +9,10 @@ sys.path.insert(0, str(BASE_DIR))
 
 
 @pytest.fixture()
-def client():
+def client(make_auth_headers):
     from narrative_app.main import app
 
-    return TestClient(app)
+    return TestClient(app, headers=make_auth_headers(scopes=["narrative:run"]))
 
 
 def test_cbam_packet_generates_narrative(monkeypatch, client):

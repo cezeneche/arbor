@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from typing import Literal
+from shared_auth.models import AuthContext
+from shared_auth.dependencies import require_scopes
 
 from narrative_app.services.ledger_client import (
     LedgerClientError,
@@ -73,7 +75,13 @@ def _build_cbam_narrative(packet: dict) -> dict:
 
 
 @router.post("/cases/{case_id}/narrative/pipeline")
-def run_pipeline(case_id: str, packet_kind: Literal["legacy", "cbam"] = "legacy"):
+def run_pipeline(
+    case_id: str,
+    packet_kind: Literal["legacy", "cbam"] = "legacy",
+    auth_context: AuthContext = Depends(require_scopes(["narrative:run"])),
+):
+    # TODO(tenant): apply tenant_id filtering when ledger APIs become tenant-aware.
+    _ = getattr(auth_context, "tenant_id", None)
     # 1) Fetch structured packet from núcleo-ledger
     try:
         packet = (

@@ -10,7 +10,13 @@ QTR=1
 
 echo "Using importer_eori=$EORI year=$YEAR quarter=$QTR"
 
+TOKEN=$(curl -s -X POST "$API/auth/token" \
+  -H "Content-Type: application/json" \
+  -d '{"sub":"smoke-user","tenant_id":"smoke-tenant","scopes":["narrative:run"]}' \
+| python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
 CASE_ID=$(curl -s -X POST "$API/api/cbam/cases" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"importer_name\":\"Alpha Steel Ltd\",\"importer_eori\":\"$EORI\",\"reporting_year\":$YEAR,\"reporting_quarter\":$QTR}" \
 | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
@@ -18,6 +24,7 @@ CASE_ID=$(curl -s -X POST "$API/api/cbam/cases" \
 echo "CASE_ID=$CASE_ID"
 
 SHIPMENT_ID=$(curl -s -X POST "$API/api/cbam/shipments" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"cbam_case_id\":\"$CASE_ID\",\"supplier_name\":\"Supplier A\",\"origin_country\":\"TR\",\"arrival_date\":\"2025-01-15\"}" \
 | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
@@ -25,6 +32,7 @@ SHIPMENT_ID=$(curl -s -X POST "$API/api/cbam/shipments" \
 echo "SHIPMENT_ID=$SHIPMENT_ID"
 
 GOODS_LINE_ID=$(curl -s -X POST "$API/api/cbam/goods-lines" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"shipment_id\":\"$SHIPMENT_ID\",\"cn_code\":\"720711\",\"net_mass_kg\":10000}" \
 | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
@@ -32,6 +40,7 @@ GOODS_LINE_ID=$(curl -s -X POST "$API/api/cbam/goods-lines" \
 echo "GOODS_LINE_ID=$GOODS_LINE_ID"
 
 EMISSIONS_ID=$(curl -s -X POST "$API/api/cbam/emissions" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"goods_line_id\":\"$GOODS_LINE_ID\",\"direct_emissions_kgco2e\":50000,\"indirect_emissions_kgco2e\":10000,\"calculation_method\":\"actual\",\"version\":1}" \
 | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
@@ -39,7 +48,7 @@ EMISSIONS_ID=$(curl -s -X POST "$API/api/cbam/emissions" \
 echo "EMISSIONS_ID=$EMISSIONS_ID"
 
 echo "SUMMARY:"
-curl -s "$API/api/cbam/cases/$CASE_ID/summary" | python3 -m json.tool
+curl -s -H "Authorization: Bearer $TOKEN" "$API/api/cbam/cases/$CASE_ID/summary" | python3 -m json.tool
 
 echo "REPORT PACKAGE:"
-curl -s "$API/api/cbam/cases/$CASE_ID/report-package" | python3 -m json.tool
+curl -s -H "Authorization: Bearer $TOKEN" "$API/api/cbam/cases/$CASE_ID/report-package" | python3 -m json.tool

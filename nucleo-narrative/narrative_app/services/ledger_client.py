@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+from shared_auth.jwt import create_access_token
 
 from narrative_app.core.config import settings
 
@@ -57,10 +58,17 @@ def _fetch_json(url: str) -> dict:
     )
     last_request_error: Exception | None = None
 
+    token, _ = create_access_token(
+        sub="narrative-service",
+        tenant_id="service-tenant",
+        scopes=["narrative:run"],
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
     with httpx.Client(timeout=timeout) as client:
         for attempt in range(1, LEDGER_MAX_RETRIES + 1):
             try:
-                response = client.get(url)
+                response = client.get(url, headers=headers)
             except httpx.RequestError as exc:
                 last_request_error = exc
                 if attempt < LEDGER_MAX_RETRIES:

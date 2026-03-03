@@ -25,10 +25,10 @@ def load_json(path: Path):
 
 
 @pytest.fixture()
-def client():
+def client(make_auth_headers):
     from narrative_app.main import app
 
-    return TestClient(app)
+    return TestClient(app, headers=make_auth_headers(scopes=["narrative:run"]))
 
 
 def test_cbam_compliance_pack_golden(monkeypatch, client):

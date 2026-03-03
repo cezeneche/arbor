@@ -105,6 +105,13 @@ cd nucleo-narrative
 python -m uvicorn narrative_app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
+Or use service run scripts (sets local JWT defaults + enables dev token endpoint):
+
+```bash
+cd nucleo-ledger && ./run.sh
+cd nucleo-narrative && ./run.sh
+```
+
 ### 1) nucleo-ledger
 
 ```bash
@@ -112,7 +119,7 @@ cd nucleo-ledger
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn ledger_app.main:app --host 127.0.0.1 --port 8000 --reload
+PYTHONPATH=.:.. python -m uvicorn ledger_app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Health check:
@@ -128,7 +135,7 @@ cd nucleo-narrative
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn narrative_app.main:app --host 127.0.0.1 --port 8001 --reload
+PYTHONPATH=.:.. python -m uvicorn narrative_app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
 Health check:
@@ -141,9 +148,31 @@ curl -s http://127.0.0.1:8001/api/health
 
 Replace `{case_id}` with a real case UUID:
 
+Mint a local dev token first (requires `AUTH_DEV_TOKEN_ENDPOINT=true`):
+
 ```bash
-curl -s -X POST http://127.0.0.1:8001/api/cases/{case_id}/narrative/pipeline | python -m json.tool
+TOKEN=$(curl -s -X POST http://127.0.0.1:8000/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"sub":"dev-user","tenant_id":"dev-tenant","scopes":["narrative:run"]}' \
+  | python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
 ```
+
+```bash
+curl -s -X POST http://127.0.0.1:8001/api/cases/{case_id}/narrative/pipeline \
+  -H "Authorization: Bearer $TOKEN" | python -m json.tool
+```
+
+## Auth (JWT)
+
+- Public endpoints: `GET /health`, `GET /ready`, `GET /health/ready`.
+- Protected endpoints: all other `/api/*` routes require `Authorization: Bearer <token>`.
+- JWT validation: HS256, `iss`, `aud`, `exp`, and required claims `sub`, `tenant_id`.
+- Env config:
+  - `JWT_SECRET`
+  - `JWT_ISSUER` (default `scope3-agentic`)
+  - `JWT_AUDIENCE` (default `scope3-clients`)
+  - `JWT_EXPIRES_SECONDS` (default `3600`)
+  - `AUTH_DEV_TOKEN_ENDPOINT` (default `false`; enable only in local/dev)
 
 ## Docker Compose
 

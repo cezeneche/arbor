@@ -19,9 +19,23 @@ mkdir -p "$(dirname "$REPORT_OUT")" "$(dirname "$NARRATIVE_OUT")" "$(dirname "$C
 TMP_CREATE="$(mktemp)"
 TMP_PIPELINE="$(mktemp)"
 TMP_PAYLOAD="$(mktemp)"
-trap 'rm -f "$TMP_CREATE" "$TMP_PIPELINE" "$TMP_PAYLOAD"' EXIT
+TMP_TOKEN="$(mktemp)"
+trap 'rm -f "$TMP_CREATE" "$TMP_PIPELINE" "$TMP_PAYLOAD" "$TMP_TOKEN"' EXIT
 
 TODAY="$(date +%F)"
+
+echo "0) Minting dev JWT token..."
+TOKEN_CODE="$(curl -sS -o "$TMP_TOKEN" -w "%{http_code}" \
+  -X POST "$LEDGER_URL/auth/token" \
+  -H "Content-Type: application/json" \
+  -d '{"sub":"demo-user","tenant_id":"demo-tenant","scopes":["narrative:run"]}')"
+if [[ "$TOKEN_CODE" != "200" ]]; then
+  echo "Token mint failed (HTTP $TOKEN_CODE). Set AUTH_DEV_TOKEN_ENDPOINT=true on services." >&2
+  cat "$TMP_TOKEN" >&2
+  exit 1
+fi
+TOKEN="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[\"access_token\"])' "$TMP_TOKEN")"
+AUTH_HEADER="Authorization: Bearer $TOKEN"
 
 cat > "$TMP_PAYLOAD" <<JSON
 {
@@ -62,6 +76,7 @@ JSON
 echo "1) Creating CBAM draft from parsed invoice..."
 CREATE_CODE="$(curl -sS -o "$TMP_CREATE" -w "%{http_code}" \
   -X POST "$LEDGER_URL/api/cbam/drafts/from-parsed-invoice" \
+  -H "$AUTH_HEADER" \
   -H "Content-Type: application/json" \
   --data-binary "@$TMP_PAYLOAD")"
 if [[ "$CREATE_CODE" != "201" ]]; then
@@ -99,6 +114,7 @@ fi
 
 echo "2) Fetching CBAM report-package..."
 REPORT_CODE="$(curl -sS -o "$REPORT_OUT" -w "%{http_code}" \
+  -H "$AUTH_HEADER" \
   "$LEDGER_URL/api/cbam/cases/$CASE_ID/report-package")"
 if [[ "$REPORT_CODE" != "200" ]]; then
   echo "Report-package fetch failed (HTTP $REPORT_CODE)" >&2
@@ -108,7 +124,8 @@ fi
 
 echo "3) Running narrative pipeline..."
 PIPELINE_CODE="$(curl -sS -o "$TMP_PIPELINE" -w "%{http_code}" \
-  -X POST "$NARRATIVE_URL/api/cases/$CASE_ID/narrative/pipeline?packet_kind=cbam")"
+  -X POST "$NARRATIVE_URL/api/cases/$CASE_ID/narrative/pipeline?packet_kind=cbam" \
+  -H "$AUTH_HEADER")"
 if [[ "$PIPELINE_CODE" != "200" ]]; then
   echo "Narrative pipeline failed (HTTP $PIPELINE_CODE)" >&2
   cat "$TMP_PIPELINE" >&2
@@ -121,7 +138,8 @@ python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); fn=d.get("final_nar
 
 echo "4) Generating compliance pack..."
 COMPLIANCE_CODE="$(curl -sS -o "$COMPLIANCE_OUT" -w "%{http_code}" \
-  -X POST "$NARRATIVE_URL/api/cbam/cases/$CASE_ID/compliance-pack")"
+  -X POST "$NARRATIVE_URL/api/cbam/cases/$CASE_ID/compliance-pack" \
+  -H "$AUTH_HEADER")"
 if [[ "$COMPLIANCE_CODE" != "200" ]]; then
   echo "Compliance pack generation failed (HTTP $COMPLIANCE_CODE)" >&2
   cat "$COMPLIANCE_OUT" >&2

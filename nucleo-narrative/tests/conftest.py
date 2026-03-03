@@ -6,7 +6,6 @@ import pytest
 
 from shared_auth.testing import make_test_token
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 os.environ.setdefault("JWT_ISSUER", "scope3-agentic")
 os.environ.setdefault("JWT_AUDIENCE", "scope3-clients")
