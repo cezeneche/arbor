@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -836,7 +837,228 @@ class LlamaIndexCBAMExtractor:
             return {"status": "error", "message": str(e)}
 
 
-_EXTRACTOR: CBAMExtractor = LlamaIndexCBAMExtractor()
+class ClaudeCBAMExtractor:
+    """Production CBAM invoice extractor using Anthropic Claude.
+
+    Document text is loaded via LlamaIndex SimpleDirectoryReader (supports
+    PDF, DOCX, TXT).  Structured extraction is performed by Claude with a
+    CBAM-specific prompt.  The response is processed through the existing
+    ``_parse_structured_response`` + ``_build_extraction_payload`` pipeline
+    to preserve the full evidence-tracking chain.
+
+    When ``ANTHROPIC_API_KEY`` is not set the extractor falls back to
+    regex-only extraction (same behaviour as LlamaIndexCBAMExtractor when
+    LlamaIndex was not available).
+
+    Environment variables
+    ---------------------
+    ANTHROPIC_API_KEY       Required for live extraction.
+    CBAM_EXTRACTOR_MODEL    Claude model ID to use.
+                            Defaults to ``claude-haiku-4-5-20251001``.
+    """
+
+    _PROMPT = (
+        "You are a CBAM (Carbon Border Adjustment Mechanism) compliance specialist.\n"
+        "Extract structured data from the invoice/document text below.\n\n"
+        "Return ONLY a valid JSON object with this exact structure "
+        "(use null for any field not found):\n"
+        "{\n"
+        '  "importer_name": string | null,\n'
+        '  "importer_eori": "EU EORI number: 2-letter country code + digits" | null,\n'
+        '  "invoice_number": string | null,\n'
+        '  "invoice_date": "YYYY-MM-DD" | null,\n'
+        '  "origin_country": "ISO-3166-1 alpha-2 code of goods origin" | null,\n'
+        '  "incoterm": "3-letter Incoterm e.g. CIF FOB DAP" | null,\n'
+        '  "entry_reference": "customs entry / MRN reference" | null,\n'
+        '  "lines": [\n'
+        '    {\n'
+        '      "cn_code": "6-8 digit EU Combined Nomenclature code" | null,\n'
+        '      "description": string | null,\n'
+        '      "net_mass_kg": number | null,\n'
+        '      "direct_embedded_kgco2e": number | null,\n'
+        '      "indirect_embedded_kgco2e": number | null,\n'
+        '      "method": "actual" | "default" | "estimated" | null\n'
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        "Rules:\n"
+        "- CN codes must be 6-8 digit numeric EU Combined Nomenclature codes.\n"
+        "- method must be exactly one of: actual, default, estimated (or null).\n"
+        "- Do not include any text, markdown or explanation outside the JSON.\n\n"
+        "Document text:\n{document_text}"
+    )
+
+    def __init__(self, model: str | None = None) -> None:
+        self.model = model or os.getenv(
+            "CBAM_EXTRACTOR_MODEL", "claude-haiku-4-5-20251001"
+        )
+
+    def _call_claude(self, document_text: str) -> str:
+        import anthropic  # lazy import; fails gracefully if not installed
+
+        client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
+        message = client.messages.create(
+            model=self.model,
+            max_tokens=2048,
+            messages=[
+                {
+                    "role": "user",
+                    "content": self._PROMPT.replace(
+                        "{document_text}", document_text[:8000]
+                    ),
+                }
+            ],
+        )
+        return message.content[0].text
+
+    def _merge_claude_lines(
+        self,
+        payload: dict[str, Any],
+        claude_json: dict[str, Any],
+        evidence: list[dict[str, Any]],
+        raw_text: str,
+        pages: list[dict[str, Any]] | None,
+    ) -> None:
+        """Merge Claude-extracted line items into the payload.
+
+        Only applies when regex-based line extraction produced no results, so
+        Claude's output acts as a high-confidence supplement while the regex
+        fallback continues to be used when it finds data.
+        """
+        if payload.get("lines"):
+            return  # regex already found lines; Claude lines are supplemental
+
+        claude_lines = claude_json.get("lines")
+        if not isinstance(claude_lines, list):
+            return
+
+        lines: list[dict[str, Any]] = []
+        for i, cl in enumerate(claude_lines):
+            if not isinstance(cl, dict):
+                continue
+            cn_code = cl.get("cn_code")
+            if not cn_code:
+                continue
+
+            mass = _parse_number(str(cl["net_mass_kg"])) if cl.get("net_mass_kg") is not None else None
+            line: dict[str, Any] = {
+                "cn_code": str(cn_code),
+                "description": cl.get("description"),
+                "quantity": mass,
+                "quantity_unit": "kg" if mass is not None else None,
+                "net_mass_kg": mass,
+                "direct_embedded_kgco2e": (
+                    _parse_number(str(cl["direct_embedded_kgco2e"]))
+                    if cl.get("direct_embedded_kgco2e") is not None
+                    else None
+                ),
+                "indirect_embedded_kgco2e": (
+                    _parse_number(str(cl["indirect_embedded_kgco2e"]))
+                    if cl.get("indirect_embedded_kgco2e") is not None
+                    else None
+                ),
+                "method": _normalize_method(cl.get("method")),
+            }
+            lines.append(line)
+            _ensure_value_evidence(
+                evidence,
+                field=f"lines[{i}].cn_code",
+                value=cn_code,
+                text=raw_text,
+                source="claude_extraction",
+                pages=pages,
+            )
+
+        if lines:
+            payload["lines"] = lines
+
+    def extract(
+        self,
+        file_path: str,
+        layout: dict[str, Any] | None = None,
+        pages: list[dict[str, Any]] | None = None,
+    ) -> dict:
+        path = Path(file_path)
+        if not path.exists():
+            return {"status": "error", "message": f"File not found: {file_path}"}
+
+        evidence: list[dict[str, Any]] = []
+
+        # ── Load document text (LlamaIndex handles PDF / DOCX / TXT) ─────────
+        raw_text = ""
+        try:
+            from llama_index.core import SimpleDirectoryReader
+
+            documents = SimpleDirectoryReader(input_files=[str(path)]).load_data()
+            raw_text = "\n\n".join(
+                (getattr(doc, "text", "") or "").strip() for doc in documents
+            ).strip()
+        except Exception:
+            pass
+        if not raw_text:
+            raw_text = _read_raw_text(path)
+
+        # ── Claude structured extraction ──────────────────────────────────────
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if api_key and raw_text:
+            try:
+                response_text = self._call_claude(raw_text)
+
+                # Parse header fields through the evidence-tracking pipeline.
+                structured = _parse_structured_response(
+                    response_text,
+                    raw_text,
+                    layout=layout,
+                    evidence=evidence,
+                    pages=pages,
+                )
+                payload = _build_extraction_payload(
+                    raw_text,
+                    structured,
+                    layout=layout,
+                    evidence=evidence,
+                    pages=pages,
+                )
+
+                # Supplement with Claude's line-item array when regex found none.
+                try:
+                    start = response_text.find("{")
+                    end = response_text.rfind("}")
+                    if start != -1 and end > start:
+                        claude_json = json.loads(response_text[start : end + 1])
+                        self._merge_claude_lines(
+                            payload, claude_json, evidence, raw_text, pages
+                        )
+                except Exception:
+                    pass
+
+                payload["extractor"] = f"claude:{self.model}"
+                return payload
+            except Exception:
+                pass  # fall through to regex-only fallback
+
+        # ── Regex-only fallback (used when API key absent or call fails) ──────
+        structured = _parse_structured_response(
+            "{}",
+            raw_text,
+            layout=layout,
+            evidence=evidence,
+            pages=pages,
+        )
+        payload = _build_extraction_payload(
+            raw_text,
+            structured,
+            layout=layout,
+            evidence=evidence,
+            pages=pages,
+        )
+        payload["status"] = "parsed"
+        payload["fallback"] = "regex_only"
+        payload["extractor"] = "regex"
+        return payload
+
+
+_EXTRACTOR: CBAMExtractor = ClaudeCBAMExtractor()
 
 
 def extract(
