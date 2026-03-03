@@ -29,6 +29,9 @@ class _Result:
             raise AssertionError("Expected one row, found none")
         return self._rows[0]
 
+    def one_or_none(self):
+        return self._rows[0] if self._rows else None
+
     def scalar_one_or_none(self):
         return self._scalar
 
@@ -107,6 +110,17 @@ class FakeConnection:
             else:
                 raise AssertionError(f"Unexpected FK check SQL: {sql}")
             return _Result(scalar=exists)
+
+        # Goods-line factor lookup: SELECT cn_code, <mass_col> FROM cbam.cbam_goods_lines WHERE id = :id LIMIT 1
+        if (
+            "FROM cbam.cbam_goods_lines" in sql
+            and "WHERE id = :id" in sql
+            and "LIMIT 1" in sql
+            and "SELECT *" not in sql
+            and "SELECT 1" not in sql
+        ):
+            row = self.goods_lines.get(params["id"])
+            return _Result(rows=[row] if row else [])
 
         if "SELECT *" in sql and "FROM cbam.cbam_cases" in sql and "WHERE id = :id" in sql:
             row = self.cases.get(params["id"])

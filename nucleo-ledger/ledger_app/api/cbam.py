@@ -24,6 +24,7 @@ from ledger_app.services.cbam_explain import explain_metric
 from ledger_app.services.cbam_repair import repair_parsed_invoice
 from ledger_app.services.document_text_extractor import extract_document_from_upload
 from ledger_app.services.cbam_extractor import extract as extract_cbam_document
+from ledger_app.services.cbam_emission_factors import compute_see_from_defaults, validate_against_defaults
 from ledger_app.services.cbam_taric import CBAMCodeNotInScope, lookup_sector
 from ledger_app.services.gemini_structured_extractor import extract_structured_with_gemini
 from ledger_app.services.llama_structured_extractor import compare_extractions
@@ -75,10 +76,13 @@ class CBAMGoodsLineCreate(BaseModel):
 
 class CBAMEmissionsCreate(BaseModel):
     goods_line_id: UUID
-    direct_emissions_kgco2e: Decimal
-    indirect_emissions_kgco2e: Decimal
+    direct_emissions_kgco2e: Decimal | None = None
+    indirect_emissions_kgco2e: Decimal | None = None
     calculation_method: EmissionsMethod
     version: int = Field(..., ge=1)
+    # Optional: supply for iron/steel, aluminium, or hydrogen to select the
+    # correct Annex VI default value (e.g. "BF_BOF", "EAF", "primary", "SMR").
+    production_route: str | None = None
 
 
 class ParsedInvoiceImporter(BaseModel):
@@ -1580,16 +1584,89 @@ def create_cbam_emissions(payload: CBAMEmissionsCreate):
             if not direct_col or not indirect_col or not method_col:
                 raise HTTPException(status_code=500, detail="Expected emissions columns not found on cbam_emissions.")
 
+            # ── Annex VI factor integration ───────────────────────────────────
+            # Fetch goods_line to obtain cn_code and net mass for factor lookup.
+            gl_cols = _table_columns(conn, "cbam_goods_lines")
+            cn_col = _pick_existing(gl_cols, ["cn_code"])
+            mass_col = _pick_existing(gl_cols, ["net_mass_kg", "quantity"])
+
+            factor_warnings: list[str] = []
+            direct_value: Decimal | None = payload.direct_emissions_kgco2e
+            indirect_value: Decimal | None = payload.indirect_emissions_kgco2e
+
+            if cn_col and mass_col:
+                gl_row = conn.execute(
+                    text(
+                        f"SELECT {cn_col}, {mass_col} "
+                        f"FROM cbam.cbam_goods_lines WHERE id = :id LIMIT 1"
+                    ),
+                    {"id": str(payload.goods_line_id)},
+                ).mappings().one_or_none()
+
+                if gl_row:
+                    cn_code = str(gl_row[cn_col]) if gl_row[cn_col] else ""
+                    raw_mass = gl_row[mass_col]
+                    net_mass_kg: Decimal | None = (
+                        Decimal(str(raw_mass)) if raw_mass is not None else None
+                    )
+
+                    if (
+                        payload.calculation_method == EmissionsMethod.default
+                        and direct_value is None
+                        and net_mass_kg is not None
+                        and cn_code
+                    ):
+                        # Auto-compute direct and indirect from Annex VI defaults.
+                        computed = compute_see_from_defaults(
+                            cn_code, net_mass_kg, payload.production_route
+                        )
+                        if computed is not None:
+                            direct_value, indirect_value = computed
+                        else:
+                            factor_warnings.append(
+                                f"cbam_factors:no_default_factor:{cn_code} — "
+                                f"no Annex VI default available for this CN code; "
+                                f"values set to 0 (EU 2023/1773 Annex VI)"
+                            )
+                            direct_value = Decimal("0")
+                            indirect_value = Decimal("0")
+                    elif cn_code and net_mass_kg is not None:
+                        # Validate submitted values against Annex VI.
+                        vr = validate_against_defaults(
+                            cn_code,
+                            payload.calculation_method.value,
+                            direct_value,
+                            net_mass_kg,
+                            payload.production_route,
+                        )
+                        factor_warnings.extend(vr.warnings)
+
+            # Require explicit values for non-default methods or when auto-compute
+            # was not possible.
+            if direct_value is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "direct_emissions_kgco2e is required when calculation_method "
+                        "is not 'default' or no Annex VI default is available for "
+                        "this CN code (EU 2023/1773 Annex VI)"
+                    ),
+                )
+            if indirect_value is None:
+                indirect_value = Decimal("0")
+
             insert_payload: dict[str, object] = {
                 "id": str(uuid4()),
                 goods_line_fk_column: str(payload.goods_line_id),
-                direct_col: payload.direct_emissions_kgco2e,
-                indirect_col: payload.indirect_emissions_kgco2e,
+                direct_col: direct_value,
+                indirect_col: indirect_value,
                 method_col: payload.calculation_method.value,
                 "version": payload.version,
             }
 
             created = _insert_returning(conn, "cbam_emissions", insert_payload)
+            if factor_warnings:
+                created["factor_warnings"] = factor_warnings
             return created
     except IntegrityError:
         allowed = ", ".join(ALLOWED_EMISSIONS_METHODS)

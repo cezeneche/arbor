@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
+
+from ledger_app.services.cbam_emission_factors import validate_against_defaults
+
 
 def _add_unique(items: list[str], value: str) -> None:
     if value not in items:
@@ -76,6 +80,54 @@ def _check_emissions(
         _add_unique(warnings, f"goods_line:{goods_line_id}:method_not_actual")
 
 
+def _check_default_factors(
+    goods_line: dict[str, object],
+    emissions: dict[str, object] | None,
+    warnings: list[str],
+) -> None:
+    """Validate submitted emission values against published Annex VI defaults.
+
+    Issues warnings when submitted values deviate significantly from the
+    EU 2023/1773 Annex VI reference values.
+    """
+    if emissions is None:
+        return
+
+    cn_code = goods_line.get("cn_code")
+    if not cn_code:
+        return
+
+    method = emissions.get("method") or emissions.get("calculation_method")
+    if method not in ("default", "actual"):
+        return
+
+    mass_raw = goods_line.get("net_mass_kg") or goods_line.get("quantity")
+    try:
+        net_mass_kg: Decimal | None = Decimal(str(mass_raw)) if mass_raw is not None else None
+    except (InvalidOperation, TypeError):
+        net_mass_kg = None
+
+    direct_raw = (
+        emissions.get("direct_emissions_kgco2e")
+        or emissions.get("direct_embedded_kgco2e")
+    )
+    try:
+        direct_kgco2e: Decimal | None = (
+            Decimal(str(direct_raw)) if direct_raw is not None else None
+        )
+    except (InvalidOperation, TypeError):
+        direct_kgco2e = None
+
+    vr = validate_against_defaults(
+        str(cn_code),
+        str(method),
+        direct_kgco2e,
+        net_mass_kg,
+    )
+    for w in vr.warnings:
+        _add_unique(warnings, w)
+
+
 def evaluate_cbam_data_quality(
     case_row: dict[str, object],
     shipments_payload: list[dict[str, object]],
@@ -95,6 +147,7 @@ def evaluate_cbam_data_quality(
 
             _check_goods_line(goods_line, missing, warnings)
             _check_emissions(goods_line, emissions, missing, warnings)
+            _check_default_factors(goods_line, emissions, warnings)
 
     penalty = (40 * len(missing)) + (10 * len(warnings))
     score = max(0.0, 100.0 - float(penalty))
