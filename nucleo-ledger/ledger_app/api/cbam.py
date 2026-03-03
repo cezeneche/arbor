@@ -27,6 +27,7 @@ from ledger_app.services.cbam_extractor import extract as extract_cbam_document
 from ledger_app.services.cbam_emission_factors import compute_see_from_defaults, validate_against_defaults
 from ledger_app.services.cbam_calculation_service import compute_cbam_liability
 from ledger_app.services.cbam_installation_registry import validate_installation_id
+from ledger_app.services.cbam_scope import ScopeStatus, determine_cbam_scope
 from ledger_app.services.cbam_taric import CBAMCodeNotInScope, lookup_sector
 from ledger_app.services.gemini_structured_extractor import extract_structured_with_gemini
 from ledger_app.services.llama_structured_extractor import compare_extractions
@@ -99,6 +100,23 @@ class CBAMLiabilityRequest(BaseModel):
             "Effective carbon price already paid in origin country (EUR/tCO2e). "
             "0 when no recognised equivalent scheme applies (EU 2023/956 Art. 9)."
         ),
+    )
+
+
+class CBAMScopeCheckRequest(BaseModel):
+    """Input for POST /cbam/scope-check (EU 2023/956 Art. 2)."""
+    cn_code: str = Field(..., min_length=1, description="EU CN code of the imported goods.")
+    origin_country: str | None = Field(
+        default=None,
+        description="ISO 3166-1 alpha-2 country of origin (e.g. 'CN', 'IN').",
+    )
+    consignment_value_eur: Decimal | None = Field(
+        default=None, ge=0,
+        description="Intrinsic value of the consignment in EUR (excl. transport/insurance).",
+    )
+    importer_eori: str | None = Field(
+        default=None,
+        description="EU EORI of the importer or their customs representative.",
     )
 
 
@@ -827,6 +845,40 @@ def _build_case_shipments_payload(conn: Connection, case_id: UUID) -> list[dict[
         )
 
     return shipments_payload
+
+
+@router.post("/scope-check")
+def cbam_scope_check(payload: CBAMScopeCheckRequest):
+    """Pre-import CBAM scope determination (EU 2023/956 Art. 2).
+
+    Checks three conditions in sequence:
+    1. Annex I — is the CN code covered by CBAM?
+    2. Annex II / EU origin — is the country of origin excluded?
+    3. De minimis — is the consignment value ≤ EUR 150?
+    4. EORI format — does the importer EORI match the EU format?
+
+    Returns one of:
+    - ``in_scope``        A CBAM declaration is required.
+    - ``out_of_scope``    A definitive exclusion applies; no declaration needed.
+    - ``requires_review`` The CN code is covered but a factor needs human review
+                          (missing origin, invalid EORI, etc.).
+    """
+    result = determine_cbam_scope(
+        cn_code=payload.cn_code,
+        origin_country=payload.origin_country,
+        consignment_value_eur=payload.consignment_value_eur,
+        importer_eori=payload.importer_eori,
+    )
+    return {
+        "status": result.status.value,
+        "sector": result.sector,
+        "cn_code": result.cn_code,
+        "origin_country": result.origin_country,
+        "consignment_value_eur": result.consignment_value_eur,
+        "importer_eori": result.importer_eori,
+        "reasons": result.reasons,
+        "regulation_refs": result.regulation_refs,
+    }
 
 
 @router.post("/cases", status_code=status.HTTP_201_CREATED)
