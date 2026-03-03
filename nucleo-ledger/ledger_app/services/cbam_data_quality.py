@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 
 from ledger_app.services.cbam_emission_factors import validate_against_defaults
 from ledger_app.services.cbam_installation_registry import validate_installation_id
+from ledger_app.services.cbam_mrn import validate_mrn
 
 
 def _add_unique(items: list[str], value: str) -> None:
@@ -39,8 +40,16 @@ def _check_shipment(
         _add_unique(missing, f"shipment:{shipment_id}:origin_country_missing")
     if not shipment.get("invoice_number") and not shipment.get("entry_reference"):
         _add_unique(warnings, f"shipment:{shipment_id}:invoice_number_missing")
-    if not shipment.get("entry_reference"):
+    entry_reference = shipment.get("entry_reference")
+    if not entry_reference:
         _add_unique(warnings, f"shipment:{shipment_id}:entry_reference_missing")
+    else:
+        mrn = validate_mrn(entry_reference)
+        if mrn.format_invalid:
+            # MRN present but does not match EU 18-char format (UCC Annex B).
+            # Customs authorities cannot reconcile this shipment against the
+            # customs declaration (SAD/H1) without a valid MRN.
+            _add_unique(warnings, f"shipment:{shipment_id}:entry_reference_format_invalid")
     if not shipment.get("incoterm"):
         _add_unique(warnings, f"shipment:{shipment_id}:incoterm_missing")
 

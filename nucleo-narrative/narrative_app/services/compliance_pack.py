@@ -16,7 +16,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
+
+# EU MRN: YY + CC (2 letters) + 13 alphanumeric + 1 check digit = 18 chars
+# Source: EU UCC Reg. 952/2013; Commission Del. Reg. 2015/2446 Annex B
+_MRN_RE = re.compile(r"^[0-9]{2}[A-Z]{2}[A-Z0-9]{13}[0-9]$")
 
 
 def _now_utc_iso() -> str:
@@ -52,6 +57,8 @@ def _build_data_quality_flags(report_package: dict) -> list[str]:
             flags.append(f"shipment:{shipment_id}:invoice_number_missing")
         if not entry_reference:
             flags.append(f"shipment:{shipment_id}:entry_reference_missing")
+        elif not _MRN_RE.match(entry_reference.strip().upper()):
+            flags.append(f"shipment:{shipment_id}:entry_reference_format_invalid")
 
         for goods_bundle in shipment_bundle.get("goods_lines") or []:
             goods_line = goods_bundle.get("goods_line") or {}
