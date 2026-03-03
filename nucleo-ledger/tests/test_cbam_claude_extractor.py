@@ -185,9 +185,11 @@ class TestClaudeAPIPath:
         self, tmp_path: Path, monkeypatch
     ):
         # Document has no "Line N: ..." patterns so regex extracts no lines.
+        # CN code and mass must appear in the document for evidence checks to pass.
         sample = tmp_path / "invoice.txt"
         sample.write_text(
-            "Invoice Number: INV-NOLINE-001\nOrigin Country: CN\n",
+            "Invoice Number: INV-NOLINE-001\nOrigin Country: CN\n"
+            "CN code: 72081000\nNet mass kg: 5000\n",
             encoding="utf-8",
         )
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
@@ -266,8 +268,15 @@ class TestClaudeAPIPath:
         self, tmp_path: Path, monkeypatch
     ):
         """Multiple Claude line items are all merged when regex finds nothing."""
+        # CN codes and masses must appear in text for evidence checks to pass.
+        # Codes are embedded as "HS72081000" so the \b\d{6,8}\b fallback in
+        # _parse_structured_response does NOT pick them up as standalone cn_code
+        # values (no word boundary before the digit run), keeping det lines empty.
         sample = tmp_path / "invoice.txt"
-        sample.write_text("No line patterns here.\n", encoding="utf-8")
+        sample.write_text(
+            "No line patterns here.\nHS72081000 M1000kg\nHS72193100 M500kg\n",
+            encoding="utf-8",
+        )
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
         multi_response = json.dumps(

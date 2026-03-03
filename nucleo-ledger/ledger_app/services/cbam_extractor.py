@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import re
 from pathlib import Path
 from typing import Any
+from typing import Callable
 from typing import Protocol
 
 from ledger_app.schemas.evidence import EvidenceAtom
@@ -45,6 +47,102 @@ def _normalize_method(value: str | None) -> str | None:
     if "default" in lowered:
         return "default"
     return None
+
+
+# ── Field validators ──────────────────────────────────────────────────────────
+
+_INCOTERM_WHITELIST: frozenset[str] = frozenset(
+    {"EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"}
+)
+
+
+def _valid_incoterm(v: Any) -> bool:
+    return isinstance(v, str) and v.strip().upper() in _INCOTERM_WHITELIST
+
+
+def _valid_iso2(v: Any) -> bool:
+    return isinstance(v, str) and bool(re.fullmatch(r"[A-Z]{2}", v.strip()))
+
+
+def _valid_eori(v: Any) -> bool:
+    return isinstance(v, str) and bool(re.fullmatch(r"[A-Z]{2}\d{6,}", v.strip()))
+
+
+def _valid_cn_code(v: Any) -> bool:
+    return isinstance(v, str) and bool(re.fullmatch(r"\d{6,8}", v.strip()))
+
+
+def _valid_mass(v: Any) -> bool:
+    try:
+        return float(v) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _valid_date(v: Any) -> bool:
+    if not isinstance(v, str):
+        return False
+    s = v.strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return False
+    try:
+        datetime.date.fromisoformat(s)
+        return True
+    except ValueError:
+        return False
+
+
+_FIELD_VALIDATORS: dict[str, Callable[[Any], bool]] = {
+    "incoterm": _valid_incoterm,
+    "origin_country": _valid_iso2,
+    "importer_eori": _valid_eori,
+    "cn_code": _valid_cn_code,
+    "invoice_date": _valid_date,
+}
+
+_FIELD_VALIDATOR_REASONS: dict[str, str] = {
+    "incoterm": "not in Incoterms 2020 whitelist",
+    "origin_country": "not a valid ISO-3166-1 alpha-2 code",
+    "importer_eori": r"does not match EORI format [A-Z]{2}\d{6,}",
+    "cn_code": "not a 6-8 digit numeric CN code",
+    "invoice_date": "not a valid YYYY-MM-DD date",
+}
+
+
+def _validate_deterministic_fields(
+    structured: dict[str, Any],
+    flags: list[dict[str, Any]],
+) -> None:
+    """Validate regex-extracted fields in-place; clear invalids and record flags."""
+    for field, validator in _FIELD_VALIDATORS.items():
+        val = structured.get(field)
+        if val is not None and not validator(val):
+            flags.append(
+                {
+                    "field": field,
+                    "issue": "deterministic_validation_failed",
+                    "value": val,
+                    "reason": _FIELD_VALIDATOR_REASONS[field],
+                    "source": "regex",
+                }
+            )
+            structured[field] = None
+
+    mass = structured.get("net_mass_kg")
+    if mass is not None and not _valid_mass(mass):
+        flags.append(
+            {
+                "field": "net_mass_kg",
+                "issue": "deterministic_validation_failed",
+                "value": mass,
+                "reason": "not a positive numeric mass",
+                "source": "regex",
+            }
+        )
+        structured["net_mass_kg"] = None
+
+
+# ── Layout / evidence helpers ─────────────────────────────────────────────────
 
 
 def _layout_text(layout: dict[str, Any] | None, zone: str) -> str:
@@ -258,6 +356,144 @@ def _ensure_value_evidence(
         bbox=bbox,
         confidence=0.85,
     )
+
+
+# ── Claude integration helpers ────────────────────────────────────────────────
+
+
+def _value_in_text(value: Any, text: str) -> bool:
+    """Return True if *value* appears literally in *text* (case-insensitive).
+
+    For numeric values both the exact float string and the integer
+    representation (for whole numbers) are checked, to handle documents
+    that write ``1500`` where the parsed value is ``1500.0``.
+    """
+    if value is None:
+        return False
+    s = str(value).strip()
+    if re.search(re.escape(s), text, flags=re.IGNORECASE):
+        return True
+    try:
+        f = float(value)
+        if f == int(f):
+            return bool(re.search(re.escape(str(int(f))), text, flags=re.IGNORECASE))
+    except (TypeError, ValueError):
+        pass
+    return False
+
+
+def _parse_claude_json_only(raw: str) -> dict[str, Any]:
+    """Parse raw Claude output as JSON only; no regex fallbacks."""
+    try:
+        loaded = json.loads(raw)
+        if isinstance(loaded, dict):
+            return loaded
+    except Exception:
+        pass
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end > start:
+        try:
+            loaded = json.loads(raw[start : end + 1])
+            if isinstance(loaded, dict):
+                return loaded
+        except Exception:
+            pass
+    return {}
+
+
+# Normalisation callables for each scalar field Claude may return.
+_CLAUDE_SCALAR_NORMALISERS: dict[str, Callable[[Any], Any]] = {
+    "importer_name": lambda v: str(v).strip() or None,
+    "importer_eori": lambda v: str(v).strip().upper() or None,
+    "invoice_number": lambda v: str(v).strip() or None,
+    "invoice_date": lambda v: str(v).strip() or None,
+    "origin_country": lambda v: str(v).strip().upper() or None,
+    "incoterm": lambda v: str(v).strip().upper() or None,
+    "entry_reference": lambda v: str(v).strip() or None,
+    "method": lambda v: _normalize_method(str(v)),
+    "net_mass_kg": lambda v: _parse_number(str(v)),
+    "direct_embedded_kgco2e": lambda v: _parse_number(str(v)),
+    "indirect_embedded_kgco2e": lambda v: _parse_number(str(v)),
+}
+
+
+def _merge_claude_scalar_fields(
+    det: dict[str, Any],
+    claude: dict[str, Any],
+    raw_text: str,
+    flags: list[dict[str, Any]],
+    evidence: list[dict[str, Any]],
+    pages: list[dict[str, Any]] | None,
+) -> None:
+    """Apply deterministic-first merge rules for all scalar header fields.
+
+    Rules (applied per field, in order):
+    1. Valid deterministic value present → keep it; if Claude differs, log flag.
+    2. Deterministic value absent → accept Claude's value only when:
+       a. It passes the field validator (if one exists).
+       b. The value appears literally in raw_text (evidence requirement).
+    No valid deterministic value is ever overridden.
+    """
+    for field, normalise in _CLAUDE_SCALAR_NORMALISERS.items():
+        raw_claude_val = claude.get(field)
+        if raw_claude_val is None:
+            continue
+        claude_val = normalise(raw_claude_val)
+        if claude_val is None:
+            continue
+
+        det_val = det.get(field)
+        if det_val is not None:
+            # Valid deterministic value present — never override.
+            if claude_val != det_val:
+                flags.append(
+                    {
+                        "field": field,
+                        "issue": "claude_conflict_ignored",
+                        "deterministic_value": det_val,
+                        "claude_value": claude_val,
+                    }
+                )
+            continue
+
+        # Deterministic value absent — validate then check evidence.
+        validator = _FIELD_VALIDATORS.get(field)
+        if validator and not validator(claude_val):
+            flags.append(
+                {
+                    "field": field,
+                    "issue": "claude_value_failed_validation",
+                    "value": claude_val,
+                    "reason": _FIELD_VALIDATOR_REASONS.get(field, ""),
+                    "source": "claude",
+                }
+            )
+            continue
+
+        if not _value_in_text(claude_val, raw_text):
+            flags.append(
+                {
+                    "field": field,
+                    "issue": "claude_value_not_evidenced_in_text",
+                    "value": claude_val,
+                    "source": "claude",
+                }
+            )
+            continue
+
+        det[field] = claude_val
+        _ensure_value_evidence(
+            evidence,
+            field=field,
+            value=claude_val,
+            text=raw_text,
+            source="claude_validated",
+            pages=pages,
+        )
+
+
+# ── Line / emission extraction ────────────────────────────────────────────────
 
 
 def _extract_lines_from_text(
@@ -639,6 +875,7 @@ def _build_extraction_payload(
     layout: dict[str, Any] | None = None,
     evidence: list[dict[str, Any]] | None = None,
     pages: list[dict[str, Any]] | None = None,
+    flags: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     body_text = _layout_text(layout, "body")
     extracted_lines = (
@@ -729,6 +966,7 @@ def _build_extraction_payload(
     return {
         "status": "parsed",
         "raw_text_preview": (raw_text or "")[:500],
+        "flags": flags or [],
         "importer": {
             "name": structured.get("importer_name"),
             "eori": structured.get("importer_eori"),
@@ -840,15 +1078,28 @@ class LlamaIndexCBAMExtractor:
 class ClaudeCBAMExtractor:
     """Production CBAM invoice extractor using Anthropic Claude.
 
-    Document text is loaded via LlamaIndex SimpleDirectoryReader (supports
-    PDF, DOCX, TXT).  Structured extraction is performed by Claude with a
-    CBAM-specific prompt.  The response is processed through the existing
-    ``_parse_structured_response`` + ``_build_extraction_payload`` pipeline
-    to preserve the full evidence-tracking chain.
+    Implements a deterministic-first hybrid architecture:
 
-    When ``ANTHROPIC_API_KEY`` is not set the extractor falls back to
-    regex-only extraction (same behaviour as LlamaIndexCBAMExtractor when
-    LlamaIndex was not available).
+    1. Regex/structured parsing always runs first and is the primary source of
+       truth.  Every extracted value is validated (incoterm whitelist, ISO-2,
+       EORI regex, 6-8 digit CN code, positive numeric mass, YYYY-MM-DD date).
+    2. Claude is called once (when ``ANTHROPIC_API_KEY`` is set) to fill
+       fields that regex could not find.  A Claude value is accepted only when:
+       a. It passes the same field validator.
+       b. Its string representation appears literally in ``raw_text``
+          (evidence requirement).
+    3. No valid deterministic value is ever overridden.  All conflicts and
+       rejected Claude suggestions are recorded in the top-level ``flags``
+       array of the returned payload.
+    4. Line items from Claude are merged only when deterministic extraction
+       found zero lines, and only after each line passes CN-code and
+       positive-mass validation with evidence in ``raw_text``.
+    5. Output is fully deterministic across runs (no stochastic post-
+       processing; Claude's role is purely gap-filling after strict
+       validation).
+
+    Falls back to regex-only extraction when ``ANTHROPIC_API_KEY`` is absent
+    or the API call fails.
 
     Environment variables
     ---------------------
@@ -917,16 +1168,18 @@ class ClaudeCBAMExtractor:
         claude_json: dict[str, Any],
         evidence: list[dict[str, Any]],
         raw_text: str,
+        flags: list[dict[str, Any]],
         pages: list[dict[str, Any]] | None,
     ) -> None:
-        """Merge Claude-extracted line items into the payload.
+        """Merge Claude line items only when deterministic extraction found none.
 
-        Only applies when regex-based line extraction produced no results, so
-        Claude's output acts as a high-confidence supplement while the regex
-        fallback continues to be used when it finds data.
+        Each candidate line must pass CN-code validation, positive-mass
+        validation, and have both values evidenced in ``raw_text``.  Rejected
+        lines are recorded in ``flags``; the payload is only updated when at
+        least one line passes all checks.
         """
         if payload.get("lines"):
-            return  # regex already found lines; Claude lines are supplemental
+            return  # deterministic lines take precedence
 
         claude_lines = claude_json.get("lines")
         if not isinstance(claude_lines, list):
@@ -936,16 +1189,66 @@ class ClaudeCBAMExtractor:
         for i, cl in enumerate(claude_lines):
             if not isinstance(cl, dict):
                 continue
+
             cn_code = cl.get("cn_code")
             if not cn_code:
+                flags.append(
+                    {"issue": "claude_line_missing_cn_code", "line_index": i, "source": "claude"}
+                )
+                continue
+            cn_code = str(cn_code).strip()
+            if not _valid_cn_code(cn_code):
+                flags.append(
+                    {
+                        "issue": "claude_line_invalid_cn_code",
+                        "line_index": i,
+                        "value": cn_code,
+                        "source": "claude",
+                    }
+                )
+                continue
+            if not _value_in_text(cn_code, raw_text):
+                flags.append(
+                    {
+                        "issue": "claude_line_cn_code_not_evidenced",
+                        "line_index": i,
+                        "value": cn_code,
+                        "source": "claude",
+                    }
+                )
                 continue
 
-            mass = _parse_number(str(cl["net_mass_kg"])) if cl.get("net_mass_kg") is not None else None
+            mass = (
+                _parse_number(str(cl["net_mass_kg"]))
+                if cl.get("net_mass_kg") is not None
+                else None
+            )
+            if not _valid_mass(mass):
+                flags.append(
+                    {
+                        "issue": "claude_line_invalid_mass",
+                        "line_index": i,
+                        "value": mass,
+                        "source": "claude",
+                    }
+                )
+                continue
+            if not _value_in_text(mass, raw_text):
+                flags.append(
+                    {
+                        "issue": "claude_line_mass_not_evidenced",
+                        "line_index": i,
+                        "value": mass,
+                        "source": "claude",
+                    }
+                )
+                continue
+
             line: dict[str, Any] = {
-                "cn_code": str(cn_code),
+                "cn_code": cn_code,
                 "description": cl.get("description"),
                 "quantity": mass,
-                "quantity_unit": "kg" if mass is not None else None,
+                "quantity_unit": "kg",
                 "net_mass_kg": mass,
                 "direct_embedded_kgco2e": (
                     _parse_number(str(cl["direct_embedded_kgco2e"]))
@@ -965,7 +1268,7 @@ class ClaudeCBAMExtractor:
                 field=f"lines[{i}].cn_code",
                 value=cn_code,
                 text=raw_text,
-                source="claude_extraction",
+                source="claude_validated",
                 pages=pages,
             )
 
@@ -983,8 +1286,9 @@ class ClaudeCBAMExtractor:
             return {"status": "error", "message": f"File not found: {file_path}"}
 
         evidence: list[dict[str, Any]] = []
+        flags: list[dict[str, Any]] = []
 
-        # ── Load document text (LlamaIndex handles PDF / DOCX / TXT) ─────────
+        # ── 1. Load document text (LlamaIndex handles PDF / DOCX / TXT) ──────
         raw_text = ""
         try:
             from llama_index.core import SimpleDirectoryReader
@@ -998,63 +1302,51 @@ class ClaudeCBAMExtractor:
         if not raw_text:
             raw_text = _read_raw_text(path)
 
-        # ── Claude structured extraction ──────────────────────────────────────
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if api_key and raw_text:
-            try:
-                response_text = self._call_claude(raw_text)
-
-                # Parse header fields through the evidence-tracking pipeline.
-                structured = _parse_structured_response(
-                    response_text,
-                    raw_text,
-                    layout=layout,
-                    evidence=evidence,
-                    pages=pages,
-                )
-                payload = _build_extraction_payload(
-                    raw_text,
-                    structured,
-                    layout=layout,
-                    evidence=evidence,
-                    pages=pages,
-                )
-
-                # Supplement with Claude's line-item array when regex found none.
-                try:
-                    start = response_text.find("{")
-                    end = response_text.rfind("}")
-                    if start != -1 and end > start:
-                        claude_json = json.loads(response_text[start : end + 1])
-                        self._merge_claude_lines(
-                            payload, claude_json, evidence, raw_text, pages
-                        )
-                except Exception:
-                    pass
-
-                payload["extractor"] = f"claude:{self.model}"
-                return payload
-            except Exception:
-                pass  # fall through to regex-only fallback
-
-        # ── Regex-only fallback (used when API key absent or call fails) ──────
-        structured = _parse_structured_response(
+        # ── 2. Deterministic (regex-first) extraction — always the primary source
+        det_structured = _parse_structured_response(
             "{}",
             raw_text,
             layout=layout,
             evidence=evidence,
             pages=pages,
         )
+
+        # ── 3. Validate all deterministic fields; clear invalids, record flags
+        _validate_deterministic_fields(det_structured, flags)
+
+        # ── 4. Claude gap-filling (one API call, scalar fields then lines) ────
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        extractor_tag = "regex"
+        claude_json: dict[str, Any] = {}
+
+        if api_key and raw_text:
+            try:
+                response_text = self._call_claude(raw_text)
+                claude_json = _parse_claude_json_only(response_text)
+                _merge_claude_scalar_fields(
+                    det_structured, claude_json, raw_text, flags, evidence, pages
+                )
+                extractor_tag = f"claude:{self.model}"
+            except Exception:
+                flags.append({"issue": "claude_api_call_failed", "source": "claude"})
+
+        # ── 5. Build payload from the merged deterministic result ─────────────
         payload = _build_extraction_payload(
             raw_text,
-            structured,
+            det_structured,
             layout=layout,
             evidence=evidence,
             pages=pages,
+            flags=flags,
         )
-        payload["status"] = "parsed"
-        payload["fallback"] = "regex_only"
-        payload["extractor"] = "regex"
+
+        # ── 6. Merge Claude lines only when deterministic found none ──────────
+        if not payload.get("lines") and claude_json:
+            self._merge_claude_lines(payload, claude_json, evidence, raw_text, flags, pages)
+
+        payload["extractor"] = extractor_tag
+        if extractor_tag == "regex":
+            payload["fallback"] = "regex_only"
         return payload
 
 
