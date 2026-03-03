@@ -24,6 +24,7 @@ from ledger_app.services.cbam_explain import explain_metric
 from ledger_app.services.cbam_repair import repair_parsed_invoice
 from ledger_app.services.document_text_extractor import extract_document_from_upload
 from ledger_app.services.cbam_extractor import extract as extract_cbam_document
+from ledger_app.services.cbam_taric import CBAMCodeNotInScope, lookup_sector
 from ledger_app.services.gemini_structured_extractor import extract_structured_with_gemini
 from ledger_app.services.llama_structured_extractor import compare_extractions
 from ledger_app.services.llama_orchestrator import LlamaOrchestrator
@@ -173,20 +174,15 @@ def _quarter_from_date(value: date) -> int:
 
 
 def _infer_sector_from_cn_code(cn_code: str) -> str:
-    normalized = "".join(ch for ch in cn_code if ch.isdigit())
-    if normalized.startswith("2523"):
-        return "cement"
-    if normalized.startswith("2716"):
-        return "electricity"
-    if normalized.startswith("2804"):
-        return "hydrogen"
-    if normalized.startswith("31"):
-        return "fertilisers"
-    if normalized.startswith("76"):
-        return "aluminium"
-    if normalized.startswith(("72", "73")):
-        return "iron_steel"
-    return "iron_steel"
+    """Return the CBAM sector for a CN code using the authoritative TARIC lookup.
+
+    Source: EU Regulation 2023/956, Annex I (OJ L 130, 16.5.2023).
+    Raises CBAMCodeNotInScope if the CN code is not covered by CBAM Annex I.
+    """
+    sector = lookup_sector(cn_code)
+    if sector is None:
+        raise CBAMCodeNotInScope(cn_code)
+    return sector
 
 
 def _parse_iso_date(value: object) -> date | None:
@@ -1128,7 +1124,15 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                     goods_insert["quantity_unit"] = line.quantity_unit or "kg"
 
                 if _needs_explicit_value(goods_columns, "sector") or "sector" in goods_columns:
-                    goods_insert["sector"] = _infer_sector_from_cn_code(line.cn_code)
+                    try:
+                        goods_insert["sector"] = _infer_sector_from_cn_code(line.cn_code)
+                    except CBAMCodeNotInScope:
+                        warnings.append(
+                            f"cbam_scope:cn_not_in_scope:{line.cn_code} — "
+                            f"not covered by EU Regulation 2023/956 Annex I; "
+                            f"goods line skipped"
+                        )
+                        continue
 
                 goods_row = _insert_returning(conn, "cbam_goods_lines", goods_insert)
                 goods_line_id = str(goods_row["id"])
@@ -1546,7 +1550,13 @@ def create_cbam_goods_line(payload: CBAMGoodsLineCreate):
                 insert_payload["quantity_unit"] = "kg"
 
         if _needs_explicit_value(columns, "sector"):
-            insert_payload["sector"] = "iron_steel"
+            try:
+                insert_payload["sector"] = _infer_sector_from_cn_code(payload.cn_code)
+            except CBAMCodeNotInScope as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(exc),
+                )
 
         created = _insert_returning(conn, "cbam_goods_lines", insert_payload)
         return created
