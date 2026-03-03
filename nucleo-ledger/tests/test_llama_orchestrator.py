@@ -6,7 +6,7 @@ import ledger_app.api.cbam as cbam_api
 import ledger_app.services.llama_orchestrator as llama_orchestrator
 from ledger_app.services.llama_structured_extractor import InvoiceSchema
 from ledger_app.services.llama_structured_extractor import LineItemSchema
-from tests.test_cbam_router import _client_with_fake_engine
+from ledger_app.testing import _client_with_fake_engine
 
 
 def test_llama_orchestrator_creates_nodes_and_returns_structured_output(monkeypatch):

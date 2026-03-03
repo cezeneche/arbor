@@ -13,6 +13,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
 import ledger_app.api.cbam as cbam_api
 import ledger_app.api.report_package as report_package_api
+from ledger_app.testing import _client_with_fake_engine
 
 
 class _Result:
@@ -226,16 +227,6 @@ class FakeEngine:
 
     def begin(self):
         return FakeTx(self.conn)
-
-
-def _client_with_fake_engine() -> tuple[TestClient, FakeConnection]:
-    conn = FakeConnection()
-    cbam_api.engine = FakeEngine(conn)
-
-    app = FastAPI()
-    app.include_router(cbam_api.router, prefix="/api")
-    app.include_router(report_package_api.router, prefix="/api")
-    return TestClient(app), conn
 
 
 def test_cbam_flow_and_summary():

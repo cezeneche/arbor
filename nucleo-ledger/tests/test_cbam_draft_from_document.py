@@ -7,9 +7,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
 import ledger_app.api.cbam as cbam_api
 import ledger_app.services.cbam_extractor as cbam_extractor
+from ledger_app.testing import _client_with_fake_engine
 from ledger_app.services.llama_structured_extractor import InvoiceSchema
 from ledger_app.services.llama_structured_extractor import LineItemSchema
-from tests.test_cbam_router import _client_with_fake_engine
 
 
 def test_cbam_draft_from_document_upload_returns_expected_keys(monkeypatch):

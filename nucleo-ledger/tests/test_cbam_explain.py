@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from pathlib import Path
 
-from tests.test_cbam_router import _client_with_fake_engine
+from ledger_app.testing import _client_with_fake_engine
 
 
 def test_explain_metric_recomputes_total_and_matches_summary(monkeypatch, tmp_path):
