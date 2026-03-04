@@ -99,6 +99,10 @@ class FileSystemSnapshotStore:
         self.root_dir.mkdir(parents=True, exist_ok=True)
 
     def _case_dir(self, case_id: str) -> Path:
+        try:
+            UUID(case_id)
+        except (ValueError, AttributeError):
+            raise ValueError(f"Invalid case_id — must be a UUID: {case_id!r}")
         case_dir = self.root_dir / case_id
         case_dir.mkdir(parents=True, exist_ok=True)
         return case_dir

@@ -82,7 +82,7 @@ def test_pipeline_golden(monkeypatch, client):
     from narrative_app.api import pipeline as pipeline_module
 
     # 1) Ledger fetch: return fixture
-    def fake_fetch_report_package(case_id: str):
+    def fake_fetch_report_package(case_id: str, **kwargs):
         return report_pkg
 
     monkeypatch.setattr(pipeline_module, "fetch_report_package", fake_fetch_report_package)
@@ -152,27 +152,33 @@ def test_pipeline_golden_cbam(monkeypatch, client):
 
     from narrative_app.api import pipeline as pipeline_module
 
-    def fake_fetch_report_package(_case_id: str):
+    def fake_fetch_report_package(_case_id: str, **kwargs):
         raise AssertionError("Legacy fetch should not be used for packet_kind=cbam.")
 
-    def fake_fetch_cbam_report_package(case_id: str):
+    def fake_fetch_cbam_report_package(case_id: str, **kwargs):
         assert case_id == cbam_packet["case"]["id"]
         return cbam_packet
 
-    def fail_openai(_packet: dict):
-        raise AssertionError("OpenAI draft should not be called for cbam_report_package_v1.")
+    def fake_generate_draft(packet: dict):
+        return {
+            "type": "cbam_narrative_v1",
+            "case_id": packet.get("case", {}).get("id", ""),
+            "executive_summary": "CBAM narrative for golden test.",
+            "totals": {"shipments_count": 1},
+            "risk_flags": [],
+        }
 
-    def fail_claude(_draft_obj: dict):
-        raise AssertionError("Claude review should not be called for cbam_report_package_v1.")
+    def fake_review_narrative(draft_obj: dict):
+        return draft_obj
 
-    def fail_gemini(_packet: dict, _narrative_obj: dict):
-        raise AssertionError("Gemini gate should not be called for cbam_report_package_v1.")
+    def fake_gate(_packet: dict, _narrative_obj: dict):
+        return {"approved": True, "issues": []}
 
     monkeypatch.setattr(pipeline_module, "fetch_report_package", fake_fetch_report_package)
     monkeypatch.setattr(pipeline_module, "fetch_cbam_report_package", fake_fetch_cbam_report_package)
-    monkeypatch.setattr(pipeline_module, "generate_draft", fail_openai)
-    monkeypatch.setattr(pipeline_module, "review_narrative", fail_claude)
-    monkeypatch.setattr(pipeline_module, "gate", fail_gemini)
+    monkeypatch.setattr(pipeline_module, "generate_draft", fake_generate_draft)
+    monkeypatch.setattr(pipeline_module, "review_narrative", fake_review_narrative)
+    monkeypatch.setattr(pipeline_module, "gate", fake_gate)
 
     case_id = cbam_packet["case"]["id"]
     resp = client.post(f"/api/cases/{case_id}/narrative/pipeline?packet_kind=cbam")

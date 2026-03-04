@@ -49,7 +49,7 @@ def _trim_body(value: str | None, limit: int = 500) -> str | None:
     return text[:limit] + "..."
 
 
-def _fetch_json(url: str) -> dict:
+def _fetch_json(url: str, *, tenant_id: str = "service-tenant", trace_id: str | None = None) -> dict:
     timeout = httpx.Timeout(
         connect=LEDGER_CONNECT_TIMEOUT_S,
         read=LEDGER_READ_TIMEOUT_S,
@@ -60,10 +60,12 @@ def _fetch_json(url: str) -> dict:
 
     token, _ = create_access_token(
         sub="narrative-service",
-        tenant_id="service-tenant",
-        scopes=["narrative:run"],
+        tenant_id=tenant_id,
+        scopes=["cbam:read", "narrative:run"],
     )
     headers = {"Authorization": f"Bearer {token}"}
+    if trace_id:
+        headers["X-Request-Id"] = trace_id
 
     with httpx.Client(timeout=timeout) as client:
         for attempt in range(1, LEDGER_MAX_RETRIES + 1):
@@ -129,13 +131,13 @@ def _fetch_json(url: str) -> dict:
         url=url,
     )
 
-def fetch_report_package(case_id: str) -> dict:
+def fetch_report_package(case_id: str, *, tenant_id: str = "service-tenant", trace_id: str | None = None) -> dict:
     base = settings.ledger_base_url.rstrip("/")
     url = f"{base}/api/cases/{case_id}/report-package"
-    return _fetch_json(url)
+    return _fetch_json(url, tenant_id=tenant_id, trace_id=trace_id)
 
 
-def fetch_cbam_report_package(case_id: str) -> dict:
+def fetch_cbam_report_package(case_id: str, *, tenant_id: str = "service-tenant", trace_id: str | None = None) -> dict:
     base = settings.ledger_base_url.rstrip("/")
     url = f"{base}/api/cbam/cases/{case_id}/report-package"
-    return _fetch_json(url)
+    return _fetch_json(url, tenant_id=tenant_id, trace_id=trace_id)

@@ -1,0 +1,82 @@
+{
+  "title": "CBAM Platform",
+  "uid": "cbam-platform",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "rate(http_requests_total[1m])",
+          "legendFormat": "{{job}} {{method}} {{status_code}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "LLM Call Duration (p95)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(llm_call_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95 {{provider}} {{stage}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "LLM Error Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {
+          "expr": "rate(llm_call_errors_total[1m])",
+          "legendFormat": "{{provider}} {{stage}} {{error_type}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Active Pipeline Requests",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+      "targets": [
+        {
+          "expr": "narrative_pipeline_active",
+          "legendFormat": "active"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Job Queue Depth",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+      "targets": [
+        {
+          "expr": "narrative_job_queue_depth",
+          "legendFormat": "queued"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "LLM Retries",
+      "type": "timeseries",
+      "gridPos": {"h": 4, "w": 12, "x": 12, "y": 12},
+      "targets": [
+        {
+          "expr": "rate(llm_call_retries_total[5m])",
+          "legendFormat": "{{provider}} {{stage}}"
+        }
+      ]
+    }
+  ]
+}

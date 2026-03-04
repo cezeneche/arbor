@@ -30,6 +30,13 @@ def validate_startup_config() -> None:
         raise RuntimeError("LEDGER_URL/LEDGER_BASE_URL must be set for nucleo-narrative startup.")
     if not (base_url.startswith("http://") or base_url.startswith("https://")):
         raise RuntimeError("LEDGER_URL/LEDGER_BASE_URL must start with http:// or https://.")
+    import os
+    jwt_secret = (os.getenv("JWT_SECRET") or "").strip()
+    if not jwt_secret:
+        raise RuntimeError(
+            "JWT_SECRET is required for nucleo-narrative startup. "
+            "Set a strong secret in your .env file."
+        )
 
 
 def optional_provider_warnings() -> list[str]:

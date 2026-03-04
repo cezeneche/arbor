@@ -24,7 +24,7 @@ client = TestClient(
 def test_pipeline_returns_structured_ledger_error(monkeypatch):
     from narrative_app.api import pipeline as pipeline_module
 
-    def _raise_ledger_error(_case_id: str):
+    def _raise_ledger_error(_case_id: str, **kwargs):
         raise LedgerClientError(
             code="invalid_response",
             message="Ledger returned malformed payload",

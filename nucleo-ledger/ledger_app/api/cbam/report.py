@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import text
 
 from . import _shared
@@ -13,19 +13,23 @@ router = APIRouter()
 
 
 @router.get("/cases/{case_id}/summary")
-def get_cbam_case_summary(case_id: UUID):
+def get_cbam_case_summary(request: Request, case_id: UUID):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
         _shared._manual_fk_check(conn, "cbam_cases", case_id, "case_id")
+        columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(columns, tenant_id)
+        tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
         case_row = conn.execute(
             text(
-                """
+                f"""
                 SELECT *
                 FROM cbam.cbam_cases
-                WHERE id = :id
+                WHERE id = :id {tenant_filter}
                 LIMIT 1
                 """
             ),
-            {"id": str(case_id)},
+            {"id": str(case_id), "tenant_id": tenant_id},
         ).mappings().one()
         shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
         summary = _shared._build_case_summary(conn, case_id)
@@ -34,18 +38,22 @@ def get_cbam_case_summary(case_id: UUID):
 
 
 @router.get("/cases/{case_id}/report-package")
-def get_cbam_report_package(case_id: UUID):
+def get_cbam_report_package(request: Request, case_id: UUID):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
+        columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(columns, tenant_id)
+        tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
         case_rows = conn.execute(
             text(
-                """
+                f"""
                 SELECT *
                 FROM cbam.cbam_cases
-                WHERE id = :id
+                WHERE id = :id {tenant_filter}
                 LIMIT 1
                 """
             ),
-            {"id": str(case_id)},
+            {"id": str(case_id), "tenant_id": tenant_id},
         ).mappings().all()
 
         if not case_rows:
@@ -117,17 +125,17 @@ def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest)
 
         case_fk_col = _shared._pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
         if not case_fk_col:
-            raise HTTPException(status_code=500, detail="No case FK column on cbam_shipments.")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         mass_col = _shared._pick_existing(goods_cols, ["net_mass_kg", "quantity"])
         cn_col = _shared._pick_existing(goods_cols, ["cn_code"])
         if not mass_col or not cn_col:
-            raise HTTPException(status_code=500, detail="Expected columns not found on cbam_goods_lines.")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         direct_col = _shared._pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
         indirect_col = _shared._pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
         if not direct_col or not indirect_col:
-            raise HTTPException(status_code=500, detail="Expected emission columns not found.")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         rows = conn.execute(
             text(

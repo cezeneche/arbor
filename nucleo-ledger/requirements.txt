@@ -96,6 +96,16 @@ six==1.17.0
 sniffio==1.3.1
 soupsieve==2.8.3
 SQLAlchemy==2.0.46
+slowapi
+python-json-logger
+prometheus-fastapi-instrumentator
+cryptography>=42.0.0
+
+# Observability
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-httpx
 starlette==0.52.1
 striprtf==0.0.26
 sympy==1.14.0

@@ -37,7 +37,12 @@ def s3_healthcheck() -> dict:
 
 def upload_text(key: str, content: str) -> str:
     s3 = get_s3_client()
-    s3.put_object(Bucket=S3_BUCKET, Key=key, Body=content.encode("utf-8"))
+    s3.put_object(
+        Bucket=S3_BUCKET,
+        Key=key,
+        Body=content.encode("utf-8"),
+        ServerSideEncryption="AES256",
+    )
     return f"s3://{S3_BUCKET}/{key}"
 
 def download_bytes(key: str) -> bytes:

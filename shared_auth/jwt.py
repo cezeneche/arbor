@@ -35,7 +35,12 @@ def _get_bool_env(name: str, default: bool = False) -> bool:
 
 
 def get_jwt_settings() -> JWTSettings:
-    secret = (os.getenv("JWT_SECRET") or "dev-jwt-secret-change-me").strip()
+    secret = (os.getenv("JWT_SECRET") or "").strip()
+    if not secret:
+        raise RuntimeError(
+            "JWT_SECRET env var must be set. "
+            "Generate a strong secret and add it to your .env file."
+        )
     issuer = (os.getenv("JWT_ISSUER") or "scope3-agentic").strip()
     audience = (os.getenv("JWT_AUDIENCE") or "scope3-clients").strip()
 
@@ -62,6 +67,7 @@ def create_access_token(
     tenant_id: str,
     org_id: str | None = None,
     scopes: list[str] | None = None,
+    roles: list[str] | None = None,
     expires_seconds: int | None = None,
 ) -> tuple[str, int]:
     settings = get_jwt_settings()
@@ -76,6 +82,7 @@ def create_access_token(
         "tenant_id": tenant_id,
         "org_id": org_id if org_id is not None else tenant_id,
         "scopes": list(scopes or []),
+        "roles": list(roles or []),
         "jti": str(uuid4()),
         "iat": int(now.timestamp()),
         "exp": int(exp.timestamp()),
@@ -126,6 +133,10 @@ def decode_access_token(token: str) -> AuthContext:
     if not isinstance(scopes, list) or any(not isinstance(s, str) for s in scopes):
         scopes = []
 
+    roles = payload.get("roles") or []
+    if not isinstance(roles, list) or any(not isinstance(r, str) for r in roles):
+        roles = []
+
     jti = payload.get("jti")
     if not isinstance(jti, str):
         jti = None
@@ -134,6 +145,7 @@ def decode_access_token(token: str) -> AuthContext:
         sub=sub,
         tenant_id=tenant_id,
         scopes=scopes,
+        roles=roles,
         jti=jti,
         exp=exp,
     )

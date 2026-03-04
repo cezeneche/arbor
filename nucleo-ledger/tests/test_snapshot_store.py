@@ -18,14 +18,15 @@ def test_canonical_json_and_hash_are_deterministic_for_same_payload():
 
 def test_filesystem_snapshot_store_chains_parent_hash_for_sequential_writes(tmp_path):
     store = FileSystemSnapshotStore(tmp_path / "snapshots")
+    case_id = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
 
     first = store.append_snapshot(
-        case_id="CASE-001",
+        case_id=case_id,
         stage="extraction_v1",
         payload={"step": 1},
     )
     second = store.append_snapshot(
-        case_id="CASE-001",
+        case_id=case_id,
         stage="arbitrated_v1",
         payload={"step": 2},
     )
@@ -33,5 +34,5 @@ def test_filesystem_snapshot_store_chains_parent_hash_for_sequential_writes(tmp_
     assert first.parent_hash is None
     assert second.parent_hash == first.payload_hash
 
-    files = list((tmp_path / "snapshots" / "CASE-001").glob("*.json"))
+    files = list((tmp_path / "snapshots" / case_id).glob("*.json"))
     assert len(files) == 2

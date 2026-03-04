@@ -1,9 +1,13 @@
 import os
-from typing import Any, Dict, Optional
+import time
+from typing import Any, Dict
 import json
 import importlib
 
 from dotenv import load_dotenv
+
+from narrative_app.core.circuit_breaker import CircuitOpenError, _claude_breaker
+from narrative_app.core.metrics import llm_duration, llm_errors, llm_retries
 
 # Load environment variables from .env at startup
 load_dotenv()
@@ -55,6 +59,7 @@ def _extract_json(resp: Any) -> Dict[str, Any]:
         snippet = text[:500]
         raise RuntimeError(f"Claude did not return valid JSON: {e}. Snippet: {snippet}")
 
+
 def _validate_narrative_shape(narrative: Dict[str, Any]) -> None:
     required = [
         "executive_summary",
@@ -73,13 +78,10 @@ def _validate_narrative_shape(narrative: Dict[str, Any]) -> None:
         raise RuntimeError("Narrative key 'open_gaps' must be a list.")
 
 
-def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Claude acts as a strict reviewer/editor.
-
-    Input: a structured narrative JSON object.
-    Output: the same structure, improved prose, with factual/numeric values preserved.
-    """
+def _call_claude(draft_json: Dict[str, Any]) -> Any:
+    """Single Claude API attempt — wrapped by retry + circuit breaker in review_narrative."""
+    client, _ = _get_client()
+    assert client is not None
 
     prompt = (
         "You are a strict carbon reporting reviewer.\n\n"
@@ -94,35 +96,92 @@ def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
         "JSON:\n"
     )
 
+    model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+
+    return client.messages.create(
+        model=model,
+        max_tokens=2000,
+        temperature=0.0,
+        timeout=timeout,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt + json.dumps(draft_json, ensure_ascii=False),
+            }
+        ],
+    )
+
+
+def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Claude acts as a strict reviewer/editor.
+
+    Input: a structured narrative JSON object.
+    Output: the same structure, improved prose, with factual/numeric values preserved.
+    """
+    _stage = "review"
+    _provider = "claude"
+    _attempts = int(os.getenv("LLM_RETRY_ATTEMPTS", "3"))
+
     client, unavailable_reason = _get_client()
     if client is None:
-        # Graceful offline/no-sdk path: preserve payload exactly and signal skip.
         skipped = dict(draft_json)
         skipped["_review_status"] = "skipped"
         skipped["_review_provider"] = "claude"
         skipped["_review_reason"] = unavailable_reason or "unavailable"
         return skipped
 
-    model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
-
+    # OTel span
     try:
-        resp = client.messages.create(
-            model=model,
-            max_tokens=2000,
-            temperature=0.0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt + json.dumps(draft_json, ensure_ascii=False),
-                }
-            ],
-        )
+        from opentelemetry import trace as _otel_trace
+        _tracer = _otel_trace.get_tracer("nucleo-narrative")
+        _span_ctx = _tracer.start_as_current_span("claude.review_narrative")
     except Exception:
-        skipped = dict(draft_json)
-        skipped["_review_status"] = "unavailable"
-        skipped["_review_provider"] = "claude"
-        skipped["_review_reason"] = "call_failed"
-        return skipped
+        from contextlib import nullcontext
+        _span_ctx = nullcontext()
+
+    with _span_ctx:
+        last_exc: Exception | None = None
+        resp = None
+
+        for attempt in range(1, _attempts + 1):
+            if attempt > 1:
+                llm_retries.labels(provider=_provider, stage=_stage).inc()
+                time.sleep(min(2 ** (attempt - 2), 10))
+
+            t0 = time.monotonic()
+            try:
+                resp = _claude_breaker.call(_call_claude, draft_json)
+                llm_duration.labels(provider=_provider, stage=_stage).observe(
+                    time.monotonic() - t0
+                )
+                break
+            except CircuitOpenError:
+                # Circuit open — return graceful degradation immediately
+                llm_errors.labels(
+                    provider=_provider, stage=_stage, error_type="circuit_open"
+                ).inc()
+                skipped = dict(draft_json)
+                skipped["_review_status"] = "unavailable"
+                skipped["_review_provider"] = "claude"
+                skipped["_review_reason"] = "circuit_open"
+                return skipped
+            except Exception as exc:
+                llm_duration.labels(provider=_provider, stage=_stage).observe(
+                    time.monotonic() - t0
+                )
+                llm_errors.labels(
+                    provider=_provider, stage=_stage, error_type=type(exc).__name__
+                ).inc()
+                last_exc = exc
+
+        if resp is None:
+            skipped = dict(draft_json)
+            skipped["_review_status"] = "unavailable"
+            skipped["_review_provider"] = "claude"
+            skipped["_review_reason"] = "call_failed"
+            return skipped
 
     reviewed = _extract_json(resp)
 
@@ -135,7 +194,6 @@ def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
 
     # Hard-guardrails for auditability:
     # Claude is NOT allowed to change structured numeric/content fields.
-    # Force these to exactly match the draft payload to prevent rounding/drift.
     reviewed["results"] = draft_json.get("results")
     reviewed["open_gaps"] = draft_json.get("open_gaps")
     _validate_narrative_shape(reviewed)

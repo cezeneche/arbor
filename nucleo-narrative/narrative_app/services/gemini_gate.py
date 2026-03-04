@@ -1,8 +1,13 @@
 import json
+import os
+import time
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from narrative_app.core.config import settings
+from narrative_app.core.circuit_breaker import CircuitOpenError, _gemini_breaker
+from narrative_app.core.metrics import llm_duration, llm_errors, llm_retries
+
 
 def _gate_prompt(packet: dict, narrative_json: dict) -> str:
     return (
@@ -21,6 +26,7 @@ def _gate_prompt(packet: dict, narrative_json: dict) -> str:
         + json.dumps(narrative_json, indent=2)
     )
 
+
 def _extract_text(resp) -> str:
     """Best-effort extraction of model text across SDK response shapes."""
     text = (getattr(resp, "text", None) or "").strip()
@@ -37,6 +43,7 @@ def _extract_text(resp) -> str:
             return str(part_text).strip()
 
     return ""
+
 
 def _validate_narrative_shape(narrative_json: dict) -> list[dict]:
     issues: list[dict] = []
@@ -132,6 +139,20 @@ def _load_google_genai():
             return None, None
 
 
+def _call_gemini(packet: dict, narrative_json: dict, genai, GenerateContentConfig) -> Any:
+    """Single Gemini API attempt — wrapped by retry + circuit breaker in gate()."""
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+    client = genai.Client(api_key=settings.gemini_api_key)
+    return client.models.generate_content(
+        model=settings.gemini_model,
+        contents=_gate_prompt(packet, narrative_json),
+        config=GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.0,
+        ),
+    )
+
+
 def gate(packet: dict, narrative_json: dict) -> dict:
     local_shape_issues = _validate_narrative_shape(narrative_json)
     local_numeric_issues = _strict_numeric_issues(packet, narrative_json)
@@ -159,20 +180,66 @@ def gate(packet: dict, narrative_json: dict) -> dict:
             "reason": "sdk_unavailable",
         }
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    _stage = "gate"
+    _provider = "gemini"
+    _attempts = int(os.getenv("LLM_RETRY_ATTEMPTS", "3"))
+
+    # OTel span
     try:
-        resp = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=_gate_prompt(packet, narrative_json),
-            config=GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.0,
-            ),
-        )
-    except Exception as exc:
+        from opentelemetry import trace as _otel_trace
+        _tracer = _otel_trace.get_tracer("nucleo-narrative")
+        _span_ctx = _tracer.start_as_current_span("gemini.gate")
+    except Exception:
+        from contextlib import nullcontext
+        _span_ctx = nullcontext()
+
+    with _span_ctx:
+        resp = None
+        for attempt in range(1, _attempts + 1):
+            if attempt > 1:
+                llm_retries.labels(provider=_provider, stage=_stage).inc()
+                time.sleep(min(2 ** (attempt - 2), 10))
+
+            t0 = time.monotonic()
+            try:
+                resp = _gemini_breaker.call(
+                    _call_gemini, packet, narrative_json, genai, GenerateContentConfig
+                )
+                llm_duration.labels(provider=_provider, stage=_stage).observe(
+                    time.monotonic() - t0
+                )
+                break
+            except CircuitOpenError:
+                llm_errors.labels(
+                    provider=_provider, stage=_stage, error_type="circuit_open"
+                ).inc()
+                return {
+                    "approved": False,
+                    "issues": [{"detail": "Gemini circuit is open; gate skipped."}],
+                    "status": "unavailable",
+                    "provider": "gemini",
+                    "reason": "circuit_open",
+                }
+            except Exception as exc:
+                llm_duration.labels(provider=_provider, stage=_stage).observe(
+                    time.monotonic() - t0
+                )
+                llm_errors.labels(
+                    provider=_provider, stage=_stage, error_type=type(exc).__name__
+                ).inc()
+                if attempt == _attempts:
+                    return {
+                        "approved": False,
+                        "issues": [{"detail": f"Gemini call failed: {exc}"}],
+                        "status": "unavailable",
+                        "provider": "gemini",
+                        "reason": "call_failed",
+                    }
+
+    if resp is None:
         return {
             "approved": False,
-            "issues": [{"detail": f"Gemini call failed: {exc}"}],
+            "issues": [{"detail": "Gemini call failed after retries."}],
             "status": "unavailable",
             "provider": "gemini",
             "reason": "call_failed",
@@ -183,10 +250,8 @@ def gate(packet: dict, narrative_json: dict) -> dict:
     # Defensive: sometimes models still wrap JSON in code fences.
     if text.startswith("```"):
         lines = text.splitlines()
-        # Drop opening fence line (e.g., ``` or ```json)
         if lines:
             lines = lines[1:]
-        # Drop trailing fence if present
         if lines and lines[-1].strip().startswith("```"):
             lines = lines[:-1]
         text = "\n".join(lines).strip()

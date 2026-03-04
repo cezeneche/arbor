@@ -15,6 +15,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
+from ledger_app.core.crypto import decrypt_field, encrypt_field
 from ledger_app.db.session import engine
 from ledger_app.schemas.evidence import EvidenceAtom
 from ledger_app.services.cbam_arbiter import arbitrate_parsed_invoice
@@ -185,7 +186,7 @@ def _table_columns(conn: Connection, table_name: str) -> dict[str, dict[str, str
     ).mappings().all()
 
     if not rows:
-        raise HTTPException(status_code=500, detail=f"Table cbam.{table_name} not found.")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     return {
         row["column_name"]: {
@@ -210,13 +211,34 @@ def _needs_explicit_value(columns: dict[str, dict[str, str | None]], name: str) 
     return meta["is_nullable"] == "NO" and meta["column_default"] is None
 
 
+_ALLOWED_CBAM_TABLES: frozenset[str] = frozenset(
+    {"cbam_cases", "cbam_shipments", "cbam_goods_lines", "cbam_emissions"}
+)
+
+
 def _manual_fk_check(conn: Connection, table_name: str, record_id: UUID, label: str) -> None:
+    if table_name not in _ALLOWED_CBAM_TABLES:
+        raise ValueError(f"Disallowed table reference: {table_name!r}")
     exists = conn.execute(
         text(f"SELECT 1 FROM cbam.{table_name} WHERE id = :id LIMIT 1"),
         {"id": str(record_id)},
     ).scalar_one_or_none()
     if exists is None:
         raise _bad_request(f"Invalid reference: {label} does not exist.")
+
+
+def _enforce_tenant_id(columns: dict, tenant_id: str) -> None:
+    """Raise 401 if the schema has a tenant_id column but no tenant is authenticated.
+
+    This prevents a token with an empty tenant_id from matching all legacy rows
+    (which have DEFAULT '').  In tests, FakeConnection never includes tenant_id
+    in its column list, so this check is never triggered there.
+    """
+    if "tenant_id" in columns and not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing tenant context",
+        )
 
 
 def _quarter_from_date(value: date) -> int:
@@ -741,16 +763,16 @@ def _build_case_summary(conn: Connection, case_id: UUID) -> dict[str, object]:
 
     case_fk_column = _pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
     if not case_fk_column:
-        raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     net_mass_col = _pick_existing(goods_cols, ["net_mass_kg", "quantity"])
     if not net_mass_col:
-        raise HTTPException(status_code=500, detail="No goods mass column found on cbam_goods_lines.")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     direct_col = _pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
     indirect_col = _pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
     if not direct_col or not indirect_col:
-        raise HTTPException(status_code=500, detail="Expected emissions columns not found on cbam_emissions.")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     summary = conn.execute(
         text(
@@ -800,7 +822,7 @@ def _build_case_shipments_payload(conn: Connection, case_id: UUID) -> list[dict[
 
     case_fk_column = _pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
     if not case_fk_column:
-        raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     shipment_order_by = "created_at ASC, id ASC" if "created_at" in shipments_cols else "id ASC"
     shipment_rows = conn.execute(

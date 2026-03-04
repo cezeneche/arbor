@@ -1,6 +1,10 @@
 import json
-from openai import OpenAI
+import os
+import time
+
 from narrative_app.core.config import settings
+from narrative_app.core.circuit_breaker import CircuitOpenError, _openai_breaker
+from narrative_app.core.metrics import llm_duration, llm_errors, llm_retries
 
 
 def _legacy_writer_prompt(packet: dict) -> str:
@@ -78,8 +82,13 @@ def _writer_prompt(packet: dict) -> str:
         return _cbam_writer_prompt(packet)
     return _legacy_writer_prompt(packet)
 
-def generate_draft(packet: dict) -> dict:
-    client = OpenAI(api_key=settings.openai_api_key)
+
+def _call_openai(packet: dict) -> dict:
+    """Single attempt — wrapped by retry + circuit breaker in generate_draft."""
+    from openai import OpenAI
+
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+    client = OpenAI(api_key=settings.openai_api_key, timeout=timeout)
 
     resp = client.responses.create(
         model=settings.openai_model,
@@ -108,3 +117,50 @@ def generate_draft(packet: dict) -> dict:
             raise ValueError(f"OpenAI draft missing required key: {key}")
 
     return parsed
+
+
+def generate_draft(packet: dict) -> dict:
+    _stage = "draft"
+    _provider = "openai"
+    _attempts = int(os.getenv("LLM_RETRY_ATTEMPTS", "3"))
+
+    # OTel span (no-op when tracing not configured)
+    try:
+        from opentelemetry import trace as _otel_trace
+        _tracer = _otel_trace.get_tracer("nucleo-narrative")
+        _span_ctx = _tracer.start_as_current_span("openai.generate_draft")
+    except Exception:
+        from contextlib import nullcontext
+        _span_ctx = nullcontext()
+
+    with _span_ctx:
+        last_exc: Exception | None = None
+        for attempt in range(1, _attempts + 1):
+            if attempt > 1:
+                llm_retries.labels(provider=_provider, stage=_stage).inc()
+                import time as _time
+                _time.sleep(min(2 ** (attempt - 2), 10))
+
+            t0 = time.monotonic()
+            try:
+                result = _openai_breaker.call(_call_openai, packet)
+                llm_duration.labels(provider=_provider, stage=_stage).observe(
+                    time.monotonic() - t0
+                )
+                return result
+            except CircuitOpenError as e:
+                llm_errors.labels(
+                    provider=_provider, stage=_stage, error_type="circuit_open"
+                ).inc()
+                raise
+            except Exception as exc:
+                llm_duration.labels(provider=_provider, stage=_stage).observe(
+                    time.monotonic() - t0
+                )
+                error_type = type(exc).__name__
+                llm_errors.labels(
+                    provider=_provider, stage=_stage, error_type=error_type
+                ).inc()
+                last_exc = exc
+
+        raise last_exc  # type: ignore[misc]

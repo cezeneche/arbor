@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Any
 from typing import Callable
 from typing import Protocol
+
+_logger = logging.getLogger("ledger.cbam_extractor")
 
 from ledger_app.schemas.evidence import EvidenceAtom
 from ledger_app.schemas.evidence import EvidenceBBox
@@ -995,86 +998,6 @@ def _read_raw_text(path: Path) -> str:
             return ""
 
 
-class LlamaIndexCBAMExtractor:
-    def extract(
-        self,
-        file_path: str,
-        layout: dict[str, Any] | None = None,
-        pages: list[dict[str, Any]] | None = None,
-    ) -> dict:
-        path = Path(file_path)
-        if not path.exists():
-            return {"status": "error", "message": f"File not found: {file_path}"}
-
-        raw_text_for_fallback = _read_raw_text(path)
-        evidence: list[dict[str, Any]] = []
-        try:
-            from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
-            from llama_index.core.embeddings import MockEmbedding
-            from llama_index.core.llms.mock import MockLLM
-            from llama_index.core.schema import Document
-        except Exception:
-            structured = _parse_structured_response(
-                "{}",
-                raw_text_for_fallback,
-                layout=layout,
-                evidence=evidence,
-                pages=pages,
-            )
-            payload = _build_extraction_payload(
-                raw_text_for_fallback,
-                structured,
-                layout=layout,
-                evidence=evidence,
-                pages=pages,
-            )
-            payload["status"] = "parsed"
-            payload["fallback"] = "regex_only"
-            return payload
-
-        try:
-            documents = SimpleDirectoryReader(input_files=[str(path)]).load_data()
-
-            raw_text = "\n\n".join(
-                (getattr(doc, "text", "") or "").strip() for doc in documents
-            ).strip()
-
-            if not raw_text:
-                raw_text = _read_raw_text(path)
-
-            if not documents:
-                documents = [Document(text=raw_text)]
-
-            index = VectorStoreIndex.from_documents(
-                documents,
-                embed_model=MockEmbedding(embed_dim=32),
-            )
-            query_engine = index.as_query_engine(llm=MockLLM())
-            response = query_engine.query(
-                "Extract and return ONLY a JSON object with keys: "
-                "importer_name, importer_eori, invoice_number, entry_reference, incoterm, "
-                "cn_code, net_mass_kg, origin_country, invoice_date, method, "
-                "direct_embedded_kgco2e, indirect_embedded_kgco2e. "
-                "Use method values actual/default/estimated and null for missing values."
-            )
-            structured = _parse_structured_response(
-                str(response),
-                raw_text,
-                layout=layout,
-                evidence=evidence,
-                pages=pages,
-            )
-            return _build_extraction_payload(
-                raw_text,
-                structured,
-                layout=layout,
-                evidence=evidence,
-                pages=pages,
-            )
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-
-
 class ClaudeCBAMExtractor:
     """Production CBAM invoice extractor using Anthropic Claude.
 
@@ -1327,7 +1250,12 @@ class ClaudeCBAMExtractor:
                     det_structured, claude_json, raw_text, flags, evidence, pages
                 )
                 extractor_tag = f"claude:{self.model}"
-            except Exception:
+            except Exception as exc:
+                _logger.warning(
+                    "cbam_extractor: claude_api_call_failed model=%s error=%s",
+                    self.model,
+                    str(exc),
+                )
                 flags.append({"issue": "claude_api_call_failed", "source": "claude"})
 
         # ── 5. Build payload from the merged deterministic result ─────────────

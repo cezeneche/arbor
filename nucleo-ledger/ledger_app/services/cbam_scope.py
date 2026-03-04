@@ -35,6 +35,8 @@ EU_MEMBER_STATES                                    — frozenset of EU-27 ISO-2
 
 from __future__ import annotations
 
+import logging
+import os
 import re
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -45,11 +47,15 @@ from ledger_app.services.cbam_taric import is_in_cbam_scope, lookup_sector
 __all__ = [
     "ScopeStatus",
     "ScopeDetermination",
+    "DeclarantValidationResult",
     "determine_cbam_scope",
+    "validate_declarant_registration",
     "DE_MINIMIS_THRESHOLD_EUR",
     "ANNEX_II_COUNTRIES",
     "EU_MEMBER_STATES",
 ]
+
+_logger = logging.getLogger("ledger.cbam_scope")
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -118,6 +124,107 @@ class ScopeDetermination:
     origin_country: str | None
     consignment_value_eur: Decimal | None
     importer_eori: str | None
+
+
+# ── Authorised Declarant validation (EU 2023/956 Art. 5) ─────────────────────
+
+def _load_declarant_allowlist() -> frozenset[str]:
+    """Return frozenset of authorised declarant EORIs from env, or empty set."""
+    raw = os.getenv("CBAM_AUTHORISED_DECLARANTS", "")
+    if not raw.strip():
+        return frozenset()
+    return frozenset(item.strip().upper() for item in raw.split(",") if item.strip())
+
+
+@dataclass(frozen=True)
+class DeclarantValidationResult:
+    """Result of authorised-declarant registration check.
+
+    Attributes
+    ----------
+    is_valid : bool
+        True if all applicable checks pass.
+    warnings : list[str]
+        Non-blocking issues — should be reviewed before submission.
+    regulation_ref : str
+        Regulation citation.
+    """
+    is_valid: bool
+    warnings: list[str] = field(default_factory=list)
+    regulation_ref: str = "EU Regulation 2023/956, Article 5"
+
+
+def validate_declarant_registration(
+    eori: str | None,
+    *,
+    allowlist: frozenset[str] | None = None,
+) -> DeclarantValidationResult:
+    """Validate that an importer EORI is registered as an Authorised CBAM Declarant.
+
+    Three layers of validation (mirrors cbam_installation_registry pattern):
+
+    1. Presence  — EORI must not be blank.
+    2. Format    — Must match EU EORI regex (2-letter country + 1–15 alphanumeric).
+    3. Allowlist — Optional env var ``CBAM_AUTHORISED_DECLARANTS`` (comma-separated).
+    4. Hook      — Optional env var ``CBAM_DECLARANT_REGISTRY_URL`` for future live API.
+
+    Parameters
+    ----------
+    eori:
+        The importer EORI to validate (may be None).
+    allowlist:
+        Optional frozenset of known valid EORIs.  When None, loaded from env.
+        Pass an empty frozenset to disable allowlist checking.
+    """
+    warnings: list[str] = []
+
+    # Layer 1: Presence
+    if not eori or not str(eori).strip():
+        return DeclarantValidationResult(
+            is_valid=False,
+            warnings=["eori_missing — EORI is required for Authorised CBAM Declarant check"],
+        )
+
+    norm = str(eori).strip().upper()
+
+    # Layer 2: Format
+    if not _EORI_RE.match(norm):
+        warnings.append(
+            f"eori_format_invalid:{norm!r} — does not match EU EORI format "
+            "(2-letter country code + up to 15 alphanumeric chars)"
+        )
+
+    # Layer 3: Allowlist
+    effective_allowlist = allowlist if allowlist is not None else _load_declarant_allowlist()
+    if effective_allowlist and norm not in effective_allowlist:
+        warnings.append(
+            f"eori_not_in_authorised_list:{norm!r} — "
+            "not found in CBAM_AUTHORISED_DECLARANTS; "
+            "verify registration with national CBAM competent authority "
+            "(EU 2023/956, Art. 5)"
+        )
+
+    # Layer 4: Live registry hook (optional)
+    registry_url = (os.getenv("CBAM_DECLARANT_REGISTRY_URL") or "").strip()
+    if registry_url and norm:
+        try:
+            import httpx  # lazy import — only needed when URL is configured
+            resp = httpx.get(f"{registry_url}/declarants/{norm}", timeout=2.0)
+            if resp.status_code == 404:
+                warnings.append(
+                    f"eori_not_in_registry:{norm!r} — "
+                    "declarant not found in remote registry"
+                )
+            elif resp.status_code != 200:
+                _logger.warning(
+                    "declarant_registry_check_failed eori=%s status=%s",
+                    norm,
+                    resp.status_code,
+                )
+        except Exception as exc:
+            _logger.warning("declarant_registry_unreachable: %s", exc)
+
+    return DeclarantValidationResult(is_valid=not warnings, warnings=warnings)
 
 
 # ── Public function ───────────────────────────────────────────────────────────
@@ -256,6 +363,15 @@ def determine_cbam_scope(
             f"EORI matches expected format; "
             f"registration status must be verified with DG TAXUD registry"
         )
+
+    # ── Step 5: Authorised Declarant check (Art. 5) ───────────────────────────
+    if norm_eori and _EORI_RE.match(norm_eori):
+        declarant_result = validate_declarant_registration(norm_eori)
+        for w in declarant_result.warnings:
+            reasons.append(f"art5:{w}")
+            if "not_in_authorised_list" in w or "not_in_registry" in w:
+                requires_review = True
+        reg_refs.append(declarant_result.regulation_ref)
 
     # ── Final determination ───────────────────────────────────────────────────
     if out_of_scope_definitive:

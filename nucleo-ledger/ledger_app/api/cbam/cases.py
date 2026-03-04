@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import text
 
 from . import _shared
@@ -74,13 +74,14 @@ def list_carbon_pricing_schemes():
 
 
 @router.post("/cases", status_code=status.HTTP_201_CREATED)
-def create_cbam_case(payload: _shared.CBAMCaseCreate):
+def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
         columns = _shared._table_columns(conn, "cbam_cases")
 
         insert_payload: dict[str, object] = {
             "id": str(uuid4()),
-            "importer_eori": payload.importer_eori,
+            "importer_eori": _shared.encrypt_field(payload.importer_eori),
             "reporting_year": payload.reporting_year,
             "reporting_quarter": payload.reporting_quarter,
         }
@@ -89,40 +90,54 @@ def create_cbam_case(payload: _shared.CBAMCaseCreate):
             insert_payload["importer_name"] = payload.importer_eori
         if "status" in columns:
             insert_payload["status"] = "draft"
+        if "tenant_id" in columns:
+            insert_payload["tenant_id"] = tenant_id
 
         created = _shared._insert_returning(conn, "cbam_cases", insert_payload)
         return created
 
 
 @router.get("/cases/{case_id}")
-def get_cbam_case(case_id):
+def get_cbam_case(request: Request, case_id: str):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
+        columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(columns, tenant_id)
+        tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
         rows = conn.execute(
             text(
-                """
+                f"""
                 SELECT *
                 FROM cbam.cbam_cases
-                WHERE id = :id
+                WHERE id = :id {tenant_filter}
                 LIMIT 1
                 """
             ),
-            {"id": str(case_id)},
+            {"id": str(case_id), "tenant_id": tenant_id},
         ).mappings().all()
 
         if not rows:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
-        return dict(rows[0])
+        result = dict(rows[0])
+        if "importer_eori" in result:
+            result["importer_eori"] = _shared.decrypt_field(result["importer_eori"])
+        return result
 
 
 @router.get("/cases")
 def list_cbam_cases(
+    request: Request,
     importer_eori: str | None = None,
     reporting_year: int | None = None,
     reporting_quarter: int | None = Query(default=None, ge=1, le=4),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
 ):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
         columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(columns, tenant_id)
         order_by = (
             "created_at DESC"
             if "created_at" in columns
@@ -132,6 +147,9 @@ def list_cbam_cases(
         filters: list[str] = []
         params: dict[str, object] = {}
 
+        if "tenant_id" in columns:
+            filters.append("tenant_id = :tenant_id")
+            params["tenant_id"] = tenant_id
         if importer_eori is not None:
             filters.append("importer_eori = :importer_eori")
             params["importer_eori"] = importer_eori
@@ -143,6 +161,8 @@ def list_cbam_cases(
             params["reporting_quarter"] = reporting_quarter
 
         where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
+        params["limit"] = limit
+        params["offset"] = offset
         rows = conn.execute(
             text(
                 f"""
@@ -150,9 +170,10 @@ def list_cbam_cases(
                 FROM cbam.cbam_cases
                 {where_sql}
                 ORDER BY {order_by}
+                LIMIT :limit OFFSET :offset
                 """
             ),
             params,
         ).mappings().all()
 
-        return [dict(row) for row in rows]
+        return {"items": [dict(row) for row in rows], "offset": offset, "limit": limit, "count": len(rows)}

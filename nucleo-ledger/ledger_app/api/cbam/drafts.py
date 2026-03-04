@@ -77,7 +77,7 @@ def _create_cbam_draft_from_parsed_invoice_payload(
 
         case_fk_column = _shared._pick_existing(shipment_columns, ["cbam_case_id", "case_id"])
         if not case_fk_column:
-            raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         invoice_number = payload.invoice.invoice_number
         matched_shipment: dict[str, object] | None = None

@@ -34,9 +34,12 @@ Severity matrix (EU 2023/956 Art. 10):
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass, field
+
+_logger = logging.getLogger("ledger.cbam_installation_registry")
 
 __all__ = [
     "InstallationValidationResult",
@@ -142,6 +145,27 @@ def validate_installation_id(
             f"ID not found in CBAM_KNOWN_INSTALLATION_IDS; "
             f"confirm registration in EU CBAM Transitional Registry (DG TAXUD)"
         )
+
+    # ── 4. Live registry hook (optional) ─────────────────────────────────────
+    registry_url = (os.getenv("CBAM_INSTALLATION_REGISTRY_URL") or "").strip()
+    if registry_url and id_str:
+        try:
+            import httpx  # lazy import — only needed when URL is configured
+            resp = httpx.get(f"{registry_url}/installations/{id_str}", timeout=2.0)
+            if resp.status_code == 404:
+                warnings.append(
+                    f"{prefix}installation_id_not_in_registry:{id_str!r} — "
+                    f"installation not found in remote registry "
+                    f"(EU 2023/956 Art. 10)"
+                )
+            elif resp.status_code != 200:
+                _logger.warning(
+                    "installation_registry_check_failed id=%s status=%s",
+                    id_str,
+                    resp.status_code,
+                )
+        except Exception as exc:
+            _logger.warning("installation_registry_unreachable: %s", exc)
 
     is_valid = not missing
     return InstallationValidationResult(

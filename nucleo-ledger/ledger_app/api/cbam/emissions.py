@@ -12,6 +12,17 @@ from . import _shared
 
 router = APIRouter()
 
+# Valid production routes per CBAM sector (EU 2023/1773, Annex VI).
+# Derived from cbam_emission_factors.py DefaultSEE table.
+_VALID_PRODUCTION_ROUTES: dict[str, frozenset[str]] = {
+    "iron_steel":  frozenset({"BF_BOF", "EAF", "DRI_EAF", "WORLD_AVG"}),
+    "aluminium":   frozenset({"PRIMARY", "SECONDARY", "WORLD_AVG"}),
+    "hydrogen":    frozenset({"SMR", "COAL_GAS", "ELECTRO", "WORLD_AVG"}),
+    "cement":      frozenset({"DRY_KILN", "WET_KILN", "WORLD_AVG"}),
+    "fertilisers": frozenset({"HABER_BOSCH_NG", "HABER_BOSCH_COAL", "WORLD_AVG"}),
+    "electricity": frozenset({"GRID", "RENEWABLE", "WORLD_AVG"}),
+}
+
 
 @router.post("/shipments", status_code=status.HTTP_201_CREATED)
 def create_cbam_shipment(payload: _shared.CBAMShipmentCreate):
@@ -21,7 +32,7 @@ def create_cbam_shipment(payload: _shared.CBAMShipmentCreate):
 
         case_fk_column = _shared._pick_existing(columns, ["cbam_case_id", "case_id"])
         if not case_fk_column:
-            raise HTTPException(status_code=500, detail="No case FK column found on cbam_shipments.")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         insert_payload: dict[str, object] = {
             "id": str(uuid4()),
@@ -87,18 +98,46 @@ def create_cbam_emissions(payload: _shared.CBAMEmissionsCreate):
     try:
         with _shared.engine.begin() as conn:
             _shared._manual_fk_check(conn, "cbam_goods_lines", payload.goods_line_id, "goods_line_id")
+
+            # ── Production route validation (EU 2023/1773 Annex VI) ───────────
+            if payload.production_route:
+                gl_sector_row = conn.execute(
+                    text(
+                        "SELECT cn_code FROM cbam.cbam_goods_lines WHERE id = :id LIMIT 1"
+                    ),
+                    {"id": str(payload.goods_line_id)},
+                ).mappings().one_or_none()
+                if gl_sector_row and gl_sector_row.get("cn_code"):
+                    try:
+                        sector = _shared._infer_sector_from_cn_code(
+                            str(gl_sector_row["cn_code"])
+                        )
+                    except Exception:
+                        sector = None
+                    if sector and sector in _VALID_PRODUCTION_ROUTES:
+                        if payload.production_route not in _VALID_PRODUCTION_ROUTES[sector]:
+                            valid = sorted(_VALID_PRODUCTION_ROUTES[sector])
+                            raise HTTPException(
+                                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                detail=(
+                                    f"Invalid production_route '{payload.production_route}' "
+                                    f"for sector '{sector}'. "
+                                    f"Valid values: {valid}"
+                                ),
+                            )
+
             columns = _shared._table_columns(conn, "cbam_emissions")
 
             goods_line_fk_column = _shared._pick_existing(columns, ["goods_line_id"])
             if not goods_line_fk_column:
-                raise HTTPException(status_code=500, detail="No goods line FK column found on cbam_emissions.")
+                raise HTTPException(status_code=500, detail="Internal server error")
 
             direct_col = _shared._pick_existing(columns, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
             indirect_col = _shared._pick_existing(columns, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
             method_col = _shared._pick_existing(columns, ["calculation_method", "method"])
 
             if not direct_col or not indirect_col or not method_col:
-                raise HTTPException(status_code=500, detail="Expected emissions columns not found on cbam_emissions.")
+                raise HTTPException(status_code=500, detail="Internal server error")
 
             # ── Annex VI factor + installation registry integration ────────────
             # Fetch goods_line for cn_code, net mass, and installation_id.

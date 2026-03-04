@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from shared_auth.jwt import decode_access_token
 from shared_auth.models import AuthContext
+from shared_auth.roles import roles_to_scopes
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -26,11 +27,26 @@ def get_auth_context(
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _unauthorized()
 
+    # ── Try OIDC first (activated only when OIDC_JWKS_URL env var is set) ────
+    try:
+        from shared_auth.oidc import try_decode_oidc_token
+        oidc_ctx = try_decode_oidc_token(credentials.credentials)
+        if oidc_ctx is not None:
+            # Merge role-implied scopes into the token's explicit scopes
+            oidc_ctx.scopes = list(set(oidc_ctx.scopes) | roles_to_scopes(oidc_ctx.roles))
+            request.state.auth_context = oidc_ctx
+            return oidc_ctx
+    except Exception:
+        pass  # OIDC module import failed or not configured — fall through
+
+    # ── Fall back to internal HS256 JWT ───────────────────────────────────────
     try:
         context = decode_access_token(credentials.credentials)
     except ValueError:
         raise _unauthorized()
 
+    # Merge role-implied scopes
+    context.scopes = list(set(context.scopes) | roles_to_scopes(context.roles))
     request.state.auth_context = context
     return context
 

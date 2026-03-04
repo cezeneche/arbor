@@ -9,7 +9,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set. Check your .env file.")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+_ssl_mode = os.getenv("DB_SSL_MODE", "").strip()  # "require" | "prefer" | "" (off)
+_connect_args = {"sslmode": _ssl_mode} if _ssl_mode else {}
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args=_connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

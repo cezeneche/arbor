@@ -62,7 +62,7 @@ def test_api_requires_token():
 def test_api_accepts_valid_token(monkeypatch):
     from narrative_app.api import pipeline as pipeline_module
 
-    monkeypatch.setattr(pipeline_module, "fetch_report_package", lambda _case_id: {"type": "report_package_v1"})
+    monkeypatch.setattr(pipeline_module, "fetch_report_package", lambda _case_id, **kw: {"type": "report_package_v1"})
     monkeypatch.setattr(
         pipeline_module,
         "generate_draft",
@@ -102,7 +102,7 @@ def test_missing_tenant_id_fails():
 def test_pipeline_scope_enforced(monkeypatch):
     from narrative_app.api import pipeline as pipeline_module
 
-    monkeypatch.setattr(pipeline_module, "fetch_report_package", lambda _case_id: {"type": "report_package_v1"})
+    monkeypatch.setattr(pipeline_module, "fetch_report_package", lambda _case_id, **kw: {"type": "report_package_v1"})
 
     token = make_test_token(sub="alice", tenant_id="tenant-narrative", scopes=[])
     response = client.post("/api/cases/CASE-1/narrative/pipeline", headers=_auth_header(token))

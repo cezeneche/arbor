@@ -6,7 +6,7 @@ import pytest
 
 from shared_auth.testing import make_test_token
 
-os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
+os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-testing-only-32b")
 os.environ.setdefault("JWT_ISSUER", "scope3-agentic")
 os.environ.setdefault("JWT_AUDIENCE", "scope3-clients")
 os.environ.setdefault("JWT_EXPIRES_SECONDS", "3600")
