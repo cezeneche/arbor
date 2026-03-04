@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from ledger_app.services.cbam_emission_factors import validate_against_defaults
 from ledger_app.services.cbam_installation_registry import validate_installation_id
 from ledger_app.services.cbam_mrn import validate_mrn
+from ledger_app.services.cbam_taric import lookup_sector
 
 
 def _add_unique(items: list[str], value: str) -> None:
@@ -20,6 +21,101 @@ def _to_float(value: object) -> float | None:
     except (TypeError, ValueError):
         return None
 
+
+# ── Risk-weighted scoring ─────────────────────────────────────────────────────
+#
+# Each issue code is matched by substring (first match wins).  Weights reflect
+# regulatory severity:
+#   - Missing issues are always blocking (any missing → blocking=True) and carry
+#     higher penalties because they prevent declaration submission.
+#   - Warning issues are non-blocking but reduce the quality score.
+#
+# Regulatory basis:
+#   EU Reg. 2023/956 Art. 35 (quarterly report obligation)
+#   Commission Implementing Reg. (EU) 2023/1773 Art. 6 (report content)
+
+_MISSING_WEIGHT_MAP: list[tuple[str, int]] = [
+    # Case-level — declarant identity (blocking to registry submission)
+    ("case:importer_eori_missing",        50),
+    ("case:reporting_year_missing",       40),
+    ("case:reporting_quarter_missing",    40),
+    # Shipment-level
+    (":origin_country_missing",           30),
+    # Goods-line level
+    (":cn_code_missing",                  30),
+    (":mass_missing_or_non_positive",     25),
+    (":missing_emissions",                25),
+]
+_DEFAULT_MISSING_WEIGHT = 20
+
+_WARNING_WEIGHT_MAP: list[tuple[str, int]] = [
+    # Customs reconciliation (EU UCC 952/2013 Art. 5(10))
+    (":entry_reference_format_invalid",               15),
+    # Monitoring method (actual preferred per EU 2023/1773 Art. 4)
+    (":method_not_actual",                            15),
+    # Sector/CN code mismatch (EU 2023/956 Annex I)
+    (":sector_mismatch",                              12),
+    # Installation registry — actual method requires registered ID
+    ("installation_id_required_for_actual_method",    12),
+    # Emission factor plausibility (EU 2023/1773 Annex VI)
+    ("cbam_factors:actual_implausibly_",              12),
+    ("cbam_factors:default_deviation:",               10),
+    # Installation ID format / allowlist issues
+    (":installation_id_format_suspect:",              10),
+    (":installation_id_not_in_allowlist:",            10),
+    # Installation ID absent (transitional — not blocking)
+    (":installation_id_missing",                      10),
+    # No published default factor for this CN code
+    ("cbam_factors:no_default_factor:",                8),
+    # MRN absent (vs format_invalid above)
+    (":entry_reference_missing",                       8),
+    # Low-severity administrative gaps
+    (":invoice_number_missing",                        5),
+    (":incoterm_missing",                              5),
+]
+_DEFAULT_WARNING_WEIGHT = 5
+
+
+def _issue_weight(
+    issue: str, weight_map: list[tuple[str, int]], default: int
+) -> int:
+    for pattern, weight in weight_map:
+        if pattern in issue:
+            return weight
+    return default
+
+
+def _compute_score(missing: list[str], warnings: list[str]) -> float:
+    penalty = sum(
+        _issue_weight(m, _MISSING_WEIGHT_MAP, _DEFAULT_MISSING_WEIGHT)
+        for m in missing
+    ) + sum(
+        _issue_weight(w, _WARNING_WEIGHT_MAP, _DEFAULT_WARNING_WEIGHT)
+        for w in warnings
+    )
+    return round(max(0.0, 100.0 - float(penalty)), 2)
+
+
+def _risk_tier(score: float, blocking: bool) -> str:
+    """Map score + blocking flag to a human-readable risk tier.
+
+    Tiers
+    -----
+    blocking : One or more *missing* (blocking) issues are present.
+    high     : Score < 60 — significant data quality gaps.
+    medium   : 60 ≤ score < 80 — moderate quality concerns.
+    low      : score ≥ 80 — acceptable quality.
+    """
+    if blocking:
+        return "blocking"
+    if score < 60:
+        return "high"
+    if score < 80:
+        return "medium"
+    return "low"
+
+
+# ── Field checks ──────────────────────────────────────────────────────────────
 
 def _check_case(case_row: dict[str, object], missing: list[str]) -> None:
     if not case_row.get("importer_eori"):
@@ -74,6 +170,38 @@ def _check_goods_line(
     # _check_installation_registry (called separately with the method context).
     if not goods_line.get("installation_id"):
         _add_unique(warnings, f"goods_line:{goods_line_id}:installation_id_missing")
+
+
+def _check_sector(
+    goods_line: dict[str, object],
+    warnings: list[str],
+) -> None:
+    """Validate the declared sector against the authoritative TARIC CN code table.
+
+    If the goods line declares a ``sector`` that disagrees with the sector the
+    CN code maps to in EU Regulation 2023/956 Annex I, a warning is raised.
+    This catches mis-categorised goods that could lead to wrong default emission
+    factors being applied or the shipment falling outside CBAM scope.
+    """
+    cn_code = goods_line.get("cn_code")
+    declared_sector = goods_line.get("sector")
+    if not cn_code or not declared_sector:
+        return
+
+    expected_sector = lookup_sector(str(cn_code))
+    if expected_sector is None:
+        # CN code is not in CBAM scope — flagged elsewhere (cbam_taric);
+        # do not double-warn here.
+        return
+
+    if str(declared_sector).lower() != expected_sector.lower():
+        goods_line_id = goods_line.get("id")
+        _add_unique(
+            warnings,
+            f"goods_line:{goods_line_id}:sector_mismatch:"
+            f"declared={declared_sector!r} expected={expected_sector!r} "
+            f"for cn_code={cn_code!r} per EU 2023/956 Annex I",
+        )
 
 
 def _check_emissions(
@@ -193,16 +321,18 @@ def evaluate_cbam_data_quality(
             emissions = goods_bundle.get("latest_emissions")
 
             _check_goods_line(goods_line, missing, warnings)
+            _check_sector(goods_line, warnings)
             _check_emissions(goods_line, emissions, missing, warnings)
             _check_installation_registry(goods_line, emissions, missing, warnings)
             _check_default_factors(goods_line, emissions, warnings)
 
-    penalty = (40 * len(missing)) + (10 * len(warnings))
-    score = max(0.0, 100.0 - float(penalty))
+    is_blocking = bool(missing)
+    score = _compute_score(missing, warnings)
 
     return {
         "missing": missing,
         "warnings": warnings,
-        "score": round(score, 2),
-        "blocking": bool(missing),
+        "score": score,
+        "blocking": is_blocking,
+        "risk_tier": _risk_tier(score, is_blocking),
     }
