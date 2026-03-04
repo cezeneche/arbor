@@ -40,3 +40,11 @@ fixtures/narrative/cbam_*_TEST-*.json
 
 # safety: never add outer workspace repo
 /../Agentic_CBAM/
+
+
+*.db
+cbam_test.db
+.env
+.venv
+__pycache__/
+*.db
