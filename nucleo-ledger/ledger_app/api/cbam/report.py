@@ -1,0 +1,226 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from decimal import Decimal
+from uuid import UUID
+
+from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import text
+
+from . import _shared
+
+router = APIRouter()
+
+
+@router.get("/cases/{case_id}/summary")
+def get_cbam_case_summary(case_id: UUID):
+    with _shared.engine.begin() as conn:
+        _shared._manual_fk_check(conn, "cbam_cases", case_id, "case_id")
+        case_row = conn.execute(
+            text(
+                """
+                SELECT *
+                FROM cbam.cbam_cases
+                WHERE id = :id
+                LIMIT 1
+                """
+            ),
+            {"id": str(case_id)},
+        ).mappings().one()
+        shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
+        summary = _shared._build_case_summary(conn, case_id)
+        summary["data_quality"] = _shared.evaluate_cbam_data_quality(dict(case_row), shipments_payload)
+        return summary
+
+
+@router.get("/cases/{case_id}/report-package")
+def get_cbam_report_package(case_id: UUID):
+    with _shared.engine.begin() as conn:
+        case_rows = conn.execute(
+            text(
+                """
+                SELECT *
+                FROM cbam.cbam_cases
+                WHERE id = :id
+                LIMIT 1
+                """
+            ),
+            {"id": str(case_id)},
+        ).mappings().all()
+
+        if not case_rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+        case_row = dict(case_rows[0])
+        shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
+        data_quality = _shared.evaluate_cbam_data_quality(case_row, shipments_payload)
+        generated_at = datetime.now(timezone.utc).isoformat()
+        report_package = {
+            "type": "cbam_report_package_v1",
+            "generated_at": generated_at,
+            "case": case_row,
+            "shipments": shipments_payload,
+            "summary": _shared._build_case_summary(conn, case_id),
+            "data_quality": data_quality,
+        }
+        snapshot_hash: str | None = None
+        parent_hash: str | None = None
+        algo_versions: dict[str, object] = {"report_package_builder": "v1"}
+        model_versions: dict[str, object] = {}
+
+        try:
+            snapshot = _shared.get_snapshot_store().append_snapshot(
+                case_id=str(case_id),
+                stage="report_package_v1",
+                payload=report_package,
+                algo_versions=algo_versions,
+                model_versions=model_versions,
+            )
+            snapshot_hash = snapshot.payload_hash
+            parent_hash = snapshot.parent_hash
+            algo_versions = dict(snapshot.algo_versions)
+            model_versions = dict(snapshot.model_versions)
+        except Exception:
+            pass
+
+        report_package["audit"] = _shared._report_package_audit_block(
+            case_id=str(case_id),
+            artifact_payload=report_package,
+            generated_at=generated_at,
+            snapshot_hash=snapshot_hash,
+            parent_hash=parent_hash,
+            algo_versions=algo_versions,
+            model_versions=model_versions,
+        )
+        return report_package
+
+
+@router.post("/cases/{case_id}/liability")
+def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest):
+    """Compute CBAM liability (SEE formula + certificate count) for a case.
+
+    Fetches the latest emission record for every goods line in the case,
+    computes Specific Embedded Emissions (tCO2e/t) per EU 2023/1773 Art. 3,
+    then calculates the net CBAM liability and certificate count per
+    EU 2023/956 Arts. 9 and 21.
+
+    The EU ETS price must be provided by the caller (weekly average price
+    for the reporting quarter; source: EEX or ICE).  Carbon price already paid
+    in the origin country defaults to 0 (no deduction) when not supplied.
+    """
+    with _shared.engine.begin() as conn:
+        _shared._manual_fk_check(conn, "cbam_cases", case_id, "case_id")
+
+        shipments_cols = _shared._table_columns(conn, "cbam_shipments")
+        goods_cols = _shared._table_columns(conn, "cbam_goods_lines")
+        emissions_cols = _shared._table_columns(conn, "cbam_emissions")
+
+        case_fk_col = _shared._pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
+        if not case_fk_col:
+            raise HTTPException(status_code=500, detail="No case FK column on cbam_shipments.")
+
+        mass_col = _shared._pick_existing(goods_cols, ["net_mass_kg", "quantity"])
+        cn_col = _shared._pick_existing(goods_cols, ["cn_code"])
+        if not mass_col or not cn_col:
+            raise HTTPException(status_code=500, detail="Expected columns not found on cbam_goods_lines.")
+
+        direct_col = _shared._pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
+        indirect_col = _shared._pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
+        if not direct_col or not indirect_col:
+            raise HTTPException(status_code=500, detail="Expected emission columns not found.")
+
+        rows = conn.execute(
+            text(
+                f"""
+                WITH latest_emissions AS (
+                    SELECT e.goods_line_id,
+                           e.{direct_col}   AS direct_kgco2e,
+                           e.{indirect_col} AS indirect_kgco2e
+                    FROM cbam.cbam_emissions e
+                    INNER JOIN (
+                        SELECT goods_line_id, MAX(version) AS max_ver
+                        FROM cbam.cbam_emissions
+                        GROUP BY goods_line_id
+                    ) mx ON mx.goods_line_id = e.goods_line_id
+                        AND mx.max_ver = e.version
+                )
+                SELECT
+                    gl.id          AS goods_line_id,
+                    gl.{cn_col}    AS cn_code,
+                    gl.{mass_col}  AS net_mass_kg,
+                    COALESCE(le.direct_kgco2e, 0)   AS direct_kgco2e,
+                    COALESCE(le.indirect_kgco2e, 0) AS indirect_kgco2e
+                FROM cbam.cbam_goods_lines gl
+                INNER JOIN cbam.cbam_shipments s ON s.id = gl.shipment_id
+                LEFT  JOIN latest_emissions le ON le.goods_line_id = gl.id
+                WHERE s.{case_fk_col} = :case_id
+                ORDER BY gl.id
+                """
+            ),
+            {"case_id": str(case_id)},
+        ).mappings().all()
+
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No goods lines found for this case. Upload a document and record emissions first.",
+        )
+
+    goods_lines = [
+        {
+            "goods_line_id": str(row["goods_line_id"]),
+            "cn_code": str(row["cn_code"] or ""),
+            "net_mass_kg": Decimal(str(row["net_mass_kg"] or 0)),
+            "direct_kgco2e": Decimal(str(row["direct_kgco2e"] or 0)),
+            "indirect_kgco2e": Decimal(str(row["indirect_kgco2e"] or 0)),
+        }
+        for row in rows
+    ]
+
+    # Auto-detect recognised Art. 9 carbon pricing scheme for origin country
+    scheme = _shared.lookup_carbon_pricing_scheme(payload.origin_country)
+
+    result = _shared.compute_cbam_liability(
+        goods_lines=goods_lines,
+        eu_ets_price_eur=payload.eu_ets_price_eur,
+        carbon_price_paid_eur=payload.carbon_price_paid_eur,
+        origin_country=payload.origin_country,
+        carbon_pricing_scheme_name=scheme.scheme_name if scheme else None,
+        carbon_pricing_scheme_type=scheme.scheme_type if scheme else None,
+    )
+
+    return {
+        "case_id": str(case_id),
+        "eu_ets_price_eur": result.eu_ets_price_eur,
+        "carbon_price_paid_eur": result.carbon_price_paid_eur,
+        "origin_country": result.origin_country,
+        "carbon_pricing_scheme_applies": scheme is not None,
+        "carbon_pricing_scheme_name": result.carbon_pricing_scheme_name,
+        "carbon_pricing_scheme_type": result.carbon_pricing_scheme_type,
+        "goods_lines": [
+            {
+                "goods_line_id": gl.goods_line_id,
+                "cn_code": gl.cn_code,
+                "net_mass_kg": gl.net_mass_kg,
+                "net_mass_t": gl.net_mass_t,
+                "direct_kgco2e": gl.direct_kgco2e,
+                "indirect_kgco2e": gl.indirect_kgco2e,
+                "total_kgco2e": gl.total_kgco2e,
+                "see_direct_tco2e_per_t": gl.see_direct_tco2e_per_t,
+                "see_indirect_tco2e_per_t": gl.see_indirect_tco2e_per_t,
+                "see_total_tco2e_per_t": gl.see_total_tco2e_per_t,
+                "embedded_tco2e": gl.embedded_tco2e,
+            }
+            for gl in result.goods_lines
+        ],
+        "total_net_mass_t": result.total_net_mass_t,
+        "total_direct_kgco2e": result.total_direct_kgco2e,
+        "total_indirect_kgco2e": result.total_indirect_kgco2e,
+        "total_embedded_tco2e": result.total_embedded_tco2e,
+        "carbon_price_deduction_tco2e": result.carbon_price_deduction_tco2e,
+        "net_liability_tco2e": result.net_liability_tco2e,
+        "gross_financial_liability_eur": result.gross_financial_liability_eur,
+        "net_financial_liability_eur": result.net_financial_liability_eur,
+        "cbam_certificates": result.cbam_certificates,
+        "regulation_refs": result.regulation_refs,
+    }
