@@ -556,12 +556,32 @@ async def create_cbam_draft_from_document(
                 "gemini_enabled": bool(_shared.ENABLE_GEMINI_FALLBACK),
             },
         )
+        _shared._write_audit_event(
+            case_id_for_snapshot,
+            "cbam_extracted",
+            {
+                "document_sha256": document_sha256_at_upload,
+                "snapshot_hash": parent_hash,
+                "candidates_count": len(candidates) if isinstance(candidates, list) else 0,
+                "gemini_fallback_used": extraction_validation.get("gemini_fallback_used", False),
+            },
+        )
         parent_hash = _shared._safe_snapshot_write(
             case_id=case_id_for_snapshot,
             stage="arbitrated_v1",
             payload=arbitrated_candidate,
             parent_hash=parent_hash,
             algo_versions={"arbiter": "v1"},
+        )
+        _shared._write_audit_event(
+            case_id_for_snapshot,
+            "cbam_arbitrated",
+            {
+                "snapshot_hash": parent_hash,
+                "arbiter_warnings": extraction_validation.get("arbiter_warnings", []),
+                "invoice_number": (arbitrated_candidate.get("invoice") or {}).get("invoice_number"),
+                "origin_country": (arbitrated_candidate.get("invoice") or {}).get("origin_country"),
+            },
         )
         parent_hash = _shared._safe_snapshot_write(
             case_id=case_id_for_snapshot,

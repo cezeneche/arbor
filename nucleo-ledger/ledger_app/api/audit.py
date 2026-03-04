@@ -63,8 +63,10 @@ def get_audit_log(
     if export:
         try:
             from ledger_app.services.storage import S3_BUCKET, get_s3_client
+            auth = getattr(request.state, "auth_context", None)
+            tenant_id = getattr(auth, "tenant_id", None) or "shared"
             s3 = get_s3_client()
-            uri = export_to_s3_immutable(case_id, result_rows, s3, S3_BUCKET)
+            uri = export_to_s3_immutable(case_id, result_rows, s3, S3_BUCKET, tenant_id=tenant_id)
             response["export_uri"] = uri
         except Exception as exc:
             response["export_error"] = str(exc)

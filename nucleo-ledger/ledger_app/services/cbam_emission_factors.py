@@ -59,12 +59,25 @@ __all__ = [
     "PRODUCTION_ROUTE_ELECTRO",
     "ELECTRICITY_FACTORS",
     "TABLE_VERSION",
+    "FACTOR_METADATA",
     "get_default_see",
     "compute_see_from_defaults",
     "validate_against_defaults",
 ]
 
 TABLE_VERSION = "2023"  # Annex VI publication year; update when new OJ values issued
+
+# Structured provenance metadata — included in every calculation snapshot so that
+# a third-party auditor can verify exactly which Annex VI table was used.
+FACTOR_METADATA = {
+    "table_version": TABLE_VERSION,
+    "regulation": "Commission Implementing Regulation (EU) 2023/1773",
+    "annex": "Annex VI — Default values for specific embedded emissions",
+    "oj_reference": "OJ L 228, 15.9.2023",
+    "effective_date": "2023-10-01",
+    "review_cadence": "annual",
+    "unit_see": "tCO2e per tonne of goods (except electricity: tCO2e/MWh)",
+}
 
 # ── Production route constants ────────────────────────────────────────────────
 PRODUCTION_ROUTE_BF_BOF = "BF_BOF"

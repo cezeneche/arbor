@@ -61,7 +61,8 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="Empty file")
 
     checksum = sha256_bytes(data)
-    key = f"cases/{case_id}/raw/{file.filename}"
+    tenant_id = (getattr(auth, "tenant_id", None) or "shared").replace("/", "_")
+    key = f"tenants/{tenant_id}/cases/{case_id}/raw/{file.filename}"
 
     s3 = get_s3_client()
     s3.put_object(

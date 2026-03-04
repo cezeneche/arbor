@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import text
 
 from . import _shared
+from ledger_app.db.rls import set_tenant_context
 
 router = APIRouter()
 
@@ -16,6 +17,7 @@ router = APIRouter()
 def get_cbam_case_summary(request: Request, case_id: UUID):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
+        set_tenant_context(conn, tenant_id)
         _shared._manual_fk_check(conn, "cbam_cases", case_id, "case_id")
         columns = _shared._table_columns(conn, "cbam_cases")
         _shared._enforce_tenant_id(columns, tenant_id)
@@ -41,6 +43,7 @@ def get_cbam_case_summary(request: Request, case_id: UUID):
 def get_cbam_report_package(request: Request, case_id: UUID):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
+        set_tenant_context(conn, tenant_id)
         columns = _shared._table_columns(conn, "cbam_cases")
         _shared._enforce_tenant_id(columns, tenant_id)
         tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
@@ -63,6 +66,7 @@ def get_cbam_report_package(request: Request, case_id: UUID):
         shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
         data_quality = _shared.evaluate_cbam_data_quality(case_row, shipments_payload)
         generated_at = datetime.now(timezone.utc).isoformat()
+        extraction_evidence = _shared._extraction_evidence_summary(str(case_id))
         report_package = {
             "type": "cbam_report_package_v1",
             "generated_at": generated_at,
@@ -70,6 +74,7 @@ def get_cbam_report_package(request: Request, case_id: UUID):
             "shipments": shipments_payload,
             "summary": _shared._build_case_summary(conn, case_id),
             "data_quality": data_quality,
+            "extraction_evidence": extraction_evidence,
         }
         snapshot_hash: str | None = None
         parent_hash: str | None = None
@@ -197,7 +202,24 @@ def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest)
         carbon_pricing_scheme_type=scheme.scheme_type if scheme else None,
     )
 
-    return {
+    goods_lines_out = [
+        {
+            "goods_line_id": gl.goods_line_id,
+            "cn_code": gl.cn_code,
+            "net_mass_kg": gl.net_mass_kg,
+            "net_mass_t": gl.net_mass_t,
+            "direct_kgco2e": gl.direct_kgco2e,
+            "indirect_kgco2e": gl.indirect_kgco2e,
+            "total_kgco2e": gl.total_kgco2e,
+            "see_direct_tco2e_per_t": gl.see_direct_tco2e_per_t,
+            "see_indirect_tco2e_per_t": gl.see_indirect_tco2e_per_t,
+            "see_total_tco2e_per_t": gl.see_total_tco2e_per_t,
+            "embedded_tco2e": gl.embedded_tco2e,
+        }
+        for gl in result.goods_lines
+    ]
+
+    response = {
         "case_id": str(case_id),
         "eu_ets_price_eur": result.eu_ets_price_eur,
         "carbon_price_paid_eur": result.carbon_price_paid_eur,
@@ -205,22 +227,7 @@ def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest)
         "carbon_pricing_scheme_applies": scheme is not None,
         "carbon_pricing_scheme_name": result.carbon_pricing_scheme_name,
         "carbon_pricing_scheme_type": result.carbon_pricing_scheme_type,
-        "goods_lines": [
-            {
-                "goods_line_id": gl.goods_line_id,
-                "cn_code": gl.cn_code,
-                "net_mass_kg": gl.net_mass_kg,
-                "net_mass_t": gl.net_mass_t,
-                "direct_kgco2e": gl.direct_kgco2e,
-                "indirect_kgco2e": gl.indirect_kgco2e,
-                "total_kgco2e": gl.total_kgco2e,
-                "see_direct_tco2e_per_t": gl.see_direct_tco2e_per_t,
-                "see_indirect_tco2e_per_t": gl.see_indirect_tco2e_per_t,
-                "see_total_tco2e_per_t": gl.see_total_tco2e_per_t,
-                "embedded_tco2e": gl.embedded_tco2e,
-            }
-            for gl in result.goods_lines
-        ],
+        "goods_lines": goods_lines_out,
         "total_net_mass_t": result.total_net_mass_t,
         "total_direct_kgco2e": result.total_direct_kgco2e,
         "total_indirect_kgco2e": result.total_indirect_kgco2e,
@@ -232,3 +239,64 @@ def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest)
         "cbam_certificates": result.cbam_certificates,
         "regulation_refs": result.regulation_refs,
     }
+
+    # Persist calculation as an immutable snapshot (calculation_v1) for audit trail.
+    # This allows third parties to reproduce the SEE formula and verify the inputs.
+    try:
+        from ledger_app.services.cbam_emission_factors import FACTOR_METADATA
+
+        calculation_snapshot = {
+            "type": "cbam_calculation_v1",
+            "formula": "SEE = direct_kgco2e/net_mass_kg + indirect_kgco2e/net_mass_kg (EU 2023/1773 Art. 3)",
+            "regulation_refs": result.regulation_refs,
+            "emission_factor_provenance": FACTOR_METADATA,
+            "inputs": {
+                "eu_ets_price_eur": str(result.eu_ets_price_eur),
+                "carbon_price_paid_eur": str(result.carbon_price_paid_eur),
+                "origin_country": result.origin_country,
+                "carbon_pricing_scheme_name": result.carbon_pricing_scheme_name,
+                "carbon_pricing_scheme_type": result.carbon_pricing_scheme_type,
+            },
+            "goods_lines": goods_lines_out,
+            "outputs": {
+                "total_net_mass_t": str(result.total_net_mass_t),
+                "total_direct_kgco2e": str(result.total_direct_kgco2e),
+                "total_indirect_kgco2e": str(result.total_indirect_kgco2e),
+                "total_embedded_tco2e": str(result.total_embedded_tco2e),
+                "carbon_price_deduction_tco2e": str(result.carbon_price_deduction_tco2e),
+                "net_liability_tco2e": str(result.net_liability_tco2e),
+                "gross_financial_liability_eur": str(result.gross_financial_liability_eur),
+                "net_financial_liability_eur": str(result.net_financial_liability_eur),
+                "cbam_certificates": result.cbam_certificates,
+            },
+        }
+        calc_snapshot = _shared.get_snapshot_store().append_snapshot(
+            case_id=str(case_id),
+            stage="calculation_v1",
+            payload=calculation_snapshot,
+            algo_versions={
+                "cbam_calculation_service": "v1",
+                "see_formula": "EU-2023-1773-Art3",
+                "emission_factor_table": FACTOR_METADATA["table_version"],
+                "emission_factor_regulation": FACTOR_METADATA["regulation"],
+                "emission_factor_oj": FACTOR_METADATA["oj_reference"],
+            },
+            model_versions={},
+        )
+        _shared._write_audit_event(
+            str(case_id),
+            "cbam_calculation_completed",
+            {
+                "snapshot_hash": calc_snapshot.payload_hash,
+                "eu_ets_price_eur": str(result.eu_ets_price_eur),
+                "carbon_price_paid_eur": str(result.carbon_price_paid_eur),
+                "origin_country": result.origin_country,
+                "net_liability_tco2e": str(result.net_liability_tco2e),
+                "cbam_certificates": result.cbam_certificates,
+                "emission_factor_table": FACTOR_METADATA["table_version"],
+            },
+        )
+    except Exception:
+        pass  # Snapshot/audit failure must not block the caller
+
+    return response

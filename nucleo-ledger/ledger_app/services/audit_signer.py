@@ -97,6 +97,7 @@ def export_to_s3_immutable(
     s3_client: Any,
     bucket: str,
     retention_days: int = 30,
+    tenant_id: str = "shared",
 ) -> str:
     """
     Write a GOVERNANCE-locked NDJSON audit archive to S3.
@@ -124,7 +125,8 @@ def export_to_s3_immutable(
     """
     retain_until = datetime.now(timezone.utc) + timedelta(days=retention_days)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    key = f"audit-archives/{case_id}/{timestamp}.ndjson"
+    safe_tenant = (tenant_id or "shared").replace("/", "_")
+    key = f"tenants/{safe_tenant}/audit-archives/{case_id}/{timestamp}.ndjson"
 
     body = "\n".join(json.dumps(r, default=str, sort_keys=True) for r in rows)
 
