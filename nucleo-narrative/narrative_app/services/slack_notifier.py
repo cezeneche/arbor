@@ -2,13 +2,15 @@
 Slack notification service for narrative pipeline jobs (async).
 
 Sends a Slack Block Kit message when an ARQ pipeline job completes or fails.
-Fully opt-in — disabled unless ``SLACK_WEBHOOK_URL`` is set.
+Fully opt-in — disabled unless ``SLACK_WEBHOOK_URL`` is configured.
 
-Configuration env vars
-----------------------
-SLACK_WEBHOOK_URL
-    Slack Incoming Webhook URL.  Shared with the ledger service.
+Secret resolution order
+-----------------------
+1. AWS Secrets Manager (when ``AWS_SECRET_NAME`` is set) — preferred in production
+2. ``SLACK_WEBHOOK_URL`` environment variable / ``.env`` file — local dev fallback
 
+Other configuration
+-------------------
 SLACK_NOTIFY_EVENTS
     Comma-separated event types that trigger notifications.
     Use ``pipeline_completed`` (default) for job-done messages.
@@ -23,7 +25,17 @@ from typing import Any
 
 logger = logging.getLogger("narrative.slack")
 
-_WEBHOOK_URL: str | None = os.getenv("SLACK_WEBHOOK_URL", "").strip() or None
+
+def _resolve_webhook_url() -> str | None:
+    """Resolve SLACK_WEBHOOK_URL via AWS Secrets Manager then env var fallback."""
+    try:
+        from narrative_app.core.secrets import get_secret
+        return get_secret("SLACK_WEBHOOK_URL", required=False) or None
+    except Exception:
+        return (os.getenv("SLACK_WEBHOOK_URL") or "").strip() or None
+
+
+_WEBHOOK_URL: str | None = _resolve_webhook_url()
 
 _RAW_EVENTS = os.getenv("SLACK_NOTIFY_EVENTS", "pipeline_completed")
 _NOTIFY_EVENTS: set[str] | None = (

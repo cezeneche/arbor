@@ -3,13 +3,15 @@ Slack notification service for CBAM audit events.
 
 Sends Slack Block Kit messages to an Incoming Webhook when specific audit
 events are written to the ledger.  Fully opt-in — disabled unless
-``SLACK_WEBHOOK_URL`` is set.
+``SLACK_WEBHOOK_URL`` is configured.
 
-Configuration env vars
-----------------------
-SLACK_WEBHOOK_URL
-    Slack Incoming Webhook URL.  Leave unset to disable all notifications.
+Secret resolution order
+-----------------------
+1. AWS Secrets Manager (when ``AWS_SECRET_NAME`` is set) — preferred in production
+2. ``SLACK_WEBHOOK_URL`` environment variable / ``.env`` file — local dev fallback
 
+Other configuration
+-------------------
 SLACK_NOTIFY_EVENTS
     Comma-separated list of audit event types that trigger a notification.
     Default: ``human_review_required,cbam_calculation_completed``
@@ -24,7 +26,17 @@ from typing import Any
 
 logger = logging.getLogger("ledger.slack")
 
-_WEBHOOK_URL: str | None = os.getenv("SLACK_WEBHOOK_URL", "").strip() or None
+
+def _resolve_webhook_url() -> str | None:
+    """Resolve SLACK_WEBHOOK_URL via AWS Secrets Manager then env var fallback."""
+    try:
+        from ledger_app.core.secrets import get_secret
+        return get_secret("SLACK_WEBHOOK_URL", required=False) or None
+    except Exception:
+        return (os.getenv("SLACK_WEBHOOK_URL") or "").strip() or None
+
+
+_WEBHOOK_URL: str | None = _resolve_webhook_url()
 
 _RAW_EVENTS = os.getenv(
     "SLACK_NOTIFY_EVENTS", "human_review_required,cbam_calculation_completed"
