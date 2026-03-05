@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from ledger_app.db.session import engine
+from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.calculation_service import calculate_from_extraction, load_factor_set, FACTOR_SET_PATH_DEFAULT
 
 router = APIRouter()
@@ -78,21 +79,31 @@ def calculate_case(case_id: str):
             },
         ).mappings().one()
 
+        _event_json = json.dumps({
+            "calculation_version": int(next_version),
+            "method_version": "calc_v3_gated_on_conflicts",
+            "source_extraction_version": int(extraction["version"]),
+            "extraction_confidence": float(extraction["extraction_confidence"]) if extraction["extraction_confidence"] is not None else None,
+            "factor_set_name": factor_set.get("name"),
+            "factor_set_sha256": factor_set_hash,
+        }, sort_keys=True)
+        _prev_hmac = get_prev_chain_hmac(case_id, conn)
+        _sig = sign_event(case_id, "calculated", "system", _event_json,
+                          prev_hmac=_prev_hmac)
         conn.execute(
             text("""
-                INSERT INTO audit_log (case_id, event_type, actor_type, event_json)
-                VALUES (:case_id, 'calculated', 'system', CAST(:event_json AS jsonb))
+                INSERT INTO audit_log
+                    (case_id, event_type, actor_type, actor_sub, event_json,
+                     hmac_sha256, prev_hmac)
+                VALUES
+                    (:case_id, 'calculated', 'system', 'system',
+                     CAST(:event_json AS jsonb), :sig, :prev_hmac)
             """),
             {
                 "case_id": case_id,
-                "event_json": json.dumps({
-                    "calculation_version": int(next_version),
-                    "method_version": "calc_v3_gated_on_conflicts",
-                    "source_extraction_version": int(extraction["version"]),
-                    "extraction_confidence": float(extraction["extraction_confidence"]) if extraction["extraction_confidence"] is not None else None,
-                    "factor_set_name": factor_set.get("name"),
-                    "factor_set_sha256": factor_set_hash,
-                }),
+                "event_json": _event_json,
+                "sig": _sig,
+                "prev_hmac": _prev_hmac,
             },
         )
 

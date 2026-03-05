@@ -1,9 +1,10 @@
 import json
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from ledger_app.db.session import engine
+from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 
 router = APIRouter()
 
@@ -122,21 +123,31 @@ def resolve_conflict(case_id: str, payload: ConflictResolution):
         ).mappings().one()
 
         # audit log
+        _event_json = json.dumps({
+            "field": payload.field,
+            "chosen_value": float(payload.chosen_value),
+            "chosen_source_doc_id": payload.chosen_source_doc_id,
+            "rationale": payload.rationale,
+            "new_extraction_version": int(next_version),
+            "previous_extraction_version": int(extraction["version"]),
+        }, sort_keys=True)
+        _prev_hmac = get_prev_chain_hmac(case_id, conn)
+        _sig = sign_event(case_id, "conflict_resolved", "system", _event_json,
+                          prev_hmac=_prev_hmac)
         conn.execute(
             text("""
-                INSERT INTO audit_log (case_id, event_type, actor_type, event_json)
-                VALUES (:case_id, 'conflict_resolved', 'human', CAST(:event_json AS jsonb))
+                INSERT INTO audit_log
+                    (case_id, event_type, actor_type, actor_sub, event_json,
+                     hmac_sha256, prev_hmac)
+                VALUES
+                    (:case_id, 'conflict_resolved', 'human', 'system',
+                     CAST(:event_json AS jsonb), :sig, :prev_hmac)
             """),
             {
                 "case_id": case_id,
-                "event_json": json.dumps({
-                    "field": payload.field,
-                    "chosen_value": float(payload.chosen_value),
-                    "chosen_source_doc_id": payload.chosen_source_doc_id,
-                    "rationale": payload.rationale,
-                    "new_extraction_version": int(next_version),
-                    "previous_extraction_version": int(extraction["version"]),
-                }),
+                "event_json": _event_json,
+                "sig": _sig,
+                "prev_hmac": _prev_hmac,
             },
         )
 

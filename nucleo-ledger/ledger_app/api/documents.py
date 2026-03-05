@@ -8,7 +8,7 @@ from ledger_app.core.rate_limit import user_or_ip_key
 from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.storage import get_s3_client, S3_BUCKET
-from ledger_app.services.audit_signer import sign_event
+from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.document_validator import validate_upload, MAX_BATCH_FILES
 
 router = APIRouter()
@@ -106,18 +106,25 @@ async def upload_document(
             {"filename": file.filename, "doc_type": doc_type, "storage_uri": storage_uri},
             sort_keys=True,
         )
-        sig = sign_event(case_id, "doc_uploaded", actor_sub, event_json)
+        prev_hmac = get_prev_chain_hmac(case_id, conn)
+        sig = sign_event(case_id, "doc_uploaded", actor_sub, event_json,
+                         prev_hmac=prev_hmac)
 
         conn.execute(
             text("""
-                INSERT INTO audit_log (case_id, event_type, actor_type, actor_sub, event_json, hmac_sha256)
-                VALUES (:case_id, 'doc_uploaded', 'human', :actor_sub, CAST(:event_json AS jsonb), :sig)
+                INSERT INTO audit_log
+                    (case_id, event_type, actor_type, actor_sub, event_json,
+                     hmac_sha256, prev_hmac)
+                VALUES
+                    (:case_id, 'doc_uploaded', 'human', :actor_sub,
+                     CAST(:event_json AS jsonb), :sig, :prev_hmac)
             """),
             {
                 "case_id": case_id,
                 "actor_sub": actor_sub,
                 "event_json": event_json,
                 "sig": sig,
+                "prev_hmac": prev_hmac,
             },
         )
 
@@ -170,17 +177,24 @@ def _upload_single_file(
         {"filename": file_filename, "doc_type": doc_type, "storage_uri": storage_uri},
         sort_keys=True,
     )
-    sig = sign_event(case_id, "doc_uploaded", actor_sub, event_json)
+    prev_hmac = get_prev_chain_hmac(case_id, conn)
+    sig = sign_event(case_id, "doc_uploaded", actor_sub, event_json,
+                     prev_hmac=prev_hmac)
     conn.execute(
         text("""
-            INSERT INTO audit_log (case_id, event_type, actor_type, actor_sub, event_json, hmac_sha256)
-            VALUES (:case_id, 'doc_uploaded', 'human', :actor_sub, CAST(:event_json AS jsonb), :sig)
+            INSERT INTO audit_log
+                (case_id, event_type, actor_type, actor_sub, event_json,
+                 hmac_sha256, prev_hmac)
+            VALUES
+                (:case_id, 'doc_uploaded', 'human', :actor_sub,
+                 CAST(:event_json AS jsonb), :sig, :prev_hmac)
         """),
         {
             "case_id": case_id,
             "actor_sub": actor_sub,
             "event_json": event_json,
             "sig": sig,
+            "prev_hmac": prev_hmac,
         },
     )
 

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from datetime import date
 from sqlalchemy import text
 from ledger_app.db.session import engine
-from ledger_app.services.audit_signer import sign_event
+from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 
 router = APIRouter()
 
@@ -98,18 +98,25 @@ def create_case(request: Request, payload: CaseCreate):
 
         case_id = str(row["id"])
         event_json = json.dumps({"note": "case created via API"}, sort_keys=True)
-        sig = sign_event(case_id, "case_created", actor_sub, event_json)
+        prev_hmac = get_prev_chain_hmac(case_id, conn)
+        sig = sign_event(case_id, "case_created", actor_sub, event_json,
+                         prev_hmac=prev_hmac)
 
         conn.execute(
             text("""
-                INSERT INTO audit_log (case_id, event_type, actor_type, actor_sub, event_json, hmac_sha256)
-                VALUES (:case_id, 'case_created', 'human', :actor_sub, CAST(:event_json AS jsonb), :sig)
+                INSERT INTO audit_log
+                    (case_id, event_type, actor_type, actor_sub, event_json,
+                     hmac_sha256, prev_hmac)
+                VALUES
+                    (:case_id, 'case_created', 'human', :actor_sub,
+                     CAST(:event_json AS jsonb), :sig, :prev_hmac)
             """),
             {
                 "case_id": case_id,
                 "actor_sub": actor_sub,
                 "event_json": event_json,
                 "sig": sig,
+                "prev_hmac": prev_hmac,
             },
         )
 

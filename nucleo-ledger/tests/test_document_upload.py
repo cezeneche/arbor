@@ -168,8 +168,9 @@ def _make_client(monkeypatch) -> tuple[TestClient, _FakeS3]:
     monkeypatch.setattr(doc_module, "engine", _FakeEngine())
     monkeypatch.setattr(doc_module, "get_s3_client", lambda: fake_s3)
     monkeypatch.setattr(doc_module, "S3_BUCKET", "test-bucket")
-    # Disable HMAC signing dependency
+    # Disable HMAC signing / chain dependencies
     monkeypatch.setattr(doc_module, "sign_event", lambda *a, **kw: "fake-sig")
+    monkeypatch.setattr(doc_module, "get_prev_chain_hmac", lambda *a, **kw: None)
     # Reset the rate limiter's in-memory counters so prior tests don't interfere
     doc_module._limiter._storage.reset()
 

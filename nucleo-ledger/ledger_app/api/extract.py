@@ -4,6 +4,7 @@ from slowapi import Limiter
 from ledger_app.core.rate_limit import user_or_ip_key
 from sqlalchemy import text
 from ledger_app.db.session import engine
+from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.storage import download_bytes
 from ledger_app.services.extraction_service import deterministic_extract
 from ledger_app.services.data_quality_service import score_extraction_consistency
@@ -108,21 +109,31 @@ def extract_case(request: Request, case_id: str):
             },
         ).mappings().one()
 
+        _event_json = json.dumps({
+            "version": int(next_version),
+            "method": "deterministic_v2_per_doc",
+            "dq_ruleset": quality_meta["ruleset"],
+            "extraction_confidence": overall_conf,
+            "field_confidence": field_scores,
+            "conflict_count": len(quality_meta.get("conflicts", [])),
+        }, sort_keys=True)
+        _prev_hmac = get_prev_chain_hmac(case_id, conn)
+        _sig = sign_event(case_id, "extracted", "system", _event_json,
+                          prev_hmac=_prev_hmac)
         conn.execute(
             text("""
-                INSERT INTO audit_log (case_id, event_type, actor_type, event_json)
-                VALUES (:case_id, 'extracted', 'system', CAST(:event_json AS jsonb))
+                INSERT INTO audit_log
+                    (case_id, event_type, actor_type, actor_sub, event_json,
+                     hmac_sha256, prev_hmac)
+                VALUES
+                    (:case_id, 'extracted', 'system', 'system',
+                     CAST(:event_json AS jsonb), :sig, :prev_hmac)
             """),
             {
                 "case_id": case_id,
-                "event_json": json.dumps({
-                    "version": int(next_version),
-                    "method": "deterministic_v2_per_doc",
-                    "dq_ruleset": quality_meta["ruleset"],
-                    "extraction_confidence": overall_conf,
-                    "field_confidence": field_scores,
-                    "conflict_count": len(quality_meta.get("conflicts", [])),
-                }),
+                "event_json": _event_json,
+                "sig": _sig,
+                "prev_hmac": _prev_hmac,
             },
         )
 

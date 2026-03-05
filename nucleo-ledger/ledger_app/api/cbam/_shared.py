@@ -426,18 +426,21 @@ def _write_audit_event(
     Silently no-ops if the audit_log table doesn't exist (e.g., older SQLite test DB).
     """
     try:
-        from ledger_app.services.audit_signer import sign_event
+        from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 
         event_json = json.dumps(event_data, sort_keys=True, default=str)
-        sig = sign_event(case_id, event_type, actor_sub, event_json)
         with engine.begin() as conn:
+            prev_hmac = get_prev_chain_hmac(case_id, conn)
+            sig = sign_event(case_id, event_type, actor_sub, event_json,
+                             prev_hmac=prev_hmac)
             conn.execute(
                 text("""
                     INSERT INTO audit_log
-                        (case_id, event_type, actor_type, actor_sub, event_json, hmac_sha256)
+                        (case_id, event_type, actor_type, actor_sub,
+                         event_json, hmac_sha256, prev_hmac)
                     VALUES
                         (:case_id, :event_type, 'system', :actor_sub,
-                         CAST(:event_json AS jsonb), :sig)
+                         CAST(:event_json AS jsonb), :sig, :prev_hmac)
                 """),
                 {
                     "case_id": case_id,
@@ -445,6 +448,7 @@ def _write_audit_event(
                     "actor_sub": actor_sub,
                     "event_json": event_json,
                     "sig": sig,
+                    "prev_hmac": prev_hmac,
                 },
             )
     except Exception:

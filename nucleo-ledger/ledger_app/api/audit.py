@@ -2,10 +2,13 @@
 Audit log endpoint: retrieve and verify signed audit trail entries per case.
 
 GET /api/cases/{case_id}/audit-log
-    Returns all audit events for a case with per-row HMAC verification status.
-    - verified: true  — HMAC present and correct
+    Returns all audit events for a case with per-row HMAC verification and
+    full chain integrity status.
+    - verified: true  — HMAC present and correct (either chained or legacy format)
     - verified: false — HMAC present but tampered
-    - verified: null  — legacy row (no HMAC, created before signing was added)
+    - verified: null  — unsigned legacy row (created before signing was added)
+    - chain_valid: true  — every signed row's prev_hmac links to its predecessor
+    - chain_valid: false — at least one row is missing, reordered, or tampered
 
 GET /api/cases/{case_id}/audit-log?export=true
     Additionally exports the audit log to S3 with GOVERNANCE Object Lock.
@@ -17,7 +20,11 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import text
 
 from ledger_app.db.session import engine
-from ledger_app.services.audit_signer import export_to_s3_immutable, verify_event
+from ledger_app.services.audit_signer import (
+    export_to_s3_immutable,
+    verify_chain,
+    verify_event,
+)
 
 router = APIRouter()
 
@@ -40,7 +47,7 @@ def get_audit_log(
         rows = conn.execute(
             text("""
                 SELECT id, case_id, event_type, actor_type, actor_sub,
-                       event_json, hmac_sha256, created_at
+                       event_json, hmac_sha256, prev_hmac, created_at
                 FROM audit_log
                 WHERE case_id = :case_id
                 ORDER BY created_at ASC
@@ -54,9 +61,15 @@ def get_audit_log(
         r["verified"] = verify_event(r)
         result_rows.append(r)
 
+    chain_result = verify_chain(result_rows)
+
     response: dict = {
         "case_id": case_id,
         "count": len(result_rows),
+        "chain_valid": chain_result.chain_valid,
+        "chain_signed_count": chain_result.signed_count,
+        "chain_chained_count": chain_result.chained_count,
+        "chain_issues": chain_result.issues,
         "events": result_rows,
     }
 
