@@ -33,14 +33,23 @@ async def run_pipeline_job(
         trace_id=trace_id,
     )
 
+    job_id = ctx.get("job_id", "unknown")
+
     redis = ctx.get("redis")
     if redis is not None:
-        job_id = ctx.get("job_id", "unknown")
         await redis.setex(
             f"job:{job_id}:result",
             86400,
             json.dumps(result),
         )
+
+    # Slack notification — never raises, never delays result delivery
+    try:
+        from narrative_app.services.slack_notifier import notify_pipeline
+
+        await notify_pipeline(case_id, job_id, success=True, result=result)
+    except Exception:
+        pass
 
     return result
 

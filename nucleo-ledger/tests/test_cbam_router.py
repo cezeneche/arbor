@@ -6,6 +6,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
+import pytest
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -556,6 +558,96 @@ def test_data_quality_blocking_when_origin_country_missing():
     assert body["code"] == "human_review_required"
     assert body["risk_tier"] == "blocking"
     assert any("origin_country_missing" in entry for entry in body["blocking_issues"])
+
+
+def _create_non_blocking_case(client):
+    """Helper: create a minimal non-blocking CBAM case and return its case_id."""
+    case_res = client.post(
+        "/api/cbam/cases",
+        json={"importer_eori": "DE999000111", "reporting_year": 2025, "reporting_quarter": 1},
+    )
+    assert case_res.status_code == 201
+    case_id = case_res.json()["id"]
+
+    shipment_res = client.post(
+        "/api/cbam/shipments",
+        json={"cbam_case_id": case_id, "origin_country": "TR", "customs_procedure": "40"},
+    )
+    assert shipment_res.status_code == 201
+    shipment_id = shipment_res.json()["id"]
+
+    goods_res = client.post(
+        "/api/cbam/goods-lines",
+        json={
+            "shipment_id": shipment_id,
+            "cn_code": "720711",
+            "product_description": "Hot rolled steel coil",
+            "net_mass_kg": 5000,
+        },
+    )
+    assert goods_res.status_code == 201
+    goods_line_id = goods_res.json()["id"]
+
+    em_res = client.post(
+        "/api/cbam/emissions",
+        json={
+            "goods_line_id": goods_line_id,
+            "direct_emissions_kgco2e": 25000,
+            "indirect_emissions_kgco2e": 5000,
+            "calculation_method": "actual",
+            "version": 1,
+        },
+    )
+    assert em_res.status_code == 201
+    return case_id
+
+
+def test_report_package_csv_export():
+    """GET report-package?format=csv returns a CSV file download."""
+    client, _ = _client_with_fake_engine()
+    case_id = _create_non_blocking_case(client)
+
+    res = client.get(f"/api/cbam/cases/{case_id}/report-package?format=csv")
+    assert res.status_code == 200
+    assert "text/csv" in res.headers["content-type"]
+    assert "attachment" in res.headers.get("content-disposition", "")
+    assert ".csv" in res.headers.get("content-disposition", "")
+
+    # CSV must contain section headers and at least the goods line row
+    text = res.text
+    assert "CBAM Report Package" in text
+    assert "Case Information" in text
+    assert "Data Quality" in text
+    assert "Goods Lines" in text
+    assert "Audit Trail" in text
+    assert "720711" in text  # CN code from the goods line
+
+
+def test_report_package_pdf_export():
+    """GET report-package?format=pdf returns a PDF file download."""
+    pytest.importorskip("reportlab", reason="reportlab not installed")
+    client, _ = _client_with_fake_engine()
+    case_id = _create_non_blocking_case(client)
+
+    res = client.get(f"/api/cbam/cases/{case_id}/report-package?format=pdf")
+    assert res.status_code == 200
+    assert "application/pdf" in res.headers["content-type"]
+    assert "attachment" in res.headers.get("content-disposition", "")
+    assert ".pdf" in res.headers.get("content-disposition", "")
+
+    # PDF magic bytes
+    assert res.content[:4] == b"%PDF"
+
+
+def test_report_package_default_format_is_json():
+    """GET report-package with no format param returns JSON (backward-compatible)."""
+    client, _ = _client_with_fake_engine()
+    case_id = _create_non_blocking_case(client)
+
+    res = client.get(f"/api/cbam/cases/{case_id}/report-package")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["type"] == "cbam_report_package_v1"
 
 
 def test_data_quality_warning_when_installation_id_missing():

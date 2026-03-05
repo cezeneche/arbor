@@ -62,6 +62,8 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       APP_GIT_SHA: ${GIT_SHA:-unknown}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_NOTIFY_EVENTS: ${SLACK_NOTIFY_EVENTS:-human_review_required,cbam_calculation_completed}
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,6 +99,8 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       APP_GIT_SHA: ${GIT_SHA:-unknown}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_NOTIFY_EVENTS: ${SLACK_NOTIFY_EVENTS:-pipeline_completed}
     depends_on:
       ledger:
         condition: service_healthy

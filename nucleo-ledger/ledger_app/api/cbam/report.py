@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi.responses import Response
 from sqlalchemy import text
 
 from . import _shared
@@ -40,7 +42,15 @@ def get_cbam_case_summary(request: Request, case_id: UUID):
 
 
 @router.get("/cases/{case_id}/report-package")
-def get_cbam_report_package(request: Request, case_id: UUID):
+def get_cbam_report_package(
+    request: Request,
+    case_id: UUID,
+    export_format: Literal["json", "csv", "pdf"] = Query(
+        default="json",
+        alias="format",
+        description="Export format. json returns the API response; csv and pdf trigger a file download.",
+    ),
+):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     run_id: str | None = getattr(request.state, "request_id", None)
 
@@ -147,7 +157,32 @@ def get_cbam_report_package(request: Request, case_id: UUID):
             algo_versions=algo_versions,
             model_versions=model_versions,
         )
-        return report_package
+
+        from ledger_app.services.report_exporter import to_csv, to_json, to_pdf
+
+        safe_id = str(case_id).replace("/", "_")
+
+        if export_format == "csv":
+            return Response(
+                content=to_csv(report_package).encode("utf-8"),
+                media_type="text/csv",
+                headers={
+                    "Content-Disposition": f'attachment; filename="cbam-report-{safe_id}.csv"'
+                },
+            )
+        if export_format == "pdf":
+            return Response(
+                content=to_pdf(report_package),
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f'attachment; filename="cbam-report-{safe_id}.pdf"'
+                },
+            )
+        # Default: JSON (pretty-printed, same structure as before)
+        return Response(
+            content=to_json(report_package).encode("utf-8"),
+            media_type="application/json",
+        )
 
 
 @router.post("/cases/{case_id}/liability")

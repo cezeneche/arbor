@@ -390,6 +390,16 @@ def _write_audit_event(
         # Audit write must never break the caller.
         pass
 
+    # Slack notification — separate try/except so it fires even when the DB
+    # write is skipped (e.g., missing table in older test DBs) and never
+    # blocks the caller regardless of network state.
+    try:
+        from ledger_app.services.slack_notifier import notify as _slack_notify
+
+        _slack_notify(case_id, event_type, event_data)
+    except Exception:
+        pass
+
 
 def _safe_snapshot_write(
     *,

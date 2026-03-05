@@ -100,6 +100,7 @@ slowapi
 python-json-logger
 prometheus-fastapi-instrumentator
 cryptography>=42.0.0
+reportlab>=4.0.0
 
 # Observability
 opentelemetry-sdk
