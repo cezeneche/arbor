@@ -181,7 +181,7 @@ def get_case(request: Request, case_id: str):
             text("""
                 SELECT id, supplier_name, supplier_country,
                        reporting_period_start, reporting_period_end,
-                       status, owner_sub, tenant_id, created_at, updated_at
+                       status, review_status, owner_sub, tenant_id, created_at, updated_at
                 FROM cases WHERE id = :id
             """),
             {"id": case_id},

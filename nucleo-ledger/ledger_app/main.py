@@ -107,6 +107,7 @@ from ledger_app.api.resolve import router as resolve_router
 from ledger_app.api.report_package import router as report_package_router
 from ledger_app.api.cbam import router as cbam_router
 from ledger_app.api.audit import router as audit_router
+from ledger_app.api.review import router as review_router
 
 app.include_router(health_router, prefix="/api")
 app.include_router(health_router)
@@ -126,6 +127,7 @@ app.include_router(resolve_router, prefix="/api", dependencies=[Depends(get_auth
 app.include_router(report_package_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(cbam_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(audit_router, prefix="/api", dependencies=[Depends(get_auth_context)])
+app.include_router(review_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 
 @app.get("/")
 def root():

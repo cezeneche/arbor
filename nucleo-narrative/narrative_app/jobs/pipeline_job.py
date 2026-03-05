@@ -43,6 +43,16 @@ async def run_pipeline_job(
             json.dumps(result),
         )
 
+    # Persist review gate to ledger (best-effort — never raises)
+    try:
+        from narrative_app.services.ledger_client import clear_review, flag_review
+        if result.get("human_review_required"):
+            await asyncio.to_thread(flag_review, case_id, tenant_id=tenant_id, trace_id=trace_id)
+        else:
+            await asyncio.to_thread(clear_review, case_id, tenant_id=tenant_id, trace_id=trace_id)
+    except Exception:
+        pass
+
     # Slack notification — never raises, never delays result delivery
     try:
         from narrative_app.services.slack_notifier import notify_pipeline

@@ -127,6 +127,16 @@ def _run_pipeline_stages(
         result["human_review_required"] = True
         result["final_narrative_json"] = None
 
+    # Persist review gate to ledger (best-effort — never blocks the pipeline result)
+    try:
+        from narrative_app.services.ledger_client import clear_review, flag_review
+        if result.get("human_review_required"):
+            flag_review(case_id, tenant_id=tenant_id, trace_id=trace_id)
+        else:
+            clear_review(case_id, tenant_id=tenant_id, trace_id=trace_id)
+    except Exception:
+        pass
+
     return result
 
 

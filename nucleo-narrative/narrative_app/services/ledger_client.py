@@ -131,6 +131,58 @@ def _fetch_json(url: str, *, tenant_id: str = "service-tenant", trace_id: str | 
         url=url,
     )
 
+def _post_json(url: str, *, tenant_id: str = "service-tenant", trace_id: str | None = None) -> None:
+    """
+    POST to a ledger endpoint as the narrative service (no request body).
+    Uses a service token with cbam:write scope. Does not retry — callers wrap in try/except.
+    """
+    timeout = httpx.Timeout(
+        connect=LEDGER_CONNECT_TIMEOUT_S,
+        read=LEDGER_READ_TIMEOUT_S,
+        write=LEDGER_READ_TIMEOUT_S,
+        pool=LEDGER_CONNECT_TIMEOUT_S,
+    )
+    token, _ = create_access_token(
+        sub="narrative-service",
+        tenant_id=tenant_id,
+        scopes=["cbam:write", "narrative:run"],
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    if trace_id:
+        headers["X-Request-Id"] = trace_id
+
+    with httpx.Client(timeout=timeout) as client:
+        try:
+            response = client.post(url, headers=headers)
+        except httpx.RequestError as exc:
+            raise LedgerClientError(
+                code="ledger_down",
+                message=f"Ledger POST failed: {exc}",
+                url=url,
+            ) from exc
+
+        if response.status_code >= 400:
+            raise LedgerClientError(
+                code="review_flag_failed",
+                message=f"Ledger returned {response.status_code}",
+                url=url,
+                status_code=response.status_code,
+                body=_trim_body(response.text),
+            )
+
+
+def flag_review(case_id: str, *, tenant_id: str = "service-tenant", trace_id: str | None = None) -> None:
+    """Signal to ledger that this case requires human review (Gemini flagged it)."""
+    base = settings.ledger_base_url.rstrip("/")
+    _post_json(f"{base}/api/cases/{case_id}/review/flag", tenant_id=tenant_id, trace_id=trace_id)
+
+
+def clear_review(case_id: str, *, tenant_id: str = "service-tenant", trace_id: str | None = None) -> None:
+    """Signal to ledger that the pipeline passed — clear any pending review flag."""
+    base = settings.ledger_base_url.rstrip("/")
+    _post_json(f"{base}/api/cases/{case_id}/review/clear", tenant_id=tenant_id, trace_id=trace_id)
+
+
 def fetch_report_package(case_id: str, *, tenant_id: str = "service-tenant", trace_id: str | None = None) -> dict:
     base = settings.ledger_base_url.rstrip("/")
     url = f"{base}/api/cases/{case_id}/report-package"

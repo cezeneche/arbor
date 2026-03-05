@@ -19,7 +19,7 @@ def case_bundle(case_id: str, audit_limit: int = 20):
             text("""
                 SELECT id, supplier_name, supplier_country,
                        reporting_period_start, reporting_period_end,
-                       external_ref, status, created_at
+                       external_ref, status, review_status, created_at
                 FROM cases
                 WHERE id = :case_id
             """),
@@ -28,6 +28,16 @@ def case_bundle(case_id: str, audit_limit: int = 20):
 
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
+
+        if dict(case).get("review_status") == "pending_review":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Case is pending human review and cannot be bundled for submission.",
+                    "review_status": "pending_review",
+                    "action": "POST /api/cases/{case_id}/review/approve or /reject",
+                },
+            )
 
         documents = conn.execute(
             text("""
