@@ -115,6 +115,37 @@ services:
       timeout: 5s
       retries: 10
 
+  narrative-worker:
+    build:
+      context: .
+      dockerfile: nucleo-narrative/Dockerfile
+      args:
+        APP_GIT_SHA: ${GIT_SHA:-unknown}
+    command: ["arq", "narrative_app.worker.WorkerSettings"]
+    restart: unless-stopped
+    environment:
+      LEDGER_BASE_URL: ${LEDGER_BASE_URL:-http://ledger:8000}
+      JWT_SECRET: ${JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-3-5-sonnet-latest}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-pro}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+      APP_GIT_SHA: ${GIT_SHA:-unknown}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_NOTIFY_EVENTS: ${SLACK_NOTIFY_EVENTS:-human_review_required,cbam_calculation_completed,pipeline_completed}
+      ARQ_MAX_JOBS: ${ARQ_MAX_JOBS:-10}
+    depends_on:
+      redis:
+        condition: service_healthy
+      ledger:
+        condition: service_healthy
+    networks:
+      - internal
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
