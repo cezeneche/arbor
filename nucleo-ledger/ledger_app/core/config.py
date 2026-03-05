@@ -53,5 +53,18 @@ def optional_startup_warnings() -> list[str]:
             "AUDIT_SIGNING_KEY not set; audit log signing falls back to JWT_SECRET. "
             "Set a dedicated AUDIT_SIGNING_KEY for production."
         )
+
+    slack_url = (os.getenv("SLACK_WEBHOOK_URL") or "").strip()
+    slack_events = os.getenv("SLACK_NOTIFY_EVENTS", "human_review_required,cbam_calculation_completed")
+    if slack_url:
+        warnings.append(
+            f"Slack notifications ENABLED — events: {slack_events}"
+        )
+    else:
+        warnings.append(
+            "SLACK_WEBHOOK_URL not set; Slack notifications are disabled. "
+            "Set SLACK_WEBHOOK_URL in .env to enable human-review and calculation alerts."
+        )
+
     return warnings
 

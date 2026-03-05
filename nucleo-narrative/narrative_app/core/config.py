@@ -1,5 +1,14 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+
+from dotenv import load_dotenv
 from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Populate os.environ from .env before pydantic-settings reads declared fields.
+# This ensures that vars not declared in Settings (e.g. SLACK_WEBHOOK_URL) are
+# still accessible via os.getenv() throughout the service.
+load_dotenv()
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -47,4 +56,17 @@ def optional_provider_warnings() -> list[str]:
         warnings.append("ANTHROPIC_API_KEY is not set; Claude review stage will be skipped.")
     if not settings.gemini_api_key:
         warnings.append("GEMINI_API_KEY is not set; Gemini gate will be skipped.")
+
+    slack_url = (os.getenv("SLACK_WEBHOOK_URL") or "").strip()
+    slack_events = os.getenv("SLACK_NOTIFY_EVENTS", "pipeline_completed")
+    if slack_url:
+        warnings.append(
+            f"Slack notifications ENABLED — events: {slack_events}"
+        )
+    else:
+        warnings.append(
+            "SLACK_WEBHOOK_URL not set; Slack notifications are disabled. "
+            "Set SLACK_WEBHOOK_URL in .env to enable pipeline-completion alerts."
+        )
+
     return warnings
