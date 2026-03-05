@@ -1,0 +1,265 @@
+{
+  "name": "CBAM Pipeline Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cbam-pipeline",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "cbam-pipeline-trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "case_id",
+              "name": "case_id",
+              "value": "={{ $json.body.case_id }}",
+              "type": "string"
+            },
+            {
+              "id": "packet_kind",
+              "name": "packet_kind",
+              "value": "={{ $json.body.packet_kind || 'cbam' }}",
+              "type": "string"
+            },
+            {
+              "id": "tenant_id",
+              "name": "tenant_id",
+              "value": "={{ $json.body.tenant_id || 'default' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Set Variables",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LEDGER_URL }}/api/cases/{{ $json.case_id }}/extract",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Extract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "cbam-service-token", "name": "CBAM Service Token" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LEDGER_URL }}/api/cases/{{ $('Set Variables').item.json.case_id }}/calculate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Calculate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "cbam-service-token", "name": "CBAM Service Token" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LEDGER_URL }}/api/cases/{{ $('Set Variables').item.json.case_id }}/narrative/pipeline?packet_kind={{ $('Set Variables').item.json.packet_kind }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Run Narrative Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "cbam-service-token", "name": "CBAM Service Token" }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "review-check",
+              "leftValue": "={{ $json.human_review_required }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Human Review Required?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \":eyes: *CBAM case `{{ $('Set Variables').item.json.case_id }}` requires human review*\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \":eyes: *Human review required*\\nCase `{{ $('Set Variables').item.json.case_id }}` was flagged by the Gemini quality gate and cannot be submitted until a reviewer approves or rejects it.\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*Action:*\\nPOST `/api/cases/{{ $('Set Variables').item.json.case_id }}/review/approve` or `/reject`\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Scope required:*\\n`review:write`\" }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0007-0007-0007-000000000007",
+      "name": "Slack: Review Required",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 160]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.LEDGER_URL }}/api/cases/{{ $('Set Variables').item.json.case_id }}/bundle",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "a1b2c3d4-0008-0008-0008-000000000008",
+      "name": "Get Bundle",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 440],
+      "credentials": {
+        "httpHeaderAuth": { "id": "cbam-service-token", "name": "CBAM Service Token" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \":white_check_mark: *CBAM pipeline complete* for case `{{ $('Set Variables').item.json.case_id }}`\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \":white_check_mark: *CBAM pipeline complete*\\nCase `{{ $('Set Variables').item.json.case_id }}` has been extracted, calculated, and the narrative has been approved by the Gemini gate. The bundle is ready for submission.\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*Total emissions:*\\n{{ $json.bundle_summary.totals.total_kgco2e || 'N/A' }} kgCO2e\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Factor set:*\\n{{ $json.bundle_summary.factor_set.name || 'N/A' }}\" }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0009-0009-0009-000000000009",
+      "name": "Slack: Pipeline Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 440]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"pending_review\", \"case_id\": \"{{ $('Set Variables').item.json.case_id }}\", \"message\": \"Case flagged for human review. Approve or reject via POST /api/cases/{id}/review/approve or /reject\" }",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0010-0010-0010-000000000010",
+      "name": "Respond: Review Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1500, 160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"complete\", \"case_id\": \"{{ $('Set Variables').item.json.case_id }}\", \"bundle_summary\": {{ JSON.stringify($json.bundle_summary) }} }",
+        "options": { "responseCode": 200 }
+      },
+      "id": "a1b2c3d4-0011-0011-0011-000000000011",
+      "name": "Respond: Complete",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1700, 440]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Set Variables", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Variables": {
+      "main": [
+        [{ "node": "Extract", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract": {
+      "main": [
+        [{ "node": "Calculate", "type": "main", "index": 0 }]
+      ]
+    },
+    "Calculate": {
+      "main": [
+        [{ "node": "Run Narrative Pipeline", "type": "main", "index": 0 }]
+      ]
+    },
+    "Run Narrative Pipeline": {
+      "main": [
+        [{ "node": "Human Review Required?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Human Review Required?": {
+      "main": [
+        [{ "node": "Slack: Review Required", "type": "main", "index": 0 }],
+        [{ "node": "Get Bundle", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack: Review Required": {
+      "main": [
+        [{ "node": "Respond: Review Required", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Bundle": {
+      "main": [
+        [{ "node": "Slack: Pipeline Complete", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack: Pipeline Complete": {
+      "main": [
+        [{ "node": "Respond: Complete", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "cbam-pipeline-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    { "createdAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-01T00:00:00.000Z", "id": "cbam", "name": "cbam" }
+  ]
+}

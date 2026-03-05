@@ -239,6 +239,38 @@ services:
     networks:
       - internal
 
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    environment:
+      # n8n admin access (change in production)
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_ADMIN_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_ADMIN_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: "5678"
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678}
+      # Internal service URLs — available inside workflow expressions as $env.LEDGER_URL etc.
+      LEDGER_URL: http://ledger:8000
+      NARRATIVE_URL: http://narrative:8001
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      # Allow n8n to obtain dev JWT tokens from the ledger
+      AUTH_DEV_TOKEN_ENDPOINT: "true"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      # Workflow JSON files — import via: docker compose exec n8n n8n import:workflow --separate --input=/workflows/
+      - ./n8n/workflows:/workflows:ro
+    ports:
+      - "5678:5678"
+    depends_on:
+      ledger:
+        condition: service_healthy
+      narrative:
+        condition: service_healthy
+    networks:
+      - internal
+
   backup:
     image: python:3.12-slim
     restart: unless-stopped
@@ -271,3 +303,4 @@ volumes:
   postgres_data:
   grafana_data:
   minio_data:
+  n8n_data:
