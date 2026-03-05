@@ -25,9 +25,12 @@ def _create_cbam_draft_from_parsed_invoice_payload(
     reporting_year_override: int | None = None,
     reporting_quarter_override: int | None = None,
     warn_on_missing_emissions: bool = False,
+    tenant_id: str = "",
 ) -> dict[str, object]:
     with _shared.engine.begin() as conn:
         case_columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(case_columns, tenant_id)
+        _shared.set_tenant_context(conn, tenant_id)
         shipment_columns = _shared._table_columns(conn, "cbam_shipments")
         goods_columns = _shared._table_columns(conn, "cbam_goods_lines")
         emissions_columns = _shared._table_columns(conn, "cbam_emissions")
@@ -44,23 +47,34 @@ def _create_cbam_draft_from_parsed_invoice_payload(
         )
         warnings: list[str] = []
 
+        # Only scope the case lookup to this tenant when tenant context is set.
+        # With set_tenant_context active, RLS enforces this in PostgreSQL anyway;
+        # the explicit filter makes the intent auditable and works on SQLite too.
+        tenant_case_filter = (
+            "AND tenant_id = :tenant_id" if (tenant_id and "tenant_id" in case_columns) else ""
+        )
+        case_lookup_params: dict[str, object] = {
+            "importer_eori": payload.importer.eori,
+            "reporting_year": reporting_year,
+            "reporting_quarter": reporting_quarter,
+        }
+        if tenant_case_filter:
+            case_lookup_params["tenant_id"] = tenant_id
+
         existing_case_rows = conn.execute(
             text(
-                """
+                f"""
                 SELECT *
                 FROM cbam.cbam_cases
                 WHERE importer_eori = :importer_eori
                   AND reporting_year = :reporting_year
                   AND reporting_quarter = :reporting_quarter
+                  {tenant_case_filter}
                 ORDER BY created_at DESC
                 LIMIT 1
                 """
             ),
-            {
-                "importer_eori": payload.importer.eori,
-                "reporting_year": reporting_year,
-                "reporting_quarter": reporting_quarter,
-            },
+            case_lookup_params,
         ).mappings().all()
 
         if existing_case_rows:
@@ -76,6 +90,8 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                 case_insert["importer_name"] = payload.importer.name or payload.importer.eori
             if "status" in case_columns:
                 case_insert["status"] = "draft"
+            if "tenant_id" in case_columns:
+                case_insert["tenant_id"] = tenant_id
 
             case_row = _shared._insert_returning(conn, "cbam_cases", case_insert)
             case_id = str(case_row["id"])
@@ -308,9 +324,13 @@ def _create_cbam_draft_from_parsed_invoice_payload(
 
 
 @router.post("/drafts/from-parsed-invoice", status_code=status.HTTP_201_CREATED)
-def create_cbam_draft_from_parsed_invoice(payload: _shared.CBAMDraftFromParsedInvoiceRequest):
+def create_cbam_draft_from_parsed_invoice(
+    request: Request,
+    payload: _shared.CBAMDraftFromParsedInvoiceRequest,
+):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     try:
-        return _create_cbam_draft_from_parsed_invoice_payload(payload)
+        return _create_cbam_draft_from_parsed_invoice_payload(payload, tenant_id=tenant_id)
     except IntegrityError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -333,6 +353,7 @@ async def create_cbam_draft_from_document(
             content={"detail": "File name is required.", "stage": "extract"},
         )
 
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     safe_filename = Path(file.filename).name or "upload.bin"
     run_id: str | None = getattr(request.state, "request_id", None)
 
@@ -527,6 +548,7 @@ async def create_cbam_draft_from_document(
                 reporting_year_override=resolved_year,
                 reporting_quarter_override=resolved_quarter,
                 warn_on_missing_emissions=True,
+                tenant_id=tenant_id,
             )
         except Exception as exc:
             return JSONResponse(

@@ -242,6 +242,67 @@ def _enforce_tenant_id(columns: dict, tenant_id: str) -> None:
         )
 
 
+def _require_case_tenant(conn: Connection, case_id: UUID | str, tenant_id: str) -> None:
+    """Raise 404 if case_id does not exist or does not belong to the authenticated tenant.
+
+    No-op when:
+    - ``tenant_id`` is empty (unauthenticated / legacy / test contexts)
+    - the ``cbam_cases`` schema has no ``tenant_id`` column yet
+
+    Used by sub-resource write endpoints (documents, shipments, goods-lines,
+    emissions) to verify case ownership before allowing mutations.
+    """
+    if not tenant_id:
+        return
+    columns = _table_columns(conn, "cbam_cases")
+    if "tenant_id" not in columns:
+        return
+    exists = conn.execute(
+        text(
+            "SELECT 1 FROM cbam.cbam_cases WHERE id = :id AND tenant_id = :tid LIMIT 1"
+        ),
+        {"id": str(case_id), "tenant_id": tenant_id},
+    ).scalar_one_or_none()
+    if exists is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+
+def _resolve_case_for_shipment(conn: Connection, shipment_id: UUID | str) -> str | None:
+    """Return the cbam_cases.id for a given shipment (traverses FK to parent case)."""
+    cols = _table_columns(conn, "cbam_shipments")
+    case_col = _pick_existing(cols, ["cbam_case_id", "case_id"])
+    if not case_col:
+        return None
+    row = conn.execute(
+        text(
+            f"SELECT {case_col} AS case_id FROM cbam.cbam_shipments WHERE id = :id LIMIT 1"
+        ),
+        {"id": str(shipment_id)},
+    ).mappings().one_or_none()
+    return str(row["case_id"]) if row else None
+
+
+def _resolve_case_for_goods_line(conn: Connection, goods_line_id: UUID | str) -> str | None:
+    """Return the cbam_cases.id for a given goods line (traverses goods_line → shipment → case)."""
+    cols = _table_columns(conn, "cbam_shipments")
+    case_col = _pick_existing(cols, ["cbam_case_id", "case_id"])
+    if not case_col:
+        return None
+    row = conn.execute(
+        text(
+            f"""
+            SELECT s.{case_col} AS case_id
+            FROM cbam.cbam_goods_lines gl
+            JOIN cbam.cbam_shipments s ON gl.shipment_id = s.id
+            WHERE gl.id = :id
+            LIMIT 1
+            """
+        ),
+        {"id": str(goods_line_id)},
+    ).mappings().one_or_none()
+    return str(row["case_id"]) if row else None
+
+
 def _quarter_from_date(value: date) -> int:
     return ((value.month - 1) // 3) + 1
 

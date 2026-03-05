@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
@@ -25,8 +25,13 @@ _VALID_PRODUCTION_ROUTES: dict[str, frozenset[str]] = {
 
 
 @router.post("/shipments", status_code=status.HTTP_201_CREATED)
-def create_cbam_shipment(payload: _shared.CBAMShipmentCreate):
+def create_cbam_shipment(request: Request, payload: _shared.CBAMShipmentCreate):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
+        case_columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(case_columns, tenant_id)
+        _shared.set_tenant_context(conn, tenant_id)
+        _shared._require_case_tenant(conn, payload.cbam_case_id, tenant_id)
         _shared._manual_fk_check(conn, "cbam_cases", payload.cbam_case_id, "cbam_case_id")
         columns = _shared._table_columns(conn, "cbam_shipments")
 
@@ -57,8 +62,16 @@ def create_cbam_shipment(payload: _shared.CBAMShipmentCreate):
 
 
 @router.post("/goods-lines", status_code=status.HTTP_201_CREATED)
-def create_cbam_goods_line(payload: _shared.CBAMGoodsLineCreate):
+def create_cbam_goods_line(request: Request, payload: _shared.CBAMGoodsLineCreate):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
+        case_columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(case_columns, tenant_id)
+        _shared.set_tenant_context(conn, tenant_id)
+        if tenant_id:
+            case_id = _shared._resolve_case_for_shipment(conn, payload.shipment_id)
+            if case_id:
+                _shared._require_case_tenant(conn, case_id, tenant_id)
         _shared._manual_fk_check(conn, "cbam_shipments", payload.shipment_id, "shipment_id")
         columns = _shared._table_columns(conn, "cbam_goods_lines")
 
@@ -94,9 +107,17 @@ def create_cbam_goods_line(payload: _shared.CBAMGoodsLineCreate):
 
 
 @router.post("/emissions", status_code=status.HTTP_201_CREATED)
-def create_cbam_emissions(payload: _shared.CBAMEmissionsCreate):
+def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate):
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     try:
         with _shared.engine.begin() as conn:
+            case_columns = _shared._table_columns(conn, "cbam_cases")
+            _shared._enforce_tenant_id(case_columns, tenant_id)
+            _shared.set_tenant_context(conn, tenant_id)
+            if tenant_id:
+                case_id = _shared._resolve_case_for_goods_line(conn, payload.goods_line_id)
+                if case_id:
+                    _shared._require_case_tenant(conn, case_id, tenant_id)
             _shared._manual_fk_check(conn, "cbam_goods_lines", payload.goods_line_id, "goods_line_id")
 
             # ── Production route validation (EU 2023/1773 Annex VI) ───────────

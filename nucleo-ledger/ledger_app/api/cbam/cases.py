@@ -78,6 +78,7 @@ def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
         columns = _shared._table_columns(conn, "cbam_cases")
+        _shared.set_tenant_context(conn, tenant_id)
 
         insert_payload: dict[str, object] = {
             "id": str(uuid4()),
@@ -103,6 +104,7 @@ def get_cbam_case(request: Request, case_id: str):
     with _shared.engine.begin() as conn:
         columns = _shared._table_columns(conn, "cbam_cases")
         _shared._enforce_tenant_id(columns, tenant_id)
+        _shared.set_tenant_context(conn, tenant_id)
         tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
         rows = conn.execute(
             text(
@@ -138,6 +140,7 @@ def list_cbam_cases(
     with _shared.engine.begin() as conn:
         columns = _shared._table_columns(conn, "cbam_cases")
         _shared._enforce_tenant_id(columns, tenant_id)
+        _shared.set_tenant_context(conn, tenant_id)
         order_by = (
             "created_at DESC"
             if "created_at" in columns

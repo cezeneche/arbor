@@ -13,11 +13,33 @@ import ledger_app.api.cbam as cbam_api
 
 
 class _Result:
-    def __init__(self, scalar=None):
+    def __init__(self, rows=None, scalar=None):
+        self._rows = rows or []
         self._scalar = scalar
+
+    def mappings(self):
+        return self
+
+    def all(self):
+        return self._rows
+
+    def one_or_none(self):
+        return self._rows[0] if self._rows else None
 
     def scalar_one_or_none(self):
         return self._scalar
+
+
+# Minimal column schema for cbam_cases — intentionally excludes tenant_id so
+# that _enforce_tenant_id and _require_case_tenant are no-ops in this test.
+_CBAM_CASES_COLUMNS = [
+    ("id", "NO", None),
+    ("importer_eori", "NO", None),
+    ("reporting_year", "NO", None),
+    ("reporting_quarter", "NO", None),
+    ("status", "NO", "'draft'::text"),
+    ("created_at", "NO", "now()"),
+]
 
 
 class FakeConnection:
@@ -27,6 +49,12 @@ class FakeConnection:
     def execute(self, statement, params=None):
         params = params or {}
         sql = str(statement)
+        if "FROM information_schema.columns" in sql:
+            rows = [
+                {"column_name": c, "is_nullable": n, "column_default": d}
+                for c, n, d in _CBAM_CASES_COLUMNS
+            ]
+            return _Result(rows=rows)
         if sql.startswith("SELECT 1 FROM cbam.cbam_cases") and "WHERE id = :id" in sql:
             return _Result(scalar=1 if params["id"] in self.case_ids else None)
         raise AssertionError(f"Unexpected SQL in test: {sql}")
