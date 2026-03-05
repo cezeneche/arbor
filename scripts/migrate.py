@@ -10,7 +10,13 @@ Environment:
 Behaviour:
     1. Connects to the database.
     2. Creates schema_migrations table if it doesn't exist.
-    3. Globs db/migrations/*.sql sorted alphabetically.
+    3. Discovers *.sql files from two directories (in dependency order):
+         - db/migrations/             (core public schema)
+         - nucleo-ledger/db/migrations/ (CBAM schema)
+       Files with the same numeric prefix are interleaved so that core
+       migrations always run before their CBAM counterparts (e.g. core
+       001_init.sql runs before ledger 001_add_cbam_tables.sql, ensuring
+       cbam.cbam_cases exists before core 002_cbam_tenant_id.sql alters it).
     4. Skips files already recorded in schema_migrations.
     5. Applies each pending file in a single transaction.
     6. Prints applied/skipped counts; exits 0 on success, 1 on failure.
@@ -20,6 +26,7 @@ from __future__ import annotations
 
 import glob
 import os
+import re
 import sys
 
 # ── 1. Resolve DATABASE_URL ───────────────────────────────────────────────────
@@ -62,11 +69,39 @@ conn.commit()
 
 # ── 4. Discover migration files ───────────────────────────────────────────────
 repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-pattern = os.path.join(repo_root, "db", "migrations", "*.sql")
-files = sorted(glob.glob(pattern))
+
+# Directories searched in priority order.  Within each numeric prefix group
+# the directory's position in this list determines execution order — core
+# migrations (index 0) run before CBAM migrations (index 1) so that the
+# public schema exists before the cbam schema references it, and so that
+# cbam.cbam_cases exists before core 002_cbam_tenant_id.sql alters it.
+MIGRATION_DIRS = [
+    os.path.join(repo_root, "db", "migrations"),
+    os.path.join(repo_root, "nucleo-ledger", "db", "migrations"),
+]
+
+
+def _sort_key(filepath: str) -> tuple[int, int]:
+    """Sort by (numeric prefix, source-dir priority) for correct dependency order."""
+    filename = os.path.basename(filepath)
+    match = re.match(r"^(\d+)", filename)
+    prefix = int(match.group(1)) if match else 9999
+    # Determine dir priority based on position in MIGRATION_DIRS list.
+    for idx, mdir in enumerate(MIGRATION_DIRS):
+        if filepath.startswith(mdir):
+            return (prefix, idx)
+    return (prefix, len(MIGRATION_DIRS))
+
+
+all_files: list[str] = []
+for mdir in MIGRATION_DIRS:
+    if os.path.isdir(mdir):
+        all_files.extend(glob.glob(os.path.join(mdir, "*.sql")))
+
+files = sorted(all_files, key=_sort_key)
 
 if not files:
-    print("No migration files found in db/migrations/")
+    print("No migration files found in: " + ", ".join(MIGRATION_DIRS))
     conn.close()
     sys.exit(0)
 
