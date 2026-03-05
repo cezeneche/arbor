@@ -6,8 +6,7 @@ Source: EU Regulation 2023/956, Article 10
     the identifier of the installation as registered in the CBAM Transitional
     Registry (Implementing Regulation (EU) 2023/1773, Article 5).'
 
-The DG TAXUD CBAM Transitional Registry requires authentication for live queries.
-This module implements three layers of validation that can run offline:
+This module implements four layers of validation:
 
 1. **Presence check** — installation_id is mandatory for method="actual".
    Absence is a blocking data-quality issue (missing, not just a warning).
@@ -25,10 +24,22 @@ This module implements three layers of validation that can run offline:
    variable.  When the allowlist is non-empty, any ID absent from it produces a
    warning, enabling pre-production testing against a fixed set of installations.
 
+4. **Live registry lookup** — queries a live installation registry:
+   - **Default (tier 4b)**: EEA EU Transaction Log (EUTL) public REST API at
+     ``CBAM_EUTL_API_URL`` (default: https://eutl.eea.europa.eu/api/v1).
+     Checks whether the ID exists and whether the permit is still active.
+     Results are cached in-memory for ``CBAM_EUTL_CACHE_TTL_SECONDS`` (default 1 h).
+   - **Override (tier 4a)**: When ``CBAM_INSTALLATION_REGISTRY_URL`` is set, that
+     custom endpoint (e.g. DG TAXUD CBAM Transitional Registry) is called instead.
+   - Network errors and unexpected HTTP responses are logged and skipped gracefully
+     (no false-positive warnings) so offline deployments are not penalised.
+
 Severity matrix (EU 2023/956 Art. 10):
     method="actual", installation_id absent          → BLOCKING (missing)
     method="actual", installation_id wrong format    → WARNING
     method="actual", not in non-empty allowlist      → WARNING
+    method="actual", not found in EUTL / registry   → WARNING
+    method="actual", permit inactive in EUTL         → WARNING
     method != "actual"                               → no registry checks applied
 """
 
@@ -146,12 +157,18 @@ def validate_installation_id(
             f"confirm registration in EU CBAM Transitional Registry (DG TAXUD)"
         )
 
-    # ── 4. Live registry hook (optional) ─────────────────────────────────────
+    # ── 4. Live registry lookup ───────────────────────────────────────────────
     registry_url = (os.getenv("CBAM_INSTALLATION_REGISTRY_URL") or "").strip()
-    if registry_url and id_str:
+
+    if registry_url:
+        # ── 4a. Custom / DG TAXUD CBAM Transitional Registry ─────────────────
+        # Caller has configured a specific registry URL (e.g. the authenticated
+        # DG TAXUD endpoint).  Use a simple status-code check as before.
         try:
             import httpx  # lazy import — only needed when URL is configured
-            resp = httpx.get(f"{registry_url}/installations/{id_str}", timeout=2.0)
+            resp = httpx.get(
+                f"{registry_url}/installations/{id_str}", timeout=2.0
+            )
             if resp.status_code == 404:
                 warnings.append(
                     f"{prefix}installation_id_not_in_registry:{id_str!r} — "
@@ -166,6 +183,31 @@ def validate_installation_id(
                 )
         except Exception as exc:
             _logger.warning("installation_registry_unreachable: %s", exc)
+
+    else:
+        # ── 4b. EEA EUTL public API (default) ────────────────────────────────
+        # When no custom registry URL is configured, fall back to the EEA EU
+        # Transaction Log public REST API (https://eutl.eea.europa.eu/api/v1).
+        # Returns None on network errors → gracefully skip to avoid false
+        # positives in offline / air-gapped deployments.
+        from ledger_app.services.cbam_eutl_client import lookup_installation  # lazy
+
+        info = lookup_installation(id_str)
+        if info is not None:
+            if not info.found:
+                warnings.append(
+                    f"{prefix}installation_id_not_in_eutl:{id_str!r} — "
+                    f"ID not found in EEA EU Transaction Log; "
+                    f"verify registration in CBAM Transitional Registry "
+                    f"(EU 2023/956 Art. 10)"
+                )
+            elif not info.active:
+                warnings.append(
+                    f"{prefix}installation_registry_inactive:{id_str!r} "
+                    f"permit_status={info.permit_status!r} — "
+                    f"installation permit is no longer active in EUTL "
+                    f"(EU 2023/956 Art. 10); declaration may be rejected"
+                )
 
     is_valid = not missing
     return InstallationValidationResult(
