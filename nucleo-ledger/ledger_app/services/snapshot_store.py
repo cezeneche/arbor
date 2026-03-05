@@ -170,8 +170,32 @@ class FileSystemSnapshotStore:
         return record
 
 
+def _row_to_snapshot(row: Any) -> SnapshotRecord:
+    d = dict(row)
+    for field in ("algo_versions", "model_versions"):
+        v = d.get(field)
+        if isinstance(v, str):
+            try:
+                d[field] = json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                d[field] = {}
+    return SnapshotRecord.model_validate(d)
+
+
 class SQLSnapshotStore:
-    """Interface placeholder for future SQL-backed append-only snapshots."""
+    """Append-only SQL-backed snapshot store for CBAM audit chain persistence.
+
+    Requires the ``cbam.cbam_snapshots`` table created by migration
+    ``004_cbam_snapshots.sql``.  Pass ``table="cbam_snapshots"`` (no schema
+    prefix) when using SQLite in tests.
+    """
+
+    def __init__(self, engine: Any, table: str = "cbam.cbam_snapshots") -> None:
+        from sqlalchemy import text as _text  # local import avoids top-level SA dep
+
+        self._engine = engine
+        self._table = table
+        self._text = _text
 
     def append_snapshot(
         self,
@@ -183,33 +207,111 @@ class SQLSnapshotStore:
         model_versions: dict[str, Any] | None = None,
         parent_hash: str | None = None,
     ) -> SnapshotRecord:
-        raise NotImplementedError("SQLSnapshotStore is not implemented yet")
+        payload_json = canonical_json(payload)
+        payload_hash = sha256_hex(payload_json)
+        created_at = datetime.now(timezone.utc).isoformat()
+
+        with self._engine.begin() as conn:
+            if parent_hash is None:
+                row = conn.execute(
+                    self._text(
+                        f"SELECT payload_hash FROM {self._table}"
+                        f" WHERE case_id = :case_id ORDER BY created_at DESC LIMIT 1"
+                    ),
+                    {"case_id": case_id},
+                ).mappings().one_or_none()
+                parent_hash = row["payload_hash"] if row else None
+
+            record = SnapshotRecord(
+                id=str(uuid4()),
+                case_id=case_id,
+                stage=stage,
+                created_at=created_at,
+                payload_json=payload_json,
+                payload_hash=payload_hash,
+                parent_hash=parent_hash,
+                algo_versions=algo_versions or {},
+                model_versions=model_versions or {},
+            )
+
+            conn.execute(
+                self._text(
+                    f"INSERT INTO {self._table}"
+                    f" (id, case_id, stage, created_at, payload_json, payload_hash,"
+                    f"  parent_hash, algo_versions, model_versions)"
+                    f" VALUES (:id, :case_id, :stage, :created_at, :payload_json,"
+                    f"  :payload_hash, :parent_hash, :algo_versions, :model_versions)"
+                ),
+                {
+                    "id": record.id,
+                    "case_id": record.case_id,
+                    "stage": record.stage,
+                    "created_at": record.created_at,
+                    "payload_json": record.payload_json,
+                    "payload_hash": record.payload_hash,
+                    "parent_hash": record.parent_hash,
+                    "algo_versions": json.dumps(record.algo_versions),
+                    "model_versions": json.dumps(record.model_versions),
+                },
+            )
+
+        return record
 
     def latest_snapshot(self, case_id: str) -> SnapshotRecord | None:
-        raise NotImplementedError("SQLSnapshotStore is not implemented yet")
+        with self._engine.begin() as conn:
+            row = conn.execute(
+                self._text(
+                    f"SELECT * FROM {self._table}"
+                    f" WHERE case_id = :case_id ORDER BY created_at DESC LIMIT 1"
+                ),
+                {"case_id": case_id},
+            ).mappings().one_or_none()
+        return _row_to_snapshot(row) if row else None
 
     def list_snapshots(self, case_id: str) -> list[SnapshotRecord]:
-        raise NotImplementedError("SQLSnapshotStore is not implemented yet")
+        with self._engine.begin() as conn:
+            rows = conn.execute(
+                self._text(
+                    f"SELECT * FROM {self._table}"
+                    f" WHERE case_id = :case_id ORDER BY created_at ASC"
+                ),
+                {"case_id": case_id},
+            ).mappings().all()
+        return [_row_to_snapshot(r) for r in rows]
 
     def latest_snapshot_by_stage(self, case_id: str, stage: str) -> SnapshotRecord | None:
-        raise NotImplementedError("SQLSnapshotStore is not implemented yet")
+        with self._engine.begin() as conn:
+            row = conn.execute(
+                self._text(
+                    f"SELECT * FROM {self._table}"
+                    f" WHERE case_id = :case_id AND stage = :stage"
+                    f" ORDER BY created_at DESC LIMIT 1"
+                ),
+                {"case_id": case_id, "stage": stage},
+            ).mappings().one_or_none()
+        return _row_to_snapshot(row) if row else None
 
 
 def _default_snapshot_dir() -> Path:
     override = os.getenv("SNAPSHOT_STORE_DIR")
     if override:
         return Path(override)
-
-    # Keep test runs isolated from repository fixtures unless explicitly requested.
-    if os.getenv("PYTEST_CURRENT_TEST"):
-        return Path(tempfile.gettempdir()) / "cbam_snapshots"
-
-    repo_root = Path(__file__).resolve().parents[3]
-    return repo_root / "fixtures" / "ledger" / "snapshots"
+    return Path(tempfile.gettempdir()) / "cbam_snapshots"
 
 
 def get_snapshot_store() -> SnapshotStore:
-    backend = os.getenv("SNAPSHOT_STORE_BACKEND", "filesystem").strip().lower()
+    backend = os.getenv("SNAPSHOT_STORE_BACKEND", "").strip().lower()
+    if not backend:
+        # SNAPSHOT_STORE_DIR is a filesystem-specific config; treat it as an implicit override.
+        if os.getenv("SNAPSHOT_STORE_DIR"):
+            backend = "filesystem"
+        else:
+            db_url = os.getenv("DATABASE_URL", "")
+            # Auto-select SQL backend only for non-SQLite databases.
+            # SQLite (used in tests) lacks the cbam schema and cbam_snapshots table.
+            backend = "sql" if (db_url and "sqlite" not in db_url.lower()) else "filesystem"
+
     if backend == "sql":
-        return SQLSnapshotStore()
+        from ledger_app.db.session import engine as _engine  # lazy — avoids circular import
+        return SQLSnapshotStore(_engine)
     return FileSystemSnapshotStore(_default_snapshot_dir())
