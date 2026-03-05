@@ -27,14 +27,11 @@ _logger = logging.getLogger("ledger.audit_signer")
 
 
 def _get_signing_key() -> bytes:
-    key = (
-        os.getenv("AUDIT_SIGNING_KEY", "").strip()
-        or os.getenv("JWT_SECRET", "").strip()
-    )
+    key = os.getenv("AUDIT_SIGNING_KEY", "").strip()
     if not key:
         raise RuntimeError(
-            "No signing key available for audit log. "
-            "Set AUDIT_SIGNING_KEY or JWT_SECRET."
+            "AUDIT_SIGNING_KEY is not set. "
+            "Set a dedicated signing key distinct from JWT_SECRET."
         )
     return key.encode("utf-8")
 
@@ -147,18 +144,15 @@ def export_to_s3_immutable(
             retain_until.isoformat(),
         )
     except Exception as exc:
-        # Object Lock may not be enabled on the bucket — fall back to non-locked upload
-        _logger.warning(
-            "audit_export_object_lock_failed case_id=%s error=%s — uploading without lock",
+        _logger.error(
+            "audit_export_object_lock_failed case_id=%s error=%s",
             case_id,
             exc,
         )
-        s3_client.put_object(
-            Bucket=bucket,
-            Key=key,
-            Body=body.encode("utf-8"),
-            ContentType="application/x-ndjson",
-            ServerSideEncryption="AES256",
-        )
+        raise RuntimeError(
+            f"Audit export failed: S3 Object Lock could not be applied on bucket '{bucket}'. "
+            "Enable Object Lock at bucket creation time to ensure audit immutability. "
+            f"Original error: {exc}"
+        ) from exc
 
     return f"s3://{bucket}/{key}"

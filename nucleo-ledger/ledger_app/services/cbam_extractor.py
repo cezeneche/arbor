@@ -418,6 +418,13 @@ _CLAUDE_SCALAR_NORMALISERS: dict[str, Callable[[Any], Any]] = {
     "net_mass_kg": lambda v: _parse_number(str(v)),
     "direct_embedded_kgco2e": lambda v: _parse_number(str(v)),
     "indirect_embedded_kgco2e": lambda v: _parse_number(str(v)),
+    "operator_name": lambda v: str(v).strip() or None,
+    "installation_name": lambda v: str(v).strip() or None,
+    "installation_id": lambda v: str(v).strip().upper() or None,
+    "production_route": lambda v: str(v).strip() or None,
+    "import_date": lambda v: str(v).strip() or None,
+    "carbon_price_paid_eur": lambda v: _parse_number(str(v)),
+    "carbon_price_paid_currency": lambda v: str(v).strip().upper() or None,
 }
 
 
@@ -658,6 +665,14 @@ def _parse_structured_response(
         "method",
         "direct_embedded_kgco2e",
         "indirect_embedded_kgco2e",
+        # CBAM-specific fields required for regulatory compliance
+        "operator_name",
+        "installation_name",
+        "installation_id",
+        "production_route",
+        "import_date",
+        "carbon_price_paid_eur",
+        "carbon_price_paid_currency",
     ]
     parsed: dict[str, Any] = {}
 
@@ -869,6 +884,91 @@ def _parse_structured_response(
                 pages=pages,
             )
 
+    # ── CBAM-specific field extraction ────────────────────────────────────────
+    if not structured.get("operator_name"):
+        match = re.search(
+            r"(?:operator|supplier|exporter|seller)\s*(?:name)?\s*[:\-]\s*(.+)",
+            full_text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            structured["operator_name"] = match.group(1).strip()
+            _append_regex_evidence(evidence, field="cbam.operator_name",
+                                   value=structured["operator_name"],
+                                   source_text=full_text, match=match, pages=pages)
+
+    if not structured.get("installation_name"):
+        match = re.search(
+            r"installation\s*name\s*[:\-]\s*(.+)",
+            full_text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            structured["installation_name"] = match.group(1).strip()
+            _append_regex_evidence(evidence, field="cbam.installation_name",
+                                   value=structured["installation_name"],
+                                   source_text=full_text, match=match, pages=pages)
+
+    if not structured.get("installation_id"):
+        match = re.search(
+            r"installation\s*(?:id|identifier|number|registration)\s*[:\-]\s*([A-Z0-9_\-]{3,})",
+            full_text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            structured["installation_id"] = match.group(1).strip().upper()
+            _append_regex_evidence(evidence, field="cbam.installation_id",
+                                   value=structured["installation_id"],
+                                   source_text=full_text, match=match, pages=pages)
+
+    if not structured.get("production_route"):
+        match = re.search(
+            r"production\s*route\s*[:\-]\s*([A-Za-z0-9_\-/ ]+)",
+            full_text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            structured["production_route"] = match.group(1).strip()
+            _append_regex_evidence(evidence, field="cbam.production_route",
+                                   value=structured["production_route"],
+                                   source_text=full_text, match=match, pages=pages)
+
+    if not structured.get("import_date"):
+        match = re.search(
+            r"(?:import|shipment|arrival|customs\s*clearance)\s*date\s*[:\-]\s*(\d{4}-\d{2}-\d{2})",
+            full_text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            structured["import_date"] = match.group(1)
+            _append_regex_evidence(evidence, field="cbam.import_date",
+                                   value=structured["import_date"],
+                                   source_text=full_text, match=match, pages=pages)
+
+    if not structured.get("carbon_price_paid_eur"):
+        match = re.search(
+            r"carbon\s*(?:price|tax|levy|cost)\s*(?:paid|equivalent|already paid)?\s*[:\-]?\s*(?:EUR\s*)?([0-9]+(?:\.[0-9]+)?)",
+            full_text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            structured["carbon_price_paid_eur"] = _parse_number(match.group(1))
+            _append_regex_evidence(evidence, field="cbam.carbon_price_paid_eur",
+                                   value=structured["carbon_price_paid_eur"],
+                                   source_text=full_text, match=match, pages=pages)
+
+    if not structured.get("carbon_price_paid_currency"):
+        match = re.search(
+            r"carbon\s*(?:price|tax|levy|cost)\s*(?:paid|equivalent)?\s*[:\-]?\s*([A-Z]{3})\s+[0-9]",
+            full_text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            structured["carbon_price_paid_currency"] = match.group(1).upper()
+            _append_regex_evidence(evidence, field="cbam.carbon_price_paid_currency",
+                                   value=structured["carbon_price_paid_currency"],
+                                   source_text=full_text, match=match, pages=pages)
+
     return structured
 
 
@@ -909,6 +1009,9 @@ def _build_extraction_payload(
                 "direct_embedded_kgco2e": None,
                 "indirect_embedded_kgco2e": None,
                 "method": None,
+                "installation_id": structured.get("installation_id"),
+                "installation_name": structured.get("installation_name"),
+                "production_route": structured.get("production_route"),
             }
         ]
 
@@ -974,12 +1077,23 @@ def _build_extraction_payload(
             "name": structured.get("importer_name"),
             "eori": structured.get("importer_eori"),
         },
+        "operator": {
+            "operator_name": structured.get("operator_name"),
+            "installation_name": structured.get("installation_name"),
+            "installation_id": structured.get("installation_id"),
+        },
         "invoice": {
             "invoice_number": structured.get("invoice_number"),
             "invoice_date": structured.get("invoice_date"),
+            "import_date": structured.get("import_date"),
             "origin_country": structured.get("origin_country"),
             "incoterm": structured.get("incoterm"),
             "entry_reference": structured.get("entry_reference"),
+        },
+        "cbam": {
+            "production_route": structured.get("production_route"),
+            "carbon_price_paid_eur": structured.get("carbon_price_paid_eur"),
+            "carbon_price_paid_currency": structured.get("carbon_price_paid_currency"),
         },
         "lines": extracted_lines,
         "emissions": emissions,
@@ -1039,11 +1153,18 @@ class ClaudeCBAMExtractor:
         "{\n"
         '  "importer_name": string | null,\n'
         '  "importer_eori": "EU EORI number: 2-letter country code + digits" | null,\n'
+        '  "operator_name": "name of the exporting operator or supplier" | null,\n'
+        '  "installation_name": "name of the production installation" | null,\n'
+        '  "installation_id": "installation registry ID e.g. DE_12345678" | null,\n'
         '  "invoice_number": string | null,\n'
         '  "invoice_date": "YYYY-MM-DD" | null,\n'
+        '  "import_date": "YYYY-MM-DD date goods entered customs / arrived" | null,\n'
         '  "origin_country": "ISO-3166-1 alpha-2 code of goods origin" | null,\n'
         '  "incoterm": "3-letter Incoterm e.g. CIF FOB DAP" | null,\n'
         '  "entry_reference": "customs entry / MRN reference" | null,\n'
+        '  "production_route": "production route e.g. BF_BOF EAF DRI natural_gas" | null,\n'
+        '  "carbon_price_paid_eur": "carbon tax or ETS cost already paid in origin country (EUR/tonne CO2e)" | null,\n'
+        '  "carbon_price_paid_currency": "3-letter ISO currency code if not EUR" | null,\n'
         '  "lines": [\n'
         '    {\n'
         '      "cn_code": "6-8 digit EU Combined Nomenclature code" | null,\n'
@@ -1051,13 +1172,17 @@ class ClaudeCBAMExtractor:
         '      "net_mass_kg": number | null,\n'
         '      "direct_embedded_kgco2e": number | null,\n'
         '      "indirect_embedded_kgco2e": number | null,\n'
-        '      "method": "actual" | "default" | "estimated" | null\n'
+        '      "method": "actual" | "default" | "estimated" | null,\n'
+        '      "installation_id": "installation registry ID for this line" | null,\n'
+        '      "installation_name": "installation name for this line" | null,\n'
+        '      "production_route": "production route for this line" | null\n'
         "    }\n"
         "  ]\n"
         "}\n\n"
         "Rules:\n"
         "- CN codes must be 6-8 digit numeric EU Combined Nomenclature codes.\n"
         "- method must be exactly one of: actual, default, estimated (or null).\n"
+        "- carbon_price_paid_eur is a number (e.g. 25.5), not a string.\n"
         "- Do not include any text, markdown or explanation outside the JSON.\n\n"
         "Document text:\n{document_text}"
     )
@@ -1184,6 +1309,9 @@ class ClaudeCBAMExtractor:
                     else None
                 ),
                 "method": _normalize_method(cl.get("method")),
+                "installation_id": str(cl["installation_id"]).strip().upper() if cl.get("installation_id") else None,
+                "installation_name": str(cl["installation_name"]).strip() if cl.get("installation_name") else None,
+                "production_route": str(cl["production_route"]).strip() if cl.get("production_route") else None,
             }
             lines.append(line)
             _ensure_value_evidence(

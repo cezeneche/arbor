@@ -17,6 +17,23 @@ def validate_startup_config() -> None:
             "JWT_SECRET is required for nucleo-ledger startup. "
             "Set a strong secret in your .env file."
         )
+    audit_key = (os.getenv("AUDIT_SIGNING_KEY") or "").strip()
+    if not audit_key:
+        raise RuntimeError(
+            "AUDIT_SIGNING_KEY is required for nucleo-ledger startup. "
+            "Set a dedicated signing key distinct from JWT_SECRET."
+        )
+    if audit_key == jwt_secret:
+        raise RuntimeError(
+            "AUDIT_SIGNING_KEY must differ from JWT_SECRET. "
+            "A shared key means a JWT compromise also forges audit logs."
+        )
+    field_enc_key = (os.getenv("FIELD_ENCRYPTION_KEY") or "").strip()
+    if not field_enc_key:
+        raise RuntimeError(
+            "FIELD_ENCRYPTION_KEY is required for nucleo-ledger startup. "
+            "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
 
 
 def optional_startup_warnings() -> list[str]:
@@ -43,17 +60,6 @@ def optional_startup_warnings() -> list[str]:
             "AWS_SECRET_NAME not set; secrets loaded from environment variables. "
             "Set AWS_SECRET_NAME + AWS_REGION to use AWS Secrets Manager in production."
         )
-    if not (os.getenv("FIELD_ENCRYPTION_KEY") or "").strip():
-        warnings.append(
-            "FIELD_ENCRYPTION_KEY not set; sensitive fields (EORI) stored as plaintext. "
-            "Generate a key with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
-        )
-    if not (os.getenv("AUDIT_SIGNING_KEY") or "").strip():
-        warnings.append(
-            "AUDIT_SIGNING_KEY not set; audit log signing falls back to JWT_SECRET. "
-            "Set a dedicated AUDIT_SIGNING_KEY for production."
-        )
-
     slack_url = (os.getenv("SLACK_WEBHOOK_URL") or "").strip()
     slack_events = os.getenv("SLACK_NOTIFY_EVENTS", "human_review_required,cbam_calculation_completed")
     if slack_url:

@@ -8,6 +8,9 @@ from shared_auth.testing import make_test_token
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-testing-only-32b")
+os.environ.setdefault("AUDIT_SIGNING_KEY", "test-audit-signing-key-distinct-from-jwt!")
+# Valid Fernet key (32 zero-bytes, base64url-encoded) — test use only
+os.environ.setdefault("FIELD_ENCRYPTION_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
 os.environ.setdefault("JWT_ISSUER", "scope3-agentic")
 os.environ.setdefault("JWT_AUDIENCE", "scope3-clients")
 os.environ.setdefault("JWT_EXPIRES_SECONDS", "3600")
