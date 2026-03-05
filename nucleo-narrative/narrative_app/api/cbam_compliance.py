@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
+from shared_auth.dependencies import require_scopes
+from shared_auth.models import AuthContext
 
-from narrative_app.api.pipeline import run_pipeline
+from narrative_app.api.pipeline import _run_pipeline_stages
 from narrative_app.services.compliance_pack import build_cbam_compliance_pack
 from narrative_app.services.ledger_client import LedgerClientError, fetch_cbam_report_package
 
@@ -11,9 +13,18 @@ router = APIRouter()
 
 
 @router.post("/cbam/cases/{case_id}/compliance-pack")
-def create_cbam_compliance_pack(case_id: str):
+def create_cbam_compliance_pack(
+    request: Request,
+    case_id: str,
+    auth_context: AuthContext = Depends(require_scopes(["narrative:run"])),
+):
+    tenant_id = auth_context.tenant_id
+    trace_id: str | None = getattr(request.state, "request_id", None)
+
     try:
-        report_package = fetch_cbam_report_package(case_id)
+        report_package = fetch_cbam_report_package(
+            case_id, tenant_id=tenant_id, trace_id=trace_id
+        )
     except LedgerClientError as exc:
         raise HTTPException(
             status_code=502,
@@ -47,7 +58,12 @@ def create_cbam_compliance_pack(case_id: str):
             },
         )
 
-    pipeline_result = run_pipeline(case_id=case_id, packet_kind="cbam")
+    pipeline_result = _run_pipeline_stages(
+        case_id=case_id,
+        packet_kind="cbam",
+        tenant_id=tenant_id,
+        trace_id=trace_id,
+    )
     narrative = pipeline_result.get("final_narrative_json")
     if not isinstance(narrative, dict):
         raise HTTPException(
