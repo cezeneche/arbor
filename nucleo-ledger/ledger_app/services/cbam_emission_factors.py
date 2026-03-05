@@ -42,6 +42,8 @@ ELECTRICITY_FACTORS                                     dict[country_iso2 → tC
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import NamedTuple
@@ -449,6 +451,32 @@ _INDEX: dict[tuple[str, str | None], DefaultSEE] = {
     (entry.cn8_prefix, entry.production_route): entry
     for entry in reversed(_ANNEX_VI)  # first-defined wins on prefix collision
 }
+
+# Compute table SHA-256 once — covers both _ANNEX_VI entries and ELECTRICITY_FACTORS.
+# This auto-updates whenever a value is changed, giving auditors a tamper-evident
+# fingerprint of the exact data used in a calculation.
+_FACTOR_TABLE_SHA256: str = hashlib.sha256(
+    json.dumps(
+        {
+            "annex_vi": sorted(
+                [
+                    [
+                        e.cn8_prefix,
+                        e.sector,
+                        e.production_route or "",
+                        str(e.direct_tco2e_per_t),
+                        str(e.indirect_tco2e_per_t),
+                    ]
+                    for e in _ANNEX_VI
+                ]
+            ),
+            "electricity": {k: str(v) for k, v in sorted(ELECTRICITY_FACTORS.items())},
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+).hexdigest()
+
+FACTOR_METADATA["table_sha256"] = _FACTOR_TABLE_SHA256
 
 
 def _normalize_cn(cn_code: str) -> str:

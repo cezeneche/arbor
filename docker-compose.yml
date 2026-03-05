@@ -48,6 +48,8 @@ services:
     build:
       context: ./nucleo-ledger
       dockerfile: Dockerfile
+      args:
+        APP_GIT_SHA: ${GIT_SHA:-unknown}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${LEDGER_DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
@@ -59,6 +61,7 @@ services:
       S3_REGION: ${S3_REGION:-us-east-1}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+      APP_GIT_SHA: ${GIT_SHA:-unknown}
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,6 +82,8 @@ services:
     build:
       context: ./nucleo-narrative
       dockerfile: Dockerfile
+      args:
+        APP_GIT_SHA: ${GIT_SHA:-unknown}
     restart: unless-stopped
     environment:
       LEDGER_BASE_URL: ${LEDGER_BASE_URL:-http://ledger:8000}
@@ -91,6 +96,7 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-pro}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+      APP_GIT_SHA: ${GIT_SHA:-unknown}
     depends_on:
       ledger:
         condition: service_healthy

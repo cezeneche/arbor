@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -13,6 +13,11 @@ from sqlalchemy.exc import IntegrityError
 from . import _shared
 
 router = APIRouter()
+
+# Prompt version — bump when the LLM extraction prompt template is changed.
+# Captured in the extraction_v1 snapshot model_versions so auditors can trace
+# which prompt produced a given extraction.
+_EXTRACTION_PROMPT_VERSION = "v1"
 
 
 def _create_cbam_draft_from_parsed_invoice_payload(
@@ -315,6 +320,7 @@ def create_cbam_draft_from_parsed_invoice(payload: _shared.CBAMDraftFromParsedIn
 
 @router.post("/drafts/from-document", status_code=status.HTTP_201_CREATED)
 async def create_cbam_draft_from_document(
+    request: Request,
     file: UploadFile = File(...),
     importer_name: str | None = Form(default=None),
     importer_eori: str | None = Form(default=None),
@@ -328,6 +334,7 @@ async def create_cbam_draft_from_document(
         )
 
     safe_filename = Path(file.filename).name or "upload.bin"
+    run_id: str | None = getattr(request.state, "request_id", None)
 
     try:
         file_bytes = await file.read()
@@ -545,15 +552,25 @@ async def create_cbam_draft_from_document(
                 "gemini_fallback_used": extraction_validation.get("gemini_fallback_used"),
             },
         }
+        from ledger_app.core.version import APP_GIT_SHA, APP_VERSION
+
+        _extraction_algo = {
+            "rule_extractor": "v1",
+            "layout": "v1",
+            "app_git_sha": APP_GIT_SHA,
+            "app_version": APP_VERSION,
+            **({"run_id": run_id} if run_id else {}),
+        }
         parent_hash = _shared._safe_snapshot_write(
             case_id=case_id_for_snapshot,
             stage="extraction_v1",
             payload=extraction_stage_payload,
             parent_hash=parent_hash,
-            algo_versions={"rule_extractor": "v1", "layout": "v1"},
+            algo_versions=_extraction_algo,
             model_versions={
                 "llama": str(os.getenv("LLAMA_STRUCTURED_MODEL", "unknown")),
                 "gemini_enabled": bool(_shared.ENABLE_GEMINI_FALLBACK),
+                "extraction_prompt": _EXTRACTION_PROMPT_VERSION,
             },
         )
         _shared._write_audit_event(
@@ -564,6 +581,7 @@ async def create_cbam_draft_from_document(
                 "snapshot_hash": parent_hash,
                 "candidates_count": len(candidates) if isinstance(candidates, list) else 0,
                 "gemini_fallback_used": extraction_validation.get("gemini_fallback_used", False),
+                "run_id": run_id,
             },
         )
         parent_hash = _shared._safe_snapshot_write(
@@ -571,7 +589,11 @@ async def create_cbam_draft_from_document(
             stage="arbitrated_v1",
             payload=arbitrated_candidate,
             parent_hash=parent_hash,
-            algo_versions={"arbiter": "v1"},
+            algo_versions={
+                "arbiter": "v1",
+                "app_git_sha": APP_GIT_SHA,
+                **({"run_id": run_id} if run_id else {}),
+            },
         )
         _shared._write_audit_event(
             case_id_for_snapshot,
@@ -581,6 +603,7 @@ async def create_cbam_draft_from_document(
                 "arbiter_warnings": extraction_validation.get("arbiter_warnings", []),
                 "invoice_number": (arbitrated_candidate.get("invoice") or {}).get("invoice_number"),
                 "origin_country": (arbitrated_candidate.get("invoice") or {}).get("origin_country"),
+                "run_id": run_id,
             },
         )
         parent_hash = _shared._safe_snapshot_write(
@@ -588,7 +611,11 @@ async def create_cbam_draft_from_document(
             stage="repaired_v1",
             payload=repaired_candidate,
             parent_hash=parent_hash,
-            algo_versions={"repair": "v1"},
+            algo_versions={
+                "repair": "v1",
+                "app_git_sha": APP_GIT_SHA,
+                **({"run_id": run_id} if run_id else {}),
+            },
         )
 
         repair_warns = extraction_validation.get("repair_warnings", [])

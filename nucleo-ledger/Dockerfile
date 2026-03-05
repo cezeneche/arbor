@@ -13,6 +13,11 @@ RUN apt-get update \
 COPY requirements.txt ./requirements.txt
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
+# Capture git SHA at build time — exposed as APP_GIT_SHA env var inside the container.
+# Build with: docker build --build-arg APP_GIT_SHA=$(git rev-parse --short HEAD) .
+ARG APP_GIT_SHA=unknown
+ENV APP_GIT_SHA=$APP_GIT_SHA
+
 COPY ledger_app ./ledger_app
 
 EXPOSE 8000

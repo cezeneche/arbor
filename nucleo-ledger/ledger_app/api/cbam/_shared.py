@@ -580,16 +580,21 @@ def _report_package_audit_block(
     algo_versions: dict[str, object] | None = None,
     model_versions: dict[str, object] | None = None,
 ) -> dict[str, object]:
+    from ledger_app.core.version import APP_GIT_SHA, APP_VERSION
+
     evidence_docs = _evidence_documents_from_snapshot(case_id)
     # Primary document_sha256: first doc in list for backward compat
     primary_sha256 = evidence_docs[0]["document_sha256"] if evidence_docs else _document_sha256_from_extraction_snapshot(case_id)
+    merged_algo = dict(algo_versions or {})
+    merged_algo.setdefault("app_git_sha", APP_GIT_SHA)
+    merged_algo.setdefault("app_version", APP_VERSION)
     return {
         "document_sha256": primary_sha256,
         "evidence_documents": evidence_docs,
         "payload_hash": sha256_hex(canonical_json(artifact_payload)),
         "snapshot_hash": snapshot_hash,
         "parent_hash": parent_hash,
-        "algo_versions": algo_versions or {},
+        "algo_versions": merged_algo,
         "model_versions": model_versions or {},
         "generated_at": generated_at,
     }

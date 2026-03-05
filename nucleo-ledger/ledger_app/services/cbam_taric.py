@@ -30,6 +30,9 @@ CBAMCodeNotInScope
 
 from __future__ import annotations
 
+import hashlib
+import json
+
 __all__ = [
     "SECTOR_CEMENT",
     "SECTOR_IRON_STEEL",
@@ -40,6 +43,7 @@ __all__ = [
     "CBAMCodeNotInScope",
     "lookup_sector",
     "is_in_cbam_scope",
+    "TARIC_METADATA",
 ]
 
 # ── Sector identifiers (match DB CHECK constraint values) ────────────────────
@@ -282,3 +286,23 @@ def is_in_cbam_scope(cn_code: str) -> bool:
         A CN code string in any format.
     """
     return lookup_sector(cn_code) is not None
+
+
+# ── TARIC table provenance metadata ──────────────────────────────────────────
+# Computed once at import time so it auto-updates when any table entry changes.
+# Include TARIC_METADATA in every calculation snapshot and in the
+# GET /api/cbam/regulatory-tables response for third-party audit verification.
+
+TARIC_TABLE_VERSION = "2023-956-AnnexI"
+_TARIC_TABLE_SHA256 = hashlib.sha256(
+    json.dumps({**_HEADING_TO_SECTOR, **_CN8_TO_SECTOR}, sort_keys=True).encode("utf-8")
+).hexdigest()
+
+TARIC_METADATA: dict[str, str] = {
+    "table_version": TARIC_TABLE_VERSION,
+    "regulation": "Regulation (EU) 2023/956, Annex I",
+    "oj_reference": "OJ L 130, 16.5.2023",
+    "effective_date": "2023-05-16",
+    "review_cadence": "annual",
+    "sha256": _TARIC_TABLE_SHA256,
+}

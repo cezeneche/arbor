@@ -416,6 +416,20 @@ def test_report_package_has_required_keys():
         },
     )
     assert goods_res.status_code == 201
+    goods_line_id = goods_res.json()["id"]
+
+    # Add emissions so data quality is non-blocking (missing_emissions would gate the report)
+    emissions_res = client.post(
+        "/api/cbam/emissions",
+        json={
+            "goods_line_id": goods_line_id,
+            "direct_emissions_kgco2e": 50000,
+            "indirect_emissions_kgco2e": 10000,
+            "calculation_method": "actual",
+            "version": 1,
+        },
+    )
+    assert emissions_res.status_code == 201
 
     report_res = client.get(f"/api/cbam/cases/{case_id}/report-package")
     assert report_res.status_code == 200
@@ -431,7 +445,6 @@ def test_report_package_has_required_keys():
     assert "missing" in body["data_quality"]
     assert "warnings" in body["data_quality"]
     assert isinstance(body["shipments"], list)
-    assert len(body["data_quality"]["warnings"]) >= 1
     assert re.fullmatch(r"[0-9a-f]{64}", str(body["audit"]["payload_hash"]))
     assert re.fullmatch(r"[0-9a-f]{64}", str(body["audit"]["snapshot_hash"]))
 
@@ -536,11 +549,13 @@ def test_data_quality_blocking_when_origin_country_missing():
     )
     assert emissions_res.status_code == 201
 
+    # Human review gate: blocking data quality → 422 with structured error body
     report_res = client.get(f"/api/cbam/cases/{case_id}/report-package")
-    assert report_res.status_code == 200
-    dq = report_res.json()["data_quality"]
-    assert dq["blocking"] is True
-    assert any("origin_country_missing" in entry for entry in dq["missing"])
+    assert report_res.status_code == 422
+    body = report_res.json()["detail"]
+    assert body["code"] == "human_review_required"
+    assert body["risk_tier"] == "blocking"
+    assert any("origin_country_missing" in entry for entry in body["blocking_issues"])
 
 
 def test_data_quality_warning_when_installation_id_missing():

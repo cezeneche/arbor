@@ -13,6 +13,9 @@ RUN apt-get update \
 COPY requirements.txt ./requirements.txt
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
+ARG APP_GIT_SHA=unknown
+ENV APP_GIT_SHA=$APP_GIT_SHA
+
 COPY narrative_app ./narrative_app
 
 EXPOSE 8001

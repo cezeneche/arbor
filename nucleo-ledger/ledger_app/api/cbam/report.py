@@ -42,6 +42,8 @@ def get_cbam_case_summary(request: Request, case_id: UUID):
 @router.get("/cases/{case_id}/report-package")
 def get_cbam_report_package(request: Request, case_id: UUID):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
+    run_id: str | None = getattr(request.state, "request_id", None)
+
     with _shared.engine.begin() as conn:
         set_tenant_context(conn, tenant_id)
         columns = _shared._table_columns(conn, "cbam_cases")
@@ -65,6 +67,38 @@ def get_cbam_report_package(request: Request, case_id: UUID):
         case_row = dict(case_rows[0])
         shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
         data_quality = _shared.evaluate_cbam_data_quality(case_row, shipments_payload)
+
+        # ── Human review gate ─────────────────────────────────────────────────
+        # Block report generation when data quality is "blocking" (one or more
+        # required fields are missing).  Rejection is written to the audit log so
+        # the event is part of the immutable chain (EU 2023/1773 Art. 6).
+        if data_quality.get("blocking"):
+            blocking_issues = data_quality.get("missing", [])
+            _shared._write_audit_event(
+                str(case_id),
+                "human_review_required",
+                {
+                    "reason": "blocking_data_quality",
+                    "risk_tier": data_quality.get("risk_tier", "blocking"),
+                    "score": data_quality.get("score"),
+                    "blocking_issues": blocking_issues,
+                    "run_id": run_id,
+                },
+            )
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "human_review_required",
+                    "message": (
+                        "Report package cannot be generated: data quality is blocking. "
+                        "Resolve all missing required fields before submission to the EU registry."
+                    ),
+                    "risk_tier": data_quality.get("risk_tier", "blocking"),
+                    "score": data_quality.get("score"),
+                    "blocking_issues": blocking_issues,
+                },
+            )
+
         generated_at = datetime.now(timezone.utc).isoformat()
         extraction_evidence = _shared._extraction_evidence_summary(str(case_id))
         report_package = {
@@ -78,7 +112,15 @@ def get_cbam_report_package(request: Request, case_id: UUID):
         }
         snapshot_hash: str | None = None
         parent_hash: str | None = None
-        algo_versions: dict[str, object] = {"report_package_builder": "v1"}
+
+        from ledger_app.core.version import APP_GIT_SHA, APP_VERSION
+        algo_versions: dict[str, object] = {
+            "report_package_builder": "v1",
+            "app_git_sha": APP_GIT_SHA,
+            "app_version": APP_VERSION,
+        }
+        if run_id:
+            algo_versions["run_id"] = run_id
         model_versions: dict[str, object] = {}
 
         try:
@@ -109,7 +151,7 @@ def get_cbam_report_package(request: Request, case_id: UUID):
 
 
 @router.post("/cases/{case_id}/liability")
-def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest):
+def compute_case_liability(request: Request, case_id: UUID, payload: _shared.CBAMLiabilityRequest):
     """Compute CBAM liability (SEE formula + certificate count) for a case.
 
     Fetches the latest emission record for every goods line in the case,
@@ -121,8 +163,35 @@ def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest)
     for the reporting quarter; source: EEX or ICE).  Carbon price already paid
     in the origin country defaults to 0 (no deduction) when not supplied.
     """
+    run_id: str | None = getattr(request.state, "request_id", None)
+
     with _shared.engine.begin() as conn:
         _shared._manual_fk_check(conn, "cbam_cases", case_id, "case_id")
+
+        # ── Human review gate ─────────────────────────────────────────────────
+        case_columns = _shared._table_columns(conn, "cbam_cases")
+        tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in case_columns else ""
+        tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
+        case_row_rows = conn.execute(
+            text(f"SELECT * FROM cbam.cbam_cases WHERE id = :id {tenant_filter} LIMIT 1"),
+            {"id": str(case_id), "tenant_id": tenant_id},
+        ).mappings().all()
+        if case_row_rows:
+            _dq = _shared.evaluate_cbam_data_quality(dict(case_row_rows[0]), [])
+            if _dq.get("blocking"):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": "human_review_required",
+                        "message": (
+                            "Liability cannot be calculated: data quality is blocking. "
+                            "Resolve all missing required fields first."
+                        ),
+                        "risk_tier": _dq.get("risk_tier", "blocking"),
+                        "score": _dq.get("score"),
+                        "blocking_issues": _dq.get("missing", []),
+                    },
+                )
 
         shipments_cols = _shared._table_columns(conn, "cbam_shipments")
         goods_cols = _shared._table_columns(conn, "cbam_goods_lines")
@@ -244,12 +313,15 @@ def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest)
     # This allows third parties to reproduce the SEE formula and verify the inputs.
     try:
         from ledger_app.services.cbam_emission_factors import FACTOR_METADATA
+        from ledger_app.services.cbam_taric import TARIC_METADATA
+        from ledger_app.core.version import APP_GIT_SHA, APP_VERSION
 
         calculation_snapshot = {
             "type": "cbam_calculation_v1",
             "formula": "SEE = direct_kgco2e/net_mass_kg + indirect_kgco2e/net_mass_kg (EU 2023/1773 Art. 3)",
             "regulation_refs": result.regulation_refs,
             "emission_factor_provenance": FACTOR_METADATA,
+            "taric_provenance": TARIC_METADATA,
             "inputs": {
                 "eu_ets_price_eur": str(result.eu_ets_price_eur),
                 "carbon_price_paid_eur": str(result.carbon_price_paid_eur),
@@ -280,6 +352,12 @@ def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest)
                 "emission_factor_table": FACTOR_METADATA["table_version"],
                 "emission_factor_regulation": FACTOR_METADATA["regulation"],
                 "emission_factor_oj": FACTOR_METADATA["oj_reference"],
+                "emission_factor_sha256_prefix": FACTOR_METADATA.get("table_sha256", "")[:16],
+                "taric_table": TARIC_METADATA["table_version"],
+                "taric_sha256_prefix": TARIC_METADATA["sha256"][:16],
+                "app_git_sha": APP_GIT_SHA,
+                "app_version": APP_VERSION,
+                **({"run_id": run_id} if run_id else {}),
             },
             model_versions={},
         )
@@ -294,9 +372,35 @@ def compute_case_liability(case_id: UUID, payload: _shared.CBAMLiabilityRequest)
                 "net_liability_tco2e": str(result.net_liability_tco2e),
                 "cbam_certificates": result.cbam_certificates,
                 "emission_factor_table": FACTOR_METADATA["table_version"],
+                "taric_table": TARIC_METADATA["table_version"],
+                "run_id": run_id,
             },
         )
     except Exception:
         pass  # Snapshot/audit failure must not block the caller
 
     return response
+
+
+@router.get("/regulatory-tables")
+def get_regulatory_tables():
+    """Return current EU regulatory table versions and SHA-256 checksums.
+
+    Used by third-party auditors and the EU CBAM registry to verify that
+    calculations were performed against the correct published table versions
+    without requiring access to the platform's source code.
+
+    No authentication required — this is public regulatory metadata.
+    """
+    from ledger_app.services.cbam_emission_factors import FACTOR_METADATA
+    from ledger_app.services.cbam_taric import TARIC_METADATA
+    from ledger_app.core.version import APP_GIT_SHA, APP_VERSION
+
+    return {
+        "annex_vi": FACTOR_METADATA,
+        "taric": TARIC_METADATA,
+        "platform": {
+            "git_sha": APP_GIT_SHA,
+            "version": APP_VERSION,
+        },
+    }
