@@ -10,13 +10,14 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./requirements.txt
+COPY nucleo-narrative/requirements.txt ./requirements.txt
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
 ARG APP_GIT_SHA=unknown
 ENV APP_GIT_SHA=$APP_GIT_SHA
 
-COPY narrative_app ./narrative_app
+COPY shared_auth ./shared_auth
+COPY nucleo-narrative/narrative_app ./narrative_app
 
 EXPOSE 8001
 

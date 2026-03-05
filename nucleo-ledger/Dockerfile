@@ -10,7 +10,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./requirements.txt
+COPY nucleo-ledger/requirements.txt ./requirements.txt
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
 # Capture git SHA at build time — exposed as APP_GIT_SHA env var inside the container.
@@ -18,7 +18,8 @@ RUN python -m pip install --upgrade pip && python -m pip install -r requirements
 ARG APP_GIT_SHA=unknown
 ENV APP_GIT_SHA=$APP_GIT_SHA
 
-COPY ledger_app ./ledger_app
+COPY shared_auth ./shared_auth
+COPY nucleo-ledger/ledger_app ./ledger_app
 
 EXPOSE 8000
 

@@ -46,8 +46,8 @@ services:
 
   ledger:
     build:
-      context: ./nucleo-ledger
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: nucleo-ledger/Dockerfile
       args:
         APP_GIT_SHA: ${GIT_SHA:-unknown}
     restart: unless-stopped
@@ -82,8 +82,8 @@ services:
 
   narrative:
     build:
-      context: ./nucleo-narrative
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: nucleo-narrative/Dockerfile
       args:
         APP_GIT_SHA: ${GIT_SHA:-unknown}
     restart: unless-stopped
