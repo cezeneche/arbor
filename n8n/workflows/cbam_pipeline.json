@@ -160,7 +160,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.LEDGER_URL }}/api/cbam/cases/{{ $('Extract Case ID').item.json.case_id }}/bundle",
+        "url": "={{ $env.LEDGER_URL }}/api/cbam/cases/{{ $('Extract Case ID').item.json.case_id }}/report-package",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "httpHeaderAuth",
         "options": {
