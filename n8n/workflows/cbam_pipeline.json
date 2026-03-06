@@ -5,7 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "cbam-pipeline",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {}
       },
       "id": "a1b2c3d4-0001-0001-0001-000000000001",
@@ -20,22 +20,34 @@
         "assignments": {
           "assignments": [
             {
-              "id": "case_id",
-              "name": "case_id",
-              "value": "={{ $json.body.case_id }}",
-              "type": "string"
-            },
-            {
               "id": "packet_kind",
               "name": "packet_kind",
               "value": "={{ $json.body.packet_kind || 'cbam' }}",
               "type": "string"
             },
             {
-              "id": "tenant_id",
-              "name": "tenant_id",
-              "value": "={{ $json.body.tenant_id || 'default' }}",
-              "type": "string"
+              "id": "importer",
+              "name": "importer",
+              "value": "={{ $json.body.importer || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "invoice",
+              "name": "invoice",
+              "value": "={{ $json.body.invoice || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "lines",
+              "name": "lines",
+              "value": "={{ $json.body.lines || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "emissions",
+              "name": "emissions",
+              "value": "={{ $json.body.emissions || {} }}",
+              "type": "object"
             }
           ]
         },
@@ -50,45 +62,49 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.LEDGER_URL }}/api/cases/{{ $json.case_id }}/extract",
+        "url": "={{ $env.LEDGER_URL }}/api/cbam/drafts/from-parsed-invoice",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ importer: $json.importer, invoice: $json.invoice, lines: $json.lines, emissions: $json.emissions }) }}",
         "options": {
           "response": { "response": { "responseFormat": "json" } }
         }
       },
       "id": "a1b2c3d4-0003-0003-0003-000000000003",
-      "name": "Extract",
+      "name": "Create CBAM Case",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [500, 300],
       "credentials": {
-        "httpHeaderAuth": { "id": "cbam-service-token", "name": "CBAM Service Token" }
+        "httpHeaderAuth": { "id": "YM1XZmXKPUB0ahxK", "name": "CBAM Service Token" }
       }
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.LEDGER_URL }}/api/cases/{{ $('Set Variables').item.json.case_id }}/calculate",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "httpHeaderAuth",
-        "options": {
-          "response": { "response": { "responseFormat": "json" } }
-        }
+        "assignments": {
+          "assignments": [
+            {
+              "id": "case_id",
+              "name": "case_id",
+              "value": "={{ $json.case_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
       },
       "id": "a1b2c3d4-0004-0004-0004-000000000004",
-      "name": "Calculate",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [700, 300],
-      "credentials": {
-        "httpHeaderAuth": { "id": "cbam-service-token", "name": "CBAM Service Token" }
-      }
+      "name": "Extract Case ID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [700, 300]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.LEDGER_URL }}/api/cases/{{ $('Set Variables').item.json.case_id }}/narrative/pipeline?packet_kind={{ $('Set Variables').item.json.packet_kind }}",
+        "url": "={{ $env.NARRATIVE_URL }}/api/cases/{{ $json.case_id }}/narrative/pipeline?packet_kind={{ $('Set Variables').item.json.packet_kind }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "httpHeaderAuth",
         "options": {
@@ -101,7 +117,7 @@
       "typeVersion": 4.2,
       "position": [900, 300],
       "credentials": {
-        "httpHeaderAuth": { "id": "cbam-service-token", "name": "CBAM Service Token" }
+        "httpHeaderAuth": { "id": "YM1XZmXKPUB0ahxK", "name": "CBAM Service Token" }
       }
     },
     {
@@ -132,7 +148,7 @@
         "url": "={{ $env.SLACK_WEBHOOK_URL }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"text\": \":eyes: *CBAM case `{{ $('Set Variables').item.json.case_id }}` requires human review*\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \":eyes: *Human review required*\\nCase `{{ $('Set Variables').item.json.case_id }}` was flagged by the Gemini quality gate and cannot be submitted until a reviewer approves or rejects it.\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*Action:*\\nPOST `/api/cases/{{ $('Set Variables').item.json.case_id }}/review/approve` or `/reject`\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Scope required:*\\n`review:write`\" }\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"text\": \":eyes: *CBAM case `{{ $('Extract Case ID').item.json.case_id }}` requires human review*\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \":eyes: *Human review required*\\nCase `{{ $('Extract Case ID').item.json.case_id }}` was flagged by the Gemini quality gate.\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*Action:*\\nPOST `/api/cases/{{ $('Extract Case ID').item.json.case_id }}/review/approve` or `/reject`\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Scope required:*\\n`review:write`\" }\n      ]\n    }\n  ]\n}",
         "options": {}
       },
       "id": "a1b2c3d4-0007-0007-0007-000000000007",
@@ -144,7 +160,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.LEDGER_URL }}/api/cases/{{ $('Set Variables').item.json.case_id }}/bundle",
+        "url": "={{ $env.LEDGER_URL }}/api/cbam/cases/{{ $('Extract Case ID').item.json.case_id }}/bundle",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "httpHeaderAuth",
         "options": {
@@ -157,8 +173,20 @@
       "typeVersion": 4.2,
       "position": [1300, 440],
       "credentials": {
-        "httpHeaderAuth": { "id": "cbam-service-token", "name": "CBAM Service Token" }
+        "httpHeaderAuth": { "id": "YM1XZmXKPUB0ahxK", "name": "CBAM Service Token" }
       }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"pending_review\", \"case_id\": \"{{ $('Extract Case ID').item.json.case_id }}\", \"message\": \"Case flagged for human review. Approve or reject via POST /api/cases/{id}/review/approve or /reject\" }",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0010-0010-0010-000000000010",
+      "name": "Respond: Review Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1300, 160]
     },
     {
       "parameters": {
@@ -166,7 +194,7 @@
         "url": "={{ $env.SLACK_WEBHOOK_URL }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"text\": \":white_check_mark: *CBAM pipeline complete* for case `{{ $('Set Variables').item.json.case_id }}`\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \":white_check_mark: *CBAM pipeline complete*\\nCase `{{ $('Set Variables').item.json.case_id }}` has been extracted, calculated, and the narrative has been approved by the Gemini gate. The bundle is ready for submission.\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*Total emissions:*\\n{{ $json.bundle_summary.totals.total_kgco2e || 'N/A' }} kgCO2e\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Factor set:*\\n{{ $json.bundle_summary.factor_set.name || 'N/A' }}\" }\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"text\": \":white_check_mark: *CBAM pipeline complete* for case `{{ $('Extract Case ID').item.json.case_id }}`\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \":white_check_mark: *CBAM pipeline complete*\\nCase `{{ $('Extract Case ID').item.json.case_id }}` narrative approved. Bundle ready for submission.\"\n      }\n    }\n  ]\n}",
         "options": {}
       },
       "id": "a1b2c3d4-0009-0009-0009-000000000009",
@@ -178,19 +206,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={ \"status\": \"pending_review\", \"case_id\": \"{{ $('Set Variables').item.json.case_id }}\", \"message\": \"Case flagged for human review. Approve or reject via POST /api/cases/{id}/review/approve or /reject\" }",
-        "options": {}
-      },
-      "id": "a1b2c3d4-0010-0010-0010-000000000010",
-      "name": "Respond: Review Required",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1500, 160]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={ \"status\": \"complete\", \"case_id\": \"{{ $('Set Variables').item.json.case_id }}\", \"bundle_summary\": {{ JSON.stringify($json.bundle_summary) }} }",
+        "responseBody": "={ \"status\": \"complete\", \"case_id\": \"{{ $('Extract Case ID').item.json.case_id }}\", \"bundle_summary\": {{ JSON.stringify($json) }} }",
         "options": { "responseCode": 200 }
       },
       "id": "a1b2c3d4-0011-0011-0011-000000000011",
@@ -208,15 +224,15 @@
     },
     "Set Variables": {
       "main": [
-        [{ "node": "Extract", "type": "main", "index": 0 }]
+        [{ "node": "Create CBAM Case", "type": "main", "index": 0 }]
       ]
     },
-    "Extract": {
+    "Create CBAM Case": {
       "main": [
-        [{ "node": "Calculate", "type": "main", "index": 0 }]
+        [{ "node": "Extract Case ID", "type": "main", "index": 0 }]
       ]
     },
-    "Calculate": {
+    "Extract Case ID": {
       "main": [
         [{ "node": "Run Narrative Pipeline", "type": "main", "index": 0 }]
       ]
@@ -255,7 +271,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "errorWorkflow": ""
   },
-  "versionId": "cbam-pipeline-v1",
+  "versionId": "cbam-pipeline-v2",
   "meta": {
     "templateCredsSetupCompleted": false
   },

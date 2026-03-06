@@ -66,6 +66,7 @@ services:
       SLACK_NOTIFY_EVENTS: ${SLACK_NOTIFY_EVENTS:-human_review_required,cbam_calculation_completed,pipeline_completed}
       AUDIT_SIGNING_KEY: ${AUDIT_SIGNING_KEY}
       FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      AUTH_DEV_TOKEN_ENDPOINT: ${AUTH_DEV_TOKEN_ENDPOINT:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -157,6 +158,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      MINIO_KMS_SECRET_KEY: "scope3-dev-key:vwB05y7z7VKmOgL3ucYDqIw2FlIZ3+qwQCMZ7+pq3gI="
     volumes:
       - minio_data:/data
     # Dev only: remove host port mappings in production
@@ -166,7 +168,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "bash -c ':>/dev/tcp/127.0.0.1/9000' 2>/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -185,7 +187,7 @@ services:
     entrypoint: >
       sh -c "
         mc alias set local http://minio:9000 $$S3_ACCESS_KEY $$S3_SECRET_KEY &&
-        mc mb --with-lock local/$$S3_BUCKET 2>/dev/null || true
+        mc mb local/$$S3_BUCKET 2>/dev/null || true
       "
 
   redis:
@@ -257,6 +259,8 @@ services:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       # Allow n8n to obtain dev JWT tokens from the ledger
       AUTH_DEV_TOKEN_ENDPOINT: "true"
+      # Allow $env.VARIABLE access in workflow expressions
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n
       # Workflow JSON files — import via: docker compose exec n8n n8n import:workflow --separate --input=/workflows/

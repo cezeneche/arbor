@@ -59,7 +59,7 @@ cur = conn.cursor()
 # ── 3. Ensure tracking table exists ──────────────────────────────────────────
 cur.execute(
     """
-    CREATE TABLE IF NOT EXISTS schema_migrations (
+    CREATE TABLE IF NOT EXISTS public.schema_migrations (
         filename   TEXT PRIMARY KEY,
         applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -112,7 +112,7 @@ skipped = 0
 for filepath in files:
     filename = os.path.basename(filepath)
 
-    cur.execute("SELECT 1 FROM schema_migrations WHERE filename = %s", (filename,))
+    cur.execute("SELECT 1 FROM public.schema_migrations WHERE filename = %s", (filename,))
     if cur.fetchone():
         print(f"  skip  {filename}")
         skipped += 1
@@ -123,8 +123,10 @@ for filepath in files:
         with open(filepath, encoding="utf-8") as fh:
             sql = fh.read()
         cur.execute(sql)
+        # Reset search_path in case the migration changed it (e.g. SET search_path TO cbam)
+        cur.execute("SET search_path TO public")
         cur.execute(
-            "INSERT INTO schema_migrations (filename) VALUES (%s)",
+            "INSERT INTO public.schema_migrations (filename) VALUES (%s)",
             (filename,),
         )
         conn.commit()
