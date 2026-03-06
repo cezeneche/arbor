@@ -299,6 +299,23 @@ services:
     networks:
       - internal
 
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      LEDGER_URL: http://ledger:8000
+      NARRATIVE_URL: http://narrative:8001
+    depends_on:
+      ledger:
+        condition: service_healthy
+      narrative:
+        condition: service_healthy
+    networks:
+      - internal
+
 networks:
   internal:
     driver: bridge
