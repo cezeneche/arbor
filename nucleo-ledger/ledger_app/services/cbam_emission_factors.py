@@ -2,34 +2,47 @@
 CBAM Default Emission Factor Tables — Specific Embedded Emissions (SEE)
 
 Source: Commission Implementing Regulation (EU) 2023/1773 of 17 August 2023
-        laying down the rules for the application of Regulation (EU) 2023/956,
-        Annex VI — Default values for specific embedded emissions.
+        laying down the rules for the application of Regulation (EU) 2023/956.
         OJ L 228, 15.9.2023.
+
+Operative default values: "Default Values for the Transitional Period of the
+        CBAM between 1 October 2023 and 31 December 2025", European Commission
+        DG TAXUD, published 22 December 2023 under Art. 4(3) of EU 2023/1773.
+        These are the world-average values declarants must use when the actual
+        embedded emissions are unknown.  OJ L 228 sets the framework; the
+        Art. 4(3) table contains the operative numbers.
 
 All SEE values are expressed in **tonnes CO2e per tonne of goods** (tCO2e/t),
 except for electricity which is expressed in **tCO2e per MWh**.
 
 The Commission reviews Annex VI values annually.  TABLE_VERSION records the
-regulation year; update this module and its tests when new OJ values are
-published.
+regulation year; update this module and its tests when new values are published.
 
-Production routes
------------------
-Iron and steel default SEE values depend on the production route:
-  BF_BOF     Integrated blast-furnace / basic-oxygen-furnace (dominant global
-             route, ~70 % of world crude steel production — conservative default
-             when route is unknown).
+Official default values (production_route=None)
+------------------------------------------------
+All production_route=None entries reflect the published world-average defaults
+from the Art. 4(3) DG TAXUD table.  These are weighted world averages based on
+JRC 2023 methodology covering major producing countries.
+
+Route-specific entries (engineering estimates)
+----------------------------------------------
+Entries tagged BF_BOF, EAF, DRI_EAF, PRIMARY, SECONDARY, SMR, COAL_GAS or
+ELECTRO are **engineering estimates** for use when the production route is
+known and reported under method="actual".  They are NOT published official
+default values.  The official table provides single world-average figures only.
+
+Iron and steel:
+  BF_BOF     Integrated blast-furnace / basic-oxygen-furnace.
   EAF        Electric arc furnace (scrap-based, lower direct emissions).
   DRI_EAF    Direct-reduced iron fed into EAF (intermediate emissions).
-  WORLD_AVG  Blended world-average (70 % BF-BOF + 30 % EAF weighting).
 
 Aluminium:
   PRIMARY    Smelting from bauxite/alumina.
   SECONDARY  Remelting of scrap (significantly lower direct emissions).
 
 Hydrogen:
-  SMR        Steam methane reforming from natural gas (dominant global route).
-  COAL_GAS   Coal gasification (highest emissions, used in parts of Asia).
+  SMR        Steam methane reforming from natural gas.
+  COAL_GAS   Coal gasification (highest emissions).
   ELECTRO    Electrolysis — indirect emissions dominated by electricity source.
 
 Public API
@@ -67,18 +80,26 @@ __all__ = [
     "validate_against_defaults",
 ]
 
-TABLE_VERSION = "2023"  # Annex VI publication year; update when new OJ values issued
+TABLE_VERSION = "2023"  # Transitional period default values (Oct 2023 – Dec 2025)
 
 # Structured provenance metadata — included in every calculation snapshot so that
-# a third-party auditor can verify exactly which Annex VI table was used.
+# a third-party auditor can verify exactly which table was used.
 FACTOR_METADATA = {
     "table_version": TABLE_VERSION,
     "regulation": "Commission Implementing Regulation (EU) 2023/1773",
     "annex": "Annex VI — Default values for specific embedded emissions",
     "oj_reference": "OJ L 228, 15.9.2023",
+    "operative_document": (
+        "Default Values for the Transitional Period of the CBAM "
+        "(1 Oct 2023 – 31 Dec 2025), EC DG TAXUD, 22 Dec 2023, Art. 4(3)"
+    ),
     "effective_date": "2023-10-01",
     "review_cadence": "annual",
     "unit_see": "tCO2e per tonne of goods (except electricity: tCO2e/MWh)",
+    "note_route_entries": (
+        "Entries with a production_route tag other than None are engineering "
+        "estimates for actual-measurement reporting and are NOT official defaults."
+    ),
 }
 
 # ── Production route constants ────────────────────────────────────────────────
@@ -102,13 +123,13 @@ class DefaultSEE:
     Attributes
     ----------
     cn8_prefix : str
-        CN code prefix this entry applies to (4–8 digits, digits only).
+        CN code prefix this entry applies to (2–8 digits, digits only).
         The lookup matches by longest prefix ≤ 8 digits.
     sector : str
         CBAM sector string (matches DB CHECK constraint).
     production_route : str | None
-        Production route identifier, or *None* when the value applies to all
-        routes (cement, fertilisers, electricity, hydrogen single-route codes).
+        Production route identifier, or *None* for the official world-average
+        default (the value declarants must use when route is unknown).
     direct_tco2e_per_t : Decimal
         Direct specific embedded emissions (tCO2e per tonne of goods).
     indirect_tco2e_per_t : Decimal
@@ -116,7 +137,7 @@ class DefaultSEE:
     description : str
         Human-readable label for the CN code / product.
     source_ref : str
-        Citation within Annex VI (e.g. "Annex VI, Section 1, Table 1").
+        Citation within the operative document.
     """
 
     cn8_prefix: str
@@ -133,261 +154,388 @@ class DefaultSEE:
 
 
 # ── Annex VI tables ───────────────────────────────────────────────────────────
-# All values: tCO2e per tonne of goods.
+# All values: tCO2e per tonne of goods (tCO2e/MWh for electricity).
+# production_route=None  →  official world-average default (Art. 4(3) table).
+# production_route=<tag> →  engineering estimate for actual-measurement use.
+#
 # Format: DefaultSEE(cn8_prefix, sector, production_route, direct, indirect,
 #                    description, source_ref)
 #
-# Shorthand aliases for readability only:
 _C = "cement"
 _S = "iron_steel"
 _A = "aluminium"
 _F = "fertilisers"
 _E = "electricity"
 _H = "hydrogen"
-_AVI = "EU 2023/1773, Annex VI"  # base citation
+_AVI = "EU 2023/1773 Art.4(3) Default Values, DG TAXUD Dec 2023"
 
 
 _ANNEX_VI: list[DefaultSEE] = [
 
-    # ── CEMENT (Annex VI, Section 1) ─────────────────────────────────────────
-    # Source: Commission Implementing Regulation (EU) 2023/1773, Annex VI,
-    #         Section 1 — Default values for cement sector.
-    DefaultSEE("25070080", _C, None, _D("0.218"), _D("0.012"),
-               "Calcined kaolin", f"{_AVI}, Section 1"),
-    DefaultSEE("25231000", _C, None, _D("0.827"), _D("0.014"),
-               "Cement clinkers", f"{_AVI}, Section 1"),
-    DefaultSEE("25232100", _C, None, _D("0.770"), _D("0.018"),
-               "White Portland cement", f"{_AVI}, Section 1"),
-    DefaultSEE("25232900", _C, None, _D("0.633"), _D("0.014"),
-               "Other Portland cement (grey)", f"{_AVI}, Section 1"),
-    DefaultSEE("25233000", _C, None, _D("0.990"), _D("0.018"),
-               "Aluminous cement", f"{_AVI}, Section 1"),
-    DefaultSEE("25239000", _C, None, _D("0.318"), _D("0.014"),
-               "Other hydraulic cements", f"{_AVI}, Section 1"),
+    # ── CEMENT (Table 1) ──────────────────────────────────────────────────────
+    # Official world-average default values.  All values tCO2e/t.
+    DefaultSEE("25070080", _C, None, _D("0.230"), _D("0.080"),
+               "Calcined kaolin", _AVI),
+    DefaultSEE("25231000", _C, None, _D("0.830"), _D("0.040"),
+               "Cement clinkers", _AVI),
+    DefaultSEE("25232100", _C, None, _D("1.160"), _D("0.100"),
+               "White Portland cement", _AVI),
+    DefaultSEE("25232900", _C, None, _D("0.810"), _D("0.060"),
+               "Other Portland cement (grey)", _AVI),
+    DefaultSEE("25233000", _C, None, _D("1.750"), _D("0.150"),
+               "Aluminous cement", _AVI),
+    DefaultSEE("25239000", _C, None, _D("0.590"), _D("0.040"),
+               "Other hydraulic cements", _AVI),
 
-    # ── IRON AND STEEL (Annex VI, Section 2) ─────────────────────────────────
-    # Values differ by production route.  BF_BOF is used as the conservative
-    # default when the production route is unknown (most common global route,
-    # ~70 % of world crude steel production in the reference period).
+    # ── IRON AND STEEL (Table 2) ──────────────────────────────────────────────
+    # production_route=None: official world-average default per Art. 4(3) table.
+    # Route-tagged entries: engineering estimates for actual-measurement use only.
     #
     # Heading 7201 — Pig iron and spiegeleisen
-    DefaultSEE("7201", _S, PRODUCTION_ROUTE_BF_BOF,   _D("1.404"), _D("0.029"),
-               "Pig iron (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7201", _S, PRODUCTION_ROUTE_WORLD_AVG, _D("1.068"), _D("0.065"),
-               "Pig iron (world average)", f"{_AVI}, Section 2"),
+    DefaultSEE("7201", _S, None,                     _D("1.900"), _D("0.170"),
+               "Pig iron — world average (official default)", _AVI),
+    DefaultSEE("7201", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.200"), _D("0.040"),
+               "Pig iron (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7201", _S, PRODUCTION_ROUTE_EAF,     _D("0.600"), _D("0.450"),
+               "Pig iron (EAF, engineering estimate)", _AVI),
 
-    # Heading 7202 — Ferro-alloys (energy-intensive; uses average alloy mix)
-    DefaultSEE("7202", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.580"), _D("0.089"),
-               "Ferro-alloys (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7202", _S, PRODUCTION_ROUTE_EAF,      _D("1.200"), _D("0.350"),
-               "Ferro-alloys (EAF)", f"{_AVI}, Section 2"),
+    # Heading 7202 — Ferro-alloys
+    DefaultSEE("7202", _S, None,                     _D("2.100"), _D("0.300"),
+               "Ferro-alloys — world average (official default)", _AVI),
+    DefaultSEE("7202", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.580"), _D("0.089"),
+               "Ferro-alloys (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7202", _S, PRODUCTION_ROUTE_EAF,     _D("1.200"), _D("0.700"),
+               "Ferro-alloys (EAF, engineering estimate)", _AVI),
 
     # Heading 7203 — Direct-reduced iron / sponge iron
-    DefaultSEE("7203", _S, PRODUCTION_ROUTE_DRI_EAF,  _D("0.583"), _D("0.150"),
-               "Sponge iron / DRI", f"{_AVI}, Section 2"),
+    DefaultSEE("7203", _S, None,                        _D("1.200"), _D("0.200"),
+               "Sponge iron / DRI — world average (official default)", _AVI),
+    DefaultSEE("7203", _S, PRODUCTION_ROUTE_DRI_EAF,   _D("0.900"), _D("0.200"),
+               "Sponge iron / DRI — DRI-EAF route (engineering estimate)", _AVI),
 
-    # Heading 7204 — Ferrous scrap (minimal processing emissions)
-    DefaultSEE("7204", _S, None,                       _D("0.030"), _D("0.015"),
-               "Ferrous waste and scrap", f"{_AVI}, Section 2"),
+    # Heading 7204 — Ferrous scrap (minimal processing)
+    DefaultSEE("7204", _S, None,                     _D("0.030"), _D("0.015"),
+               "Ferrous waste and scrap", _AVI),
 
-    # Headings 7205–7206 — Granules / powders / ingots of iron or non-alloy steel
-    DefaultSEE("7205", _S, PRODUCTION_ROUTE_BF_BOF,   _D("1.800"), _D("0.040"),
-               "Granules and powders of pig iron / steel (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7206", _S, PRODUCTION_ROUTE_BF_BOF,   _D("1.800"), _D("0.040"),
-               "Iron and non-alloy steel ingots (BF-BOF)", f"{_AVI}, Section 2"),
+    # Headings 7205–7206 — Granules / powders / ingots
+    DefaultSEE("7205", _S, None,                     _D("1.900"), _D("0.170"),
+               "Granules and powders of pig iron / steel — world average", _AVI),
+    DefaultSEE("720610", _S, None,                   _D("2.520"), _D("0.230"),
+               "Iron/non-alloy steel ingots (7206 10 00) — world average", _AVI),
+    DefaultSEE("720690", _S, None,                   _D("1.970"), _D("0.230"),
+               "Other iron/non-alloy steel ingots (7206 90 00) — world average", _AVI),
+    DefaultSEE("7206", _S, None,                     _D("2.100"), _D("0.230"),
+               "Iron and non-alloy steel ingots — world average (fallback)", _AVI),
 
     # Heading 7207 — Semi-finished products of iron or non-alloy steel
-    DefaultSEE("7207", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.108"), _D("0.049"),
-               "Semi-finished products, non-alloy steel (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7207", _S, PRODUCTION_ROUTE_EAF,      _D("0.501"), _D("0.195"),
-               "Semi-finished products, non-alloy steel (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7207", _S, PRODUCTION_ROUTE_WORLD_AVG, _D("1.626"), _D("0.092"),
-               "Semi-finished products, non-alloy steel (world average)", f"{_AVI}, Section 2"),
+    DefaultSEE("7207", _S, None,                        _D("1.890"), _D("0.320"),
+               "Semi-finished, non-alloy steel, rolled/cast — world average", _AVI),
+    DefaultSEE("7207", _S, PRODUCTION_ROUTE_BF_BOF,    _D("2.440"), _D("0.090"),
+               "Semi-finished, non-alloy steel (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7207", _S, PRODUCTION_ROUTE_EAF,       _D("0.610"), _D("0.550"),
+               "Semi-finished, non-alloy steel (EAF, engineering estimate)", _AVI),
+    DefaultSEE("7207", _S, PRODUCTION_ROUTE_DRI_EAF,   _D("1.050"), _D("0.300"),
+               "Semi-finished, non-alloy steel (DRI-EAF, engineering estimate)", _AVI),
 
     # Headings 7208–7212 — Flat-rolled products, iron/non-alloy steel
-    DefaultSEE("7208", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.176"), _D("0.054"),
-               "Flat-rolled products ≥600 mm, hot-rolled (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7208", _S, PRODUCTION_ROUTE_EAF,      _D("0.538"), _D("0.218"),
-               "Flat-rolled products ≥600 mm, hot-rolled (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7209", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.220"), _D("0.057"),
-               "Flat-rolled products ≥600 mm, cold-rolled (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7209", _S, PRODUCTION_ROUTE_EAF,      _D("0.575"), _D("0.222"),
-               "Flat-rolled products ≥600 mm, cold-rolled (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7210", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.254"), _D("0.060"),
-               "Flat-rolled ≥600 mm, clad/plated/coated (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7210", _S, PRODUCTION_ROUTE_EAF,      _D("0.595"), _D("0.230"),
-               "Flat-rolled ≥600 mm, clad/plated/coated (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7211", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.176"), _D("0.054"),
-               "Flat-rolled <600 mm, hot-rolled (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7212", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.254"), _D("0.060"),
-               "Flat-rolled <600 mm, clad/plated/coated (BF-BOF)", f"{_AVI}, Section 2"),
+    DefaultSEE("7208", _S, None,                     _D("2.010"), _D("0.270"),
+               "Flat-rolled ≥600 mm, hot-rolled — world average", _AVI),
+    DefaultSEE("7208", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.600"), _D("0.070"),
+               "Flat-rolled ≥600 mm, hot-rolled (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7208", _S, PRODUCTION_ROUTE_EAF,     _D("0.650"), _D("0.600"),
+               "Flat-rolled ≥600 mm, hot-rolled (EAF, engineering estimate)", _AVI),
+
+    DefaultSEE("7209", _S, None,                     _D("2.030"), _D("0.360"),
+               "Flat-rolled ≥600 mm, cold-rolled — world average", _AVI),
+    DefaultSEE("7209", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.650"), _D("0.075"),
+               "Flat-rolled ≥600 mm, cold-rolled (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7209", _S, PRODUCTION_ROUTE_EAF,     _D("0.660"), _D("0.650"),
+               "Flat-rolled ≥600 mm, cold-rolled (EAF, engineering estimate)", _AVI),
+
+    DefaultSEE("7210", _S, None,                     _D("1.970"), _D("0.390"),
+               "Flat-rolled ≥600 mm, clad/plated/coated — world average", _AVI),
+    DefaultSEE("7210", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.600"), _D("0.080"),
+               "Flat-rolled ≥600 mm, clad/plated (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7210", _S, PRODUCTION_ROUTE_EAF,     _D("0.650"), _D("0.680"),
+               "Flat-rolled ≥600 mm, clad/plated (EAF, engineering estimate)", _AVI),
+
+    DefaultSEE("7211", _S, None,                     _D("2.010"), _D("0.270"),
+               "Flat-rolled <600 mm, hot-rolled — world average", _AVI),
+    DefaultSEE("7212", _S, None,                     _D("1.970"), _D("0.390"),
+               "Flat-rolled <600 mm, clad/plated/coated — world average", _AVI),
 
     # Headings 7213–7217 — Long products (bars, rods, wire, angles), non-alloy steel
-    DefaultSEE("7213", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.099"), _D("0.050"),
-               "Bars/rods, hot-rolled coils (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7213", _S, PRODUCTION_ROUTE_EAF,      _D("0.501"), _D("0.195"),
-               "Bars/rods, hot-rolled coils (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7214", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.099"), _D("0.050"),
-               "Other bars and rods (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7215", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.099"), _D("0.050"),
-               "Other bars and rods (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7216", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.099"), _D("0.050"),
-               "Angles, shapes and sections (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7217", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.099"), _D("0.050"),
-               "Wire of non-alloy steel (BF-BOF)", f"{_AVI}, Section 2"),
+    DefaultSEE("7213", _S, None,                     _D("1.890"), _D("0.320"),
+               "Bars/rods, hot-rolled coils — world average", _AVI),
+    DefaultSEE("7213", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.440"), _D("0.080"),
+               "Bars/rods, hot-rolled coils (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7213", _S, PRODUCTION_ROUTE_EAF,     _D("0.610"), _D("0.550"),
+               "Bars/rods, hot-rolled coils (EAF, engineering estimate)", _AVI),
 
-    # Headings 7218–7223 — Stainless steel (higher SEE due to Cr, Ni alloying)
-    DefaultSEE("7218", _S, PRODUCTION_ROUTE_EAF,      _D("3.200"), _D("0.170"),
-               "Stainless steel ingots/semi-finished (EAF dominant route)", f"{_AVI}, Section 2"),
-    DefaultSEE("7219", _S, PRODUCTION_ROUTE_EAF,      _D("3.380"), _D("0.180"),
-               "Flat-rolled stainless ≥600 mm (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7220", _S, PRODUCTION_ROUTE_EAF,      _D("3.380"), _D("0.180"),
-               "Flat-rolled stainless <600 mm (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7221", _S, PRODUCTION_ROUTE_EAF,      _D("3.200"), _D("0.170"),
-               "Bars/rods stainless hot-rolled coils (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7222", _S, PRODUCTION_ROUTE_EAF,      _D("3.200"), _D("0.170"),
-               "Other bars/rods stainless (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7223", _S, PRODUCTION_ROUTE_EAF,      _D("3.200"), _D("0.170"),
-               "Wire of stainless steel (EAF)", f"{_AVI}, Section 2"),
+    DefaultSEE("721410", _S, None,                   _D("2.650"), _D("0.620"),
+               "Other bars and rods, forged (7214 10 00) — world average", _AVI),
+    DefaultSEE("7214", _S, None,                     _D("1.890"), _D("0.320"),
+               "Other bars and rods, rolled — world average", _AVI),
+    DefaultSEE("7214", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.440"), _D("0.080"),
+               "Other bars and rods (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7214", _S, PRODUCTION_ROUTE_EAF,     _D("0.610"), _D("0.550"),
+               "Other bars and rods (EAF, engineering estimate)", _AVI),
+
+    DefaultSEE("7215", _S, None,                     _D("1.890"), _D("0.320"),
+               "Other bars and rods, non-alloy steel — world average", _AVI),
+    DefaultSEE("7215", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.440"), _D("0.080"),
+               "Other bars and rods, non-alloy (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7215", _S, PRODUCTION_ROUTE_EAF,     _D("0.610"), _D("0.550"),
+               "Other bars and rods, non-alloy (EAF, engineering estimate)", _AVI),
+
+    DefaultSEE("7216", _S, None,                     _D("1.890"), _D("0.320"),
+               "Angles, shapes and sections — world average", _AVI),
+    DefaultSEE("7216", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.440"), _D("0.080"),
+               "Angles, shapes and sections (BF-BOF, engineering estimate)", _AVI),
+    DefaultSEE("7216", _S, PRODUCTION_ROUTE_EAF,     _D("0.610"), _D("0.550"),
+               "Angles, shapes and sections (EAF, engineering estimate)", _AVI),
+
+    DefaultSEE("721710", _S, None,                   _D("1.880"), _D("0.490"),
+               "Wire, non-alloy steel, unplated/uncoated (7217 10) — world average", _AVI),
+    DefaultSEE("721730", _S, None,                   _D("1.950"), _D("0.510"),
+               "Wire, non-alloy steel, plated with other base metals (7217 30) — world average",
+               _AVI),
+    DefaultSEE("7217", _S, None,                     _D("1.900"), _D("0.490"),
+               "Wire of non-alloy steel — world average (fallback)", _AVI),
+
+    # Headings 7218–7223 — Stainless steel (EAF dominant route)
+    # Official table provides separate hot-rolled / cold-rolled / forged sub-entries.
+    DefaultSEE("721810", _S, None,                   _D("2.510"), _D("2.100"),
+               "Stainless steel ingots, forged (7218 10 00) — world average", _AVI),
+    DefaultSEE("7218", _S, None,                     _D("2.180"), _D("1.900"),
+               "Stainless steel ingots/semi-finished, rolled — world average", _AVI),
+    DefaultSEE("7218", _S, PRODUCTION_ROUTE_EAF,     _D("2.180"), _D("1.900"),
+               "Stainless steel ingots/semi-finished, rolled (EAF, official route)", _AVI),
+
+    DefaultSEE("721911", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless ≥600 mm, cold-rolled (7219 1x) — world average", _AVI),
+    DefaultSEE("7219", _S, None,                     _D("2.180"), _D("1.900"),
+               "Flat-rolled stainless ≥600 mm, hot-rolled — world average", _AVI),
+    DefaultSEE("7219", _S, PRODUCTION_ROUTE_EAF,     _D("2.180"), _D("1.900"),
+               "Flat-rolled stainless ≥600 mm (EAF, official route)", _AVI),
+
+    DefaultSEE("7220", _S, None,                     _D("2.190"), _D("1.940"),
+               "Flat-rolled stainless <600 mm — world average", _AVI),
+
+    DefaultSEE("7221", _S, None,                     _D("2.140"), _D("2.170"),
+               "Bars/rods stainless steel, hot-rolled coils — world average", _AVI),
+    DefaultSEE("7221", _S, PRODUCTION_ROUTE_EAF,     _D("2.140"), _D("2.170"),
+               "Bars/rods stainless (EAF, official route)", _AVI),
+
+    DefaultSEE("7222", _S, None,                     _D("2.510"), _D("2.100"),
+               "Other bars/rods of stainless steel — world average", _AVI),
+
+    DefaultSEE("7223", _S, None,                     _D("2.130"), _D("2.360"),
+               "Wire of stainless steel — world average", _AVI),
 
     # Headings 7224–7229 — Other alloy steel
-    DefaultSEE("7224", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.400"), _D("0.080"),
-               "Other alloy steel ingots/semi-finished (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7225", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.450"), _D("0.085"),
-               "Flat-rolled alloy steel ≥600 mm (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7226", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.450"), _D("0.085"),
-               "Flat-rolled alloy steel <600 mm (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7227", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.400"), _D("0.080"),
-               "Bars/rods alloy steel coils (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7228", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.400"), _D("0.080"),
-               "Other bars/rods alloy steel (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("7229", _S, PRODUCTION_ROUTE_BF_BOF,   _D("2.400"), _D("0.080"),
-               "Wire of other alloy steel (BF-BOF)", f"{_AVI}, Section 2"),
+    DefaultSEE("7224", _S, None,                     _D("2.200"), _D("0.400"),
+               "Other alloy steel ingots/semi-finished — world average", _AVI),
+    DefaultSEE("7225", _S, None,                     _D("2.200"), _D("0.400"),
+               "Flat-rolled alloy steel ≥600 mm — world average", _AVI),
+    DefaultSEE("7226", _S, None,                     _D("2.200"), _D("0.400"),
+               "Flat-rolled alloy steel <600 mm — world average", _AVI),
+    DefaultSEE("7227", _S, None,                     _D("2.200"), _D("0.400"),
+               "Bars/rods of other alloy steel, in coils — world average", _AVI),
+    DefaultSEE("7228", _S, None,                     _D("2.200"), _D("0.400"),
+               "Other bars/rods of other alloy steel — world average", _AVI),
+    DefaultSEE("7229", _S, None,                     _D("2.200"), _D("0.400"),
+               "Wire of other alloy steel — world average", _AVI),
 
-    # Headings 7301–7326 — Chapter 73 downstream articles of iron/steel
-    # Value = semi-finished base + downstream processing allowance.
-    # Single blended default across routes for downstream articles per Annex VI.
-    DefaultSEE("73", _S, PRODUCTION_ROUTE_BF_BOF,     _D("2.200"), _D("0.060"),
-               "Articles of iron or steel, Ch.73 (BF-BOF)", f"{_AVI}, Section 2"),
-    DefaultSEE("73", _S, PRODUCTION_ROUTE_EAF,        _D("0.620"), _D("0.240"),
-               "Articles of iron or steel, Ch.73 (EAF)", f"{_AVI}, Section 2"),
-    DefaultSEE("73", _S, PRODUCTION_ROUTE_WORLD_AVG,  _D("1.726"), _D("0.114"),
-               "Articles of iron or steel, Ch.73 (world average)", f"{_AVI}, Section 2"),
+    # ── CHAPTER 73 — Downstream articles of iron or steel ─────────────────────
+    # Per-heading official default values from Art. 4(3) table.
+    # Note: CN 7313 (barbed wire) is excluded from CBAM scope per EU 2023/956 Annex I.
+    DefaultSEE("7301", _S, None,                     _D("2.030"), _D("0.360"),
+               "Sheet piling; welded angles, shapes and sections", _AVI),
+    DefaultSEE("7302", _S, None,                     _D("1.930"), _D("0.290"),
+               "Railway or tramway track construction material", _AVI),
+    DefaultSEE("7303", _S, None,                     _D("2.210"), _D("0.350"),
+               "Tubes, pipes and hollow profiles of cast iron", _AVI),
+    DefaultSEE("7304", _S, None,                     _D("1.860"), _D("0.350"),
+               "Tubes, pipes and hollow profiles, seamless (iron or steel)", _AVI),
+    DefaultSEE("7305", _S, None,                     _D("2.030"), _D("0.360"),
+               "Other tubes and pipes, welded, OD >406.4 mm", _AVI),
+    DefaultSEE("7306", _S, None,                     _D("1.990"), _D("0.370"),
+               "Other tubes, pipes and hollow profiles, welded", _AVI),
+    DefaultSEE("7307", _S, None,                     _D("2.540"), _D("0.570"),
+               "Tube or pipe fittings (cast iron)", _AVI),
+    DefaultSEE("7308", _S, None,                     _D("2.460"), _D("2.550"),
+               "Structures and parts (bridges, towers, columns — fabricated steel)", _AVI),
+    DefaultSEE("7309", _S, None,                     _D("1.970"), _D("0.390"),
+               "Reservoirs, tanks, vats and similar containers, >300 L", _AVI),
+    DefaultSEE("7310", _S, None,                     _D("1.970"), _D("0.390"),
+               "Tanks, casks, drums, cans and similar containers, ≤300 L", _AVI),
+    DefaultSEE("7311", _S, None,                     _D("1.890"), _D("0.320"),
+               "Containers for compressed or liquefied gas, of iron or steel", _AVI),
+    DefaultSEE("7312", _S, None,                     _D("1.950"), _D("0.510"),
+               "Stranded wire, ropes, cables, plaited bands and slings", _AVI),
+    DefaultSEE("7314", _S, None,                     _D("1.950"), _D("0.510"),
+               "Cloth, grill, netting and fencing of iron or steel wire", _AVI),
+    DefaultSEE("7315", _S, None,                     _D("1.970"), _D("0.390"),
+               "Chain and parts thereof, of iron or steel", _AVI),
+    DefaultSEE("7316", _S, None,                     _D("1.970"), _D("0.390"),
+               "Anchors, grapnels and parts thereof, of iron or steel", _AVI),
+    DefaultSEE("7317", _S, None,                     _D("1.890"), _D("0.320"),
+               "Nails, tacks, drawing pins, corrugated nails, staples (iron/steel)", _AVI),
+    DefaultSEE("731815", _S, None,                   _D("2.100"), _D("1.990"),
+               "Screws, bolts, nuts, washers — stainless steel (7318 15, 16)", _AVI),
+    DefaultSEE("7318", _S, None,                     _D("1.890"), _D("0.320"),
+               "Screws, bolts, nuts, coach screws, washers — non-stainless", _AVI),
+    DefaultSEE("7319", _S, None,                     _D("1.890"), _D("0.320"),
+               "Sewing needles, knitting needles, bodkins, crochet hooks", _AVI),
+    DefaultSEE("7320", _S, None,                     _D("1.970"), _D("0.390"),
+               "Springs and leaves for springs, of iron or steel", _AVI),
+    DefaultSEE("7321", _S, None,                     _D("1.970"), _D("0.390"),
+               "Stoves, ranges, grates, cookers, barbecues, of iron or steel", _AVI),
+    DefaultSEE("7322", _S, None,                     _D("1.970"), _D("0.390"),
+               "Radiators for central heating (non-electric), parts thereof", _AVI),
+    DefaultSEE("7323", _S, None,                     _D("1.970"), _D("0.390"),
+               "Table, kitchen or household articles of iron or steel", _AVI),
+    DefaultSEE("7324", _S, None,                     _D("1.970"), _D("0.390"),
+               "Sanitary ware and parts thereof, of iron or steel", _AVI),
+    DefaultSEE("7325", _S, None,                     _D("2.210"), _D("0.350"),
+               "Other cast articles of iron or steel", _AVI),
+    DefaultSEE("732610", _S, None,                   _D("2.650"), _D("0.620"),
+               "Other articles of iron or steel, forged (7326 10 00)", _AVI),
+    DefaultSEE("732620", _S, None,                   _D("1.950"), _D("0.510"),
+               "Articles of iron or steel wire (7326 20 00)", _AVI),
+    DefaultSEE("7326", _S, None,                     _D("1.970"), _D("0.390"),
+               "Other articles of iron or steel, Ch.73 (fallback)", _AVI),
 
-    # ── ALUMINIUM (Annex VI, Section 3) ──────────────────────────────────────
-    # Direct emissions (combustion + process).
-    # Indirect emissions from electricity vary by origin country; the values
-    # below use the world-average electricity emission factor (~0.55 tCO2e/MWh)
-    # × typical process electricity consumption (~14.5 MWh/t primary aluminium).
-    # Use ELECTRICITY_FACTORS × process_kwh_per_t for country-specific indirect.
+    # ── ALUMINIUM (Table 3) ───────────────────────────────────────────────────
+    # Official Art. 4(3) world-average values.  The official table does not
+    # publish a SECONDARY route default; SECONDARY entries are engineering
+    # estimates for actual-measurement use only.
+    DefaultSEE("7601", _A, None,                       _D("2.360"), _D("8.140"),
+               "Unwrought aluminium — world average (official default)", _AVI),
+    DefaultSEE("7601", _A, PRODUCTION_ROUTE_PRIMARY,   _D("2.360"), _D("8.140"),
+               "Unwrought aluminium, primary (world-avg electricity)", _AVI),
+    DefaultSEE("7601", _A, PRODUCTION_ROUTE_SECONDARY, _D("0.327"), _D("0.205"),
+               "Unwrought aluminium, secondary — engineering estimate", _AVI),
 
-    # Primary aluminium (all Ch.76 headings except scrap 7602):
-    DefaultSEE("7601", _A, PRODUCTION_ROUTE_PRIMARY,   _D("1.692"), _D("7.975"),
-               "Unwrought aluminium, primary (world-avg electricity)", f"{_AVI}, Section 3"),
-    DefaultSEE("7601", _A, PRODUCTION_ROUTE_SECONDARY,  _D("0.327"), _D("0.205"),
-               "Unwrought aluminium, secondary (recycled)", f"{_AVI}, Section 3"),
+    DefaultSEE("7602", _A, None,                       _D("0.050"), _D("0.010"),
+               "Aluminium waste and scrap", _AVI),
 
-    # Scrap — no primary smelting
-    DefaultSEE("7602", _A, None,                        _D("0.050"), _D("0.010"),
-               "Aluminium waste and scrap", f"{_AVI}, Section 3"),
+    DefaultSEE("7603", _A, None,                       _D("2.480"), _D("8.400"),
+               "Aluminium powders and flakes — world average", _AVI),
+    DefaultSEE("7603", _A, PRODUCTION_ROUTE_SECONDARY, _D("0.420"), _D("0.265"),
+               "Aluminium powders and flakes, secondary — engineering estimate", _AVI),
 
-    # Downstream aluminium products — inherit from unwrought + processing delta
-    DefaultSEE("7603", _A, PRODUCTION_ROUTE_PRIMARY,   _D("1.820"), _D("8.100"),
-               "Aluminium powders and flakes, primary", f"{_AVI}, Section 3"),
-    DefaultSEE("7604", _A, PRODUCTION_ROUTE_PRIMARY,   _D("1.780"), _D("8.050"),
-               "Aluminium bars, rods and profiles, primary", f"{_AVI}, Section 3"),
-    DefaultSEE("7604", _A, PRODUCTION_ROUTE_SECONDARY,  _D("0.410"), _D("0.260"),
-               "Aluminium bars, rods and profiles, secondary", f"{_AVI}, Section 3"),
-    DefaultSEE("7605", _A, PRODUCTION_ROUTE_PRIMARY,   _D("1.820"), _D("8.100"),
-               "Aluminium wire, primary", f"{_AVI}, Section 3"),
-    DefaultSEE("7606", _A, PRODUCTION_ROUTE_PRIMARY,   _D("1.820"), _D("8.100"),
-               "Aluminium plates, sheets and strip, primary", f"{_AVI}, Section 3"),
-    DefaultSEE("7606", _A, PRODUCTION_ROUTE_SECONDARY,  _D("0.440"), _D("0.280"),
-               "Aluminium plates, sheets and strip, secondary", f"{_AVI}, Section 3"),
-    DefaultSEE("7607", _A, PRODUCTION_ROUTE_PRIMARY,   _D("1.850"), _D("8.200"),
-               "Aluminium foil, primary", f"{_AVI}, Section 3"),
-    DefaultSEE("7608", _A, PRODUCTION_ROUTE_PRIMARY,   _D("1.780"), _D("8.050"),
-               "Aluminium tubes and pipes, primary", f"{_AVI}, Section 3"),
-    DefaultSEE("76", _A, PRODUCTION_ROUTE_PRIMARY,     _D("1.780"), _D("8.050"),
-               "Other aluminium articles Ch.76, primary (fallback)", f"{_AVI}, Section 3"),
-    DefaultSEE("76", _A, PRODUCTION_ROUTE_SECONDARY,    _D("0.420"), _D("0.265"),
-               "Other aluminium articles Ch.76, secondary (fallback)", f"{_AVI}, Section 3"),
+    DefaultSEE("760410", _A, None,                     _D("2.310"), _D("7.490"),
+               "Aluminium bars/rods, not alloyed (7604 10) — world average", _AVI),
+    DefaultSEE("760429", _A, None,                     _D("2.730"), _D("9.300"),
+               "Aluminium profiles, not alloyed (7604 29) — world average", _AVI),
+    DefaultSEE("7604", _A, None,                       _D("2.510"), _D("8.300"),
+               "Aluminium bars, rods and profiles — world average (fallback)", _AVI),
+    DefaultSEE("7604", _A, PRODUCTION_ROUTE_SECONDARY, _D("0.410"), _D("0.260"),
+               "Aluminium bars, rods and profiles, secondary — engineering estimate", _AVI),
 
-    # ── FERTILISERS (Annex VI, Section 4) ────────────────────────────────────
-    # N2O process emissions are included in the direct values where applicable
-    # (especially for nitric acid and ammonium nitrate, per IPCC methodology).
-    DefaultSEE("28080000", _F, None, _D("1.956"), _D("0.150"),
-               "Nitric acid; sulphonitric acids", f"{_AVI}, Section 4"),
-    DefaultSEE("28141000", _F, None, _D("1.627"), _D("0.000"),
-               "Anhydrous ammonia (Haber-Bosch, natural gas)", f"{_AVI}, Section 4"),
-    DefaultSEE("28142000", _F, None, _D("0.290"), _D("0.000"),
-               "Ammonia in aqueous solution", f"{_AVI}, Section 4"),
+    DefaultSEE("7605", _A, None,                       _D("2.310"), _D("7.490"),
+               "Aluminium wire — world average", _AVI),
+    DefaultSEE("7605", _A, PRODUCTION_ROUTE_SECONDARY, _D("0.410"), _D("0.260"),
+               "Aluminium wire, secondary — engineering estimate", _AVI),
+
+    DefaultSEE("7606", _A, None,                       _D("2.860"), _D("9.250"),
+               "Aluminium plates, sheets and strip — world average", _AVI),
+    DefaultSEE("7606", _A, PRODUCTION_ROUTE_SECONDARY, _D("0.440"), _D("0.280"),
+               "Aluminium plates, sheets and strip, secondary — engineering estimate", _AVI),
+
+    DefaultSEE("7607", _A, None,                       _D("2.860"), _D("9.250"),
+               "Aluminium foil — world average", _AVI),
+
+    DefaultSEE("7608", _A, None,                       _D("2.730"), _D("9.300"),
+               "Aluminium tubes and pipes — world average", _AVI),
+
+    DefaultSEE("76", _A, None,                         _D("2.360"), _D("8.140"),
+               "Other aluminium articles Ch.76 — world average (fallback)", _AVI),
+    DefaultSEE("76", _A, PRODUCTION_ROUTE_SECONDARY,   _D("0.420"), _D("0.265"),
+               "Other aluminium articles Ch.76, secondary — engineering estimate", _AVI),
+
+    # ── FERTILISERS (Table 4) ─────────────────────────────────────────────────
+    # N2O process emissions included in direct values for ammonium nitrate.
+    # Ammonia values reflect full upstream (gas extraction + Haber-Bosch).
+    DefaultSEE("28080000", _F, None, _D("2.560"), _D("0.050"),
+               "Nitric acid; sulphonitric acids", _AVI),
+    DefaultSEE("28141000", _F, None, _D("2.680"), _D("0.140"),
+               "Anhydrous ammonia — world average (Haber-Bosch, incl. upstream)", _AVI),
+    DefaultSEE("28142000", _F, None, _D("2.680"), _D("0.140"),
+               "Ammonia in aqueous solution — world average", _AVI),
     DefaultSEE("28332100", _F, None, _D("0.042"), _D("0.006"),
-               "Sulphates of magnesium", f"{_AVI}, Section 4"),
-    DefaultSEE("28342100", _F, None, _D("0.920"), _D("0.040"),
-               "Nitrates of potassium", f"{_AVI}, Section 4"),
+               "Sulphates of magnesium", _AVI),
+    DefaultSEE("28342100", _F, None, _D("1.820"), _D("0.060"),
+               "Nitrates of potassium", _AVI),
+
     # Heading 3102 — Nitrogenous mineral/chemical fertilisers
-    DefaultSEE("31021000", _F, None, _D("0.893"), _D("0.000"),
-               "Urea (CO2 from process included)", f"{_AVI}, Section 4"),
-    DefaultSEE("31022100", _F, None, _D("0.368"), _D("0.000"),
-               "Ammonium sulphate", f"{_AVI}, Section 4"),
-    DefaultSEE("31022900", _F, None, _D("0.368"), _D("0.000"),
-               "Double salts / mixtures of ammonium sulphate", f"{_AVI}, Section 4"),
-    DefaultSEE("31023010", _F, None, _D("2.312"), _D("0.000"),
-               "Ammonium nitrate in aqueous solution (N2O included)", f"{_AVI}, Section 4"),
-    DefaultSEE("31023090", _F, None, _D("2.312"), _D("0.000"),
-               "Ammonium nitrate, other forms (N2O included)", f"{_AVI}, Section 4"),
-    DefaultSEE("31024010", _F, None, _D("1.444"), _D("0.000"),
-               "Ammonium nitrate + calcium carbonate mix", f"{_AVI}, Section 4"),
-    DefaultSEE("31024090", _F, None, _D("1.444"), _D("0.000"),
-               "Other ammonium nitrate mixtures", f"{_AVI}, Section 4"),
-    DefaultSEE("31025000", _F, None, _D("1.440"), _D("0.000"),
-               "Sodium nitrate", f"{_AVI}, Section 4"),
-    DefaultSEE("31026000", _F, None, _D("1.444"), _D("0.000"),
-               "Double salts of calcium nitrate and ammonium nitrate", f"{_AVI}, Section 4"),
-    DefaultSEE("31028000", _F, None, _D("1.443"), _D("0.000"),
-               "Urea + ammonium nitrate solution (UAN)", f"{_AVI}, Section 4"),
-    DefaultSEE("31029000", _F, None, _D("1.627"), _D("0.000"),
-               "Other nitrogenous fertilisers (default = anhydrous NH3 equivalent)", f"{_AVI}, Section 4"),
+    DefaultSEE("31021000", _F, None, _D("1.780"), _D("0.120"),
+               "Urea (CO2 from process + upstream gas)", _AVI),
+    DefaultSEE("31022100", _F, None, _D("0.860"), _D("0.090"),
+               "Ammonium sulphate", _AVI),
+    DefaultSEE("31022900", _F, None, _D("0.860"), _D("0.090"),
+               "Double salts / mixtures of ammonium sulphate", _AVI),
+    DefaultSEE("31023010", _F, None, _D("2.320"), _D("0.070"),
+               "Ammonium nitrate in aqueous solution (N2O included)", _AVI),
+    DefaultSEE("31023090", _F, None, _D("2.320"), _D("0.070"),
+               "Ammonium nitrate, other forms (N2O included)", _AVI),
+    DefaultSEE("31024010", _F, None, _D("1.444"), _D("0.060"),
+               "Ammonium nitrate + calcium carbonate mix", _AVI),
+    DefaultSEE("31024090", _F, None, _D("1.444"), _D("0.060"),
+               "Other ammonium nitrate mixtures", _AVI),
+    DefaultSEE("31025000", _F, None, _D("3.990"), _D("0.070"),
+               "Sodium nitrate", _AVI),
+    DefaultSEE("31026000", _F, None, _D("1.444"), _D("0.060"),
+               "Double salts of calcium nitrate and ammonium nitrate", _AVI),
+    DefaultSEE("31028000", _F, None, _D("1.780"), _D("0.120"),
+               "Urea + ammonium nitrate solution (UAN)", _AVI),
+    DefaultSEE("31029000", _F, None, _D("2.680"), _D("0.140"),
+               "Other nitrogenous fertilisers (default = ammonia equivalent)", _AVI),
+
     # Heading 3105 — Compound / NPK fertilisers
-    DefaultSEE("31051000", _F, None, _D("0.650"), _D("0.010"),
-               "Fertilisers in tablets or packages ≤10 kg", f"{_AVI}, Section 4"),
-    DefaultSEE("31052010", _F, None, _D("0.820"), _D("0.020"),
-               "NPK fertilisers (N+P+K)", f"{_AVI}, Section 4"),
-    DefaultSEE("31052090", _F, None, _D("0.820"), _D("0.020"),
-               "Other 3-element fertilisers", f"{_AVI}, Section 4"),
-    DefaultSEE("31053000", _F, None, _D("0.450"), _D("0.010"),
-               "Diammonium phosphate (DAP)", f"{_AVI}, Section 4"),
-    DefaultSEE("31054000", _F, None, _D("0.380"), _D("0.010"),
-               "Monoammonium phosphate (MAP)", f"{_AVI}, Section 4"),
-    DefaultSEE("31055100", _F, None, _D("0.700"), _D("0.015"),
-               "Nitrophosphates", f"{_AVI}, Section 4"),
-    DefaultSEE("31055900", _F, None, _D("0.700"), _D("0.015"),
-               "Other N+P fertilisers", f"{_AVI}, Section 4"),
-    DefaultSEE("3105", _F, None, _D("0.700"), _D("0.015"),
-               "Compound fertilisers Ch.3105 (fallback)", f"{_AVI}, Section 4"),
+    DefaultSEE("31051000", _F, None, _D("0.940"), _D("0.080"),
+               "Fertilisers in tablets or packages ≤10 kg", _AVI),
+    DefaultSEE("31052010", _F, None, _D("1.230"), _D("0.110"),
+               "Three-element NPK fertilisers (N+P+K)", _AVI),
+    DefaultSEE("31052090", _F, None, _D("1.230"), _D("0.110"),
+               "Other three-element fertilisers", _AVI),
+    DefaultSEE("31053000", _F, None, _D("0.690"), _D("0.060"),
+               "Diammonium phosphate (DAP)", _AVI),
+    DefaultSEE("31054000", _F, None, _D("0.440"), _D("0.050"),
+               "Monoammonium phosphate (MAP)", _AVI),
+    DefaultSEE("31055100", _F, None, _D("1.290"), _D("0.110"),
+               "Nitrophosphates (N+P)", _AVI),
+    DefaultSEE("31055900", _F, None, _D("1.290"), _D("0.110"),
+               "Other N+P fertilisers", _AVI),
+    DefaultSEE("3105", _F, None,    _D("0.940"), _D("0.080"),
+               "Compound fertilisers Ch.3105 — world average (fallback)", _AVI),
 
-    # ── ELECTRICITY (Annex VI, Section 5) ────────────────────────────────────
-    # Unit: tCO2e per MWh.  Stored with cn8_prefix "2716" for lookup purposes.
-    # Country-specific values must be applied using ELECTRICITY_FACTORS below.
-    # Entry below is the world-average fallback only.
+    # ── ELECTRICITY (Table 5) ─────────────────────────────────────────────────
+    # Unit: tCO2e per MWh.  Country-specific values in ELECTRICITY_FACTORS below.
+    # Entry below is the IEA world-average fallback when no country factor is available.
     DefaultSEE("27160000", _E, None, _D("0.493"), _D("0.000"),
-               "Electrical energy (world average emission factor)", f"{_AVI}, Section 5"),
+               "Electrical energy — world average IEA grid emission factor", _AVI),
 
-    # ── HYDROGEN (Annex VI, Section 6) ───────────────────────────────────────
-    DefaultSEE("28041000", _H, PRODUCTION_ROUTE_SMR,      _D("9.000"), _D("0.000"),
-               "Hydrogen — steam methane reforming (SMR, natural gas)", f"{_AVI}, Section 6"),
+    # ── HYDROGEN (Table 6) ────────────────────────────────────────────────────
+    # Official Art. 4(3) default is a single world-average (JRC 2023 H2 mix).
+    # Route-specific entries are engineering estimates for actual-measurement use.
+    DefaultSEE("28041000", _H, None,                    _D("10.400"), _D("0.000"),
+               "Hydrogen — world average (official default, JRC 2023 production mix)", _AVI),
+    DefaultSEE("28041000", _H, PRODUCTION_ROUTE_SMR,    _D("9.000"),  _D("0.000"),
+               "Hydrogen — steam methane reforming, SMR (engineering estimate)", _AVI),
     DefaultSEE("28041000", _H, PRODUCTION_ROUTE_COAL_GAS, _D("19.000"), _D("0.000"),
-               "Hydrogen — coal gasification", f"{_AVI}, Section 6"),
-    DefaultSEE("28041000", _H, PRODUCTION_ROUTE_ELECTRO,  _D("0.000"), _D("0.000"),
-               "Hydrogen — electrolysis (indirect via ELECTRICITY_FACTORS)", f"{_AVI}, Section 6"),
-    DefaultSEE("28041000", _H, None,                      _D("9.000"), _D("0.000"),
-               "Hydrogen — default (SMR assumed when route unknown)", f"{_AVI}, Section 6"),
+               "Hydrogen — coal gasification (engineering estimate)", _AVI),
+    DefaultSEE("28041000", _H, PRODUCTION_ROUTE_ELECTRO, _D("0.000"),  _D("0.000"),
+               "Hydrogen — electrolysis (indirect via ELECTRICITY_FACTORS)", _AVI),
 ]
 
 
 # ── Country-specific electricity emission factors (tCO2e per MWh) ────────────
-# Source: Annex VI, Section 5.  Country ISO-3166-1 alpha-2 codes.
+# Source: IEA 5-year average 2016–2020, applied via Art. 4(3) operative table.
+# Used for indirect embedded emissions in non-electricity CBAM goods.
+# Country ISO-3166-1 alpha-2 codes.
 ELECTRICITY_FACTORS: dict[str, Decimal] = {
     "AT": _D("0.109"),  # Austria
     "AU": _D("0.697"),  # Australia
@@ -501,8 +649,7 @@ def get_default_see(
         CN code in any format (spaces, dashes, dots stripped).
     production_route:
         Optional production route constant (e.g. ``PRODUCTION_ROUTE_BF_BOF``).
-        When *None*, the function returns the route-agnostic default or the
-        first route-specific entry found.
+        When *None*, the function returns the official world-average default.
 
     Returns
     -------
