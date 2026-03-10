@@ -67,8 +67,10 @@ export function login(
 
 // ── CBAM Cases ────────────────────────────────────────────────────────────
 
-export function listCbamCases(): Promise<CBAMCase[]> {
-  return apiFetch(`${LEDGER}/cbam/cases`);
+export async function listCbamCases(): Promise<CBAMCase[]> {
+  const res = await apiFetch<{ items: CBAMCase[] } | CBAMCase[]>(`${LEDGER}/cbam/cases`);
+  // API returns paginated { items, count, offset, limit } or plain array
+  return Array.isArray(res) ? res : (res as { items: CBAMCase[] }).items ?? [];
 }
 
 export function getCbamCase(id: string): Promise<CBAMCase> {
