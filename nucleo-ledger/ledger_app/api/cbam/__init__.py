@@ -7,6 +7,7 @@ from fastapi import APIRouter
 
 from . import _shared
 from .cases import router as cases_router
+from .classify import router as classify_router
 from .documents import router as documents_router
 from .drafts import router as drafts_router
 from .emissions import router as emissions_router
@@ -15,6 +16,7 @@ from .explain import router as explain_router
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
 router.include_router(cases_router)
+router.include_router(classify_router)
 router.include_router(documents_router)
 router.include_router(drafts_router)
 router.include_router(emissions_router)

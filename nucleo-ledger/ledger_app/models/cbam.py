@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, Text, text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -70,6 +70,10 @@ class CBAMGoodsLine(Base):
     quantity_unit: Mapped[str] = mapped_column(Text, nullable=False)
     installation_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     installation_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # CN code classification provenance
+    cn_classification_confidence: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    cn_classification_method: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cn_requires_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("now()"))
 
     shipment: Mapped["CBAMShipment"] = relationship(back_populates="goods_lines")
