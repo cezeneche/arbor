@@ -14,6 +14,7 @@ from .emissions import router as emissions_router
 from .report import router as report_router, get_cbam_report_package
 from .explain import router as explain_router
 from .reconcile import router as reconcile_router
+from .insights import router as insights_router
 
 router = APIRouter(prefix="/cbam", tags=["cbam"])
 router.include_router(cases_router)
@@ -24,6 +25,7 @@ router.include_router(emissions_router)
 router.include_router(report_router)
 router.include_router(explain_router)
 router.include_router(reconcile_router)
+router.include_router(insights_router)
 
 __all__ = ["router", "get_cbam_report_package"]
 
