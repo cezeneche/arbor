@@ -8,6 +8,8 @@ from uuid import uuid4
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+
+from ledger_app.services.cbam_emissions_selector import select_and_calculate
 from sqlalchemy.exc import IntegrityError
 
 from . import _shared
@@ -258,9 +260,6 @@ def _create_cbam_draft_from_parsed_invoice_payload(
             goods_line_ids.append(goods_line_id)
 
             emissions_payload = payload.emissions
-            line_method = line.method if line.method is not None else (
-                emissions_payload.method if emissions_payload else None
-            )
             line_direct_source = (
                 line.direct_embedded_kgco2e
                 if line.direct_embedded_kgco2e is not None
@@ -271,14 +270,11 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                 if line.indirect_embedded_kgco2e is not None
                 else (emissions_payload.indirect_embedded_kgco2e if emissions_payload else None)
             )
+            line_method_declared = line.method if line.method is not None else (
+                emissions_payload.method if emissions_payload else None
+            )
 
-            if (
-                line_method is not None
-                and direct_col
-                and indirect_col
-                and method_col
-                and goods_line_fk_column
-            ):
+            if direct_col and indirect_col and method_col and goods_line_fk_column:
                 existing_line_emissions = conn.execute(
                     text(
                         """
@@ -299,20 +295,34 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                     warnings.append(f"emissions_reused:{goods_line_id}")
                     continue
 
-                direct_value = _shared._coerce_float(line_direct_source, "direct_embedded_kgco2e")
-                indirect_value = _shared._coerce_float(line_indirect_source, "indirect_embedded_kgco2e")
+                # ── Automated method selection (EU 2023/1773 Art. 4) ──────────
+                # Determines actual / estimated / default and computes direct +
+                # indirect kgCO2e values.  Always runs — even when the caller
+                # supplies a method and values, the selector validates them.
+                mass_for_selector = Decimal(str(
+                    goods_insert.get("net_mass_kg") or goods_insert.get("quantity") or 0
+                )) if "net_mass_kg" in goods_insert or "quantity" in goods_insert else Decimal("0")
+
+                sel = select_and_calculate(
+                    cn_code=line.cn_code,
+                    net_mass_kg=mass_for_selector,
+                    direct_kgco2e_supplier=line_direct_source,
+                    indirect_kgco2e_supplier=line_indirect_source,
+                    force_method=line_method_declared.value if line_method_declared else None,
+                )
+
+                warnings.extend(sel.warnings)
+
                 emissions_insert: dict[str, object] = {
                     "id": str(uuid4()),
                     goods_line_fk_column: goods_line_id,
-                    direct_col: direct_value if direct_value is not None else Decimal("0"),
-                    indirect_col: indirect_value if indirect_value is not None else Decimal("0"),
-                    method_col: line_method.value,
+                    direct_col: sel.direct_kgco2e,
+                    indirect_col: sel.indirect_kgco2e,
+                    method_col: sel.method,
                     "version": 1,
                 }
                 emissions_row = _shared._insert_returning(conn, "cbam_emissions", emissions_insert)
                 emissions_ids.append(str(emissions_row["id"]))
-            elif warn_on_missing_emissions:
-                warnings.append("emissions_missing")
 
         return {
             "case_id": case_id,
