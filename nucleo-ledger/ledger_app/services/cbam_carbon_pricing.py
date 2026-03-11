@@ -7,6 +7,10 @@ equivalent scheme, the CBAM liability is reduced proportionally.
 Only countries *subject to CBAM* (i.e. not EU member states and not Annex II
 countries IS/LI/NO/CH whose ETS is linked to the EU ETS) can appear here.
 
+Also exposes ``check_carbon_price_plausibility`` as a convenience wrapper
+around the reconciler's implementation, so callers can import from a single
+carbon-pricing module without depending directly on cbam_reconciler.
+
 Regulation references
 ---------------------
 EU Regulation 2023/956, Article 9 — Carbon price already paid in a third country.
@@ -15,7 +19,16 @@ EU Regulation 2023/956, Article 9 — Carbon price already paid in a third count
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Optional
+
+# Re-export plausibility helpers from the reconciler so callers can import
+# from this module without pulling in the full reconciler dependency graph.
+from ledger_app.services.cbam_reconciler import (  # noqa: F401
+    CarbonPriceFlag,
+    check_carbon_price_plausibility,
+    get_eua_reference_price,
+)
 
 
 @dataclass(frozen=True)
