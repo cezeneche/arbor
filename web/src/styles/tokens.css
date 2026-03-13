@@ -1,0 +1,198 @@
+/* ─────────────────────────────────────────────────────────────────────────── *
+ * CBAM Portal — Dark Theme Design Tokens                                       *
+ * ─────────────────────────────────────────────────────────────────────────── *
+ * Single source of truth. No colour is hardcoded anywhere else.               *
+ * All components and Tailwind utilities consume these custom properties.       *
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+
+  /* ── PAGE STRUCTURE ──────────────────────────────────────────────────────── */
+  --color-page:           #0a0f1a;   /* Outermost body background               */
+  --color-surface:        #0d1623;   /* Cards, panels, sidebar                  */
+  --color-surface-raised: #131e2e;   /* Inputs, table rows, hover surfaces      */
+  --color-border:         #1e2d42;   /* Dividers and outlines throughout        */
+
+  /* ── TEXT ────────────────────────────────────────────────────────────────── */
+  /* Contrast on --color-page (#0a0f1a):                                        *
+   *   primary   #e8f0f7 → 15.8:1  WCAG AAA                                    *
+   *   secondary #8fa5bf →  7.2:1  WCAG AAA                                    *
+   *   muted     #4d6680 →  3.5:1  WCAG AA large — restrict to ≥18px           */
+  --color-text-primary:   #e8f0f7;
+  --color-text-secondary: #8fa5bf;
+  --color-text-muted:     #4d6680;   /* Placeholders, timestamps, fine print    */
+  --color-text-on-accent: #0a0f1a;   /* Dark text placed on accent backgrounds  */
+
+  /* ── ACCENT (teal) ───────────────────────────────────────────────────────── */
+  --color-accent:         #1D9E75;   /* Primary CTAs, active states, links      */
+  --color-accent-hover:   #178a64;   /* Hover and pressed accent                */
+  --color-accent-subtle:  rgba(29, 158, 117, 0.12);   /* Tinted surface fills   */
+  --color-accent-border:  rgba(29, 158, 117, 0.30);   /* Accent outlines        */
+  --color-accent-text:    #2fd4a0;   /* Teal text on dark surface               */
+
+  /* ── STATUS: APPROVED ────────────────────────────────────────────────────── */
+  --color-approved:        #1D9E75;
+  --color-approved-text:   #2fd4a0;
+  --color-approved-bg:     rgba(29, 158, 117, 0.12);
+  --color-approved-border: rgba(29, 158, 117, 0.28);
+
+  /* ── STATUS: PENDING ─────────────────────────────────────────────────────── */
+  --color-pending:        #EF9F27;
+  --color-pending-text:   #EF9F27;
+  --color-pending-bg:     rgba(239, 159, 39, 0.12);
+  --color-pending-border: rgba(239, 159, 39, 0.28);
+
+  /* ── STATUS: PROCESSING ──────────────────────────────────────────────────── */
+  --color-processing:        #378ADD;
+  --color-processing-text:   #61a8f0;
+  --color-processing-bg:     rgba(55, 138, 221, 0.12);
+  --color-processing-border: rgba(55, 138, 221, 0.28);
+
+  /* ── STATUS: ERROR ───────────────────────────────────────────────────────── */
+  --color-error:        #E24B4A;
+  --color-error-text:   #f07171;
+  --color-error-bg:     rgba(226, 75, 74, 0.12);
+  --color-error-border: rgba(226, 75, 74, 0.28);
+
+  /* ── STATUS: FLAGGED ─────────────────────────────────────────────────────── */
+  --color-flagged:        #D85A30;
+  --color-flagged-text:   #f08060;
+  --color-flagged-bg:     rgba(216, 90, 48, 0.12);
+  --color-flagged-border: rgba(216, 90, 48, 0.28);
+
+  /* ── BADGE VARIANTS ──────────────────────────────────────────────────────── */
+  /* method — calculation methods, CN codes                                     */
+  --badge-method-bg:     rgba(29, 158, 117, 0.15);
+  --badge-method-text:   #2fd4a0;
+  --badge-method-border: rgba(29, 158, 117, 0.32);
+
+  /* sector — commodity sectors (cement, iron_steel, aluminium…)               */
+  --badge-sector-bg:     rgba(55, 138, 221, 0.14);
+  --badge-sector-text:   #61a8f0;
+  --badge-sector-border: rgba(55, 138, 221, 0.30);
+
+  /* quarter — reporting periods (Q1 2024, Q3 2025…)                          */
+  --badge-quarter-bg:     rgba(143, 165, 191, 0.10);
+  --badge-quarter-text:   #8fa5bf;
+  --badge-quarter-border: rgba(143, 165, 191, 0.22);
+
+  /* ── ALERT BANNER SEVERITY ───────────────────────────────────────────────── */
+  --alert-warning-bg:     rgba(239, 159, 39, 0.10);
+  --alert-warning-border: #EF9F27;
+  --alert-warning-text:   #EF9F27;
+
+  --alert-error-bg:       rgba(226, 75, 74, 0.10);
+  --alert-error-border:   #E24B4A;
+  --alert-error-text:     #f07171;
+
+  --alert-info-bg:        rgba(55, 138, 221, 0.10);
+  --alert-info-border:    #378ADD;
+  --alert-info-text:      #61a8f0;
+
+  /* ── SKELETON LOADING ────────────────────────────────────────────────────── */
+  --skeleton-base:  #131e2e;
+  --skeleton-shine: rgba(232, 240, 247, 0.045);
+
+  /* ── TYPOGRAPHY ──────────────────────────────────────────────────────────── */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+               "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
+               "Liberation Mono", Menlo, monospace;
+
+  /* 14px is the hard minimum for all visible body text                         */
+  --text-xs:   0.875rem;    /* 14px — absolute minimum                         */
+  --text-sm:   0.9375rem;   /* 15px                                            */
+  --text-base: 1rem;        /* 16px — body default                             */
+  --text-lg:   1.125rem;    /* 18px                                            */
+  --text-xl:   1.25rem;     /* 20px                                            */
+  --text-2xl:  1.5rem;      /* 24px                                            */
+  --text-3xl:  1.875rem;    /* 30px                                            */
+  --text-4xl:  2.25rem;     /* 36px — metric values                            */
+
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  --leading-tight:   1.2;
+  --leading-snug:    1.375;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-tight:  -0.02em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.04em;
+  --tracking-wider:   0.08em;
+
+  /* ── TOUCH TARGETS ───────────────────────────────────────────────────────── */
+  /* WCAG 2.5.5: minimum ≥ 44×44px. We set 48px to exceed the requirement.    */
+  --touch-min:   48px;    /* All interactive elements                          */
+  --touch-large: 52px;    /* Primary CTA height                                */
+  --touch-row:   56px;    /* List / table row minimum height                   */
+
+  /* ── SPACING (4px base grid) ─────────────────────────────────────────────── */
+  --space-1:  0.25rem;    /*  4px */
+  --space-2:  0.5rem;     /*  8px */
+  --space-3:  0.75rem;    /* 12px */
+  --space-4:  1rem;       /* 16px */
+  --space-5:  1.25rem;    /* 20px */
+  --space-6:  1.5rem;     /* 24px */
+  --space-8:  2rem;       /* 32px */
+  --space-10: 2.5rem;     /* 40px */
+  --space-12: 3rem;       /* 48px */
+  --space-14: 3.5rem;     /* 56px */
+  --space-16: 4rem;       /* 64px */
+
+  /* ── BORDER RADIUS ───────────────────────────────────────────────────────── */
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-btn:  10px;   /* Consistent button border radius — all interactive controls */
+  --radius-xl:   12px;
+  --radius-full: 9999px;
+
+  /* ── SHADOWS (deep, for dark surfaces) ──────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.50), 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55), 0 2px 4px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.40);
+
+  /* ── TRANSITIONS ─────────────────────────────────────────────────────────── */
+  --transition-fast:   80ms ease;
+  --transition-normal: 150ms ease;
+  --transition-slow:   250ms ease;
+
+  /* ── Z-INDEX SCALE ───────────────────────────────────────────────────────── */
+  --z-base:    0;
+  --z-raised:  10;
+  --z-sticky:  100;
+  --z-overlay: 200;
+  --z-modal:   300;
+  --z-toast:   400;
+}
+
+/* ── SKELETON SHIMMER KEYFRAME ───────────────────────────────────────────────
+ * Defined globally so SkeletonRow can reference it from a plain className.    */
+@keyframes cbam-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base)  0%,
+    var(--skeleton-shine) 50%,
+    var(--skeleton-base)  100%
+  );
+  background-size: 600px 100%;
+  animation: cbam-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Collapse to a static fill when user has reduced-motion preference           */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+    background: var(--skeleton-base);
+  }
+}
