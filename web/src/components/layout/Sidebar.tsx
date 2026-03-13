@@ -57,13 +57,35 @@ function IconGear() {
   );
 }
 
+function IconFolder() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+        stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function IconClipboard() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"
+        stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+      <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" strokeWidth="1.75"/>
+      <path d="M9 12h6M9 16h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 /* ── Nav config ─────────────────────────────────────────────────────────────── */
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", Icon: IconDashboard },
-  { href: "/insights",  label: "Insights",  Icon: IconBarChart  },
+  { href: "/dashboard", label: "Dashboard", Icon: IconDashboard  },
+  { href: "/cases",     label: "Cases",     Icon: IconFolder     },
+  { href: "/review",    label: "Review",    Icon: IconClipboard  },
+  { href: "/insights",  label: "Insights",  Icon: IconBarChart   },
   { href: "/audit",     label: "Audit",     Icon: IconShieldCheck },
-  { href: "/settings",  label: "Settings",  Icon: IconGear      },
+  { href: "/settings",  label: "Settings",  Icon: IconGear       },
 ] as const;
 
 /* ── User avatar ────────────────────────────────────────────────────────────── */
@@ -89,10 +111,10 @@ interface SidebarProps {
 export function Sidebar({ sub, tenantId, drawerOpen, onDrawerClose }: SidebarProps) {
   const pathname = usePathname();
 
-  /* Resolve active route — /dashboard matches both /dashboard and / */
+  /* Resolve active route */
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
-    return pathname.startsWith(href);
+    return pathname === href || pathname.startsWith(href + "/");
   }
 
   const sidebarContent = (

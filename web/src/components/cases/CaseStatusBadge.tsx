@@ -1,22 +1,24 @@
-import { Badge } from "@/components/ui/badge";
+/**
+ * CaseStatusBadge — maps ledger case / review statuses to a StatusDot.
+ *
+ * Status is communicated via dot colour + text — never colour alone.
+ */
+import { StatusDot, type StatusValue } from "@/components/ui/StatusDot";
 import type { CaseStatus, ReviewStatus } from "@/lib/types";
 
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; className: string }
-> = {
-  draft:             { label: "Draft",            className: "bg-slate-700 text-slate-300 border-slate-600" },
-  submitted:         { label: "Submitted",         className: "bg-blue-500/20 text-blue-400 border-blue-500/20" },
-  extracted:         { label: "Extracted",         className: "bg-indigo-500/20 text-indigo-400 border-indigo-500/20" },
-  calculated:        { label: "Calculated",        className: "bg-purple-500/20 text-purple-400 border-purple-500/20" },
-  resolved:          { label: "Resolved",          className: "bg-violet-500/20 text-violet-400 border-violet-500/20" },
-  bundled:           { label: "Bundled",           className: "bg-cyan-500/20 text-cyan-400 border-cyan-500/20" },
-  narrative_drafted: { label: "Narrative Ready",   className: "bg-teal-500/20 text-teal-400 border-teal-500/20" },
-  signed_off:        { label: "Signed Off",        className: "bg-green-500/20 text-green-400 border-green-500/20" },
-  // review statuses
-  pending_review:    { label: "Pending Review",    className: "bg-amber-500/20 text-amber-400 border-amber-500/20" },
-  approved:          { label: "Approved",          className: "bg-green-500/20 text-green-400 border-green-500/20" },
-  rejected:          { label: "Rejected",          className: "bg-red-500/20 text-red-400 border-red-500/20" },
+const STATUS_MAP: Record<string, { statusValue: StatusValue; label: string }> = {
+  draft:             { statusValue: "pending",    label: "Draft" },
+  submitted:         { statusValue: "processing", label: "Submitted" },
+  extracted:         { statusValue: "processing", label: "Extracted" },
+  calculated:        { statusValue: "processing", label: "Calculated" },
+  resolved:          { statusValue: "processing", label: "Resolved" },
+  bundled:           { statusValue: "processing", label: "Bundled" },
+  narrative_drafted: { statusValue: "processing", label: "Narrative Ready" },
+  signed_off:        { statusValue: "approved",   label: "Signed Off" },
+  pending_review:    { statusValue: "pending",    label: "Pending Review" },
+  approved:          { statusValue: "approved",   label: "Approved" },
+  rejected:          { statusValue: "error",      label: "Rejected" },
+  flagged:           { statusValue: "flagged",    label: "Flagged" },
 };
 
 interface Props {
@@ -25,13 +27,12 @@ interface Props {
 
 export function CaseStatusBadge({ status }: Props) {
   if (!status) return null;
-  const config = STATUS_CONFIG[status] ?? {
-    label: status,
-    className: "bg-slate-700 text-slate-300 border-slate-600",
-  };
+  const mapping = STATUS_MAP[status];
   return (
-    <Badge variant="outline" className={`text-xs font-medium ${config.className}`}>
-      {config.label}
-    </Badge>
+    <StatusDot
+      status={mapping?.statusValue ?? "pending"}
+      label={mapping?.label ?? status}
+      size="sm"
+    />
   );
 }

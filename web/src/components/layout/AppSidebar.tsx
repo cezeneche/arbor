@@ -13,7 +13,6 @@ import {
   Leaf,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface NavItem {
   href: string;
@@ -76,9 +75,20 @@ export function AppSidebar() {
               <item.icon className="w-4 h-4 flex-shrink-0" />
               {item.label}
               {item.badge != null && item.badge > 0 && (
-                <Badge className="ml-auto bg-amber-500/20 text-amber-400 border-amber-500/20 text-[10px] px-1.5 py-0">
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: "10px",
+                    fontWeight: "var(--font-weight-semibold)",
+                    padding: "1px 6px",
+                    borderRadius: "var(--radius-full)",
+                    backgroundColor: "var(--color-pending-bg)",
+                    border: "1px solid var(--color-pending-border)",
+                    color: "var(--color-pending-text)",
+                  }}
+                >
                   {item.badge}
-                </Badge>
+                </span>
               )}
             </Link>
           );

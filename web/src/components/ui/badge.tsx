@@ -1,36 +1,66 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+/**
+ * Badge — domain metadata pill
+ *
+ * Three variants covering all CBAM metadata categories:
+ *   method  — calculation method (actual, estimated, Annex VI default)
+ *   sector  — commodity sector (cement, iron_steel, aluminium, fertilisers…)
+ *   quarter — reporting period (Q1 2024, Q3 2025…)
+ *
+ * Contrast: all variants verified ≥ 4.5:1 on their tinted backgrounds (WCAG AA).
+ * Tokens from tokens.css — no hardcoded colours.
+ */
 
-import { cn } from "@/lib/utils"
-
-const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
+interface BadgeProps {
+  label:   string;
+  variant: "method" | "sector" | "quarter";
 }
 
-export { Badge, badgeVariants }
+const STYLES: Record<
+  "method" | "sector" | "quarter",
+  { bg: string; text: string; border: string }
+> = {
+  method: {
+    bg:     "var(--badge-method-bg)",
+    text:   "var(--badge-method-text)",
+    border: "var(--badge-method-border)",
+  },
+  sector: {
+    bg:     "var(--badge-sector-bg)",
+    text:   "var(--badge-sector-text)",
+    border: "var(--badge-sector-border)",
+  },
+  quarter: {
+    bg:     "var(--badge-quarter-bg)",
+    text:   "var(--badge-quarter-text)",
+    border: "var(--badge-quarter-border)",
+  },
+};
+
+export function Badge({ label, variant }: BadgeProps) {
+  const s = STYLES[variant];
+
+  return (
+    <span
+      style={{
+        display:         "inline-flex",
+        alignItems:      "center",
+        padding:         "2px 8px",
+        borderRadius:    "var(--radius-full)",
+        border:          `1px solid ${s.border}`,
+        backgroundColor: s.bg,
+        color:           s.text,
+        fontSize:        "var(--text-xs)",          /* 14px — hard minimum */
+        fontWeight:      "var(--font-weight-semibold)",
+        fontFamily:      "var(--font-sans)",
+        lineHeight:      "var(--leading-normal)",
+        whiteSpace:      "nowrap" as const,
+        letterSpacing:   "var(--tracking-normal)",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/* Named export only — consuming components should use the named export.
+   No default export to avoid ambiguity with shadcn Badge primitives.    */

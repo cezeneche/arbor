@@ -7,8 +7,9 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("cbam_token")?.value;
   const { pathname } = request.nextUrl;
 
-  // Public routes — always accessible
+  // Public routes — always accessible (no auth required)
   if (pathname.startsWith("/login")) return NextResponse.next();
+  if (pathname.startsWith("/design-system")) return NextResponse.next();
 
   // Protected routes — redirect to login if no token
   if (!token) {
@@ -21,5 +22,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
+  // Exclude Next.js internals, static assets, and API proxy routes
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api-proxy).*)"],
 };

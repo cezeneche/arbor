@@ -1,5 +1,4 @@
 import type { AuditEvent } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
 import { ShieldCheck } from "lucide-react";
 
 interface Props {
@@ -28,9 +27,19 @@ export function AuditHashChain({ events }: Props) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-white">{event.event_type}</span>
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-800 border-slate-700 text-slate-400">
+              <span
+                style={{
+                  fontSize: "10px",
+                  padding: "1px 6px",
+                  borderRadius: "var(--radius-full)",
+                  backgroundColor: "var(--color-surface-raised)",
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-text-secondary)",
+                  fontWeight: "var(--font-weight-medium)",
+                }}
+              >
                 {event.actor_type}
-              </Badge>
+              </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               {event.actor_sub} · {new Date(event.created_at).toLocaleString()}
