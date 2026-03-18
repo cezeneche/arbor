@@ -1,12 +1,12 @@
 "use client";
 
-import { use } from "react";
+// use removed from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { getCbamCase } from "@/lib/api";
 import { CaseStatusBadge } from "@/components/cases/CaseStatusBadge";
 
-interface Props { params: Promise<{ id: string }> }
+interface Props { params: { id: string } }
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: "var(--color-surface)",
@@ -30,7 +30,7 @@ function SkeletonBlock({ h = 20 }: { h?: number }) {
 }
 
 export default function CaseDetailPage({ params }: Props) {
-  const { id } = use(params);
+  const { id } = params;
   const { data: c, isLoading, error } = useQuery({
     queryKey: ["cbam-case", id],
     queryFn: () => getCbamCase(id),

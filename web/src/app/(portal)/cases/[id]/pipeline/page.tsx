@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
@@ -8,10 +8,10 @@ import { runPipeline, getCbamCase } from "@/lib/api";
 import { PipelineSteps, derivePipelineSteps } from "@/components/pipeline/PipelineSteps";
 import type { PipelineResult } from "@/lib/types";
 
-interface Props { params: Promise<{ id: string }> }
+interface Props { params: { id: string } }
 
 export default function PipelinePage({ params }: Props) {
-  const { id } = use(params);
+  const { id } = params;
   const [result, setResult] = useState<PipelineResult | null>(null);
 
   useQuery({ queryKey: ["cbam-case", id], queryFn: () => getCbamCase(id) });

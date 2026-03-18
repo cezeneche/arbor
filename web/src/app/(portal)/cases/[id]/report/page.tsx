@@ -1,14 +1,14 @@
 "use client";
 
-import { use } from "react";
+// use removed from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { getReportPackage } from "@/lib/api";
 
-interface Props { params: Promise<{ id: string }> }
+interface Props { params: { id: string } }
 
 export default function ReportPage({ params }: Props) {
-  const { id } = use(params);
+  const { id } = params;
 
   const { data: report, isLoading, error } = useQuery({
     queryKey: ["report-package", id],

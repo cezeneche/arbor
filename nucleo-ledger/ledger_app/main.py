@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
@@ -23,7 +24,29 @@ logging.root.setLevel(logging.INFO)
 
 validate_startup_config()
 
-app = FastAPI(title="núcleo ledger", version="0.1.0")
+# ── Supabase client lifespan ───────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialise Supabase clients on startup (if SUPABASE_URL is configured)
+    if os.getenv("SUPABASE_URL"):
+        try:
+            from ledger_app.db.supabase_client import init_clients
+            await init_clients()
+            logging.getLogger("ledger.supabase").info("Supabase clients initialised")
+        except Exception as exc:
+            logging.getLogger("ledger.supabase").warning(
+                "Supabase client init failed (non-fatal): %s", exc
+            )
+    yield
+    # Teardown
+    if os.getenv("SUPABASE_URL"):
+        try:
+            from ledger_app.db.supabase_client import close_clients
+            await close_clients()
+        except Exception:
+            pass
+
+app = FastAPI(title="núcleo ledger", version="0.1.0", lifespan=lifespan)
 
 # ── OpenTelemetry distributed tracing (no-op when OTLP_ENDPOINT absent) ──────
 from ledger_app.core.telemetry import setup_telemetry
@@ -33,6 +56,11 @@ setup_telemetry(app)
 if os.getenv("FORCE_HTTPS", "").strip().lower() in ("1", "true", "yes"):
     from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
     app.add_middleware(HTTPSRedirectMiddleware)
+
+# ── Tenant context middleware (sets app.current_tenant_id for RLS) ────────────
+if os.getenv("SUPABASE_URL"):
+    from ledger_app.middleware.tenant_context import TenantContextMiddleware
+    app.add_middleware(TenantContextMiddleware)
 
 # ── Idempotency middleware (active only when REDIS_URL is set) ─────────────────
 from ledger_app.middleware.idempotency import IdempotencyMiddleware

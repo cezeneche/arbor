@@ -88,7 +88,7 @@ def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
         }
 
         if "importer_name" in columns:
-            insert_payload["importer_name"] = payload.importer_eori
+            insert_payload["importer_name"] = payload.importer_name
         if "status" in columns:
             insert_payload["status"] = "draft"
         if "tenant_id" in columns:
@@ -179,4 +179,10 @@ def list_cbam_cases(
             params,
         ).mappings().all()
 
-        return {"items": [dict(row) for row in rows], "offset": offset, "limit": limit, "count": len(rows)}
+        items = []
+        for row in rows:
+            r = dict(row)
+            if "importer_eori" in r:
+                r["importer_eori"] = _shared.decrypt_field(r["importer_eori"])
+            items.append(r)
+        return {"items": items, "offset": offset, "limit": limit, "count": len(items)}

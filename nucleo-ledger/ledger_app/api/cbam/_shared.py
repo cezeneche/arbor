@@ -66,6 +66,7 @@ class EmissionsMethod(str, Enum):
 
 class CBAMCaseCreate(BaseModel):
     importer_eori: str = Field(..., min_length=1)
+    importer_name: str | None = None
     reporting_year: int
     reporting_quarter: int = Field(..., ge=1, le=4)
 

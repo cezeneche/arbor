@@ -1,13 +1,13 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { getReportPackage, getReview, approveCase, rejectCase } from "@/lib/api";
 
-interface Props { params: Promise<{ id: string }> }
+interface Props { params: { id: string } }
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -34,7 +34,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function ReviewDecisionPage({ params }: Props) {
-  const { id }         = use(params);
+  const { id } = params;
   const router         = useRouter();
   const queryClient    = useQueryClient();
 

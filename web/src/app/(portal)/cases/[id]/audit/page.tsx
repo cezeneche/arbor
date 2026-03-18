@@ -1,15 +1,15 @@
 "use client";
 
-import { use } from "react";
+// use removed from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { getAuditLog } from "@/lib/api";
 import { AuditHashChain } from "@/components/audit/AuditHashChain";
 
-interface Props { params: Promise<{ id: string }> }
+interface Props { params: { id: string } }
 
 export default function CaseAuditPage({ params }: Props) {
-  const { id } = use(params);
+  const { id } = params;
 
   const { data: events, isLoading, error } = useQuery({
     queryKey: ["audit-log", id],
