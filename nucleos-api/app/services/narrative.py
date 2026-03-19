@@ -362,15 +362,25 @@ def run_pipeline_stages(
     # Claude is explicitly told to return results as {}, but we override regardless.
     narrative["results"] = _extract_results_from_packet(packet)
 
+    # Step 4b — deterministic validation (replaces Gemini QA gate)
+    from app.services.report_validator import validate_report_package_integrity
+    validation = validate_report_package_integrity(packet, narrative, case_id=case_id)
+    human_review_required = validation.human_review_required
+    stage_errors = (
+        [{"stage": "report_validator", "error": f} for f in validation.failures]
+        if validation.failures
+        else []
+    )
+
     # Step 5 — persist review flag (best-effort)
     tenant_id: str = getattr(
         getattr(request.state, "auth_context", None), "tenant_id", ""
     )
-    _persist_review_flag(case_id, human_review_required=False, tenant_id=tenant_id)
+    _persist_review_flag(case_id, human_review_required=human_review_required, tenant_id=tenant_id)
 
     return {
         "case_id": case_id,
         "final_narrative_json": narrative,
-        "human_review_required": False,
-        "stage_errors": [],
+        "human_review_required": human_review_required,
+        "stage_errors": stage_errors,
     }

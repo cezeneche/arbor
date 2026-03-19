@@ -1,5 +1,5 @@
 """
-ARQ background job: runs the 3-stage LLM pipeline and stores the result in Redis.
+ARQ background job: runs the narrative pipeline and stores the result in Redis.
 The job is enqueued by POST /api/cases/{id}/narrative/pipeline/async.
 Result is polled via GET /api/narrative/jobs/{job_id}.
 """
@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from typing import Any
+import types
 
 
 async def run_pipeline_job(
@@ -22,15 +22,32 @@ async def run_pipeline_job(
     """
     ARQ job entry point.
     Runs the sync pipeline stages in a thread pool and caches the result in Redis.
+
+    Imports run_pipeline_stages from app.services.narrative (the consolidated
+    nucleos-api service), not from narrative_app.api.pipeline. A synthetic
+    request-like object is built so run_pipeline_stages can access tenant_id
+    without an active HTTP request.
     """
-    from narrative_app.api.pipeline import _run_pipeline_stages
+    from app.services.narrative import run_pipeline_stages
+    from shared_auth.models import AuthContext
+
+    # Build a minimal request-like object so run_pipeline_stages can read
+    # request.state.auth_context.tenant_id without an active ASGI request.
+    auth_ctx = AuthContext(
+        sub="narrative-worker",
+        tenant_id=tenant_id,
+        scopes=["cbam:read", "narrative:run"],
+        jti="worker-internal",
+        exp=9_999_999_999,
+    )
+    state = types.SimpleNamespace(auth_context=auth_ctx, request_id=trace_id)
+    synthetic_request = types.SimpleNamespace(state=state)
 
     result = await asyncio.to_thread(
-        _run_pipeline_stages,
+        run_pipeline_stages,
         case_id=case_id,
         packet_kind=packet_kind,
-        tenant_id=tenant_id,
-        trace_id=trace_id,
+        request=synthetic_request,
     )
 
     job_id = ctx.get("job_id", "unknown")
@@ -42,16 +59,6 @@ async def run_pipeline_job(
             86400,
             json.dumps(result),
         )
-
-    # Persist review gate to ledger (best-effort — never raises)
-    try:
-        from narrative_app.services.ledger_client import clear_review, flag_review
-        if result.get("human_review_required"):
-            await asyncio.to_thread(flag_review, case_id, tenant_id=tenant_id, trace_id=trace_id)
-        else:
-            await asyncio.to_thread(clear_review, case_id, tenant_id=tenant_id, trace_id=trace_id)
-    except Exception:
-        pass
 
     # Slack notification — never raises, never delays result delivery
     try:
