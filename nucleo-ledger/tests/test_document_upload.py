@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import asynccontextmanager
 from io import BytesIO
 from uuid import uuid4
 
@@ -90,12 +91,11 @@ class TestValidateUpload:
 # HTTP-level tests — mock S3 + DB engine
 # ─────────────────────────────────────────────────────────────────────────────
 
-class _FakeS3:
-    def __init__(self):
-        self.uploads: list[dict] = []
-
-    def put_object(self, **kwargs):
-        self.uploads.append(kwargs)
+class _FakeUploadResult:
+    """Mimics the object yielded by atomic_upload_document."""
+    def __init__(self, filename: str):
+        self.storage_uri = f"supabase://test-bucket/{filename}"
+        self.sha256 = "aabbccddeeff"
 
 
 class _Result:
@@ -163,35 +163,38 @@ class _FakeEngine:
         return _FakeTx(_FakeConn())
 
 
-def _make_client(monkeypatch) -> tuple[TestClient, _FakeS3]:
-    fake_s3 = _FakeS3()
+def _make_client(monkeypatch) -> tuple[TestClient, list]:
+    uploads: list[dict] = []
+
+    @asynccontextmanager
+    async def fake_atomic_upload(tenant_id, document_id, filename, data):
+        uploads.append({"filename": filename, "size": len(data)})
+        yield _FakeUploadResult(filename)
+
     monkeypatch.setattr(doc_module, "engine", _FakeEngine())
-    monkeypatch.setattr(doc_module, "get_s3_client", lambda: fake_s3)
-    monkeypatch.setattr(doc_module, "S3_BUCKET", "test-bucket")
+    monkeypatch.setattr(doc_module, "atomic_upload_document", fake_atomic_upload)
     # Disable HMAC signing / chain dependencies
     monkeypatch.setattr(doc_module, "sign_event", lambda *a, **kw: "fake-sig")
     monkeypatch.setattr(doc_module, "get_prev_chain_hmac", lambda *a, **kw: None)
-    # Reset the rate limiter's in-memory counters so prior tests don't interfere
-    doc_module._limiter._storage.reset()
 
     app = FastAPI()
     app.include_router(doc_module.router)
-    return TestClient(app, raise_server_exceptions=False), fake_s3
+    return TestClient(app, raise_server_exceptions=False), uploads
 
 
 class TestSingleUploadHTTP:
     def test_valid_pdf_returns_200(self, monkeypatch):
-        client, fake_s3 = _make_client(monkeypatch)
+        client, uploads = _make_client(monkeypatch)
         resp = client.post(
             f"/cases/{_CASE_ID}/documents/upload",
             files={"file": ("invoice.pdf", BytesIO(_PDF_MAGIC), "application/pdf")},
             data={"doc_type": "invoice"},
         )
         assert resp.status_code == 200
-        assert len(fake_s3.uploads) == 1
+        assert len(uploads) == 1
 
     def test_invalid_mime_returns_400_without_s3_call(self, monkeypatch):
-        client, fake_s3 = _make_client(monkeypatch)
+        client, uploads = _make_client(monkeypatch)
         resp = client.post(
             f"/cases/{_CASE_ID}/documents/upload",
             files={
@@ -200,20 +203,20 @@ class TestSingleUploadHTTP:
         )
         assert resp.status_code == 400
         assert "not accepted" in resp.json()["detail"]
-        assert len(fake_s3.uploads) == 0  # S3 never called
+        assert len(uploads) == 0  # storage never called
 
     def test_executable_magic_returns_400_without_s3_call(self, monkeypatch):
-        client, fake_s3 = _make_client(monkeypatch)
+        client, uploads = _make_client(monkeypatch)
         resp = client.post(
             f"/cases/{_CASE_ID}/documents/upload",
             files={"file": ("malware.pdf", BytesIO(_MZ_MAGIC), "application/pdf")},
         )
         assert resp.status_code == 400
         assert "executable or script" in resp.json()["detail"]
-        assert len(fake_s3.uploads) == 0
+        assert len(uploads) == 0
 
     def test_empty_file_returns_400(self, monkeypatch):
-        client, fake_s3 = _make_client(monkeypatch)
+        client, _ = _make_client(monkeypatch)
         resp = client.post(
             f"/cases/{_CASE_ID}/documents/upload",
             files={"file": ("empty.pdf", BytesIO(b""), "application/pdf")},
@@ -223,7 +226,7 @@ class TestSingleUploadHTTP:
 
 class TestBatchUploadHTTP:
     def test_all_success_returns_201(self, monkeypatch):
-        client, fake_s3 = _make_client(monkeypatch)
+        client, uploads = _make_client(monkeypatch)
         resp = client.post(
             f"/cases/{_CASE_ID}/documents/upload/batch",
             files=[
@@ -236,10 +239,10 @@ class TestBatchUploadHTTP:
         assert body["succeeded"] == 2
         assert body["failed"] == 0
         assert all(r["status"] == "ok" for r in body["results"])
-        assert len(fake_s3.uploads) == 2
+        assert len(uploads) == 2
 
     def test_partial_failure_returns_207(self, monkeypatch):
-        client, fake_s3 = _make_client(monkeypatch)
+        client, uploads = _make_client(monkeypatch)
         resp = client.post(
             f"/cases/{_CASE_ID}/documents/upload/batch",
             files=[
@@ -254,10 +257,10 @@ class TestBatchUploadHTTP:
         statuses = {r["filename"]: r["status"] for r in body["results"]}
         assert statuses["good.pdf"] == "ok"
         assert statuses["bad.js"] == "error"
-        assert len(fake_s3.uploads) == 1  # only the good file reached S3
+        assert len(uploads) == 1  # only the good file reached storage
 
     def test_exceeds_max_files_returns_400(self, monkeypatch):
-        client, fake_s3 = _make_client(monkeypatch)
+        client, uploads = _make_client(monkeypatch)
         many_files = [
             ("files", (f"f{i}.pdf", BytesIO(_PDF_MAGIC), "application/pdf"))
             for i in range(MAX_BATCH_FILES + 1)
@@ -268,4 +271,4 @@ class TestBatchUploadHTTP:
         )
         assert resp.status_code == 400
         assert "Maximum" in resp.json()["detail"]
-        assert len(fake_s3.uploads) == 0
+        assert len(uploads) == 0

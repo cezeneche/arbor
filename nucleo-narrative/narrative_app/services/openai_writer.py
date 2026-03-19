@@ -3,8 +3,6 @@ import os
 import time
 
 from narrative_app.core.config import settings
-from narrative_app.core.circuit_breaker import CircuitOpenError, _openai_breaker
-from narrative_app.core.metrics import llm_duration, llm_errors, llm_retries
 
 
 def _legacy_writer_prompt(packet: dict) -> str:
@@ -120,8 +118,6 @@ def _call_openai(packet: dict) -> dict:
 
 
 def generate_draft(packet: dict) -> dict:
-    _stage = "draft"
-    _provider = "openai"
     _attempts = int(os.getenv("LLM_RETRY_ATTEMPTS", "3"))
 
     # OTel span (no-op when tracing not configured)
@@ -137,30 +133,12 @@ def generate_draft(packet: dict) -> dict:
         last_exc: Exception | None = None
         for attempt in range(1, _attempts + 1):
             if attempt > 1:
-                llm_retries.labels(provider=_provider, stage=_stage).inc()
                 import time as _time
                 _time.sleep(min(2 ** (attempt - 2), 10))
 
-            t0 = time.monotonic()
             try:
-                result = _openai_breaker.call(_call_openai, packet)
-                llm_duration.labels(provider=_provider, stage=_stage).observe(
-                    time.monotonic() - t0
-                )
-                return result
-            except CircuitOpenError as e:
-                llm_errors.labels(
-                    provider=_provider, stage=_stage, error_type="circuit_open"
-                ).inc()
-                raise
+                return _call_openai(packet)
             except Exception as exc:
-                llm_duration.labels(provider=_provider, stage=_stage).observe(
-                    time.monotonic() - t0
-                )
-                error_type = type(exc).__name__
-                llm_errors.labels(
-                    provider=_provider, stage=_stage, error_type=error_type
-                ).inc()
                 last_exc = exc
 
         raise last_exc  # type: ignore[misc]

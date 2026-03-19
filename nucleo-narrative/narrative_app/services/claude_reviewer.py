@@ -6,8 +6,6 @@ import importlib
 
 from dotenv import load_dotenv
 
-from narrative_app.core.circuit_breaker import CircuitOpenError, _claude_breaker
-from narrative_app.core.metrics import llm_duration, llm_errors, llm_retries
 
 # Load environment variables from .env at startup
 load_dotenv()
@@ -120,8 +118,6 @@ def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
     Input: a structured narrative JSON object.
     Output: the same structure, improved prose, with factual/numeric values preserved.
     """
-    _stage = "review"
-    _provider = "claude"
     _attempts = int(os.getenv("LLM_RETRY_ATTEMPTS", "3"))
 
     client, unavailable_reason = _get_client()
@@ -147,33 +143,12 @@ def review_narrative(draft_json: Dict[str, Any]) -> Dict[str, Any]:
 
         for attempt in range(1, _attempts + 1):
             if attempt > 1:
-                llm_retries.labels(provider=_provider, stage=_stage).inc()
                 time.sleep(min(2 ** (attempt - 2), 10))
 
-            t0 = time.monotonic()
             try:
-                resp = _claude_breaker.call(_call_claude, draft_json)
-                llm_duration.labels(provider=_provider, stage=_stage).observe(
-                    time.monotonic() - t0
-                )
+                resp = _call_claude(draft_json)
                 break
-            except CircuitOpenError:
-                # Circuit open — return graceful degradation immediately
-                llm_errors.labels(
-                    provider=_provider, stage=_stage, error_type="circuit_open"
-                ).inc()
-                skipped = dict(draft_json)
-                skipped["_review_status"] = "unavailable"
-                skipped["_review_provider"] = "claude"
-                skipped["_review_reason"] = "circuit_open"
-                return skipped
             except Exception as exc:
-                llm_duration.labels(provider=_provider, stage=_stage).observe(
-                    time.monotonic() - t0
-                )
-                llm_errors.labels(
-                    provider=_provider, stage=_stage, error_type=type(exc).__name__
-                ).inc()
                 last_exc = exc
 
         if resp is None:

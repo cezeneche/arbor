@@ -1,6 +1,6 @@
 # nucleos-api — merged requirements
 # Superset of nucleo-ledger + nucleo-narrative dependencies.
-# Ledger pins are preserved; narrative adds google-genai and arq/redis.
+# ARQ, Redis, prometheus-fastapi-instrumentator, slowapi, tenacity removed.
 
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.3

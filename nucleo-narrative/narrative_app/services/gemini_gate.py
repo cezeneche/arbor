@@ -5,8 +5,6 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from narrative_app.core.config import settings
-from narrative_app.core.circuit_breaker import CircuitOpenError, _gemini_breaker
-from narrative_app.core.metrics import llm_duration, llm_errors, llm_retries
 
 
 def _gate_prompt(packet: dict, narrative_json: dict) -> str:
@@ -180,8 +178,6 @@ def gate(packet: dict, narrative_json: dict) -> dict:
             "reason": "sdk_unavailable",
         }
 
-    _stage = "gate"
-    _provider = "gemini"
     _attempts = int(os.getenv("LLM_RETRY_ATTEMPTS", "3"))
 
     # OTel span
@@ -197,36 +193,12 @@ def gate(packet: dict, narrative_json: dict) -> dict:
         resp = None
         for attempt in range(1, _attempts + 1):
             if attempt > 1:
-                llm_retries.labels(provider=_provider, stage=_stage).inc()
                 time.sleep(min(2 ** (attempt - 2), 10))
 
-            t0 = time.monotonic()
             try:
-                resp = _gemini_breaker.call(
-                    _call_gemini, packet, narrative_json, genai, GenerateContentConfig
-                )
-                llm_duration.labels(provider=_provider, stage=_stage).observe(
-                    time.monotonic() - t0
-                )
+                resp = _call_gemini(packet, narrative_json, genai, GenerateContentConfig)
                 break
-            except CircuitOpenError:
-                llm_errors.labels(
-                    provider=_provider, stage=_stage, error_type="circuit_open"
-                ).inc()
-                return {
-                    "approved": False,
-                    "issues": [{"detail": "Gemini circuit is open; gate skipped."}],
-                    "status": "unavailable",
-                    "provider": "gemini",
-                    "reason": "circuit_open",
-                }
             except Exception as exc:
-                llm_duration.labels(provider=_provider, stage=_stage).observe(
-                    time.monotonic() - t0
-                )
-                llm_errors.labels(
-                    provider=_provider, stage=_stage, error_type=type(exc).__name__
-                ).inc()
                 if attempt == _attempts:
                     return {
                         "approved": False,
