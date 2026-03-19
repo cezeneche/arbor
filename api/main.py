@@ -197,8 +197,10 @@ from narrative_app.api.auth import public_router as narrative_auth_public_router
 from narrative_app.api.cbam_compliance import router as cbam_compliance_router
 from narrative_app.api.jobs import router as jobs_router
 
+from app.api.cpr import router as cpr_router
 from app.api.narrative_pipeline import router as narrative_pipeline_router
 
+app.include_router(cpr_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(narrative_auth_public_router)
 app.include_router(
     narrative_auth_protected_router, prefix="/api", dependencies=[Depends(get_auth_context)]
