@@ -4,15 +4,12 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from shared_auth import AuthContext, create_access_token, get_auth_context, is_dev_token_endpoint_enabled
 from shared_auth.dependencies import require_scopes
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 protected_router = APIRouter(prefix="/auth", tags=["auth"])
-_limiter = Limiter(key_func=get_remote_address)
 
 _DEFAULT_SCOPES = ["cbam:read", "cbam:write"]
 
@@ -24,7 +21,6 @@ class DevTokenRequest(BaseModel):
 
 
 @router.post("/token")
-@_limiter.limit("20/minute")
 def issue_dev_token(request: Request, body: DevTokenRequest = DevTokenRequest()):
     if not is_dev_token_endpoint_enabled():
         raise HTTPException(status_code=404, detail="Not Found")

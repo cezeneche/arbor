@@ -5,14 +5,11 @@ boto3
 pydantic
 pydantic-settings
 python-dotenv
-slowapi
 python-json-logger
-prometheus-fastapi-instrumentator
 cryptography>=42.0.0
 
 openai
 anthropic
-google-genai
 PyJWT
 
 # Observability
@@ -20,10 +17,3 @@ opentelemetry-sdk
 opentelemetry-instrumentation-fastapi
 opentelemetry-exporter-otlp-proto-grpc
 opentelemetry-instrumentation-httpx
-
-# LLM resilience
-tenacity
-
-# Job queue + idempotency
-arq
-redis

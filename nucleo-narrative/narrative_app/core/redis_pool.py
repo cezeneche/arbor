@@ -1,22 +1,15 @@
 """
-Shared Redis async connection pool for job queue + idempotency.
-Returns None when REDIS_URL is not configured — all callers must handle the None case.
+Redis pool stub — Redis dependency removed.
+
+Returns None for all calls so any remaining legacy imports resolve without error.
+REDIS_URL is kept as an empty string constant so callers that check it continue to
+get a falsy value and skip Redis-dependent code paths.
 """
 from __future__ import annotations
 
-import os
-
-REDIS_URL = os.getenv("REDIS_URL", "").strip()
-
-_pool = None
+REDIS_URL = ""
 
 
 def get_redis_pool():
-    """Return a redis.asyncio pool, or None if Redis is not configured."""
-    global _pool
-    if not REDIS_URL:
-        return None
-    if _pool is None:
-        import redis.asyncio as aioredis  # type: ignore[import]
-        _pool = aioredis.from_url(REDIS_URL, decode_responses=True)
-    return _pool
+    """Always returns None — Redis is not configured."""
+    return None

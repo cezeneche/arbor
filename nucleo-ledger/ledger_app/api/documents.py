@@ -2,8 +2,6 @@ import hashlib
 import json
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import JSONResponse
-from slowapi import Limiter
-from ledger_app.core.rate_limit import user_or_ip_key
 from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.storage import atomic_upload_document
@@ -11,7 +9,6 @@ from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.document_validator import validate_upload, MAX_BATCH_FILES
 
 router = APIRouter()
-_limiter = Limiter(key_func=user_or_ip_key)
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -48,7 +45,6 @@ def _verify_case_access(conn, case_id: str, auth) -> None:
 
 
 @router.post("/cases/{case_id}/documents/upload")
-@_limiter.limit("10/minute")
 async def upload_document(
     request: Request,
     case_id: str,
@@ -181,7 +177,6 @@ async def _upload_single_file(
 
 
 @router.post("/cases/{case_id}/documents/upload/batch")
-@_limiter.limit("2/minute")
 async def batch_upload_documents(
     request: Request,
     case_id: str,

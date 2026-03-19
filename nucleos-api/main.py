@@ -23,22 +23,17 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
-from prometheus_fastapi_instrumentator import Instrumentator
-from pythonjsonlogger.json import JsonFormatter as _JsonFormatter
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from ledger_app.core.config import optional_startup_warnings, validate_startup_config
-from ledger_app.core.rate_limit import user_or_ip_key
 from shared_auth import get_auth_context
 
-# ── Structured JSON logging ────────────────────────────────────────────────────
-_json_handler = logging.StreamHandler()
-_json_handler.setFormatter(
-    _JsonFormatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+# ── Standard Python logging → stdout (readable in Supabase logs + any cloud) ──
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    handlers=[logging.StreamHandler()],
 )
-logging.root.addHandler(_json_handler)
 logging.root.setLevel(logging.INFO)
 
 validate_startup_config()
@@ -80,16 +75,6 @@ if os.getenv("FORCE_HTTPS", "").strip().lower() in ("1", "true", "yes"):
 if os.getenv("SUPABASE_URL"):
     from ledger_app.middleware.tenant_context import TenantContextMiddleware
     app.add_middleware(TenantContextMiddleware)
-
-# ── Idempotency middleware (active only when REDIS_URL is set) ────────────────
-from ledger_app.middleware.idempotency import IdempotencyMiddleware
-app.add_middleware(IdempotencyMiddleware)
-
-# ── Prometheus metrics + rate limiting ────────────────────────────────────────
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-limiter = Limiter(key_func=user_or_ip_key)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 for warning in optional_startup_warnings():
     _log.warning(warning)
@@ -140,6 +125,42 @@ async def db_error_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
+# ── Deep health check ──────────────────────────────────────────────────────────
+@app.get("/api/health/deep", tags=["health"])
+def health_deep():
+    """
+    Verify database connectivity and Claude API availability.
+
+    Returns 200 when all checks pass; 503 when any check fails.
+    Suitable for use as a liveness/readiness probe that goes beyond the basic
+    /ready endpoint (which only checks if the process is up).
+    """
+    checks: dict[str, str] = {}
+
+    # Database check — executes a trivial query to confirm pool + schema are reachable
+    try:
+        from sqlalchemy import text
+        from ledger_app.db.session import engine
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        checks["database"] = f"error: {type(exc).__name__}: {exc}"
+
+    # Claude API check — verify key is configured (no billable call)
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        checks["claude"] = "error: ANTHROPIC_API_KEY not set"
+    else:
+        checks["claude"] = "ok"
+
+    all_ok = all(v == "ok" for v in checks.values())
+    return JSONResponse(
+        status_code=200 if all_ok else 503,
+        content={"status": "ok" if all_ok else "degraded", "checks": checks},
+    )
+
+
 # ── Ledger routers (17) ────────────────────────────────────────────────────────
 from ledger_app.api.audit import router as audit_router
 from ledger_app.api.auth import protected_router as auth_protected_router
@@ -181,7 +202,6 @@ app.include_router(audit_router, prefix="/api", dependencies=[Depends(get_auth_c
 app.include_router(review_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 
 # ── Narrative routers ─────────────────────────────────────────────────────────
-# auth, cbam_compliance, and jobs routers are included unchanged.
 # The pipeline router is replaced by app.api.narrative_pipeline which calls
 # the ledger report package builder directly (no HTTP, no inter-service JWT).
 from narrative_app.api.auth import protected_router as narrative_auth_protected_router

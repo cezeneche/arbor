@@ -70,15 +70,10 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-}
       S3_BUCKET: ${S3_BUCKET:-scope3-evidence}
       S3_REGION: ${S3_REGION:-us-east-1}
-      # LLM providers (narrative pipeline)
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      # LLM (narrative pipeline — single Claude call)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      # Infrastructure
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # Observability
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       APP_GIT_SHA: ${GIT_SHA:-unknown}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
@@ -100,43 +95,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-
-  # ── ARQ background worker (async narrative pipeline jobs) ────────────────────
-  # Uses the same image as api; runs the ARQ worker process instead of uvicorn.
-  # Note: narrative_app/worker.py must import run_pipeline_stages from
-  #       app.services.narrative (not narrative_app.api.pipeline) after migration.
-  api-worker:
-    build:
-      context: .
-      dockerfile: nucleos-api/Dockerfile
-      args:
-        APP_GIT_SHA: ${GIT_SHA:-unknown}
-    command: ["arq", "narrative_app.worker.WorkerSettings"]
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
-      JWT_SECRET: ${JWT_SECRET}
-      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
-      AUDIT_SIGNING_KEY: ${AUDIT_SIGNING_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
-      APP_GIT_SHA: ${GIT_SHA:-unknown}
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
-      SLACK_NOTIFY_EVENTS: ${SLACK_NOTIFY_EVENTS:-human_review_required,cbam_calculation_completed,pipeline_completed}
-      ARQ_MAX_JOBS: ${ARQ_MAX_JOBS:-10}
-    depends_on:
-      redis:
-        condition: service_healthy
-      api:
-        condition: service_healthy
-    networks:
-      - internal
 
   minio:
     image: minio/minio:RELEASE.2024-03-15T01-07-19Z
@@ -176,83 +134,6 @@ services:
         mc mb local/$$S3_BUCKET 2>/dev/null || true
       "
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  prometheus:
-    image: prom/prometheus:v2.51.0
-    restart: unless-stopped
-    volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "9090:9090"
-    networks:
-      - internal
-    depends_on:
-      - api
-
-  grafana:
-    image: grafana/grafana:10.4.0
-    restart: unless-stopped
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
-    volumes:
-      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
-    ports:
-      - "3000:3000"
-    networks:
-      - internal
-    depends_on:
-      - prometheus
-
-  jaeger:
-    image: jaegertracing/all-in-one:1.56
-    restart: unless-stopped
-    ports:
-      - "16686:16686"   # Jaeger UI
-      - "4317:4317"     # OTLP gRPC
-    networks:
-      - internal
-
-  n8n:
-    image: n8nio/n8n:latest
-    restart: unless-stopped
-    environment:
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: ${N8N_ADMIN_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_ADMIN_PASSWORD}
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
-      N8N_HOST: 0.0.0.0
-      N8N_PORT: "5678"
-      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678}
-      # All API calls now go to the single consolidated service
-      API_URL: http://api:8000
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
-      AUTH_DEV_TOKEN_ENDPOINT: "true"
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
-    volumes:
-      - n8n_data:/home/node/.n8n
-      - ./n8n/workflows:/workflows:ro
-    ports:
-      - "5678:5678"
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - internal
-
   backup:
     image: python:3.12-slim
     restart: unless-stopped
@@ -284,7 +165,6 @@ services:
     ports:
       - "3001:3000"
     environment:
-      # Single API endpoint replaces LEDGER_URL + NARRATIVE_URL
       NEXT_PUBLIC_API_URL: http://api:8000
     depends_on:
       api:
@@ -298,6 +178,4 @@ networks:
 
 volumes:
   postgres_data:
-  grafana_data:
   minio_data:
-  n8n_data:

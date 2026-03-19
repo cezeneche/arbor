@@ -1,33 +1,36 @@
 """
-Custom Prometheus metrics for the nucleo-narrative LLM pipeline.
-Import these singletons anywhere in the service; prometheus_client handles registration.
+Metrics stubs — Prometheus dependency removed.
+
+These no-op objects replace the former prometheus_client Gauge/Counter/Histogram
+so any remaining legacy imports resolve without error. They do nothing.
 """
-from prometheus_client import Counter, Gauge, Histogram
+from __future__ import annotations
 
-llm_duration = Histogram(
-    "llm_call_duration_seconds",
-    "LLM call wall-clock duration",
-    labelnames=["provider", "stage"],
-)
 
-llm_errors = Counter(
-    "llm_call_errors_total",
-    "LLM call errors",
-    labelnames=["provider", "stage", "error_type"],
-)
+class _Noop:
+    """No-op stub for any prometheus_client metric type."""
 
-llm_retries = Counter(
-    "llm_call_retries_total",
-    "LLM call retry attempts",
-    labelnames=["provider", "stage"],
-)
+    def labels(self, *args, **kwargs) -> "_Noop":
+        return self
 
-pipeline_active = Gauge(
-    "narrative_pipeline_active",
-    "Number of pipeline requests currently executing",
-)
+    def inc(self, amount: float = 1) -> None:
+        pass
 
-job_queue_depth = Gauge(
-    "narrative_job_queue_depth",
-    "Approximate ARQ job queue depth",
-)
+    def dec(self, amount: float = 1) -> None:
+        pass
+
+    def observe(self, amount: float) -> None:
+        pass
+
+    def set(self, value: float) -> None:
+        pass
+
+    def __call__(self, *args, **kwargs) -> "_Noop":
+        return self
+
+
+llm_duration = _Noop()
+llm_errors = _Noop()
+llm_retries = _Noop()
+pipeline_active = _Noop()
+job_queue_depth = _Noop()

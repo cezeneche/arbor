@@ -1,11 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from typing import Literal
-from slowapi import Limiter
 from shared_auth.models import AuthContext
 from shared_auth.dependencies import require_scopes
-from narrative_app.core.rate_limit import user_or_ip_key
-from narrative_app.core.metrics import pipeline_active
 
 from narrative_app.services.ledger_client import (
     LedgerClientError,
@@ -17,7 +14,6 @@ from narrative_app.services.claude_reviewer import review_narrative
 from narrative_app.services.gemini_gate import gate
 
 router = APIRouter()
-_limiter = Limiter(key_func=user_or_ip_key)
 
 
 def _blocking_response(case_id: str, data_quality: dict) -> JSONResponse:
@@ -73,7 +69,7 @@ def _run_pipeline_stages(
 ) -> dict:
     """
     Run the 3-stage LLM pipeline synchronously.
-    Used by both the sync endpoint and the ARQ background job.
+    Used by both the sync endpoint and the async endpoint (sync fallback).
     """
     packet = _fetch_packet(case_id, packet_kind, tenant_id, trace_id)
 
@@ -141,7 +137,6 @@ def _run_pipeline_stages(
 
 
 @router.post("/cases/{case_id}/narrative/pipeline")
-@_limiter.limit("10/minute")
 def run_pipeline(
     request: Request,
     case_id: str,
@@ -151,20 +146,13 @@ def run_pipeline(
     tenant_id = auth_context.tenant_id
     trace_id: str | None = getattr(request.state, "request_id", None)
 
-    data_quality_raw = None
+    result = _run_pipeline_stages(
+        case_id=case_id,
+        packet_kind=packet_kind,
+        tenant_id=tenant_id,
+        trace_id=trace_id,
+    )
 
-    pipeline_active.inc()
-    try:
-        result = _run_pipeline_stages(
-            case_id=case_id,
-            packet_kind=packet_kind,
-            tenant_id=tenant_id,
-            trace_id=trace_id,
-        )
-    finally:
-        pipeline_active.dec()
-
-    # Surface blocking response as 422
     if result.get("blocked"):
         return _blocking_response(case_id, result.get("data_quality", {}))
 
@@ -172,7 +160,6 @@ def run_pipeline(
 
 
 @router.post("/cases/{case_id}/narrative/pipeline/async")
-@_limiter.limit("10/minute")
 async def run_pipeline_async(
     request: Request,
     case_id: str,
@@ -180,44 +167,20 @@ async def run_pipeline_async(
     auth_context: AuthContext = Depends(require_scopes(["narrative:run"])),
 ):
     """
-    Enqueue the 3-stage LLM pipeline as a background job.
-    Returns immediately with a job_id for polling via GET /api/narrative/jobs/{job_id}.
-    Falls back to synchronous execution when Redis is not configured.
+    Synchronous execution under the /async path for API compatibility.
+    Returns the same result shape with job_id=None and status="done".
     """
-    from narrative_app.core.redis_pool import get_redis_pool, REDIS_URL
-
     tenant_id = auth_context.tenant_id
     trace_id: str | None = getattr(request.state, "request_id", None)
 
-    if not REDIS_URL:
-        # No Redis — run synchronously and return result inline
-        pipeline_active.inc()
-        try:
-            result = _run_pipeline_stages(
-                case_id=case_id,
-                packet_kind=packet_kind,
-                tenant_id=tenant_id,
-                trace_id=trace_id,
-            )
-        finally:
-            pipeline_active.dec()
+    result = _run_pipeline_stages(
+        case_id=case_id,
+        packet_kind=packet_kind,
+        tenant_id=tenant_id,
+        trace_id=trace_id,
+    )
 
-        if result.get("blocked"):
-            return _blocking_response(case_id, result.get("data_quality", {}))
+    if result.get("blocked"):
+        return _blocking_response(case_id, result.get("data_quality", {}))
 
-        return {"job_id": None, "status": "done", "result": result}
-
-    try:
-        from arq import create_pool
-        from arq.connections import RedisSettings
-        arq_pool = await create_pool(RedisSettings.from_dsn(REDIS_URL))
-        job = await arq_pool.enqueue_job(
-            "run_pipeline_job",
-            case_id=case_id,
-            packet_kind=packet_kind,
-            tenant_id=tenant_id,
-            trace_id=trace_id,
-        )
-        return {"job_id": job.job_id if job else None, "status": "queued"}
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Failed to enqueue job: {e}")
+    return {"job_id": None, "status": "done", "result": result}

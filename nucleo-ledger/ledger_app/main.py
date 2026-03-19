@@ -5,21 +5,17 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
-from pythonjsonlogger.json import JsonFormatter as _JsonFormatter
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import OperationalError, ProgrammingError
-from prometheus_fastapi_instrumentator import Instrumentator
+
 from ledger_app.core.config import optional_startup_warnings, validate_startup_config
-from ledger_app.core.rate_limit import user_or_ip_key
 from shared_auth import get_auth_context
 
-# ── Structured JSON logging ────────────────────────────────────────────────────
-_json_handler = logging.StreamHandler()
-_json_handler.setFormatter(
-    _JsonFormatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+# ── Standard Python logging → stdout ──────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    handlers=[logging.StreamHandler()],
 )
-logging.root.addHandler(_json_handler)
 logging.root.setLevel(logging.INFO)
 
 validate_startup_config()
@@ -27,7 +23,6 @@ validate_startup_config()
 # ── Supabase client lifespan ───────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialise Supabase clients on startup (if SUPABASE_URL is configured)
     if os.getenv("SUPABASE_URL"):
         try:
             from ledger_app.db.supabase_client import init_clients
@@ -38,7 +33,6 @@ async def lifespan(app: FastAPI):
                 "Supabase client init failed (non-fatal): %s", exc
             )
     yield
-    # Teardown
     if os.getenv("SUPABASE_URL"):
         try:
             from ledger_app.db.supabase_client import close_clients
@@ -62,15 +56,6 @@ if os.getenv("SUPABASE_URL"):
     from ledger_app.middleware.tenant_context import TenantContextMiddleware
     app.add_middleware(TenantContextMiddleware)
 
-# ── Idempotency middleware (active only when REDIS_URL is set) ─────────────────
-from ledger_app.middleware.idempotency import IdempotencyMiddleware
-app.add_middleware(IdempotencyMiddleware)
-
-# ── Prometheus metrics ─────────────────────────────────────────────────────────
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-limiter = Limiter(key_func=user_or_ip_key)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 request_logger = logging.getLogger("ledger.request_id")
 config_logger = logging.getLogger("ledger.config")
 

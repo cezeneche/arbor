@@ -4,12 +4,8 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
-from pythonjsonlogger.json import JsonFormatter as _JsonFormatter
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from prometheus_fastapi_instrumentator import Instrumentator
+
 from narrative_app.core.config import optional_provider_warnings, validate_startup_config
-from narrative_app.core.rate_limit import user_or_ip_key
 from shared_auth import get_auth_context
 from narrative_app.api.auth import public_router as auth_public_router
 from narrative_app.api.auth import protected_router as auth_protected_router
@@ -18,12 +14,12 @@ from narrative_app.api.pipeline import router as pipeline_router
 from narrative_app.api.cbam_compliance import router as cbam_compliance_router
 from narrative_app.api.jobs import router as jobs_router
 
-# ── Structured JSON logging ────────────────────────────────────────────────────
-_json_handler = logging.StreamHandler()
-_json_handler.setFormatter(
-    _JsonFormatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+# ── Standard Python logging → stdout ──────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    handlers=[logging.StreamHandler()],
 )
-logging.root.addHandler(_json_handler)
 logging.root.setLevel(logging.INFO)
 
 validate_startup_config()
@@ -39,15 +35,6 @@ if os.getenv("FORCE_HTTPS", "").strip().lower() in ("1", "true", "yes"):
     from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
     app.add_middleware(HTTPSRedirectMiddleware)
 
-# ── Idempotency middleware (active only when REDIS_URL is set) ─────────────────
-from narrative_app.middleware.idempotency import IdempotencyMiddleware
-app.add_middleware(IdempotencyMiddleware)
-
-# ── Prometheus metrics ─────────────────────────────────────────────────────────
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-limiter = Limiter(key_func=user_or_ip_key)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 request_logger = logging.getLogger("narrative.request_id")
 config_logger = logging.getLogger("narrative.config")
 

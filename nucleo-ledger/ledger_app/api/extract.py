@@ -1,7 +1,5 @@
 import json
 from fastapi import APIRouter, HTTPException, Request
-from slowapi import Limiter
-from ledger_app.core.rate_limit import user_or_ip_key
 from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
@@ -10,7 +8,7 @@ from ledger_app.services.extraction_service import deterministic_extract
 from ledger_app.services.data_quality_service import score_extraction_consistency
 
 router = APIRouter()
-_limiter = Limiter(key_func=user_or_ip_key)
+
 
 def _key_from_storage_uri(storage_uri: str) -> str:
     parts = storage_uri.split("/", 3)
@@ -19,7 +17,6 @@ def _key_from_storage_uri(storage_uri: str) -> str:
     return parts[3]
 
 @router.post("/cases/{case_id}/extract")
-@_limiter.limit("5/minute")
 def extract_case(request: Request, case_id: str):
     with engine.begin() as conn:
         case = conn.execute(
