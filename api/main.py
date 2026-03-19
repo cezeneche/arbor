@@ -71,9 +71,51 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         _log.warning("cbam_factors_seeder: startup seed failed (non-fatal): %s", exc)
 
+    # ── APScheduler — monthly registration threshold check ────────────────────
+    # Runs on day=1 of each month at 01:00 UTC.
+    # Uses BackgroundScheduler (thread-based) so that the synchronous
+    # SQLAlchemy engine calls do not block the asyncio event loop.
+    _scheduler = None
+    if os.getenv("CBAM_REGISTRATION_SCHEDULER", "true").strip().lower() not in ("0", "false", "no"):
+        try:
+            from apscheduler.schedulers.background import BackgroundScheduler
+            from apscheduler.triggers.cron import CronTrigger
+            from app.services.registration_manager import run_monthly_threshold_check
+            from ledger_app.api.cbam._shared import engine as _cbam_engine
+
+            def _monthly_check_job() -> None:
+                try:
+                    summary = run_monthly_threshold_check(_cbam_engine)
+                    _log.info("monthly_threshold_check: %s", summary)
+                except Exception as exc:
+                    _log.error("monthly_threshold_check: unhandled error: %s", exc)
+
+            _scheduler = BackgroundScheduler(timezone="UTC")
+            _scheduler.add_job(
+                _monthly_check_job,
+                CronTrigger(day=1, hour=1, minute=0, timezone="UTC"),
+                id="monthly_registration_check",
+                replace_existing=True,
+                misfire_grace_time=3600,  # run up to 1 h late if server was down
+            )
+            _scheduler.start()
+            _log.info(
+                "registration_scheduler: started (next run: %s)",
+                _scheduler.get_job("monthly_registration_check").next_run_time,
+            )
+        except Exception as exc:
+            _log.warning("registration_scheduler: failed to start (non-fatal): %s", exc)
+
     yield
 
     # ── Shutdown ───────────────────────────────────────────────────────────────
+    if _scheduler is not None:
+        try:
+            _scheduler.shutdown(wait=False)
+            _log.info("registration_scheduler: shut down")
+        except Exception:
+            pass
+
     if os.getenv("SUPABASE_URL"):
         try:
             from ledger_app.db.supabase_client import close_clients
@@ -198,10 +240,12 @@ from narrative_app.api.cbam_compliance import router as cbam_compliance_router
 from narrative_app.api.jobs import router as jobs_router
 
 from app.api.cpr import router as cpr_router
+from app.api.registration import router as registration_router
 from app.api.verification import router as verification_router
 from app.api.narrative_pipeline import router as narrative_pipeline_router
 
 app.include_router(cpr_router, prefix="/api", dependencies=[Depends(get_auth_context)])
+app.include_router(registration_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(verification_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(narrative_auth_public_router)
 app.include_router(
