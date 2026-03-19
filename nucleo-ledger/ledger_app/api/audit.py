@@ -75,12 +75,16 @@ def get_audit_log(
 
     if export:
         try:
-            from ledger_app.services.storage import S3_BUCKET, get_s3_client
+            import asyncio, json as _json
+            from ledger_app.services.storage import upload_audit_export_async, _run_async
             auth = getattr(request.state, "auth_context", None)
             tenant_id = getattr(auth, "tenant_id", None) or "shared"
-            s3 = get_s3_client()
-            uri = export_to_s3_immutable(case_id, result_rows, s3, S3_BUCKET, tenant_id=tenant_id)
-            response["export_uri"] = uri
+            payload = _json.dumps(response, default=str, sort_keys=True).encode()
+            export_result = _run_async(
+                upload_audit_export_async(tenant_id, case_id, payload)
+            )
+            response["export_uri"] = export_result.storage_uri
+            response["export_sha256"] = export_result.sha256
         except Exception as exc:
             response["export_error"] = str(exc)
 

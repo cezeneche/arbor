@@ -1,13 +1,12 @@
 import hashlib
 import json
-import os
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from ledger_app.core.rate_limit import user_or_ip_key
 from sqlalchemy import text
 from ledger_app.db.session import engine
-from ledger_app.services.storage import get_s3_client, S3_BUCKET
+from ledger_app.services.storage import atomic_upload_document
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.document_validator import validate_upload, MAX_BATCH_FILES
 
@@ -68,24 +67,75 @@ async def upload_document(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    checksum = sha256_bytes(data)
-    tenant_id = (getattr(auth, "tenant_id", None) or "shared").replace("/", "_")
-    safe_filename = os.path.basename(file.filename or "upload") or "upload"
-    key = f"tenants/{tenant_id}/cases/{case_id}/raw/{safe_filename}"
+    import uuid as _uuid
+    tenant_id = (getattr(auth, "tenant_id", None) or "shared")
+    document_id = str(_uuid.uuid4())
+    filename = file.filename or "upload"
 
-    s3 = get_s3_client()
-    s3.put_object(
-        Bucket=S3_BUCKET,
-        Key=key,
-        Body=data,
-        ServerSideEncryption="AES256",  # S4c: SSE on all uploads
-    )
+    async with atomic_upload_document(tenant_id, document_id, filename, data) as upload:
+        with engine.begin() as conn:
+            _verify_case_access(conn, case_id, auth)
 
-    storage_uri = f"s3://{S3_BUCKET}/{key}"
+            row = conn.execute(
+                text("""
+                    INSERT INTO documents (case_id, filename, mime_type, storage_uri, sha256, doc_type)
+                    VALUES (:case_id, :filename, :mime_type, :storage_uri, :sha256, :doc_type)
+                    RETURNING id, case_id, filename, storage_uri, sha256, doc_type, uploaded_at
+                """),
+                {
+                    "case_id":     case_id,
+                    "filename":    filename,
+                    "mime_type":   file.content_type,
+                    "storage_uri": upload.storage_uri,
+                    "sha256":      upload.sha256,
+                    "doc_type":    doc_type,
+                },
+            ).mappings().one()
 
-    with engine.begin() as conn:
-        _verify_case_access(conn, case_id, auth)
+            event_json = json.dumps(
+                {"filename": filename, "doc_type": doc_type, "storage_uri": upload.storage_uri},
+                sort_keys=True,
+            )
+            prev_hmac = get_prev_chain_hmac(case_id, conn)
+            sig = sign_event(case_id, "doc_uploaded", actor_sub, event_json,
+                             prev_hmac=prev_hmac)
+            conn.execute(
+                text("""
+                    INSERT INTO audit_log
+                        (case_id, event_type, actor_type, actor_sub, event_json,
+                         hmac_sha256, prev_hmac)
+                    VALUES
+                        (:case_id, 'doc_uploaded', 'human', :actor_sub,
+                         CAST(:event_json AS jsonb), :sig, :prev_hmac)
+                """),
+                {
+                    "case_id":    case_id,
+                    "actor_sub":  actor_sub,
+                    "event_json": event_json,
+                    "sig":        sig,
+                    "prev_hmac":  prev_hmac,
+                },
+            )
 
+    return dict(row)
+
+
+async def _upload_single_file(
+    conn,
+    case_id: str,
+    tenant_id: str,
+    actor_sub: str,
+    file_filename: str | None,
+    file_content_type: str | None,
+    data: bytes,
+    doc_type: str,
+) -> dict:
+    """Shared upload logic used by both single and batch endpoints."""
+    import uuid as _uuid
+    filename = file_filename or "upload"
+    document_id = str(_uuid.uuid4())
+
+    async with atomic_upload_document(tenant_id, document_id, filename, data) as upload:
         row = conn.execute(
             text("""
                 INSERT INTO documents (case_id, filename, mime_type, storage_uri, sha256, doc_type)
@@ -93,23 +143,22 @@ async def upload_document(
                 RETURNING id, case_id, filename, storage_uri, sha256, doc_type, uploaded_at
             """),
             {
-                "case_id": case_id,
-                "filename": file.filename,
-                "mime_type": file.content_type,
-                "storage_uri": storage_uri,
-                "sha256": checksum,
-                "doc_type": doc_type,
+                "case_id":     case_id,
+                "filename":    filename,
+                "mime_type":   file_content_type,
+                "storage_uri": upload.storage_uri,
+                "sha256":      upload.sha256,
+                "doc_type":    doc_type,
             },
         ).mappings().one()
 
         event_json = json.dumps(
-            {"filename": file.filename, "doc_type": doc_type, "storage_uri": storage_uri},
+            {"filename": filename, "doc_type": doc_type, "storage_uri": upload.storage_uri},
             sort_keys=True,
         )
         prev_hmac = get_prev_chain_hmac(case_id, conn)
         sig = sign_event(case_id, "doc_uploaded", actor_sub, event_json,
                          prev_hmac=prev_hmac)
-
         conn.execute(
             text("""
                 INSERT INTO audit_log
@@ -120,83 +169,13 @@ async def upload_document(
                      CAST(:event_json AS jsonb), :sig, :prev_hmac)
             """),
             {
-                "case_id": case_id,
-                "actor_sub": actor_sub,
+                "case_id":    case_id,
+                "actor_sub":  actor_sub,
                 "event_json": event_json,
-                "sig": sig,
-                "prev_hmac": prev_hmac,
+                "sig":        sig,
+                "prev_hmac":  prev_hmac,
             },
         )
-
-    return dict(row)
-
-
-def _upload_single_file(
-    conn,
-    s3,
-    case_id: str,
-    tenant_id: str,
-    actor_sub: str,
-    file_filename: str | None,
-    file_content_type: str | None,
-    data: bytes,
-    doc_type: str,
-) -> dict:
-    """Shared upload logic used by both single and batch endpoints."""
-    checksum = sha256_bytes(data)
-    safe_filename = os.path.basename(file_filename or "upload") or "upload"
-    safe_tenant = (tenant_id or "shared").replace("/", "_")
-    key = f"tenants/{safe_tenant}/cases/{case_id}/raw/{safe_filename}"
-
-    s3.put_object(
-        Bucket=S3_BUCKET,
-        Key=key,
-        Body=data,
-        ServerSideEncryption="AES256",
-    )
-
-    storage_uri = f"s3://{S3_BUCKET}/{key}"
-
-    row = conn.execute(
-        text("""
-            INSERT INTO documents (case_id, filename, mime_type, storage_uri, sha256, doc_type)
-            VALUES (:case_id, :filename, :mime_type, :storage_uri, :sha256, :doc_type)
-            RETURNING id, case_id, filename, storage_uri, sha256, doc_type, uploaded_at
-        """),
-        {
-            "case_id": case_id,
-            "filename": file_filename,
-            "mime_type": file_content_type,
-            "storage_uri": storage_uri,
-            "sha256": checksum,
-            "doc_type": doc_type,
-        },
-    ).mappings().one()
-
-    event_json = json.dumps(
-        {"filename": file_filename, "doc_type": doc_type, "storage_uri": storage_uri},
-        sort_keys=True,
-    )
-    prev_hmac = get_prev_chain_hmac(case_id, conn)
-    sig = sign_event(case_id, "doc_uploaded", actor_sub, event_json,
-                     prev_hmac=prev_hmac)
-    conn.execute(
-        text("""
-            INSERT INTO audit_log
-                (case_id, event_type, actor_type, actor_sub, event_json,
-                 hmac_sha256, prev_hmac)
-            VALUES
-                (:case_id, 'doc_uploaded', 'human', :actor_sub,
-                 CAST(:event_json AS jsonb), :sig, :prev_hmac)
-        """),
-        {
-            "case_id": case_id,
-            "actor_sub": actor_sub,
-            "event_json": event_json,
-            "sig": sig,
-            "prev_hmac": prev_hmac,
-        },
-    )
 
     return dict(row)
 
@@ -228,7 +207,6 @@ async def batch_upload_documents(
 
     with engine.begin() as conn:
         _verify_case_access(conn, case_id, auth)
-        s3 = get_s3_client()
 
         for file in files:
             fname = file.filename or "upload"
@@ -237,8 +215,8 @@ async def batch_upload_documents(
                 if not data:
                     raise ValueError("Empty file")
                 validate_upload(fname, file.content_type, data)
-                row = _upload_single_file(
-                    conn, s3, case_id, tenant_id, actor_sub,
+                row = await _upload_single_file(
+                    conn, case_id, tenant_id, actor_sub,
                     file.filename, file.content_type, data, doc_type,
                 )
                 results.append({"status": "ok", **row, "filename": fname})
