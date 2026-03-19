@@ -64,11 +64,29 @@ class EmissionsMethod(str, Enum):
     estimated = "estimated"
 
 
+class CaseJurisdiction(str, Enum):
+    """Regulatory output jurisdiction for a CBAM case (migration 009).
+
+    UK   — produce UK HMRC return only (Finance No.2 Bill 2025-26)
+    EU   — produce EU CBAM quarterly XML only (Reg 2023/956 / IR 2023/1773)
+    BOTH — produce both outputs (importers with dual regulatory exposure)
+    """
+
+    UK = "UK"
+    EU = "EU"
+    BOTH = "BOTH"
+
+
 class CBAMCaseCreate(BaseModel):
     importer_eori: str = Field(..., min_length=1)
     importer_name: str | None = None
     reporting_year: int
     reporting_quarter: int = Field(..., ge=1, le=4)
+    jurisdiction: CaseJurisdiction = CaseJurisdiction.EU
+    # Per-tonne carbon price (EUR/tCO2e) paid in the origin country under a
+    # recognised third-country scheme (EU 2023/956, Art. 9 deduction).
+    # NULL when no scheme applies or not yet assessed.
+    carbon_price_paid_third_country_eur: Decimal | None = None
 
 
 class CBAMShipmentCreate(BaseModel):

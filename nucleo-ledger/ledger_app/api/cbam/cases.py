@@ -93,6 +93,12 @@ def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
             insert_payload["status"] = "draft"
         if "tenant_id" in columns:
             insert_payload["tenant_id"] = tenant_id
+        if "jurisdiction" in columns:
+            insert_payload["jurisdiction"] = payload.jurisdiction.value
+        if "carbon_price_paid_third_country_eur" in columns and payload.carbon_price_paid_third_country_eur is not None:
+            insert_payload["carbon_price_paid_third_country_eur"] = str(
+                payload.carbon_price_paid_third_country_eur
+            )
 
         created = _shared._insert_returning(conn, "cbam_cases", insert_payload)
         return created
