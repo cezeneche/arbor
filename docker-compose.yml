@@ -5,8 +5,6 @@
 #       S3_ACCESS_KEY / S3_SECRET_KEY=<rotated credentials>
 #   - Remove host port mappings below and front with a TLS-terminating
 #     reverse proxy (nginx/Caddy) in production.
-#   - Services communicate over the 'internal' bridge network;
-#     inter-service traffic does not leave the Docker host.
 
 services:
   postgres:
@@ -35,7 +33,7 @@ services:
     volumes:
       - .:/app
     environment:
-      DATABASE_URL: ${LEDGER_DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
     command: >
       sh -c "pip install psycopg2-binary -q && python scripts/migrate.py"
     depends_on:
@@ -44,29 +42,47 @@ services:
     networks:
       - internal
 
-  ledger:
+  # ── nucleos-api: single consolidated service (replaces ledger + narrative) ───
+  api:
     build:
       context: .
-      dockerfile: nucleo-ledger/Dockerfile
+      dockerfile: nucleos-api/Dockerfile
       args:
         APP_GIT_SHA: ${GIT_SHA:-unknown}
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${LEDGER_DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
+      # Database
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
+      # Auth
       JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER:-scope3-agentic}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-scope3-clients}
+      JWT_EXPIRES_SECONDS: ${JWT_EXPIRES_SECONDS:-3600}
+      AUTH_DEV_TOKEN_ENDPOINT: ${AUTH_DEV_TOKEN_ENDPOINT:-false}
+      # Security
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      AUDIT_SIGNING_KEY: ${AUDIT_SIGNING_KEY}
+      # Storage
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
       S3_BUCKET: ${S3_BUCKET:-scope3-evidence}
       S3_REGION: ${S3_REGION:-us-east-1}
+      # LLM providers (narrative pipeline)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      # Infrastructure
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       APP_GIT_SHA: ${GIT_SHA:-unknown}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       SLACK_NOTIFY_EVENTS: ${SLACK_NOTIFY_EVENTS:-human_review_required,cbam_calculation_completed,pipeline_completed}
-      AUDIT_SIGNING_KEY: ${AUDIT_SIGNING_KEY}
-      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
-      AUTH_DEV_TOKEN_ENDPOINT: ${AUTH_DEV_TOKEN_ENDPOINT:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,58 +101,29 @@ services:
       timeout: 5s
       retries: 10
 
-  narrative:
+  # ── ARQ background worker (async narrative pipeline jobs) ────────────────────
+  # Uses the same image as api; runs the ARQ worker process instead of uvicorn.
+  # Note: narrative_app/worker.py must import run_pipeline_stages from
+  #       app.services.narrative (not narrative_app.api.pipeline) after migration.
+  api-worker:
     build:
       context: .
-      dockerfile: nucleo-narrative/Dockerfile
-      args:
-        APP_GIT_SHA: ${GIT_SHA:-unknown}
-    restart: unless-stopped
-    environment:
-      LEDGER_BASE_URL: ${LEDGER_BASE_URL:-http://ledger:8000}
-      JWT_SECRET: ${JWT_SECRET}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-3-5-sonnet-latest}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-pro}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
-      APP_GIT_SHA: ${GIT_SHA:-unknown}
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
-      SLACK_NOTIFY_EVENTS: ${SLACK_NOTIFY_EVENTS:-human_review_required,cbam_calculation_completed,pipeline_completed}
-    depends_on:
-      ledger:
-        condition: service_healthy
-    # Dev only: remove in production
-    ports:
-      - "8001:8001"
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  narrative-worker:
-    build:
-      context: .
-      dockerfile: nucleo-narrative/Dockerfile
+      dockerfile: nucleos-api/Dockerfile
       args:
         APP_GIT_SHA: ${GIT_SHA:-unknown}
     command: ["arq", "narrative_app.worker.WorkerSettings"]
     restart: unless-stopped
     environment:
-      LEDGER_BASE_URL: ${LEDGER_BASE_URL:-http://ledger:8000}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
       JWT_SECRET: ${JWT_SECRET}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      AUDIT_SIGNING_KEY: ${AUDIT_SIGNING_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-3-5-sonnet-latest}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-pro}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       APP_GIT_SHA: ${GIT_SHA:-unknown}
@@ -146,7 +133,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      ledger:
+      api:
         condition: service_healthy
     networks:
       - internal
@@ -158,7 +145,6 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
-      MINIO_KMS_SECRET_KEY: "scope3-dev-key:vwB05y7z7VKmOgL3ucYDqIw2FlIZ3+qwQCMZ7+pq3gI="
     volumes:
       - minio_data:/data
     # Dev only: remove host port mappings in production
@@ -213,8 +199,7 @@ services:
     networks:
       - internal
     depends_on:
-      - ledger
-      - narrative
+      - api
 
   grafana:
     image: grafana/grafana:10.4.0
@@ -245,7 +230,6 @@ services:
     image: n8nio/n8n:latest
     restart: unless-stopped
     environment:
-      # n8n admin access (change in production)
       N8N_BASIC_AUTH_ACTIVE: "true"
       N8N_BASIC_AUTH_USER: ${N8N_ADMIN_USER:-admin}
       N8N_BASIC_AUTH_PASSWORD: ${N8N_ADMIN_PASSWORD}
@@ -253,24 +237,18 @@ services:
       N8N_HOST: 0.0.0.0
       N8N_PORT: "5678"
       WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678}
-      # Internal service URLs — available inside workflow expressions as $env.LEDGER_URL etc.
-      LEDGER_URL: http://ledger:8000
-      NARRATIVE_URL: http://narrative:8001
+      # All API calls now go to the single consolidated service
+      API_URL: http://api:8000
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
-      # Allow n8n to obtain dev JWT tokens from the ledger
       AUTH_DEV_TOKEN_ENDPOINT: "true"
-      # Allow $env.VARIABLE access in workflow expressions
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n
-      # Workflow JSON files — import via: docker compose exec n8n n8n import:workflow --separate --input=/workflows/
       - ./n8n/workflows:/workflows:ro
     ports:
       - "5678:5678"
     depends_on:
-      ledger:
-        condition: service_healthy
-      narrative:
+      api:
         condition: service_healthy
     networks:
       - internal
@@ -285,7 +263,7 @@ services:
     volumes:
       - ./scripts:/scripts:ro
     environment:
-      DATABASE_URL: ${LEDGER_DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
@@ -306,12 +284,10 @@ services:
     ports:
       - "3001:3000"
     environment:
-      LEDGER_URL: http://ledger:8000
-      NARRATIVE_URL: http://narrative:8001
+      # Single API endpoint replaces LEDGER_URL + NARRATIVE_URL
+      NEXT_PUBLIC_API_URL: http://api:8000
     depends_on:
-      ledger:
-        condition: service_healthy
-      narrative:
+      api:
         condition: service_healthy
     networks:
       - internal
