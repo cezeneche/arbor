@@ -1,5 +1,5 @@
 """
-Deep health check endpoint for nucleos-api.
+Deep health check endpoint for the consolidated API.
 
 GET /api/health/deep — checks database connectivity and Claude API key presence.
 

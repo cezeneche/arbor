@@ -215,4 +215,4 @@ app.include_router(
 
 @app.get("/")
 def root():
-    return {"service": "nucleos-api", "status": "ok"}
+    return {"service": "scope3-api", "status": "ok"}

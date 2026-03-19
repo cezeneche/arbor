@@ -1,4 +1,4 @@
-# nucleos-api — merged requirements
+# api — merged requirements
 # Superset of nucleo-ledger + nucleo-narrative dependencies.
 # ARQ, Redis, prometheus-fastapi-instrumentator, slowapi, tenacity removed.
 

@@ -42,11 +42,11 @@ services:
     networks:
       - internal
 
-  # ── nucleos-api: single consolidated service (replaces ledger + narrative) ───
+  # ── api: single consolidated service (replaces ledger + narrative) ───
   api:
     build:
       context: .
-      dockerfile: nucleos-api/Dockerfile
+      dockerfile: api/Dockerfile
       args:
         APP_GIT_SHA: ${GIT_SHA:-unknown}
     restart: unless-stopped

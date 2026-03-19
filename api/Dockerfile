@@ -10,7 +10,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY nucleos-api/requirements.txt ./requirements.txt
+COPY api/requirements.txt ./requirements.txt
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
 # Capture git SHA at build time for audit trail
@@ -27,10 +27,10 @@ COPY nucleo-ledger/ledger_app ./ledger_app
 COPY nucleo-narrative/narrative_app ./narrative_app
 
 # Consolidated app package (narrative pipeline router + service layer)
-COPY nucleos-api/app ./app
+COPY api/app ./app
 
 # Consolidated entry point
-COPY nucleos-api/main.py ./main.py
+COPY api/main.py ./main.py
 
 EXPOSE 8000
 
