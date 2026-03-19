@@ -84,11 +84,24 @@ class ValidationResult:
         Human-readable failure messages (subset of checks where passed=False).
     checks:
         Complete matrix of all checks run — used for the audit log entry.
+    open_gaps:
+        Structured records of issues that require importer action before the
+        HMRC return can claim full accuracy.  Unlike failures, open_gaps do
+        not block return production — the return is produced with conservative
+        method downgrades and the importer is guided to resolve each gap.
+    method_downgrades:
+        Goods lines whose claimed calculation_method has been downgraded for
+        the HMRC return because the verification_status is not 'verified'.
+        Format: [{goods_line_id, cn_code, from_method, to_method, reason}].
+        Callers (hmrc_return_builder, eu_xml_builder) must apply these
+        downgrades when constructing output XML / JSON.
     """
     passed: bool
     human_review_required: bool
     failures: list[str] = field(default_factory=list)
     checks: list[CheckResult] = field(default_factory=list)
+    open_gaps: list[dict] = field(default_factory=list)
+    method_downgrades: list[dict] = field(default_factory=list)
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
@@ -178,6 +191,42 @@ def _iter_goods_lines(report_package: dict):
             goods_line = gl_bundle.get("goods_line") or {}
             emissions = gl_bundle.get("latest_emissions")
             yield shipment, goods_line, emissions
+
+
+# ── Public helper ─────────────────────────────────────────────────────────────
+
+def requires_verification(
+    goods_line: dict[str, Any],
+    emissions: dict[str, Any] | None = None,
+) -> bool:
+    """Return True if this goods line requires third-party verification.
+
+    Verification is required when the calculation_method is 'actual' — i.e.
+    the importer intends to claim actual (not default or estimated) embedded
+    emissions in the HMRC return.
+
+    - 'actual'    → True  (GACI-accredited verifier required)
+    - 'default'   → False (Annex VI default factors; no verification needed)
+    - 'estimated' → False (estimated values; no verification needed)
+
+    Parameters
+    ----------
+    goods_line:
+        Goods-line dict (from _iter_goods_lines or a direct DB row).
+    emissions:
+        Latest emissions dict for the goods line.  If None, falls back to
+        a 'method' or 'calculation_method' key on goods_line itself.
+    """
+    method = ""
+    if emissions is not None:
+        method = str(
+            emissions.get("method") or emissions.get("calculation_method") or ""
+        ).lower().strip()
+    if not method:
+        method = str(
+            goods_line.get("method") or goods_line.get("calculation_method") or ""
+        ).lower().strip()
+    return method == "actual"
 
 
 # ── Numeric cross-checks ───────────────────────────────────────────────────────
@@ -577,6 +626,92 @@ def _check_reconciliation_warnings(
     return passed
 
 
+# ── Verification status check ─────────────────────────────────────────────────
+
+_VERIFIED_STATUS = "verified"
+_VERIFICATION_GUIDANCE = (
+    "Upload a signed verification report from a GACI-accredited independent "
+    "verifier (ISO 17029 / ISO 14064-3 / ISO 14065 / ISO 14066) via "
+    "POST /api/cbam/goods-lines/{id}/upload-verification, then request "
+    "compliance review to reach 'verified' status."
+)
+
+
+def _check_actual_verification_status(
+    report_package: dict,
+    checks: list[CheckResult],
+    failures: list[str],
+    open_gaps: list[dict],
+    method_downgrades: list[dict],
+) -> bool:
+    """Goods lines claiming actual emissions must have verification_status='verified'.
+
+    For each goods line where calculation_method='actual':
+    - If verification_status='verified'  → no action; method remains actual_verified
+      in the HMRC return.
+    - If verification_status is anything else (not_required, pending, submitted,
+      rejected, or absent) → the method is downgraded to 'actual_unverified' in
+      the HMRC return.  An open_gap and a method_downgrade record are added.
+
+    This check is non-blocking: the return CAN be produced with downgraded methods.
+    human_review_required is NOT set by this check — the importer is guided to
+    resolve the gaps before the next return cycle.
+
+    Regulation: Finance No.2 Bill 2025-26; HMRC CBAM Secondary Legislation Feb 2026.
+    """
+    unverified_details: list[str] = []
+
+    for _shipment, goods_line, emissions in _iter_goods_lines(report_package):
+        if not requires_verification(goods_line, emissions):
+            continue  # default / estimated — no verification needed
+
+        gl_id   = str(goods_line.get("id") or "")
+        cn_code = goods_line.get("cn_code") or "?"
+        vstatus = str(goods_line.get("verification_status") or "not_required").lower().strip()
+
+        if vstatus == _VERIFIED_STATUS:
+            continue  # fully verified — no action
+
+        detail_str = (
+            f"goods_line {gl_id} (cn_code={cn_code}): "
+            f"verification_status={vstatus!r} — downgraded to actual_unverified"
+        )
+        unverified_details.append(detail_str)
+
+        open_gaps.append({
+            "type":                 "verification_required",
+            "goods_line_id":        gl_id,
+            "cn_code":              cn_code,
+            "current_method":       "actual",
+            "effective_method":     "actual_unverified",
+            "verification_status":  vstatus,
+            "blocking_submission":  False,
+            "guidance":             _VERIFICATION_GUIDANCE,
+        })
+
+        method_downgrades.append({
+            "goods_line_id":  gl_id,
+            "cn_code":        cn_code,
+            "from_method":    "actual_verified",
+            "to_method":      "actual_unverified",
+            "reason":         f"verification_status={vstatus!r}",
+        })
+
+    passed = not unverified_details
+    detail = "; ".join(unverified_details)
+    checks.append(CheckResult(
+        "verification.actual_emissions_verified",
+        "All actual-method goods lines have verification_status='verified'",
+        passed=passed,
+        detail=detail,
+    ))
+    if not passed:
+        failures.append(
+            f"Actual emissions not verified — method downgraded to actual_unverified: {detail}"
+        )
+    return passed
+
+
 # ── Audit log recording ────────────────────────────────────────────────────────
 
 def _record_validation_in_audit_log(
@@ -652,6 +787,8 @@ def validate_report_package_integrity(
     """
     checks: list[CheckResult] = []
     failures: list[str] = []
+    open_gaps: list[dict] = []
+    method_downgrades: list[dict] = []
 
     # ── Numeric cross-checks ───────────────────────────────────────────────────
     numeric_passed = _check_numeric_totals(report_package, narrative, checks, failures)
@@ -666,10 +803,19 @@ def validate_report_package_integrity(
     cpr_passed = _check_cpr_verifier(report_package, narrative, checks, failures)
     recon_passed = _check_reconciliation_warnings(report_package, checks, failures)
 
+    # ── Verification status check (Phase 3B) ──────────────────────────────────
+    # Non-blocking: populates open_gaps + method_downgrades for callers but
+    # does NOT set human_review_required.  The return is produced with
+    # conservative actual_unverified methods for any unverified goods lines.
+    _check_actual_verification_status(
+        report_package, checks, failures, open_gaps, method_downgrades
+    )
+
     # ── human_review_required decision ────────────────────────────────────────
     # Triggers on: numeric mismatch, missing calculation_method, or unaddressed
     # reconciliation warnings. Completeness gaps (warnings not in limitations,
-    # CPR verifier) are surfaced as failures but do not block processing.
+    # CPR verifier, unverified actual lines) surface as failures / open_gaps
+    # but do not block return production.
     human_review_required = (
         not numeric_passed
         or not method_passed
@@ -691,6 +837,8 @@ def validate_report_package_integrity(
         human_review_required=human_review_required,
         failures=failures,
         checks=checks,
+        open_gaps=open_gaps,
+        method_downgrades=method_downgrades,
     )
 
     # ── Audit log ─────────────────────────────────────────────────────────────
