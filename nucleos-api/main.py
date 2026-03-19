@@ -12,7 +12,7 @@ Key changes from the two-service architecture:
   - LEDGER_URL / LEDGER_BASE_URL are no longer required.
   - All existing route paths are unchanged — external callers see no difference.
 
-Startup sequence:
+Startup sequence (lifespan):
   1. Supabase clients initialised (if SUPABASE_URL set)
   2. Annex VI emission factors seeded into DB (idempotent)
 """
@@ -44,6 +44,7 @@ _log = logging.getLogger("nucleos")
 # ── Supabase client lifespan ───────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Startup ────────────────────────────────────────────────────────────────
     if os.getenv("SUPABASE_URL"):
         try:
             from ledger_app.db.supabase_client import init_clients
@@ -51,7 +52,28 @@ async def lifespan(app: FastAPI):
             _log.info("Supabase clients initialised")
         except Exception as exc:
             _log.warning("Supabase client init failed (non-fatal): %s", exc)
+
+    # Seed Annex VI emission factors (idempotent — skips if tables not ready yet)
+    try:
+        from ledger_app.api.cbam._shared import engine as _cbam_engine
+        from ledger_app.services.cbam_factors_seeder import seed_emission_factors
+
+        result = seed_emission_factors(_cbam_engine)
+        if result.get("skipped"):
+            _log.info("cbam_factors_seeder: tables not present yet — seed skipped")
+        else:
+            _log.info(
+                "cbam_factors_seeder: annex_vi=%d electricity=%d version=%s",
+                result["annex_vi_inserted"],
+                result["electricity_inserted"],
+                result.get("table_version", "?"),
+            )
+    except Exception as exc:
+        _log.warning("cbam_factors_seeder: startup seed failed (non-fatal): %s", exc)
+
     yield
+
+    # ── Shutdown ───────────────────────────────────────────────────────────────
     if os.getenv("SUPABASE_URL"):
         try:
             from ledger_app.db.supabase_client import close_clients
@@ -125,42 +147,6 @@ async def db_error_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-# ── Deep health check ──────────────────────────────────────────────────────────
-@app.get("/api/health/deep", tags=["health"])
-def health_deep():
-    """
-    Verify database connectivity and Claude API availability.
-
-    Returns 200 when all checks pass; 503 when any check fails.
-    Suitable for use as a liveness/readiness probe that goes beyond the basic
-    /ready endpoint (which only checks if the process is up).
-    """
-    checks: dict[str, str] = {}
-
-    # Database check — executes a trivial query to confirm pool + schema are reachable
-    try:
-        from sqlalchemy import text
-        from ledger_app.db.session import engine
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        checks["database"] = "ok"
-    except Exception as exc:
-        checks["database"] = f"error: {type(exc).__name__}: {exc}"
-
-    # Claude API check — verify key is configured (no billable call)
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        checks["claude"] = "error: ANTHROPIC_API_KEY not set"
-    else:
-        checks["claude"] = "ok"
-
-    all_ok = all(v == "ok" for v in checks.values())
-    return JSONResponse(
-        status_code=200 if all_ok else 503,
-        content={"status": "ok" if all_ok else "degraded", "checks": checks},
-    )
-
-
 # ── Ledger routers (17) ────────────────────────────────────────────────────────
 from ledger_app.api.audit import router as audit_router
 from ledger_app.api.auth import protected_router as auth_protected_router
@@ -181,6 +167,8 @@ from ledger_app.api.resolve import router as resolve_router
 from ledger_app.api.review import router as review_router
 from ledger_app.api.storage_check import router as storage_check_router
 
+from app.core.health import router as deep_health_router
+app.include_router(deep_health_router)
 app.include_router(health_router, prefix="/api")
 app.include_router(health_router)  # root /health + /ready (no prefix)
 app.include_router(auth_router, prefix="/api")
@@ -223,27 +211,6 @@ app.include_router(
     narrative_pipeline_router, prefix="/api", dependencies=[Depends(get_auth_context)]
 )
 
-
-# ── Startup: seed Annex VI emission factors ────────────────────────────────────
-@app.on_event("startup")
-def _seed_factors_on_startup():
-    """Seed Annex VI emission factors into the DB on startup (idempotent)."""
-    try:
-        from ledger_app.api.cbam._shared import engine as _cbam_engine
-        from ledger_app.services.cbam_factors_seeder import seed_emission_factors
-
-        result = seed_emission_factors(_cbam_engine)
-        if result.get("skipped"):
-            _log.info("cbam_factors_seeder: tables not present yet — seed skipped")
-        else:
-            _log.info(
-                "cbam_factors_seeder: annex_vi=%d electricity=%d version=%s",
-                result["annex_vi_inserted"],
-                result["electricity_inserted"],
-                result.get("table_version", "?"),
-            )
-    except Exception as exc:
-        _log.warning("cbam_factors_seeder: startup seed failed (non-fatal): %s", exc)
 
 
 @app.get("/")
