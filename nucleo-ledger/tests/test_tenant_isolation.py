@@ -103,6 +103,10 @@ def tenant_transaction(
     """
     conn.autocommit = False
     with conn.cursor() as cur:
+        # Drop to the authenticated role so RLS is enforced.
+        # The postgres superuser bypasses RLS by default; SET LOCAL ROLE
+        # authenticated simulates how PostgREST executes queries in production.
+        cur.execute("SET LOCAL ROLE authenticated")
         cur.execute(
             "SELECT set_config('app.current_tenant_id', %s, true)",
             (tenant_id,),
