@@ -274,3 +274,62 @@ def arbitrate_parsed_invoice(candidates: list[dict]) -> tuple[dict, list[str]]:
     merged["evidence"] = _merge_candidate_evidence(normalized_candidates)
 
     return merged, warnings
+
+
+def validate_consignment_consistency(shipments: list[dict[str, Any]]) -> list[str]:
+    """
+    Validate that all shipments sharing the same consignment_reference have
+    identical origin_country and import_date values.
+
+    This enforces the UK HMRC requirement that a consignment (identified by
+    its customs entry / ENS reference) is a single customs declaration with
+    one country of origin and one import date.
+
+    Args:
+        shipments: list of shipment dicts, each expected to contain
+                   ``consignment_reference``, ``origin_country``, and
+                   ``import_date`` keys.  Shipments where
+                   ``consignment_reference`` is None/empty are ignored.
+
+    Returns:
+        List of warning strings.  Empty list means no conflicts.
+        Warning format:
+          ``consignment_conflict:origin_country:ref=<ref>:countries=<a,b>``
+          ``consignment_conflict:import_date:ref=<ref>:dates=<a,b>``
+    """
+    from collections import defaultdict
+
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for s in shipments:
+        ref = s.get("consignment_reference")
+        if ref:
+            groups[str(ref)].append(s)
+
+    warnings: list[str] = []
+    for ref, group in groups.items():
+        if len(group) < 2:
+            continue
+
+        countries = {
+            str(s["origin_country"])
+            for s in group
+            if s.get("origin_country") is not None
+        }
+        dates = {
+            str(s["import_date"])
+            for s in group
+            if s.get("import_date") is not None
+        }
+
+        if len(countries) > 1:
+            warnings.append(
+                f"consignment_conflict:origin_country:ref={ref}:"
+                f"countries={','.join(sorted(countries))}"
+            )
+        if len(dates) > 1:
+            warnings.append(
+                f"consignment_conflict:import_date:ref={ref}:"
+                f"dates={','.join(sorted(dates))}"
+            )
+
+    return warnings

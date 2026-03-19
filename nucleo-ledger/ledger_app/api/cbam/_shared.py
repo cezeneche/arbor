@@ -145,6 +145,11 @@ class ParsedInvoiceMetadata(BaseModel):
     origin_country: str | None = None
     incoterm: str | None = None
     entry_reference: str | None = None
+    # UK HMRC consignment fields (migration 008)
+    consignment_reference: str | None = None
+    customs_procedure_code: str | None = None
+    net_weight_kg: Decimal | None = None
+    is_temporary_admission: bool = False
 
 
 class ParsedInvoiceLine(BaseModel):
@@ -682,6 +687,10 @@ def _build_parsed_invoice_request_from_extraction(
     importer_eori: str | None,
     reporting_year: int | None,
     reporting_quarter: int | None,
+    consignment_reference: str | None = None,
+    customs_procedure_code: str | None = None,
+    net_weight_kg: Decimal | None = None,
+    is_temporary_admission: bool = False,
 ) -> tuple[CBAMDraftFromParsedInvoiceRequest, int, int, list[str]]:
     warnings: list[str] = []
 
@@ -821,6 +830,18 @@ def _build_parsed_invoice_request_from_extraction(
             ),
         }
 
+    # consignment_reference: caller-supplied value takes priority over anything
+    # extracted from the document (the form field is the authoritative source).
+    # If neither is present, leave None — the draft will be flagged for human
+    # completion before HMRC submission.
+    resolved_consignment_ref = consignment_reference or (
+        invoice_data.get("consignment_reference") if isinstance(invoice_data, dict) else None
+    )
+    if resolved_consignment_ref is None:
+        warnings.append(
+            "consignment_reference_missing:flag_for_human_completion_before_hmrc_submission"
+        )
+
     payload = CBAMDraftFromParsedInvoiceRequest(
         importer={
             "name": parsed_importer_name,
@@ -832,6 +853,10 @@ def _build_parsed_invoice_request_from_extraction(
             "origin_country": parsed_origin_country,
             "incoterm": parsed_incoterm,
             "entry_reference": parsed_entry_reference,
+            "consignment_reference": resolved_consignment_ref,
+            "customs_procedure_code": customs_procedure_code,
+            "net_weight_kg": net_weight_kg,
+            "is_temporary_admission": is_temporary_admission,
         },
         lines=parsed_lines,
         emissions=parsed_emissions,

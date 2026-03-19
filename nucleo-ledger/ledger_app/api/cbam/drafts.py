@@ -9,6 +9,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, s
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from ledger_app.services.cbam_arbiter import validate_consignment_consistency
 from ledger_app.services.cbam_emissions_selector import select_and_calculate
 from sqlalchemy.exc import IntegrityError
 
@@ -152,9 +153,47 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                 )
             if _shared._needs_explicit_value(shipment_columns, "import_date") or "import_date" in shipment_columns:
                 shipment_insert["import_date"] = payload.invoice.invoice_date
+            # UK HMRC consignment fields (migration 008)
+            if "consignment_reference" in shipment_columns:
+                shipment_insert["consignment_reference"] = payload.invoice.consignment_reference
+            if "customs_procedure_code" in shipment_columns:
+                shipment_insert["customs_procedure_code"] = payload.invoice.customs_procedure_code
+            if "net_weight_kg" in shipment_columns and payload.invoice.net_weight_kg is not None:
+                shipment_insert["net_weight_kg"] = payload.invoice.net_weight_kg
+            if "is_temporary_admission" in shipment_columns:
+                shipment_insert["is_temporary_admission"] = payload.invoice.is_temporary_admission
 
             shipment_row = _shared._insert_returning(conn, "cbam_shipments", shipment_insert)
             shipment_id = str(shipment_row["id"])
+
+        # Temporary admission exemption warning
+        if payload.invoice.is_temporary_admission:
+            warnings.append(
+                "consignment_temporary_admission:exempt_from_cbam_liability"
+            )
+
+        # Cross-consignment consistency check: query all shipments for this
+        # case that carry a consignment_reference and validate origin_country /
+        # import_date are uniform within each reference group.
+        if "consignment_reference" in shipment_columns:
+            try:
+                sibling_rows = conn.execute(
+                    text(
+                        """
+                        SELECT consignment_reference, origin_country, import_date
+                        FROM cbam.cbam_shipments
+                        WHERE case_id = :case_id
+                          AND consignment_reference IS NOT NULL
+                        """
+                    ),
+                    {"case_id": case_id},
+                ).mappings().all()
+                consistency_warnings = validate_consignment_consistency(
+                    [dict(r) for r in sibling_rows]
+                )
+                warnings.extend(consistency_warnings)
+            except Exception:
+                pass  # non-fatal — DB may not yet have the column (pre-migration)
 
         direct_col = _shared._pick_existing(
             emissions_columns, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"]
@@ -348,6 +387,52 @@ def create_cbam_draft_from_parsed_invoice(
         )
 
 
+def _extract_consignment_ref_from_xml(data: bytes, content_type: str | None) -> str | None:
+    """
+    Try to extract an ENS number, MRN, or customs entry reference from a
+    customs declaration XML file.
+
+    Handles HMRC CDS (movementReferenceNumber / MRN), ICS2 ENS, and generic
+    WCO-DMS element names.  Returns None when the file is not XML, cannot be
+    parsed, or contains no recognisable reference element.
+    """
+    _xml_content_types = {"text/xml", "application/xml", "application/x-xml"}
+    _xml_byte_prefixes = (b"<?xml", b"<Declaration", b"<GoodsShipment", b"<ns2:", b"<ns:")
+    lstripped = data.lstrip()
+    is_xml = (content_type or "").lower().split(";")[0].strip() in _xml_content_types or any(
+        lstripped.startswith(sig) for sig in _xml_byte_prefixes
+    )
+    if not is_xml:
+        return None
+
+    try:
+        import defusedxml.ElementTree as ET  # already in requirements
+        root = ET.fromstring(data)
+    except Exception:
+        return None
+
+    # Namespace-agnostic: compare local name in lower-case.
+    # Covers HMRC CDS, ICS2, and generic WCO-DMS vocabularies.
+    _target_locals = frozenset({
+        "mrn",
+        "movementreferencenumber",
+        "declarationid",
+        "entrynumber",
+        "entryreference",
+        "ensnumber",
+        "referencenumber",
+        "declarationreference",
+        "ens",
+    })
+    for el in root.iter():
+        local = (el.tag.split("}")[-1] if "}" in el.tag else el.tag).lower()
+        if local in _target_locals and el.text:
+            val = el.text.strip()
+            if 1 <= len(val) <= 50:
+                return val
+    return None
+
+
 @router.post("/drafts/from-document", status_code=status.HTTP_201_CREATED)
 async def create_cbam_draft_from_document(
     request: Request,
@@ -356,6 +441,9 @@ async def create_cbam_draft_from_document(
     importer_eori: str | None = Form(default=None),
     reporting_year: int | None = Form(default=None),
     reporting_quarter: int | None = Form(default=None),
+    consignment_reference: str | None = Form(default=None),
+    customs_procedure_code: str | None = Form(default=None),
+    is_temporary_admission: bool = Form(default=False),
 ):
     if not file.filename:
         return JSONResponse(
@@ -372,6 +460,15 @@ async def create_cbam_draft_from_document(
         # Hash the raw bytes immediately — this becomes the immutable chain root
         # for the entire audit trail (EU 2023/1773 auditability requirement).
         document_sha256_at_upload = _shared.bytes_sha256_hex(file_bytes)
+
+        # If the caller did not supply a consignment_reference explicitly,
+        # attempt to extract it from the raw bytes (handles customs declaration
+        # XML uploads: HMRC CDS, ICS2 ENS, WCO-DMS formats).
+        if not consignment_reference:
+            consignment_reference = _extract_consignment_ref_from_xml(
+                file_bytes, file.content_type
+            )
+
         try:
             # Keep these assignments explicit so test monkeypatches on cbam_api symbols
             # continue to control the orchestration flow.
@@ -461,6 +558,9 @@ async def create_cbam_draft_from_document(
                     importer_eori=importer_eori,
                     reporting_year=reporting_year,
                     reporting_quarter=reporting_quarter,
+                    consignment_reference=consignment_reference,
+                    customs_procedure_code=customs_procedure_code,
+                    is_temporary_admission=is_temporary_admission,
                 )
             )
         except HTTPException as exc:
@@ -540,6 +640,9 @@ async def create_cbam_draft_from_document(
                             importer_eori=importer_eori,
                             reporting_year=reporting_year,
                             reporting_quarter=reporting_quarter,
+                            consignment_reference=consignment_reference,
+                            customs_procedure_code=customs_procedure_code,
+                            is_temporary_admission=is_temporary_admission,
                         )
                     )
                     dq_precheck = _shared._parsed_data_quality_precheck_from_payload(
