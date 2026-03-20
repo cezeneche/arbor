@@ -1047,8 +1047,8 @@ def _build_case_summary(conn: Connection, case_id: UUID) -> dict[str, object]:
     if not net_mass_col:
         raise HTTPException(status_code=500, detail="Internal server error")
 
-    direct_col = _pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
-    indirect_col = _pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
+    direct_col = _pick_existing(emissions_cols, ["direct_kgco2e", "direct_emissions_kgco2e", "direct_embedded_kgco2e"])
+    indirect_col = _pick_existing(emissions_cols, ["indirect_kgco2e", "indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
     if not direct_col or not indirect_col:
         raise HTTPException(status_code=500, detail="Internal server error")
 

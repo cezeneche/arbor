@@ -139,6 +139,9 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                 case_fk_column: case_id,
             }
 
+            if "tenant_id" in shipment_columns:
+                shipment_insert["tenant_id"] = tenant_id
+
             if "origin_country" in shipment_columns:
                 shipment_insert["origin_country"] = payload.invoice.origin_country
             if "incoterm" in shipment_columns:
@@ -196,10 +199,10 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                 pass  # non-fatal — DB may not yet have the column (pre-migration)
 
         direct_col = _shared._pick_existing(
-            emissions_columns, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"]
+            emissions_columns, ["direct_kgco2e", "direct_emissions_kgco2e", "direct_embedded_kgco2e"]
         )
         indirect_col = _shared._pick_existing(
-            emissions_columns, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"]
+            emissions_columns, ["indirect_kgco2e", "indirect_emissions_kgco2e", "indirect_embedded_kgco2e"]
         )
         method_col = _shared._pick_existing(emissions_columns, ["calculation_method", "method"])
         goods_line_fk_column = _shared._pick_existing(emissions_columns, ["goods_line_id"])
@@ -253,6 +256,9 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                     "shipment_id": shipment_id,
                     "cn_code": line.cn_code,
                 }
+
+                if "tenant_id" in goods_columns:
+                    goods_insert["tenant_id"] = tenant_id
 
                 if "product_description" in goods_columns:
                     goods_insert["product_description"] = line.description
@@ -360,6 +366,9 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                     method_col: sel.method,
                     "version": 1,
                 }
+
+                if "tenant_id" in emissions_columns:
+                    emissions_insert["tenant_id"] = tenant_id
                 emissions_row = _shared._insert_returning(conn, "cbam_emissions", emissions_insert)
                 emissions_ids.append(str(emissions_row["id"]))
 

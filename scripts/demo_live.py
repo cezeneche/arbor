@@ -42,7 +42,7 @@ import httpx
 
 API_URL          = os.getenv("API_URL", "http://localhost:8000")
 RECIPIENT_EMAIL  = os.getenv("RECIPIENT_EMAIL", "")   # where the report-ready email goes
-DEMO_TENANT      = f"demo-{uuid4().hex[:8]}"
+DEMO_TENANT      = str(uuid4())          # full UUID — required by cbam_cpr_claims.tenant_id UUID NOT NULL
 TIMEOUT          = httpx.Timeout(60.0)
 
 # ── Colour helpers ─────────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ def run_steel_scenario(client: httpx.Client) -> None:
         error(f"Draft creation failed ({r.status_code}): {r.text[:400]}")
         return
 
-    body     = r.json()["created"]
+    body     = r.json()
     case_id  = body["case_id"]
     gl_id    = body["goods_line_ids"][0]
     ok(f"Case created: {case_id}")
@@ -294,7 +294,7 @@ def run_cement_scenario(client: httpx.Client) -> None:
         error(f"Draft creation failed ({r.status_code}): {r.text[:400]}")
         return
 
-    case_id = r.json()["created"]["case_id"]
+    case_id = r.json()["case_id"]
     ok(f"Case created: {case_id}")
     field("Importer EORI",   "GB987654321000")
     field("Origin country",  "TR (Turkey — no UK CPR scheme confirmed)")
@@ -389,7 +389,7 @@ def run_aluminium_scenario(client: httpx.Client) -> None:
         error(f"Draft creation failed ({r.status_code}): {r.text[:400]}")
         return
 
-    body     = r.json()["created"]
+    body     = r.json()
     case_id  = body["case_id"]
     gl_id    = body["goods_line_ids"][0]
     ok(f"Case created: {case_id}")
@@ -542,7 +542,7 @@ def main() -> None:
     # Add package roots to sys.path (same as conftest.py)
     import sys
     repo_root = Path(__file__).resolve().parent.parent
-    for pkg in ["api", "nucleo-ledger", "nucleo-narrative", "."]:
+    for pkg in ["api", "nucleo-ledger", "."]:
         p = str(repo_root / pkg)
         if p not in sys.path:
             sys.path.insert(0, p)

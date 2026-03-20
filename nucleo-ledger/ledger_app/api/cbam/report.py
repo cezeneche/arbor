@@ -241,8 +241,8 @@ def compute_case_liability(request: Request, case_id: UUID, payload: _shared.CBA
         if not mass_col or not cn_col:
             raise HTTPException(status_code=500, detail="Internal server error")
 
-        direct_col = _shared._pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
-        indirect_col = _shared._pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
+        direct_col = _shared._pick_existing(emissions_cols, ["direct_kgco2e", "direct_emissions_kgco2e", "direct_embedded_kgco2e"])
+        indirect_col = _shared._pick_existing(emissions_cols, ["indirect_kgco2e", "indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
         if not direct_col or not indirect_col:
             raise HTTPException(status_code=500, detail="Internal server error")
 

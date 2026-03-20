@@ -51,8 +51,8 @@ def _load_cases_for_quarter(
 
         case_fk = _pick_existing(shipments_cols, ["cbam_case_id", "case_id"])
         mass_col = _pick_existing(goods_cols, ["net_mass_kg", "quantity"])
-        direct_col = _pick_existing(emissions_cols, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
-        indirect_col = _pick_existing(emissions_cols, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
+        direct_col = _pick_existing(emissions_cols, ["direct_kgco2e", "direct_emissions_kgco2e", "direct_embedded_kgco2e"])
+        indirect_col = _pick_existing(emissions_cols, ["indirect_kgco2e", "indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
 
         if not case_fk or not mass_col or not direct_col or not indirect_col:
             raise HTTPException(status_code=500, detail="Schema introspection failed")

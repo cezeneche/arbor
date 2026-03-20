@@ -153,8 +153,8 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
             if not goods_line_fk_column:
                 raise HTTPException(status_code=500, detail="Internal server error")
 
-            direct_col = _shared._pick_existing(columns, ["direct_emissions_kgco2e", "direct_embedded_kgco2e"])
-            indirect_col = _shared._pick_existing(columns, ["indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
+            direct_col = _shared._pick_existing(columns, ["direct_kgco2e", "direct_emissions_kgco2e", "direct_embedded_kgco2e"])
+            indirect_col = _shared._pick_existing(columns, ["indirect_kgco2e", "indirect_emissions_kgco2e", "indirect_embedded_kgco2e"])
             method_col = _shared._pick_existing(columns, ["calculation_method", "method"])
 
             if not direct_col or not indirect_col or not method_col:

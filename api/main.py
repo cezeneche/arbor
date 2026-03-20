@@ -27,6 +27,11 @@ for _pkg in (_repo_root, _repo_root / "nucleo-ledger"):
     if _pkg_str not in sys.path:
         sys.path.insert(0, _pkg_str)
 
+# Load .env from the repo root before any config module runs load_dotenv(),
+# which defaults to CWD and breaks when uvicorn is started with --app-dir.
+from dotenv import load_dotenv as _load_dotenv
+_load_dotenv(_repo_root / ".env")
+
 import logging
 import os
 from contextlib import asynccontextmanager

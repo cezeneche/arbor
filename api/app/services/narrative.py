@@ -62,6 +62,14 @@ def fetch_report_packet(case_id: str, packet_kind: str, request: Request) -> dic
 
     result = get_cbam_report_package(request, case_uuid, export_format="json")
 
+    # The route always wraps its output in a fastapi.responses.Response for
+    # consistent HTTP serialization (including for export_format="json").
+    # When calling the function directly (not via HTTP), we must parse the body.
+    if hasattr(result, "body"):
+        import json as _json
+        body = result.body
+        result = _json.loads(body if isinstance(body, str) else body.decode("utf-8"))
+
     if not isinstance(result, dict):
         raise HTTPException(
             status_code=500,
