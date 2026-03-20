@@ -344,6 +344,20 @@ def build_hmrc_return(
             )
 
         origin      = str(shipment.get("origin_country") or "")
+
+        # ── UK CBAM Rule: precursor exclusion ─────────────────────────────────
+        # UK-origin goods (origin_country = 'GB') are produced within the UK
+        # customs territory and are NOT subject to UK CBAM.
+        # Finance (No.2) Bill 2025-26 excludes UK-produced precursor goods.
+        # The EU equivalent (Art. 7(2) EU 2023/956) does NOT apply this exclusion.
+        if origin.upper() == "GB":
+            warnings.append(
+                f"uk_precursor_excluded:ref={ref}:origin_country=GB:"
+                "UK-origin goods excluded from UK CBAM return "
+                "(Finance No.2 Bill 2025-26 — UK-produced precursor exclusion)"
+            )
+            continue
+
         import_date_raw = shipment.get("import_date")
         try:
             if isinstance(import_date_raw, date):
@@ -380,7 +394,7 @@ def build_hmrc_return(
                 gl.get("net_mass_kg") or gl.get("quantity"), Decimal("0")
             )
 
-            # direct embedded in kgCO2e → tCO2e
+            # direct embedded in kgCO2e → tCO2e (UK CBAM is Scope 1 direct only)
             direct_kg  = _to_decimal(
                 em.get("direct_embedded_kgco2e") or em.get("direct_emissions_kgco2e"),
                 Decimal("0"),
@@ -388,6 +402,27 @@ def build_hmrc_return(
             direct_tco2e = (direct_kg / Decimal("1000")).quantize(
                 Decimal("0.000001"), rounding=ROUND_HALF_UP
             )
+
+            # ── UK CBAM Rule: indirect emissions excluded until 2029 ──────────
+            # UK CBAM charges ONLY direct (Scope 1) emissions.
+            # Indirect emissions (electricity, Scope 2) are excluded until the
+            # jurisdiction_indirect_date >= 2029 (Finance No.2 Bill 2025-26).
+            # If the report package contains indirect values, they must NOT enter
+            # the UK CBAM charge calculation — warn so the importer can verify.
+            indirect_kg = _to_decimal(
+                em.get("indirect_embedded_kgco2e") or em.get("indirect_emissions_kgco2e"),
+                Decimal("0"),
+            )
+            if indirect_kg > Decimal("0"):
+                indirect_tco2e_excluded = (indirect_kg / Decimal("1000")).quantize(
+                    Decimal("0.000001"), rounding=ROUND_HALF_UP
+                )
+                warnings.append(
+                    f"uk_indirect_excluded:goods_line_id={gid}:"
+                    f"indirect_embedded={indirect_tco2e_excluded}tCO2e present but "
+                    "excluded from UK CBAM charge — indirect emissions not in scope "
+                    "until 2029 (Finance No.2 Bill 2025-26)"
+                )
 
             charge  = _gbp(direct_tco2e * input_data.cbam_rate_gbp_per_tco2e)
             cpr     = _gbp(cpr_for_consignment)          # CPR applied at consignment level

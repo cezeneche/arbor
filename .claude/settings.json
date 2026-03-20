@@ -4,7 +4,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
       "Bash(git add:*)",
       "Bash(PYTHONPATH=.:nucleo-ledger:nucleo-narrative pytest nucleo-ledger/tests nucleo-narrative/tests)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(PYTHONPATH=.:nucleo-ledger:nucleo-narrative:api python -m pytest api/tests/test_full_pipeline.py -v --tb=short -k \"not postgres\")"
     ],
     "additionalDirectories": [
       "/Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/(portal)/cases/[id]"

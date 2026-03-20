@@ -13,7 +13,7 @@ Response shape: {case_id, final_narrative_json, human_review_required, stage_err
 """
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import JSONResponse
 
 from app.services.narrative import run_pipeline_stages
@@ -38,6 +38,7 @@ def _blocking_response(case_id: str, data_quality: dict) -> JSONResponse:
 def run_pipeline(
     request: Request,
     case_id: str,
+    background_tasks: BackgroundTasks,
     packet_kind: Literal["legacy", "cbam"] = "legacy",
     auth_context: AuthContext = Depends(require_scopes(["narrative:run"])),
 ):
@@ -53,6 +54,7 @@ def run_pipeline(
         case_id=case_id,
         packet_kind=packet_kind,
         request=request,
+        background_tasks=background_tasks,
     )
     if result.get("blocked"):
         return _blocking_response(case_id, result.get("data_quality", {}))
@@ -63,6 +65,7 @@ def run_pipeline(
 async def run_pipeline_async(
     request: Request,
     case_id: str,
+    background_tasks: BackgroundTasks,
     packet_kind: Literal["legacy", "cbam"] = "legacy",
     auth_context: AuthContext = Depends(require_scopes(["narrative:run"])),
 ):
@@ -76,6 +79,7 @@ async def run_pipeline_async(
         case_id=case_id,
         packet_kind=packet_kind,
         request=request,
+        background_tasks=background_tasks,
     )
     if result.get("blocked"):
         return _blocking_response(case_id, result.get("data_quality", {}))

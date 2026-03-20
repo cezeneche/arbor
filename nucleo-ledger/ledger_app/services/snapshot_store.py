@@ -18,6 +18,19 @@ from pydantic import BaseModel
 from pydantic import Field
 
 
+__all__ = [
+    "SnapshotRecord",
+    "SnapshotStore",
+    "FileSystemSnapshotStore",
+    "SQLSnapshotStore",
+    "ChainIntegrityError",
+    "canonical_json",
+    "sha256_hex",
+    "bytes_sha256_hex",
+    "get_snapshot_store",
+]
+
+
 class SnapshotRecord(BaseModel):
     id: str
     case_id: str
@@ -93,6 +106,48 @@ def bytes_sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+class ChainIntegrityError(RuntimeError):
+    """Raised when a snapshot's parent_hash does not match the previous record's hash.
+
+    This indicates tampering or corruption of the audit chain (CLAUDE.md Rule 5).
+    Human review is required before any new snapshots are written.
+    """
+
+
+def _verify_chain_link(previous: "SnapshotRecord | None", claimed_parent_hash: "str | None") -> None:
+    """Assert that *claimed_parent_hash* matches the hash of *previous*.
+
+    Called at write-time before inserting a new snapshot — enforces that the
+    chain is unbroken.  Per CLAUDE.md Rule 5, a broken chain requires human
+    review before any further output is generated.
+
+    Parameters
+    ----------
+    previous:
+        The most recent SnapshotRecord for this case (None if this is the first).
+    claimed_parent_hash:
+        The parent_hash the caller is asserting for the new snapshot.
+        When None, the store will auto-resolve it from *previous* — this function
+        only verifies an explicitly supplied value.
+
+    Raises
+    ------
+    ChainIntegrityError
+        When claimed_parent_hash does not match previous.payload_hash.
+    """
+    if claimed_parent_hash is None or previous is None:
+        return  # auto-resolve path or first snapshot — nothing to verify
+    if claimed_parent_hash != previous.payload_hash:
+        raise ChainIntegrityError(
+            f"Audit chain integrity violation: claimed parent_hash "
+            f"{claimed_parent_hash!r} does not match the stored predecessor hash "
+            f"{previous.payload_hash!r} (stage={previous.stage!r}, id={previous.id!r}). "
+            "This may indicate tampering or concurrent writes. "
+            "Human review is required before any new snapshots can be appended "
+            "(CLAUDE.md Rule 5)."
+        )
+
+
 class FileSystemSnapshotStore:
     def __init__(self, root_dir: Path):
         self.root_dir = root_dir
@@ -149,8 +204,15 @@ class FileSystemSnapshotStore:
         payload_hash = sha256_hex(payload_json)
         created_at = datetime.now(timezone.utc).isoformat()
 
+        previous = self.latest_snapshot(case_id)
+
+        # ── Write-time chain verification (CLAUDE.md Rule 5) ─────────────────
+        # If the caller supplies an explicit parent_hash, verify it matches the
+        # stored predecessor before accepting the write.  This detects tampering
+        # or concurrent writes that would silently corrupt the chain.
+        _verify_chain_link(previous, parent_hash)
+
         if parent_hash is None:
-            previous = self.latest_snapshot(case_id)
             parent_hash = previous.payload_hash if previous else None
 
         record = SnapshotRecord(
@@ -212,15 +274,31 @@ class SQLSnapshotStore:
         created_at = datetime.now(timezone.utc).isoformat()
 
         with self._engine.begin() as conn:
+            row = conn.execute(
+                self._text(
+                    f"SELECT payload_hash, stage, id FROM {self._table}"
+                    f" WHERE case_id = :case_id ORDER BY created_at DESC LIMIT 1"
+                ),
+                {"case_id": case_id},
+            ).mappings().one_or_none()
+
+            stored_predecessor_hash = row["payload_hash"] if row else None
+
+            # ── Write-time chain verification (CLAUDE.md Rule 5) ─────────────
+            # When an explicit parent_hash is supplied, verify it matches the
+            # stored predecessor before accepting the write.
+            if parent_hash is not None and stored_predecessor_hash is not None:
+                if parent_hash != stored_predecessor_hash:
+                    raise ChainIntegrityError(
+                        f"Audit chain integrity violation (SQL store): "
+                        f"claimed parent_hash {parent_hash!r} does not match "
+                        f"stored predecessor hash {stored_predecessor_hash!r} "
+                        f"(stage={row['stage']!r}, id={row['id']!r}). "
+                        "Human review required (CLAUDE.md Rule 5)."
+                    )
+
             if parent_hash is None:
-                row = conn.execute(
-                    self._text(
-                        f"SELECT payload_hash FROM {self._table}"
-                        f" WHERE case_id = :case_id ORDER BY created_at DESC LIMIT 1"
-                    ),
-                    {"case_id": case_id},
-                ).mappings().one_or_none()
-                parent_hash = row["payload_hash"] if row else None
+                parent_hash = stored_predecessor_hash
 
             record = SnapshotRecord(
                 id=str(uuid4()),

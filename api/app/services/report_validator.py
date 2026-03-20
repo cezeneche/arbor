@@ -753,6 +753,322 @@ def _record_validation_in_audit_log(
         log.debug("audit log write for narrative_validation failed (non-fatal): %s", exc)
 
 
+# ── Pre-output reconciliation checks (CLAUDE.md §Reconciliation Checks) ───────
+#
+# These 4 checks are run by run_pre_output_reconciliation() before generating
+# compliance_pack_v1.  They complement the narrative-validation checks above.
+
+def _check_mass_consistency(
+    report_package: dict,
+    checks: list[CheckResult],
+    failures: list[str],
+) -> bool:
+    """
+    Check 1: Net mass must be consistent across goods-line records.
+
+    Each goods line stores net_mass_kg.  This check flags lines where
+    net_mass_kg is zero or None — a missing mass prevents SEE calculation
+    and makes the CBAM charge unverifiable.
+
+    (Cross-document mass reconciliation against external customs declarations
+    is performed when the customs document is uploaded; here we only verify
+    that internal values are present and non-zero.)
+
+    Regulation: UK Finance No.2 Bill 2025-26; EU 2023/1773 Art. 3(1).
+    """
+    missing_mass: list[str] = []
+
+    for _ship, goods_line, emissions in _iter_goods_lines(report_package):
+        gl_id = str(goods_line.get("id") or "")
+        cn_code = goods_line.get("cn_code") or "?"
+        mass = _to_decimal(goods_line.get("net_mass_kg") or goods_line.get("quantity"))
+        if mass is None or mass <= Decimal("0"):
+            missing_mass.append(
+                f"goods_line {gl_id} (cn_code={cn_code}): "
+                f"net_mass_kg={goods_line.get('net_mass_kg')!r} — zero or absent"
+            )
+
+    passed = not missing_mass
+    detail = "; ".join(missing_mass)
+    checks.append(CheckResult(
+        "reconciliation.mass_consistency",
+        "Net mass is present and > 0 for all goods lines",
+        passed=passed,
+        detail=detail,
+    ))
+    if not passed:
+        failures.append(f"Mass consistency: {detail}")
+    return passed
+
+
+def _check_quarterly_totals(
+    report_package: dict,
+    checks: list[CheckResult],
+    failures: list[str],
+    tolerance: Decimal = Decimal("1.0"),  # 1 kgCO2e tolerance for rounding
+) -> bool:
+    """
+    Check 4: Sum of goods-line emissions must equal the declared summary totals.
+
+    Adds up direct_embedded_kgco2e and indirect_embedded_kgco2e across all
+    goods lines and compares with summary.total_direct_emissions_kgco2e and
+    summary.total_indirect_emissions_kgco2e.
+
+    Regulation: EU 2023/1773 Art. 6(2)(c) — quarterly report must list total
+    embedded emissions; UK Finance No.2 Bill 2025-26 s.24.
+    """
+    if report_package.get("type") != "cbam_report_package_v1":
+        checks.append(CheckResult(
+            "reconciliation.quarterly_totals",
+            "Sum of goods-line emissions equals declared summary totals",
+            passed=True,
+            detail="non-CBAM packet — skipped",
+        ))
+        return True
+
+    sum_direct   = Decimal("0")
+    sum_indirect = Decimal("0")
+
+    for _ship, _gl, emissions in _iter_goods_lines(report_package):
+        if emissions is None:
+            continue
+        sum_direct   += _to_decimal(
+            emissions.get("direct_embedded_kgco2e") or emissions.get("direct_emissions_kgco2e")
+        ) or Decimal("0")
+        sum_indirect += _to_decimal(
+            emissions.get("indirect_embedded_kgco2e") or emissions.get("indirect_emissions_kgco2e")
+        ) or Decimal("0")
+
+    summary = report_package.get("summary") or {}
+    expected_direct   = _to_decimal(summary.get("total_direct_emissions_kgco2e"))
+    expected_indirect = _to_decimal(summary.get("total_indirect_emissions_kgco2e"))
+
+    issues: list[str] = []
+    if expected_direct is not None and abs(sum_direct - expected_direct) > tolerance:
+        issues.append(
+            f"direct: sum_goods_lines={sum_direct}, summary={expected_direct}, "
+            f"diff={abs(sum_direct - expected_direct)}"
+        )
+    if expected_indirect is not None and abs(sum_indirect - expected_indirect) > tolerance:
+        issues.append(
+            f"indirect: sum_goods_lines={sum_indirect}, summary={expected_indirect}, "
+            f"diff={abs(sum_indirect - expected_indirect)}"
+        )
+
+    passed = not issues
+    detail = "; ".join(issues)
+    checks.append(CheckResult(
+        "reconciliation.quarterly_totals",
+        "Sum of goods-line emissions equals declared summary totals",
+        passed=passed,
+        detail=detail,
+    ))
+    if not passed:
+        failures.append(f"Quarterly totals mismatch: {detail}")
+    return passed
+
+
+def _check_cpr_cap(
+    report_package: dict,
+    checks: list[CheckResult],
+    failures: list[str],
+) -> bool:
+    """
+    Check 8: CPR cannot exceed the CBAM charge for each goods line.
+
+    Per Finance No.2 Bill 2025-26 and CLAUDE.md Rule 7:
+    cpr_gbp ≤ cbam_charge_gbp for every goods line (liability cannot go negative).
+
+    Checks the hmrc_return block if present; otherwise skips gracefully.
+    """
+    hmrc = report_package.get("hmrc_return") or {}
+    consignments = hmrc.get("consignments") or []
+
+    if not consignments:
+        checks.append(CheckResult(
+            "reconciliation.cpr_cap",
+            "CPR ≤ CBAM charge for all goods lines (liability cannot be negative)",
+            passed=True,
+            detail="no hmrc_return block — skipped",
+        ))
+        return True
+
+    violations: list[str] = []
+    for consignment in consignments:
+        for gl in consignment.get("goods_lines") or []:
+            cn8 = gl.get("cn8_code") or "?"
+            charge = _to_decimal(gl.get("cbam_charge_gbp")) or Decimal("0")
+            cpr    = _to_decimal(gl.get("cpr_gbp")) or Decimal("0")
+            if cpr > charge:
+                violations.append(
+                    f"cn8={cn8}: cpr_gbp={cpr} > cbam_charge_gbp={charge}"
+                )
+
+    passed = not violations
+    detail = "; ".join(violations)
+    checks.append(CheckResult(
+        "reconciliation.cpr_cap",
+        "CPR ≤ CBAM charge for all goods lines (liability cannot be negative)",
+        passed=passed,
+        detail=detail,
+    ))
+    if not passed:
+        failures.append(f"CPR cap violated: {detail}")
+    return passed
+
+
+def _check_hmac_chain(
+    report_package: dict,
+    checks: list[CheckResult],
+    failures: list[str],
+) -> bool:
+    """
+    Check 6: HMAC chain integrity — every snapshot must have a valid parent hash.
+
+    Verifies that the report package carries a snapshot_hash and that it is
+    non-empty (structural integrity).  Full chain re-verification from storage
+    is performed by the snapshot_store; this check validates that the package
+    assembled for output carries a chain reference.
+
+    Regulation: CLAUDE.md Rule 5 — audit chain must be maintained.
+    """
+    audit = report_package.get("audit") or {}
+    snapshot_hash = (
+        audit.get("snapshot_hash")
+        or audit.get("payload_hash")
+        or report_package.get("snapshot_hash")
+    )
+
+    if not snapshot_hash:
+        checks.append(CheckResult(
+            "reconciliation.hmac_chain",
+            "HMAC chain reference present in report package",
+            passed=False,
+            detail=(
+                "report_package.audit.snapshot_hash is absent — the report package "
+                "cannot be linked to the audit chain (CLAUDE.md Rule 5)"
+            ),
+        ))
+        failures.append(
+            "HMAC chain: snapshot_hash missing from report package — "
+            "compliance_pack_v1 must not be generated without a valid audit chain reference"
+        )
+        return False
+
+    checks.append(CheckResult(
+        "reconciliation.hmac_chain",
+        "HMAC chain reference present in report package",
+        passed=True,
+        detail=f"snapshot_hash={str(snapshot_hash)[:16]}…",
+    ))
+    return True
+
+
+# ── Pre-output reconciliation gate ─────────────────────────────────────────────
+
+def run_pre_output_reconciliation(
+    report_package: dict,
+    narrative: dict | None = None,
+    case_id: str | None = None,
+) -> ValidationResult:
+    """
+    Run all 8 CLAUDE.md reconciliation checks before generating compliance_pack_v1.
+
+    This is the gate that MUST pass before any compliance output is produced.
+    Callers should check result.human_review_required and abort output generation
+    if True, surfacing result.failures to the operator.
+
+    The 8 checks (CLAUDE.md §Reconciliation Checks):
+      1. Mass consistency     — net_mass present and non-zero for all goods lines
+      2. SEE plausibility     — via data_quality.warnings (reconciliation_warning tags)
+      3. Unit normalisation   — flagged in data_quality by cbam_emission_factors
+      4. Quarterly totals     — sum of goods-line emissions = summary totals
+      5. CN code scope        — all CN codes map to a CBAM sector
+      6. HMAC chain           — snapshot_hash present and linked
+      7. Verification status  — actual_verified lines have verification_status='verified'
+      8. CPR cap              — cpr_gbp ≤ cbam_charge_gbp per line
+
+    Checks 2+3 are covered implicitly by _check_reconciliation_warnings (they
+    are surfaced as reconciliation_warning tags in data_quality by the extraction
+    and calculation layers; if any such warning is present, human_review is required).
+
+    Parameters
+    ----------
+    report_package:
+        The cbam_report_package_v1 dict.
+    narrative:
+        Optional narrative dict. When provided, also runs narrative-consistency
+        checks (numeric totals, reporting period, limitations coverage).
+        Pass None to run only the 8 data-integrity checks.
+    case_id:
+        UUID string for audit log attribution. None skips audit log write.
+    """
+    _narrative = narrative or {}
+    checks: list[CheckResult] = []
+    failures: list[str] = []
+    open_gaps: list[dict] = []
+    method_downgrades: list[dict] = []
+
+    # ── Check 1: Mass consistency ──────────────────────────────────────────────
+    mass_passed = _check_mass_consistency(report_package, checks, failures)
+
+    # ── Checks 2+3: SEE plausibility + unit normalisation (via recon tags) ────
+    recon_passed = _check_reconciliation_warnings(report_package, checks, failures)
+
+    # ── Check 4: Quarterly totals ─────────────────────────────────────────────
+    totals_passed = _check_quarterly_totals(report_package, checks, failures)
+
+    # ── Check 5: CN code scope ────────────────────────────────────────────────
+    scope_passed = _check_cn_code_scope(report_package, checks, failures)
+
+    # ── Check 6: HMAC chain ────────────────────────────────────────────────────
+    chain_passed = _check_hmac_chain(report_package, checks, failures)
+
+    # ── Check 7: Verification status ─────────────────────────────────────────
+    _check_actual_verification_status(
+        report_package, checks, failures, open_gaps, method_downgrades
+    )
+
+    # ── Check 8: CPR cap ──────────────────────────────────────────────────────
+    cpr_cap_passed = _check_cpr_cap(report_package, checks, failures)
+
+    # ── Optional narrative consistency checks (when narrative provided) ───────
+    if narrative is not None:
+        _check_numeric_totals(report_package, _narrative, checks, failures)
+        _check_calculation_methods(report_package, checks, failures)
+        _check_warnings_surfaced_in_limitations(report_package, _narrative, checks, failures)
+        _check_cpr_verifier(report_package, _narrative, checks, failures)
+        _check_reporting_period(report_package, _narrative, checks, failures)
+
+    # ── Gate decision ─────────────────────────────────────────────────────────
+    # Blocking failures: mass missing, reconciliation warnings, totals mismatch,
+    # HMAC chain absent, CPR cap violated.  These prevent compliance_pack_v1.
+    human_review_required = (
+        not mass_passed
+        or not recon_passed
+        or not totals_passed
+        or not chain_passed
+        or not cpr_cap_passed
+    )
+
+    all_passed = all([mass_passed, recon_passed, totals_passed,
+                      scope_passed, chain_passed, cpr_cap_passed])
+
+    result = ValidationResult(
+        passed=all_passed,
+        human_review_required=human_review_required,
+        failures=failures,
+        checks=checks,
+        open_gaps=open_gaps,
+        method_downgrades=method_downgrades,
+    )
+
+    if case_id:
+        _record_validation_in_audit_log(case_id, result, checks)
+
+    return result
+
+
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def validate_report_package_integrity(

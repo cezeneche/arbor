@@ -245,6 +245,7 @@ from narrative_app.api.jobs import router as jobs_router
 from app.api.cpr import router as cpr_router
 from app.api.public_tools import router as public_tools_router
 from app.api.registration import router as registration_router
+from app.api.supplier_outreach import router as supplier_outreach_router
 from app.api.verification import router as verification_router
 from app.api.narrative_pipeline import router as narrative_pipeline_router
 
@@ -253,6 +254,7 @@ app.include_router(public_tools_router, prefix="/api")
 
 app.include_router(cpr_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(registration_router, prefix="/api", dependencies=[Depends(get_auth_context)])
+app.include_router(supplier_outreach_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(verification_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(narrative_auth_public_router)
 app.include_router(

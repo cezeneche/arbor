@@ -104,6 +104,11 @@ class CPRResult:
     cpr_capped:                   bool      # True when raw CPR > CBAM liability
     cpr_amount_gbp:               Decimal   # min(cpr_raw_gbp, cbam_liability_gbp)
 
+    # GACI verification provenance — mandatory per CLAUDE.md Rule 7.
+    # Stored verbatim so a regulator auditing the declaration can verify the
+    # accreditation body used (HMRC / GACI / ISO 17029 requirement).
+    verifier_accreditation_body:  str | None = None
+
     warnings: list[str] = field(default_factory=list)
 
 
@@ -261,6 +266,7 @@ def calculate_cpr(
     rebates: Decimal,
     exchange_rate_to_gbp: Decimal,
     cbam_liability_gbp: Decimal,
+    verifier_accreditation_body: str | None = None,
 ) -> CPRResult:
     """Calculate Carbon Price Relief for a single qualifying scheme.
 
@@ -317,6 +323,24 @@ def calculate_cpr(
 
     warnings: list[str] = []
 
+    # ── GACI accreditation check (CLAUDE.md Rule 7) ───────────────────────────
+    # CPR requires independent verification by a GACI-accredited body operating
+    # to ISO 17029 / ISO 14064-3 / ISO 14065 / ISO 14066.
+    # If verifier_accreditation_body is not supplied, we cannot confirm the CPR
+    # claim is regulatorily defensible — surface as a compliance warning rather
+    # than a hard failure so that callers without the verifier form on hand can
+    # still compute the monetary amount for planning purposes.
+    if not verifier_accreditation_body or not verifier_accreditation_body.strip():
+        warnings.append(
+            "cpr_gaci_missing: verifier_accreditation_body not provided — "
+            "CPR requires independent verification by a GACI-accredited body "
+            "(ISO 17029 / ISO 14064-3 / ISO 14065 / ISO 14066). "
+            "This claim cannot be included in a HMRC return without a "
+            "completed carbon pricing verification form. "
+            "(Finance No.2 Bill 2025-26, CLAUDE.md Rule 7)"
+        )
+    gaci_body = (verifier_accreditation_body or "").strip() or None
+
     # Step 1: effective carbon price in local currency (per tCO₂e)
     #   net_price = carbon_price_local - free_allocations - rebates
     #   Clamped to 0: if the installation received more in free allowances than
@@ -368,6 +392,7 @@ def calculate_cpr(
         cpr_raw_gbp=cpr_raw_gbp,
         cpr_capped=cpr_capped,
         cpr_amount_gbp=cpr_amount_gbp,
+        verifier_accreditation_body=gaci_body,
         warnings=warnings,
     )
 

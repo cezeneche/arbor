@@ -24,10 +24,14 @@ State machine for review_status:
 from __future__ import annotations
 
 import json
+import logging
+import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
+
+log = logging.getLogger("nucleos.review")
 
 from ledger_app.db.session import engine
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
@@ -135,6 +139,85 @@ def clear_review_flag(
         )
 
 
+# ── Notification helpers ─────────────────────────────────────────────────────────
+
+def _fetch_cbam_case_notification_data(case_id: str) -> dict:
+    """Best-effort: return CBAM case details needed for the approval email.
+
+    Queries cbam.cbam_cases + cbam.cbam_registration using the CBAM engine.
+    Returns an empty dict on any failure (e.g. not a CBAM case, SQLite test DB,
+    missing schema).  All exceptions are swallowed — callers must handle {} gracefully.
+
+    Returned keys (all optional / may be None):
+        period        : "2027 Annual" or "Q1 2028"
+        contact_email : importer contact email from business_address JSON
+        tenant_name   : display name from cbam_registration or cbam_cases
+    """
+    try:
+        from ledger_app.api.cbam._shared import engine as _cbam_engine
+
+        with _cbam_engine.connect() as conn:
+            row = conn.execute(
+                text("""
+                    SELECT
+                        c.reporting_year,
+                        c.reporting_quarter,
+                        COALESCE(r.business_name, c.importer_name) AS tenant_name,
+                        (r.business_address::jsonb)->>'email'       AS contact_email
+                    FROM   cbam.cbam_cases c
+                    LEFT JOIN cbam.cbam_registration r ON r.tenant_id = c.tenant_id
+                    WHERE  c.id = :case_id
+                    LIMIT  1
+                """),
+                {"case_id": case_id},
+            ).mappings().first()
+
+        if row is None:
+            return {}
+
+        year    = row["reporting_year"]
+        quarter = row["reporting_quarter"]
+        period  = f"Q{quarter} {year}" if quarter else f"{year} Annual"
+
+        return {
+            "period":        period,
+            "contact_email": row.get("contact_email"),
+            "tenant_name":   row.get("tenant_name"),
+        }
+    except Exception as exc:
+        log.debug("_fetch_cbam_case_notification_data: %s — skipping email notification", exc)
+        return {}
+
+
+def _schedule_report_notification(case_id: str, background_tasks: BackgroundTasks) -> None:
+    """Register the approval email notification as a BackgroundTask (post-response).
+
+    Uses a lazy import of app.services.notifications so that this module remains
+    functional when run in ledger-only test contexts where the app package is absent.
+    All failures are swallowed — the approval response is never affected.
+    """
+    try:
+        from app.services.notifications import notify_report_ready  # lazy — consolidated service only
+
+        data = _fetch_cbam_case_notification_data(case_id)
+        if not data:
+            log.debug("_schedule_report_notification: no CBAM data for case=%s — skipping", case_id)
+            return
+
+        background_tasks.add_task(
+            notify_report_ready,
+            case_id=case_id,
+            recipient_email=data.get("contact_email"),
+            period=data.get("period", ""),
+            # Callers with access to the computed HMRC return can pass the exact figure;
+            # this endpoint uses a safe fallback — the full amount is in the report itself.
+            total_liability_gbp_str="See your compliance report",
+            base_url=os.getenv("BASE_URL", ""),
+        )
+    except Exception as exc:
+        log.debug("_schedule_report_notification: failed (non-fatal): %s", exc)
+
+
 # ── Reviewer endpoints (scope: review:write) ────────────────────────────────────
 
 class ReviewDecisionBody(BaseModel):
@@ -147,6 +230,7 @@ class ReviewDecisionBody(BaseModel):
 def approve_case(
     case_id: str,
     body: ReviewDecisionBody,
+    background_tasks: BackgroundTasks,
     auth_context: AuthContext = Depends(require_scopes(["review:write"])),
 ):
     """
@@ -197,6 +281,9 @@ def approve_case(
                 "comments": body.comments,
             },
         )
+    # Fire report-ready email after the HTTP response is returned (BackgroundTask)
+    _schedule_report_notification(case_id, background_tasks)
+
     return {
         "case_id": case_id,
         "decision": "approved",

@@ -20,7 +20,7 @@ import os
 import time
 from uuid import UUID
 
-from fastapi import HTTPException, Request
+from fastapi import BackgroundTasks, HTTPException, Request
 
 log = logging.getLogger("nucleos.narrative")
 
@@ -85,12 +85,23 @@ def _extract_results_from_packet(packet: dict) -> dict:
     """
     if packet.get("type") == "cbam_report_package_v1":
         summary = packet.get("summary") or {}
+        # CPR figures come from the HMRC return block when present; fall back to
+        # summary so the narrative always reflects the authoritative financial totals.
+        hmrc = packet.get("hmrc_return") or {}
         return {
             "total_direct_embedded_kgco2e": summary.get("total_direct_emissions_kgco2e"),
             "total_indirect_embedded_kgco2e": summary.get("total_indirect_emissions_kgco2e"),
             "total_embedded_kgco2e": summary.get("total_embedded_emissions_kgco2e"),
             "total_net_mass_kg": summary.get("total_net_mass_kg"),
             "goods_lines_count": summary.get("total_goods_lines"),
+            # HMRC financial totals — Claude must NEVER compute these; values come
+            # directly from the report package (CLAUDE.md Rule 6).
+            "total_cbam_charge_gbp": hmrc.get("total_cbam_charge_gbp")
+                or summary.get("total_cbam_charge_gbp"),
+            "total_cpr_gbp": hmrc.get("total_cpr_gbp")
+                or summary.get("total_cpr_gbp"),
+            "total_cbam_liability_gbp": hmrc.get("total_cbam_liability_gbp")
+                or summary.get("total_cbam_liability_gbp"),
         }
 
     # Legacy report package
@@ -305,11 +316,39 @@ def _persist_review_flag(
 
 # ── Pipeline entry point ───────────────────────────────────────────────────────
 
+def _schedule_review_notification(
+    case_id: str,
+    packet: dict,
+    flags: list[str],
+    background_tasks: BackgroundTasks,
+) -> None:
+    """Best-effort: register the Slack review-required notification as a background task.
+
+    Tenant name is read directly from the already-fetched packet — no extra DB call.
+    All failures are logged at DEBUG and swallowed so they never affect the pipeline.
+    """
+    try:
+        from app.services.notifications import notify_review_required
+
+        tenant_name = (packet.get("case") or {}).get("importer_name") or "Unknown Tenant"
+        base_url    = os.getenv("BASE_URL", "")
+        background_tasks.add_task(
+            notify_review_required,
+            case_id=case_id,
+            tenant_name=tenant_name,
+            flags=flags,
+            base_url=base_url,
+        )
+    except Exception as exc:
+        log.debug("_schedule_review_notification: skipped (non-fatal): %s", exc)
+
+
 def run_pipeline_stages(
     *,
     case_id: str,
     packet_kind: str = "legacy",
     request: Request,
+    background_tasks: BackgroundTasks | None = None,
 ) -> dict:
     """
     Execute the narrative pipeline: one Claude call, results hard-overridden.
@@ -377,6 +416,15 @@ def run_pipeline_stages(
         getattr(request.state, "auth_context", None), "tenant_id", ""
     )
     _persist_review_flag(case_id, human_review_required=human_review_required, tenant_id=tenant_id)
+
+    # Step 6 — fire Slack notification if human review required (BackgroundTask, post-response)
+    if human_review_required and background_tasks is not None:
+        _schedule_review_notification(
+            case_id=case_id,
+            packet=packet,
+            flags=validation.failures,
+            background_tasks=background_tasks,
+        )
 
     return {
         "case_id": case_id,

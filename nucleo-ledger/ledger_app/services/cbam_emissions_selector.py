@@ -125,6 +125,14 @@ class MethodSelectionResult:
         True if any Annex VI default value was used (for mandatory disclosure).
     factor_metadata : dict
         Provenance of the Annex VI table used (regulation ref, version, etc.).
+    factor_table_version : str | None
+        The specific Annex VI table version used (required per CLAUDE.md Rule 3).
+        None when Annex VI defaults were not used (actual method).
+    tier_rejection_reasons : list[dict]
+        Mandatory audit trail per CLAUDE.md Rule 3: records why each higher-priority
+        tier was rejected before the selected method was reached.
+        Each entry: {"tier": int, "reason": str, "regulation_ref": str}.
+        Example: if method="default", both Tier 1 and Tier 2 entries are present.
     regulation_refs : list[str]
         Regulatory citations for this calculation.
     """
@@ -142,6 +150,8 @@ class MethodSelectionResult:
     warnings: list[str] = field(default_factory=list)
     annex_vi_factor_used: bool = False
     factor_metadata: dict = field(default_factory=lambda: dict(FACTOR_METADATA))
+    factor_table_version: str | None = None
+    tier_rejection_reasons: list[dict] = field(default_factory=list)
     regulation_refs: list[str] = field(default_factory=lambda: [
         "Commission Implementing Regulation 2023/1773, Article 4(1) — actual embedded emissions",
         "Commission Implementing Regulation 2023/1773, Article 4(2) — estimated embedded emissions",
@@ -334,6 +344,28 @@ def select_and_calculate(
 
     if direct_sup is None or supplier_direct_confidence < ACTUAL_QUALITY_THRESHOLD:
         # ── Path: Default (no usable supplier data)
+        if direct_sup is None:
+            t1_reason = "No supplier direct emissions found in extraction output."
+            t2_reason = "Tier 2 requires at least partial supplier direct data; absent here."
+        else:
+            t1_reason = (
+                f"Supplier direct confidence {supplier_direct_confidence:.2f} < "
+                f"threshold {ACTUAL_QUALITY_THRESHOLD}; value treated as absent."
+            )
+            t2_reason = "Tier 2 requires confidence ≥ 0 on direct value; confidence too low."
+
+        tier_rejection_reasons: list[dict] = [
+            {
+                "tier": 1,
+                "reason": t1_reason,
+                "regulation_ref": "EU 2023/1773 Art. 4(1)",
+            },
+            {
+                "tier": 2,
+                "reason": t2_reason,
+                "regulation_ref": "EU 2023/1773 Art. 4(2)",
+            },
+        ]
         trace.append(SelectionEvidenceAtom(
             step="select_method",
             outcome="default",
@@ -346,7 +378,8 @@ def select_and_calculate(
             ),
             regulation_ref="EU 2023/1773 Art. 4(3)",
         ))
-        return _apply_default(cn, mass_kg, production_route, trace, warnings)
+        return _apply_default(cn, mass_kg, production_route, trace, warnings,
+                              tier_rejection_reasons=tier_rejection_reasons)
 
     # ── Step 2: plausibility check on actual value
     within_normal, within_extreme, plaus_warnings = _plausibility_check(
@@ -369,13 +402,33 @@ def select_and_calculate(
 
     if not within_extreme:
         # Downgrade: treat direct as unusable, use default
+        extreme_rejection_reasons: list[dict] = [
+            {
+                "tier": 1,
+                "reason": (
+                    f"Direct emissions {float(direct_sup):.3f} kgCO2e exceeds "
+                    f"{PLAUSIBILITY_EXTREME_MULTIPLE}× the Annex VI default — "
+                    "extreme outlier; value rejected as unreliable."
+                ),
+                "regulation_ref": "EU 2023/1773 Annex VI (plausibility check)",
+            },
+            {
+                "tier": 2,
+                "reason": (
+                    "Tier 2 not applicable when direct value fails extreme outlier "
+                    "check — both tiers require a plausible direct emissions figure."
+                ),
+                "regulation_ref": "EU 2023/1773 Art. 4(2)",
+            },
+        ]
         trace.append(SelectionEvidenceAtom(
             step="select_method",
             outcome="default",
             detail="Extreme actual value detected; using Annex VI default for safety.",
             regulation_ref="EU 2023/1773 Art. 4(3)",
         ))
-        return _apply_default(cn, mass_kg, production_route, trace, warnings)
+        return _apply_default(cn, mass_kg, production_route, trace, warnings,
+                              tier_rejection_reasons=extreme_rejection_reasons)
 
     # ── Step 3: check supplier indirect emissions
     trace.append(SelectionEvidenceAtom(
@@ -398,6 +451,7 @@ def select_and_calculate(
     ):
         method = METHOD_ACTUAL
         indirect_kgco2e = indirect_sup
+        final_tier_rejection_reasons: list[dict] = []  # no rejections — Tier 1 accepted
         trace.append(SelectionEvidenceAtom(
             step="select_method",
             outcome="actual",
@@ -405,8 +459,25 @@ def select_and_calculate(
             regulation_ref="EU 2023/1773 Art. 4(1)",
         ))
     else:
-        # Gap-fill indirect from Annex VI default
+        # Gap-fill indirect from Annex VI default — Tier 1 rejected for indirect
         method = METHOD_ESTIMATED
+        if indirect_sup is None:
+            t1_indirect_reason = "No supplier indirect emissions found in extraction output."
+        else:
+            t1_indirect_reason = (
+                f"Supplier indirect confidence {supplier_indirect_confidence:.2f} < "
+                f"threshold {ACTUAL_QUALITY_THRESHOLD}; indirect value treated as absent."
+            )
+        final_tier_rejection_reasons = [
+            {
+                "tier": 1,
+                "reason": (
+                    f"Tier 1 (actual) rejected for indirect component: {t1_indirect_reason} "
+                    "Direct value accepted; indirect gap-filled from Annex VI (→ estimated)."
+                ),
+                "regulation_ref": "EU 2023/1773 Art. 4(1) + Art. 4(2)",
+            },
+        ]
         annex_indirect = _ZERO
         default_see = get_default_see(cn, production_route=None)
         if default_see is not None and mass_kg > _ZERO:
@@ -440,6 +511,7 @@ def select_and_calculate(
         trace=trace,
         warnings=warnings,
         annex_vi_used=(method == METHOD_ESTIMATED),
+        tier_rejection_reasons=final_tier_rejection_reasons,
     )
 
 
@@ -449,6 +521,7 @@ def _apply_default(
     production_route: str | None,
     trace: list[SelectionEvidenceAtom],
     warnings: list[str],
+    tier_rejection_reasons: list[dict] | None = None,
 ) -> MethodSelectionResult:
     """Compute emission values from Annex VI defaults.
 
@@ -502,6 +575,7 @@ def _apply_default(
         trace=trace,
         warnings=warnings,
         annex_vi_used=annex_vi_used,
+        tier_rejection_reasons=tier_rejection_reasons,
     )
 
 
@@ -516,6 +590,7 @@ def _build_result(
     trace: list[SelectionEvidenceAtom],
     warnings: list[str],
     annex_vi_used: bool,
+    tier_rejection_reasons: list[dict] | None = None,
 ) -> MethodSelectionResult:
     """Compute SEE and embedded tCO2e then assemble the final result."""
     if mass_kg > _ZERO:
@@ -524,6 +599,11 @@ def _build_result(
         embedded = (see_t * mass_t).quantize(_D("0.000001"))
     else:
         see_d = see_i = see_t = embedded = _ZERO
+
+    # Item 9: record the exact Annex VI table version used whenever Tier 3 applies.
+    # This is mandatory per CLAUDE.md Rule 3 (annex_vi_factor_version must always
+    # be recorded) and Rule 4 (factor rows are versioned — FK must be retained).
+    factor_ver = FACTOR_METADATA.get("table_version") if annex_vi_used else None
 
     return MethodSelectionResult(
         method=method,
@@ -539,6 +619,8 @@ def _build_result(
         decision_trace=trace,
         warnings=warnings,
         annex_vi_factor_used=annex_vi_used,
+        factor_table_version=factor_ver,
+        tier_rejection_reasons=tier_rejection_reasons or [],
     )
 
 
