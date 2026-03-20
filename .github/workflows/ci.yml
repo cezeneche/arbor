@@ -53,7 +53,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest \
+          python -m pytest \
             --tb=short \
             -q \
             --import-mode=importlib
