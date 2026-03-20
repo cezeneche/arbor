@@ -13,12 +13,11 @@ python3 -m venv .venv && source .venv/bin/activate
 ```
 
 ### Running tests
-Tests must be run from the **repo root** so that `pytest.ini` resolves `pythonpath` correctly (`.`, `nucleo-ledger`, `nucleo-narrative`, `api`). Running from inside a service subdirectory breaks imports.
+Tests must be run from the **repo root** so that `pytest.ini` resolves `pythonpath` correctly (`.`, `nucleo-ledger`, `api`). Running from inside a service subdirectory breaks imports.
 
 ```bash
 pytest                                      # all tests
 pytest nucleo-ledger/tests                  # ledger only
-pytest nucleo-narrative/tests               # narrative only
 pytest api/tests                            # consolidated api tests
 pytest -k "test_auth"                       # filter by name
 pytest nucleo-ledger/tests/test_auth_jwt.py # single file
@@ -26,13 +25,14 @@ pytest nucleo-ledger/tests/test_auth_jwt.py # single file
 
 If running outside the root venv, prefix with:
 ```bash
-PYTHONPATH=.:nucleo-ledger:nucleo-narrative:api python -m pytest ...
+PYTHONPATH=.:nucleo-ledger:api python -m pytest ...
 ```
 
 ### Running the service locally
 ```bash
 # Single consolidated api service → http://127.0.0.1:8000
-cd api && uvicorn main:app --reload
+# Run from the repo root OR from inside api/ — both work.
+uvicorn main:app --reload --app-dir api
 ```
 
 ### Docker (full stack)
@@ -61,11 +61,11 @@ api/  (port 8000)
 
 ### api/ — consolidated service
 
-`api/main.py` mounts all routers. It imports ledger routers from `nucleo-ledger/ledger_app/` and narrative routers from `nucleo-narrative/narrative_app/` — both packages run in-process with no inter-service HTTP.
+`api/main.py` mounts all routers. It imports ledger routers from `nucleo-ledger/ledger_app/` — both packages run in-process with no inter-service HTTP. `nucleo-narrative` has been dissolved; its live code lives in `api/app/`.
 
 Key layers:
-- `api/app/api/` — consolidated API routers (narrative_pipeline, cpr, verification, registration, public_tools, supplier_outreach)
-- `api/app/services/` — business logic: `narrative`, `hmrc_return_builder`, `cpr_calculator`, `report_validator`, `cbam_free_allocation`, `cbam_uk_rates`, `eu_xml_builder`, `registration_manager`, `notifications`
+- `api/app/api/` — consolidated API routers (narrative_pipeline, cbam_compliance, cpr, verification, registration, public_tools, supplier_outreach)
+- `api/app/services/` — business logic: `narrative`, `compliance_pack`, `hmrc_return_builder`, `cpr_calculator`, `report_validator`, `cbam_free_allocation`, `cbam_uk_rates`, `eu_xml_builder`, `registration_manager`, `notifications`
 - `ledger_app/api/` — 17 FastAPI routers (cases, documents, extract, calculate, bundle, resolve, report_package, cbam, auth, health, etc.)
 - `ledger_app/services/` — business logic: `cbam_extractor`, `cbam_arbiter`, `cbam_repair`, `cbam_explain`, `snapshot_store`, `storage`, and the LlamaIndex orchestration layer
 - `ledger_app/db/` — SQLAlchemy models and migrations

@@ -16,6 +16,17 @@ Startup sequence (lifespan):
   1. Supabase clients initialised (if SUPABASE_URL set)
   2. Annex VI emission factors seeded into DB (idempotent)
 """
+import sys
+from pathlib import Path as _Path
+
+# Ensure sibling packages (ledger_app, shared_auth) are importable
+# regardless of the working directory uvicorn is launched from.
+_repo_root = _Path(__file__).resolve().parent.parent
+for _pkg in (_repo_root, _repo_root / "nucleo-ledger"):
+    _pkg_str = str(_pkg)
+    if _pkg_str not in sys.path:
+        sys.path.insert(0, _pkg_str)
+
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -146,13 +157,9 @@ if os.getenv("SUPABASE_URL"):
 for warning in optional_startup_warnings():
     _log.warning(warning)
 
-# Warn about missing narrative LLM provider keys (pipeline skips absent stages gracefully)
-try:
-    from narrative_app.core.config import optional_provider_warnings
-    for warning in optional_provider_warnings():
-        _log.warning(warning)
-except Exception:
-    pass
+# Warn about missing narrative LLM key
+if not os.getenv("ANTHROPIC_API_KEY"):
+    _log.warning("ANTHROPIC_API_KEY is not set; narrative pipeline will fail.")
 
 _MAX_REQUEST_SIZE = int(os.getenv("MAX_REQUEST_SIZE_BYTES", str(10 * 1024 * 1024)))
 
@@ -234,14 +241,7 @@ app.include_router(cbam_router, prefix="/api", dependencies=[Depends(get_auth_co
 app.include_router(audit_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(review_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 
-# ── Narrative routers ─────────────────────────────────────────────────────────
-# The pipeline router is replaced by app.api.narrative_pipeline which calls
-# the ledger report package builder directly (no HTTP, no inter-service JWT).
-from narrative_app.api.auth import protected_router as narrative_auth_protected_router
-from narrative_app.api.auth import public_router as narrative_auth_public_router
-from narrative_app.api.cbam_compliance import router as cbam_compliance_router
-from narrative_app.api.jobs import router as jobs_router
-
+from app.api.cbam_compliance import router as cbam_compliance_router
 from app.api.cpr import router as cpr_router
 from app.api.public_tools import router as public_tools_router
 from app.api.registration import router as registration_router
@@ -256,14 +256,9 @@ app.include_router(cpr_router, prefix="/api", dependencies=[Depends(get_auth_con
 app.include_router(registration_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(supplier_outreach_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(verification_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(narrative_auth_public_router)
-app.include_router(
-    narrative_auth_protected_router, prefix="/api", dependencies=[Depends(get_auth_context)]
-)
 app.include_router(
     cbam_compliance_router, prefix="/api", dependencies=[Depends(get_auth_context)]
 )
-app.include_router(jobs_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(
     narrative_pipeline_router, prefix="/api", dependencies=[Depends(get_auth_context)]
 )

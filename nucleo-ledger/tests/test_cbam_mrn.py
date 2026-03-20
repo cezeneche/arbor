@@ -261,7 +261,7 @@ class TestCompliancePackMRNFlags:
     """_build_data_quality_flags() in narrative service must also check MRN."""
 
     def _run_flags(self, entry_reference):
-        from narrative_app.services.compliance_pack import _build_data_quality_flags
+        from app.services.compliance_pack import _build_data_quality_flags
         report_package = {
             "shipments": [
                 {

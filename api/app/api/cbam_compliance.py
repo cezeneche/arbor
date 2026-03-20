@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from shared_auth.dependencies import require_scopes
 from shared_auth.models import AuthContext
 
-from narrative_app.services.compliance_pack import build_cbam_compliance_pack
+from app.services.compliance_pack import build_cbam_compliance_pack
 
 router = APIRouter()
 

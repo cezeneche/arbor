@@ -27,7 +27,7 @@ from copy import deepcopy
 
 import pytest
 
-from narrative_app.services.compliance_pack import (
+from app.services.compliance_pack import (
     build_cbam_compliance_pack,
     serialise_to_registry_schema,
 )
@@ -342,7 +342,7 @@ class TestReportTotals:
 
 class TestBuildIntegration:
     def _build(self, monkeypatch):
-        from narrative_app.services import compliance_pack as cp
+        from app.services import compliance_pack as cp
         monkeypatch.setattr(cp, "_now_utc_iso", lambda: "2026-01-01T00:00:00+00:00")
 
         report_package = {
