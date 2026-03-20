@@ -34,9 +34,11 @@ narrative_output.json
 # Runtime storage (uploaded files, processing artifacts)
 storage/
 
-# Generated CBAM demo outputs
-fixtures/ledger/cbam_*_TEST-*.json
-fixtures/narrative/cbam_*_TEST-*.json
+# Generated CBAM demo/run outputs (timestamp-based and DEMO IDs only — golden fixtures are committed)
+fixtures/ledger/cbam_*_TEST-2*.json
+fixtures/ledger/cbam_*_TEST-DEMO*.json
+fixtures/narrative/cbam_*_TEST-2*.json
+fixtures/narrative/cbam_*_TEST-DEMO*.json
 
 # safety: never add outer workspace repo
 /../Agentic_CBAM/
