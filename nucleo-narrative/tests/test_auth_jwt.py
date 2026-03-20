@@ -54,34 +54,6 @@ def test_health_is_public():
     assert response.status_code == 200
 
 
-def test_api_requires_token():
-    response = client.post("/api/cases/CASE-1/narrative/pipeline")
-    assert response.status_code == 401
-
-
-def test_api_accepts_valid_token(monkeypatch):
-    from narrative_app.api import pipeline as pipeline_module
-
-    monkeypatch.setattr(pipeline_module, "fetch_report_package", lambda _case_id, **kw: {"type": "report_package_v1"})
-    monkeypatch.setattr(
-        pipeline_module,
-        "generate_draft",
-        lambda _packet: {
-            "executive_summary": "ok",
-            "methodology": "ok",
-            "results": {},
-            "limitations": "ok",
-            "open_gaps": [],
-        },
-    )
-    monkeypatch.setattr(pipeline_module, "review_narrative", lambda draft: draft)
-    monkeypatch.setattr(pipeline_module, "gate", lambda _packet, _narrative: {"approved": True, "issues": []})
-
-    token = make_test_token(sub="alice", tenant_id="tenant-narrative", scopes=["narrative:run"])
-    response = client.post("/api/cases/CASE-1/narrative/pipeline", headers=_auth_header(token))
-    assert response.status_code == 200
-
-
 def test_invalid_audience_or_issuer_fails():
     bad_aud = _token_with(aud="wrong-audience")
     bad_iss = _token_with(iss="wrong-issuer")
@@ -97,13 +69,3 @@ def test_missing_tenant_id_fails():
     token = _token_with(tenant_id=None)
     response = client.get("/api/auth/context", headers=_auth_header(token))
     assert response.status_code == 401
-
-
-def test_pipeline_scope_enforced(monkeypatch):
-    from narrative_app.api import pipeline as pipeline_module
-
-    monkeypatch.setattr(pipeline_module, "fetch_report_package", lambda _case_id, **kw: {"type": "report_package_v1"})
-
-    token = make_test_token(sub="alice", tenant_id="tenant-narrative", scopes=[])
-    response = client.post("/api/cases/CASE-1/narrative/pipeline", headers=_auth_header(token))
-    assert response.status_code == 403

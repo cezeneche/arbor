@@ -2,7 +2,7 @@
 #   - Set strong secrets via .env (never commit .env):
 #       JWT_SECRET=<random 64-char hex>
 #       POSTGRES_PASSWORD=<strong password>
-#       S3_ACCESS_KEY / S3_SECRET_KEY=<rotated credentials>
+#       SUPABASE_SERVICE_KEY=<service role key>
 #   - Remove host port mappings below and front with a TLS-terminating
 #     reverse proxy (nginx/Caddy) in production.
 
@@ -62,14 +62,9 @@ services:
       # Security
       FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
       AUDIT_SIGNING_KEY: ${AUDIT_SIGNING_KEY}
-      # Storage
+      # Storage (Supabase Storage)
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
-      S3_BUCKET: ${S3_BUCKET:-scope3-evidence}
-      S3_REGION: ${S3_REGION:-us-east-1}
       # LLM (narrative pipeline — single Claude call)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
@@ -83,8 +78,6 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-      minio-setup:
-        condition: service_completed_successfully
     # Dev only: remove in production
     ports:
       - "8000:8000"
@@ -95,68 +88,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-
-  minio:
-    image: minio/minio:RELEASE.2024-03-15T01-07-19Z
-    command: server /data --console-address ":9001"
-    restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
-    volumes:
-      - minio_data:/data
-    # Dev only: remove host port mappings in production
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c ':>/dev/tcp/127.0.0.1/9000' 2>/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  minio-setup:
-    image: minio/mc:latest
-    depends_on:
-      minio:
-        condition: service_healthy
-    networks:
-      - internal
-    environment:
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
-      S3_BUCKET: ${S3_BUCKET:-scope3-evidence}
-    entrypoint: >
-      sh -c "
-        mc alias set local http://minio:9000 $$S3_ACCESS_KEY $$S3_SECRET_KEY &&
-        mc mb local/$$S3_BUCKET 2>/dev/null || true
-      "
-
-  backup:
-    image: python:3.12-slim
-    restart: unless-stopped
-    working_dir: /app
-    entrypoint: >
-      sh -c "pip install boto3 psycopg2-binary -q &&
-             while true; do python /scripts/backup.py; sleep 86400; done"
-    volumes:
-      - ./scripts:/scripts:ro
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
-      S3_BUCKET: ${S3_BUCKET:-scope3-evidence}
-      BACKUP_RETAIN_DAYS: ${BACKUP_RETAIN_DAYS:-30}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio-setup:
-        condition: service_completed_successfully
-    networks:
-      - internal
 
   web:
     build:
@@ -178,4 +109,3 @@ networks:
 
 volumes:
   postgres_data:
-  minio_data:

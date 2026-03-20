@@ -10,7 +10,6 @@ from shared_auth import get_auth_context
 from narrative_app.api.auth import public_router as auth_public_router
 from narrative_app.api.auth import protected_router as auth_protected_router
 from narrative_app.api.health import router as health_router
-from narrative_app.api.pipeline import router as pipeline_router
 from narrative_app.api.cbam_compliance import router as cbam_compliance_router
 from narrative_app.api.jobs import router as jobs_router
 
@@ -77,7 +76,6 @@ app.include_router(health_router, prefix="/api")
 app.include_router(health_router)
 app.include_router(auth_public_router)
 app.include_router(auth_protected_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(pipeline_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(cbam_compliance_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(jobs_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 

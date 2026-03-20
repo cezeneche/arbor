@@ -36,20 +36,22 @@ def test_cbam_compliance_pack_golden(monkeypatch, client):
     final_narrative = load_json(CBAM_NARRATIVE_FIXTURE)
     expected = load_json(CBAM_COMPLIANCE_FIXTURE)
 
-    from narrative_app.api import cbam_compliance as compliance_module
+    import app.services.narrative as narrative_module
     from narrative_app.services import compliance_pack as compliance_service
 
     monkeypatch.setattr(
-        compliance_module,
-        "fetch_cbam_report_package",
-        lambda case_id, **_: report_package if case_id == "TEST-CBAM" else {},
+        narrative_module,
+        "fetch_report_packet",
+        lambda case_id, packet_kind, request: report_package if case_id == "TEST-CBAM" else {},
     )
     monkeypatch.setattr(
-        compliance_module,
-        "_run_pipeline_stages",
-        lambda *, case_id, packet_kind="cbam", tenant_id="", trace_id=None: {
+        narrative_module,
+        "run_pipeline_stages",
+        lambda *, case_id, packet_kind="cbam", request, background_tasks=None: {
             "case_id": case_id,
             "final_narrative_json": final_narrative,
+            "human_review_required": False,
+            "stage_errors": [],
         },
     )
     monkeypatch.setattr(
@@ -78,17 +80,18 @@ def test_cbam_compliance_pack_blocking_returns_422(monkeypatch, client):
         },
     }
 
-    from narrative_app.api import cbam_compliance as compliance_module
+    import app.services.narrative as narrative_module
 
-    def fake_fetch_cbam_report_package(case_id: str, **_):
-        assert case_id == "TEST-CBAM-BLOCK"
-        return blocking_packet
-
-    def fail_pipeline(**_kwargs):
-        raise AssertionError("Pipeline should not run when blocking=true")
-
-    monkeypatch.setattr(compliance_module, "fetch_cbam_report_package", fake_fetch_cbam_report_package)
-    monkeypatch.setattr(compliance_module, "_run_pipeline_stages", fail_pipeline)
+    monkeypatch.setattr(
+        narrative_module,
+        "fetch_report_packet",
+        lambda case_id, packet_kind, request: blocking_packet,
+    )
+    monkeypatch.setattr(
+        narrative_module,
+        "run_pipeline_stages",
+        lambda **_: (_ for _ in ()).throw(AssertionError("Pipeline should not run when blocking=true")),
+    )
 
     response = client.post("/api/cbam/cases/TEST-CBAM-BLOCK/compliance-pack")
     assert response.status_code == 422, response.text
