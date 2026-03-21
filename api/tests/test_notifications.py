@@ -19,7 +19,6 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-import pytest
 
 
 # ── Mock factory ──────────────────────────────────────────────────────────────
@@ -68,21 +67,13 @@ class TestNotifyReviewRequired:
         payload   = client.post.call_args[1]["json"]
 
         assert call_url == "https://hooks.slack.com/test-webhook"
-        # Top-level text fallback contains case ID and tenant name
+        # Fallback text carries all identity info (no repetition in blocks)
         assert "case-001"       in payload["text"]
         assert "Acme Steel Ltd" in payload["text"]
-        # Attachment has blocks
+        # Attachment blocks: issues section + action button only
         blocks = payload["attachments"][0]["blocks"]
-        # Metadata section: single section containing company name, case ID link, no duplicates
-        meta_block = next(b for b in blocks if b["type"] == "section" and "text" in b)
-        meta_text = meta_block["text"]["text"]
-        assert "case-001"       in meta_text
-        assert "Acme Steel Ltd" in meta_text
         # Issues section contains the flag string
-        flag_block = next(
-            b for b in blocks
-            if b["type"] == "section" and "text" in b and flags[0] in b["text"]["text"]
-        )
+        flag_block = next(b for b in blocks if b["type"] == "section")
         assert flags[0] in flag_block["text"]["text"]
         # Action button deep-links to the case
         action_block = next(b for b in blocks if b["type"] == "actions")

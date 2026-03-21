@@ -338,15 +338,7 @@ def _schedule_review_notification(
     try:
         from app.services.notifications import notify_review_required
 
-        case_data   = packet.get("case") or {}
-        tenant_name = case_data.get("importer_name") or "Unknown Tenant"
-        eori        = case_data.get("importer_eori") or ""
-        year        = case_data.get("reporting_year")
-        quarter     = case_data.get("reporting_quarter")
-        period      = (f"Q{quarter} {year}" if quarter else str(year)) if year else ""
-        sector      = case_data.get("sector") or ""
-        shipments   = packet.get("shipments") or []
-        goods_lines = sum(len(s.get("goods", [])) for s in shipments) or None
+        tenant_name = (packet.get("case") or {}).get("importer_name") or "Unknown Tenant"
         base_url    = os.getenv("BASE_URL", "")
         background_tasks.add_task(
             notify_review_required,
@@ -354,10 +346,6 @@ def _schedule_review_notification(
             tenant_name=tenant_name,
             flags=flags,
             base_url=base_url,
-            eori=eori,
-            period=period,
-            sector=sector,
-            goods_lines_count=goods_lines,
         )
     except Exception as exc:
         log.debug("_schedule_review_notification: skipped (non-fatal): %s", exc)
