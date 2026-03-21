@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LEDGER_URL="${LEDGER_URL:-http://127.0.0.1:8000}"
-NARRATIVE_URL="${NARRATIVE_URL:-http://127.0.0.1:8001}"
 EORI="${EORI:-GBDEMO$RANDOM$RANDOM}"
 INVOICE="${INVOICE:-INV-DEMO-$RANDOM}"
 YEAR="${YEAR:-2026}"
@@ -26,7 +25,7 @@ TODAY="$(date +%F)"
 
 echo "0) Minting dev JWT token..."
 TOKEN_CODE="$(curl -sS -o "$TMP_TOKEN" -w "%{http_code}" \
-  -X POST "$LEDGER_URL/auth/token" \
+  -X POST "$LEDGER_URL/api/auth/token" \
   -H "Content-Type: application/json" \
   -d '{"sub":"demo-user","tenant_id":"demo-tenant","scopes":["narrative:run"]}')"
 if [[ "$TOKEN_CODE" != "200" ]]; then
@@ -34,7 +33,7 @@ if [[ "$TOKEN_CODE" != "200" ]]; then
   cat "$TMP_TOKEN" >&2
   exit 1
 fi
-TOKEN="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[\"access_token\"])' "$TMP_TOKEN")"
+TOKEN="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["access_token"])' "$TMP_TOKEN")"
 AUTH_HEADER="Authorization: Bearer $TOKEN"
 
 cat > "$TMP_PAYLOAD" <<JSON
@@ -124,7 +123,7 @@ fi
 
 echo "3) Running narrative pipeline..."
 PIPELINE_CODE="$(curl -sS -o "$TMP_PIPELINE" -w "%{http_code}" \
-  -X POST "$NARRATIVE_URL/api/cases/$CASE_ID/narrative/pipeline?packet_kind=cbam" \
+  -X POST "$LEDGER_URL/api/cases/$CASE_ID/narrative/pipeline?packet_kind=cbam" \
   -H "$AUTH_HEADER")"
 if [[ "$PIPELINE_CODE" != "200" ]]; then
   echo "Narrative pipeline failed (HTTP $PIPELINE_CODE)" >&2
@@ -138,7 +137,7 @@ python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); fn=d.get("final_nar
 
 echo "4) Generating compliance pack..."
 COMPLIANCE_CODE="$(curl -sS -o "$COMPLIANCE_OUT" -w "%{http_code}" \
-  -X POST "$NARRATIVE_URL/api/cbam/cases/$CASE_ID/compliance-pack" \
+  -X POST "$LEDGER_URL/api/cbam/cases/$CASE_ID/compliance-pack" \
   -H "$AUTH_HEADER")"
 if [[ "$COMPLIANCE_CODE" != "200" ]]; then
   echo "Compliance pack generation failed (HTTP $COMPLIANCE_CODE)" >&2
