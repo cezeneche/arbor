@@ -1153,6 +1153,15 @@ def _build_case_shipments_payload(conn: Connection, case_id: UUID) -> list[dict[
                 {"goods_line_id": str(goods_line["id"])},
             ).mappings().all()
             latest_emissions = dict(emissions_rows[0]) if emissions_rows else None
+            if latest_emissions is not None:
+                # Normalize Supabase short column names to canonical keys used
+                # throughout compliance_pack, eu_xml_builder, and report_validator.
+                # cbam_emissions stores direct_kgco2e / indirect_kgco2e;
+                # downstream code expects direct_embedded_kgco2e / indirect_embedded_kgco2e.
+                if "direct_kgco2e" in latest_emissions and "direct_embedded_kgco2e" not in latest_emissions:
+                    latest_emissions["direct_embedded_kgco2e"] = latest_emissions["direct_kgco2e"]
+                if "indirect_kgco2e" in latest_emissions and "indirect_embedded_kgco2e" not in latest_emissions:
+                    latest_emissions["indirect_embedded_kgco2e"] = latest_emissions["indirect_kgco2e"]
             goods_payload.append(
                 {
                     "goods_line": goods_line,
