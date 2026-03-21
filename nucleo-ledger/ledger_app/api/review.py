@@ -225,7 +225,7 @@ def approve_case(
         conn.execute(
             text("""
                 UPDATE cbam.cbam_cases
-                SET review_status = 'approved', status = 'signed_off', updated_at = NOW()
+                SET review_status = 'approved', status = 'approved', updated_at = NOW()
                 WHERE id = :id
             """),
             {"id": case_id},

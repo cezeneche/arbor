@@ -1,7 +1,7 @@
 """Fire-and-forget notification service for the Nucleos CBAM platform.
 
 Flow 1 — notify_review_required
-    Slack Block Kit POST to SLACK_INTERNAL_WEBHOOK_URL when a narrative validation
+    Slack Block Kit POST to SLACK_WEBHOOK_URL when a narrative validation
     sets human_review_required = True.  Called via FastAPI BackgroundTasks from the
     narrative pipeline route so the HTTP response is returned first.
 
@@ -13,18 +13,18 @@ Flow 2 — notify_report_ready
 Design contract (both functions):
   - async — single httpx.AsyncClient POST per call
   - fire-and-forget: NEVER raise.  All errors are logged at ERROR level and swallowed.
-  - no-op when the required env var is absent (SLACK_INTERNAL_WEBHOOK_URL / RESEND_API_KEY)
+  - no-op when the required env var is absent (SLACK_WEBHOOK_URL / RESEND_API_KEY)
   - no database access — callers are responsible for supplying context data
 
 Env vars
 --------
-SLACK_INTERNAL_WEBHOOK_URL  Slack Incoming Webhook for the internal compliance team.
-RESEND_API_KEY              Resend secret key (re_live_… or re_test_…).
-RESEND_FROM_EMAIL           Verified sender address (default: reports@nucleos.io).
-SUPPORT_EMAIL               Nucleos support address shown in email footer (default: support@nucleos.io).
-BASE_URL                    Public application base URL, e.g. https://app.nucleos.io.
-                            Used for building case deep-links if the caller does not
-                            supply base_url explicitly.
+SLACK_WEBHOOK_URL  Slack Incoming Webhook for the internal compliance team.
+RESEND_API_KEY     Resend secret key (re_live_… or re_test_…).
+RESEND_FROM_EMAIL  Verified sender address (default: reports@nucleos.io).
+SUPPORT_EMAIL      Nucleos support address shown in email footer (default: support@nucleos.io).
+BASE_URL           Public application base URL, e.g. https://app.nucleos.io.
+                   Used for building case deep-links if the caller does not
+                   supply base_url explicitly.
 """
 from __future__ import annotations
 
@@ -62,10 +62,10 @@ async def notify_review_required(
     base_url    : Override for the application base URL used in the deep-link.
                   Falls back to the BASE_URL environment variable.
     """
-    webhook_url = os.getenv("SLACK_INTERNAL_WEBHOOK_URL", "").strip()
+    webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
     if not webhook_url:
         log.warning(
-            "notify_review_required: SLACK_INTERNAL_WEBHOOK_URL is not set — skipping"
+            "notify_review_required: SLACK_WEBHOOK_URL is not set — skipping"
         )
         return
 
