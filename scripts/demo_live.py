@@ -11,7 +11,7 @@ Usage
 -----
   # 1. Set required env vars in .env (or export them):
   #      ANTHROPIC_API_KEY   — real Claude key (narrative generation)
-  #      SLACK_INTERNAL_WEBHOOK_URL — your Slack incoming webhook
+  #      SLACK_WEBHOOK_URL — your Slack incoming webhook
   #      RESEND_API_KEY      — your Resend secret key
   #      RESEND_FROM_EMAIL   — verified sender address
   #      DATABASE_URL        — postgresql+psycopg2://... (Supabase)
@@ -109,7 +109,7 @@ def mint_token(client: httpx.Client) -> str:
 # ── Notification helpers (use real external services) ─────────────────────────
 
 async def fire_slack(case_id: str, tenant_name: str, flags: list[str]) -> None:
-    """Fire a real Slack Block Kit notification to SLACK_INTERNAL_WEBHOOK_URL."""
+    """Fire a real Slack Block Kit notification to SLACK_WEBHOOK_URL."""
     from app.services.notifications import notify_review_required
     await notify_review_required(
         case_id=case_id,
@@ -334,9 +334,9 @@ def run_cement_scenario(client: httpx.Client) -> None:
         error(f"Unexpected status {r.status_code}: {r.text[:300]}")
 
     step(4, "Firing Slack human-review alert to compliance team")
-    slack_url = os.getenv("SLACK_INTERNAL_WEBHOOK_URL", "")
+    slack_url = os.getenv("SLACK_WEBHOOK_URL", "")
     if not slack_url:
-        warn("SLACK_INTERNAL_WEBHOOK_URL not set — skipping real Slack call.")
+        warn("SLACK_WEBHOOK_URL not set — skipping real Slack call.")
         warn("Set it to an Incoming Webhook URL to see the notification in Slack.")
     else:
         asyncio.run(fire_slack(
@@ -554,16 +554,12 @@ def main() -> None:
     os.environ.setdefault("AUTH_DEV_TOKEN_ENDPOINT", "true")
     os.environ.setdefault("CBAM_REGISTRATION_SCHEDULER", "false")
 
-    # Allow SLACK_WEBHOOK_URL (legacy name in .env.example) to drive notifications
-    if not os.getenv("SLACK_INTERNAL_WEBHOOK_URL") and os.getenv("SLACK_WEBHOOK_URL"):
-        os.environ["SLACK_INTERNAL_WEBHOOK_URL"] = os.environ["SLACK_WEBHOOK_URL"]
-
     print(f"\n{BOLD}{CYAN}══════════════════════════════════════════════════════════════════════{RESET}")
     print(f"{BOLD}{CYAN}  núcleo CBAM Compliance Platform — Live Demo{RESET}")
     print(f"{BOLD}{CYAN}══════════════════════════════════════════════════════════════════════{RESET}")
     print(f"\n  {DIM}API endpoint:     {API_URL}{RESET}")
     print(f"  {DIM}Demo tenant ID:   {DEMO_TENANT}{RESET}")
-    print(f"  {DIM}Slack webhook:    {'SET  ✓' if os.getenv('SLACK_INTERNAL_WEBHOOK_URL') else 'NOT SET  ← set SLACK_INTERNAL_WEBHOOK_URL'}{RESET}")
+    print(f"  {DIM}Slack webhook:    {'SET  ✓' if os.getenv('SLACK_WEBHOOK_URL') else 'NOT SET  ← set SLACK_WEBHOOK_URL'}{RESET}")
     print(f"  {DIM}Resend key:       {'SET  ✓' if os.getenv('RESEND_API_KEY') else 'NOT SET  ← set RESEND_API_KEY'}{RESET}")
     print(f"  {DIM}Recipient email:  {RECIPIENT_EMAIL or 'NOT SET  ← set RECIPIENT_EMAIL'}{RESET}")
     print(f"  {DIM}Claude key:       {'SET  ✓' if os.getenv('ANTHROPIC_API_KEY') else 'NOT SET  ← narrative will fail'}{RESET}")
