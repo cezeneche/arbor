@@ -16,6 +16,10 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Editable install build artifacts
+*.egg-info/
+**/*.egg-info/
+
 # Logs / outputs
 *.log
 narrative_output.json
