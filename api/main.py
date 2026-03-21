@@ -16,36 +16,18 @@ Startup sequence (lifespan):
   1. Supabase clients initialised (if SUPABASE_URL set)
   2. Annex VI emission factors seeded into DB (idempotent)
 """
-import sys
-from pathlib import Path as _Path
-
-# Ensure sibling packages (ledger_app, shared_auth) are importable
-# regardless of the working directory uvicorn is launched from.
-_repo_root = _Path(__file__).resolve().parent.parent
-for _pkg in (_repo_root, _repo_root / "nucleo-ledger"):
-    _pkg_str = str(_pkg)
-    if _pkg_str not in sys.path:
-        sys.path.insert(0, _pkg_str)
-
-# Load .env from the repo root before any config module runs load_dotenv(),
-# which defaults to CWD and breaks when uvicorn is started with --app-dir.
-from dotenv import load_dotenv as _load_dotenv
-_load_dotenv(_repo_root / ".env")
-
 import logging
-import os
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
-from ledger_app.core.config import optional_startup_warnings, validate_startup_config
-from shared_auth import get_auth_context
+from ledger_app.core.config import AppConfig, optional_startup_warnings, validate_startup_config
 
 # ── Standard Python logging → stdout (readable in Supabase logs + any cloud) ──
 logging.basicConfig(
@@ -64,7 +46,7 @@ _log = logging.getLogger("nucleos")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ────────────────────────────────────────────────────────────────
-    if os.getenv("SUPABASE_URL"):
+    if AppConfig.supabase_enabled():
         try:
             from ledger_app.db.supabase_client import init_clients
             await init_clients()
@@ -95,7 +77,7 @@ async def lifespan(app: FastAPI):
     # Uses BackgroundScheduler (thread-based) so that the synchronous
     # SQLAlchemy engine calls do not block the asyncio event loop.
     _scheduler = None
-    if os.getenv("CBAM_REGISTRATION_SCHEDULER", "true").strip().lower() not in ("0", "false", "no"):
+    if AppConfig.registration_scheduler_enabled():
         try:
             from apscheduler.schedulers.background import BackgroundScheduler
             from apscheduler.triggers.cron import CronTrigger
@@ -135,7 +117,7 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    if os.getenv("SUPABASE_URL"):
+    if AppConfig.supabase_enabled():
         try:
             from ledger_app.db.supabase_client import close_clients
             await close_clients()
@@ -150,12 +132,12 @@ from ledger_app.core.telemetry import setup_telemetry
 setup_telemetry(app)
 
 # ── HTTPS redirect (production) ───────────────────────────────────────────────
-if os.getenv("FORCE_HTTPS", "").strip().lower() in ("1", "true", "yes"):
+if AppConfig.force_https():
     from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
     app.add_middleware(HTTPSRedirectMiddleware)
 
 # ── Tenant context middleware (sets app.current_tenant_id for RLS) ────────────
-if os.getenv("SUPABASE_URL"):
+if AppConfig.supabase_enabled():
     from ledger_app.middleware.tenant_context import TenantContextMiddleware
     app.add_middleware(TenantContextMiddleware)
 
@@ -163,10 +145,10 @@ for warning in optional_startup_warnings():
     _log.warning(warning)
 
 # Warn about missing narrative LLM key
-if not os.getenv("ANTHROPIC_API_KEY"):
+if not AppConfig.narrative_enabled():
     _log.warning("ANTHROPIC_API_KEY is not set; narrative pipeline will fail.")
 
-_MAX_REQUEST_SIZE = int(os.getenv("MAX_REQUEST_SIZE_BYTES", str(10 * 1024 * 1024)))
+_MAX_REQUEST_SIZE = AppConfig.max_request_size_bytes()
 
 
 @app.middleware("http")
@@ -204,70 +186,9 @@ async def db_error_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-# ── Ledger routers (17) ────────────────────────────────────────────────────────
-from ledger_app.api.audit import router as audit_router
-from ledger_app.api.auth import protected_router as auth_protected_router
-from ledger_app.api.auth import router as auth_router
-from ledger_app.api.bundle import router as bundle_router
-from ledger_app.api.calculate import router as calculate_router
-from ledger_app.api.case_index import router as case_index_router
-from ledger_app.api.cases import router as cases_router
-from ledger_app.api.cbam import router as cbam_router
-from ledger_app.api.db_check import router as db_check_router
-from ledger_app.api.documents import router as documents_router
-from ledger_app.api.extract import router as extract_router
-from ledger_app.api.gaps import router as gaps_router
-from ledger_app.api.health import router as health_router
-from ledger_app.api.llama_test import router as llama_test_router
-from ledger_app.api.report_package import router as report_package_router
-from ledger_app.api.resolve import router as resolve_router
-from ledger_app.api.review import router as review_router
-from ledger_app.api.storage_check import router as storage_check_router
-
-from app.core.health import router as deep_health_router
-app.include_router(deep_health_router)
-app.include_router(health_router, prefix="/api")
-app.include_router(health_router)  # root /health + /ready (no prefix)
-app.include_router(auth_router, prefix="/api")
-app.include_router(auth_protected_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(db_check_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(storage_check_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(llama_test_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(cases_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(documents_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(case_index_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(extract_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(calculate_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(bundle_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(gaps_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(resolve_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(report_package_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(cbam_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(audit_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(review_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-
-from app.api.cbam_compliance import router as cbam_compliance_router
-from app.api.cpr import router as cpr_router
-from app.api.public_tools import router as public_tools_router
-from app.api.registration import router as registration_router
-from app.api.supplier_outreach import router as supplier_outreach_router
-from app.api.verification import router as verification_router
-from app.api.narrative_pipeline import router as narrative_pipeline_router
-
-# Public endpoints — no auth dependency
-app.include_router(public_tools_router, prefix="/api")
-
-app.include_router(cpr_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(registration_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(supplier_outreach_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(verification_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(
-    cbam_compliance_router, prefix="/api", dependencies=[Depends(get_auth_context)]
-)
-app.include_router(
-    narrative_pipeline_router, prefix="/api", dependencies=[Depends(get_auth_context)]
-)
-
+# ── Routers (core + ledger + platform) ───────────────────────────────────────
+from app.routers import register_all as _register_all
+_register_all(app)
 
 
 # ── Static files + public tool page ───────────────────────────────────────────

@@ -22,6 +22,11 @@ if _API_DIR not in sys.path:
     sys.path.insert(0, _API_DIR)
 
 # ── Test environment defaults (before any app import) ──────────────────────────
+# Pre-claim TEST_DATABASE_URL so that load_dotenv() (called at module level in
+# ledger_app/core/config.py) cannot overwrite it with the repo's .env value and
+# cause test_full_pipeline.py to evaluate _HAS_POSTGRES=True when no real
+# Postgres was explicitly provided by the caller.
+os.environ.setdefault("TEST_DATABASE_URL", "")
 os.environ.setdefault(
     "DATABASE_URL",
     os.environ.get("TEST_DATABASE_URL", "sqlite:///./test_full_pipeline.db"),

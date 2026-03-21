@@ -100,8 +100,8 @@ def get_prev_chain_hmac(case_id: str, conn: Any) -> str | None:
 
     row = conn.execute(
         text("""
-            SELECT hmac_sha256 FROM audit_log
-            WHERE case_id = :case_id AND hmac_sha256 IS NOT NULL
+            SELECT signature FROM cbam.audit_log
+            WHERE case_id = :case_id AND signature IS NOT NULL
             ORDER BY created_at DESC
             LIMIT 1
         """),

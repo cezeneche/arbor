@@ -12,6 +12,6 @@ fi
 
 "${VENV_DIR}/bin/python" -m pip install --upgrade pip
 "${VENV_DIR}/bin/pip" install -r "${ROOT_DIR}/nucleo-ledger/requirements.txt"
-"${VENV_DIR}/bin/pip" install -r "${ROOT_DIR}/nucleo-narrative/requirements.txt"
+"${VENV_DIR}/bin/pip" install -r "${ROOT_DIR}/api/requirements.txt"
 
-echo "Installed nucleo-ledger and nucleo-narrative dependencies into ${VENV_DIR}"
+echo "Installed all dependencies into ${VENV_DIR}"

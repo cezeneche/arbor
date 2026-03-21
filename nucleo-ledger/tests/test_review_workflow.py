@@ -67,19 +67,16 @@ class _FakeConnBase:
         return self._dispatch(sql, params)
 
     def _dispatch(self, sql: str, params: dict) -> "_FakeResult":
-        # --- cases SELECT ---
-        if "SELECT review_status FROM cases" in sql:
-            if params.get("id") == CASE_ID:
+        # --- cbam_cases SELECT ---
+        if "FROM cbam.cbam_cases" in sql:
+            if params.get("id") == CASE_ID or params.get("case_id") == CASE_ID:
+                if "review_status, status" in sql:
+                    return _FakeResult(row=(self.review_status, self.case_status))
                 return _FakeResult(row=(self.review_status,))
             return _FakeResult(row=None)
 
-        if "SELECT review_status, status FROM cases" in sql:
-            if params.get("id") == CASE_ID:
-                return _FakeResult(row=(self.review_status, self.case_status))
-            return _FakeResult(row=None)
-
-        # --- cases UPDATE ---
-        if "UPDATE cases" in sql:
+        # --- cbam_cases UPDATE ---
+        if "UPDATE cbam.cbam_cases" in sql:
             if "review_status = 'pending_review'" in sql:
                 self.review_status = "pending_review"
             elif "review_status = 'approved'" in sql:
@@ -91,20 +88,8 @@ class _FakeConnBase:
                 self.review_status = None
             return _FakeResult()
 
-        # --- signoffs INSERT ---
-        if "INSERT INTO signoffs" in sql:
-            return _FakeResult(mapping={"id": SIGNOFF_ID, "created_at": "2025-01-01"})
-
-        # --- audit_log INSERT ---
-        if "INSERT INTO audit_log" in sql:
-            return _FakeResult()
-
-        # --- audit_log SELECT (for get_prev_chain_hmac) ---
-        if "SELECT hmac_sha256 FROM audit_log" in sql:
-            return _FakeResult(row=None)
-
-        # --- signoffs SELECT (history) ---
-        if "SELECT" in sql and "FROM signoffs" in sql:
+        # --- cbam.audit_log SELECT (signoff history) ---
+        if "FROM cbam.audit_log" in sql:
             return _FakeResult(rows=[])
 
         raise AssertionError(f"Unexpected SQL in test: {sql!r}")
@@ -171,10 +156,9 @@ class _FakeEngine:
 def _make_review_client(conn: _FakeConnBase) -> TestClient:
     """Build a TestClient with the review router and auth dependency."""
     monkeypatched_engine = _FakeEngine(conn)
-    review_module.engine = monkeypatched_engine
-    # Patch sign_event and get_prev_chain_hmac so no HMAC key needed
-    review_module.sign_event = lambda *a, **kw: "fake-sig"
-    review_module.get_prev_chain_hmac = lambda *a, **kw: None
+    review_module._cbam_engine = monkeypatched_engine
+    # Patch _write_audit_event so no real DB / HMAC key is needed
+    review_module._write_audit_event = lambda *a, **kw: None
 
     app = FastAPI()
     app.include_router(
@@ -295,7 +279,6 @@ class TestApproveEndpoint:
         data = resp.json()
         assert data["decision"] == "approved"
         assert data["case_id"] == CASE_ID
-        assert "signoff_id" in data
         assert conn.review_status == "approved"
         assert conn.case_status == "signed_off"
 

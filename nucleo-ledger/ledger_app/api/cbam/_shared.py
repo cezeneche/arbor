@@ -459,17 +459,17 @@ def _write_audit_event(
                              prev_hmac=prev_hmac)
             conn.execute(
                 text("""
-                    INSERT INTO audit_log
-                        (case_id, event_type, actor_type, actor_sub,
-                         event_json, hmac_sha256, prev_hmac)
+                    INSERT INTO cbam.audit_log
+                        (case_id, event_type, actor,
+                         payload, signature, chain_hash)
                     VALUES
-                        (:case_id, :event_type, 'system', :actor_sub,
+                        (:case_id, :event_type, :actor,
                          CAST(:event_json AS jsonb), :sig, :prev_hmac)
                 """),
                 {
                     "case_id": case_id,
                     "event_type": event_type,
-                    "actor_sub": actor_sub,
+                    "actor": actor_sub,
                     "event_json": event_json,
                     "sig": sig,
                     "prev_hmac": prev_hmac,

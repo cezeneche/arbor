@@ -23,9 +23,6 @@ COPY shared_auth ./shared_auth
 # Ledger application package (17 routers + all services)
 COPY nucleo-ledger/ledger_app ./ledger_app
 
-# Narrative application package (LLM services + auth/jobs/compliance routers)
-COPY nucleo-narrative/narrative_app ./narrative_app
-
 # Consolidated app package (narrative pipeline router + service layer)
 COPY api/app ./app
 

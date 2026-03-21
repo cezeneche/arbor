@@ -1,21 +1,24 @@
 """
-Human review workflow for the narrative gate.
+Human review workflow for the CBAM narrative gate.
 
-When the Gemini gate flags a narrative as requiring human review, the narrative
-service calls POST /cases/{id}/review/flag to persist the pending state.
-A reviewer then approves or rejects via the endpoints here. The bundle endpoint
-checks review_status and blocks submission while 'pending_review'.
+The narrative pipeline (api/app/services/narrative.py) calls flag_for_review /
+clear_review_flag directly in-process after the deterministic validator runs.
+A reviewer then approves or rejects via the endpoints here.
+
+All state is stored in cbam.cbam_cases.review_status.  Signoff records are
+written as structured events to cbam.audit_log via _write_audit_event so they
+participate in the HMAC audit chain without requiring a separate signoffs table.
 
 Endpoints:
-    POST /cases/{case_id}/review/flag     — internal; called by narrative service
+    POST /cases/{case_id}/review/flag     — internal; called by narrative pipeline
     POST /cases/{case_id}/review/clear    — internal; called after pipeline re-run passes
     POST /cases/{case_id}/review/approve  — reviewer action (review:write scope)
     POST /cases/{case_id}/review/reject   — reviewer action (review:write scope)
     GET  /cases/{case_id}/review          — status + signoff history (cbam:read scope)
 
-State machine for review_status:
+State machine for review_status on cbam.cbam_cases:
     null → pending_review (flag)
-    pending_review → approved  (approve; terminal — cases.status → signed_off)
+    pending_review → approved  (approve; terminal — cbam_cases.status → signed_off)
     pending_review → rejected  (reject)
     rejected → null            (clear, after pipeline re-run passes)
     rejected/pending_review → pending_review  (flag, after pipeline re-run fails)
@@ -23,7 +26,6 @@ State machine for review_status:
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 
@@ -33,20 +35,19 @@ from sqlalchemy import text
 
 log = logging.getLogger("nucleos.review")
 
-from ledger_app.db.session import engine
-from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
+from ledger_app.api.cbam._shared import engine as _cbam_engine, _write_audit_event
 from shared_auth.dependencies import require_scopes
 from shared_auth.models import AuthContext
 
 router = APIRouter()
 
-_REVIEW_WRITABLE_STATES = frozenset({"pending_review", "rejected", None})
 
+# ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _get_case_review_status(conn, case_id: str) -> str | None:
-    """Fetch review_status for case_id. Raises 404 if not found."""
+    """Fetch review_status from cbam.cbam_cases. Raises 404 if not found."""
     row = conn.execute(
-        text("SELECT review_status FROM cases WHERE id = :id"),
+        text("SELECT review_status FROM cbam.cbam_cases WHERE id = :id LIMIT 1"),
         {"id": case_id},
     ).fetchone()
     if row is None:
@@ -54,99 +55,13 @@ def _get_case_review_status(conn, case_id: str) -> str | None:
     return row[0]
 
 
-def _write_review_audit(conn, case_id: str, event_type: str, actor_sub: str, payload: dict) -> None:
-    """Append a signed+chained audit entry for a review state change."""
-    event_str = json.dumps(payload, sort_keys=True)
-    prev = get_prev_chain_hmac(case_id, conn)
-    sig = sign_event(case_id, event_type, actor_sub, event_str, prev_hmac=prev)
-    conn.execute(
-        text("""
-            INSERT INTO audit_log
-                (case_id, event_type, actor_type, actor_sub, event_json, hmac_sha256, prev_hmac)
-            VALUES
-                (:case_id, :event_type, 'system', :sub,
-                 CAST(:event AS jsonb), :sig, :prev)
-        """),
-        {
-            "case_id": case_id,
-            "event_type": event_type,
-            "sub": actor_sub,
-            "event": event_str,
-            "sig": sig,
-            "prev": prev,
-        },
-    )
-
-
-# ── Internal endpoints (called by narrative service, scope: cbam:write) ────────
-
-@router.post("/cases/{case_id}/review/flag", status_code=204)
-def flag_for_review(
-    case_id: str,
-    auth_context: AuthContext = Depends(require_scopes(["cbam:write"])),
-):
-    """
-    Set review_status = 'pending_review'.
-
-    Idempotent — safe to call multiple times. No-op if already 'approved'
-    (approved is terminal and cannot be re-flagged).
-    """
-    with engine.begin() as conn:
-        current = _get_case_review_status(conn, case_id)
-        if current == "approved":
-            return  # terminal — do not re-flag
-        if current == "pending_review":
-            return  # already flagged — idempotent
-        conn.execute(
-            text("""
-                UPDATE cases
-                SET review_status = 'pending_review', updated_at = NOW()
-                WHERE id = :id
-            """),
-            {"id": case_id},
-        )
-        _write_review_audit(
-            conn, case_id, "narrative_review_required", auth_context.sub,
-            {"review_status": "pending_review"},
-        )
-
-
-@router.post("/cases/{case_id}/review/clear", status_code=204)
-def clear_review_flag(
-    case_id: str,
-    auth_context: AuthContext = Depends(require_scopes(["cbam:write"])),
-):
-    """
-    Clear review_status back to NULL after a successful pipeline re-run.
-
-    Only clears 'pending_review' or 'rejected'. Never touches 'approved'.
-    """
-    with engine.begin() as conn:
-        current = _get_case_review_status(conn, case_id)
-        if current not in ("pending_review", "rejected"):
-            return  # nothing to clear (null or approved)
-        conn.execute(
-            text("""
-                UPDATE cases
-                SET review_status = NULL, updated_at = NOW()
-                WHERE id = :id AND review_status IN ('pending_review', 'rejected')
-            """),
-            {"id": case_id},
-        )
-        _write_review_audit(
-            conn, case_id, "review_cleared", auth_context.sub,
-            {"review_status": None, "reason": "pipeline_auto_cleared"},
-        )
-
-
-# ── Notification helpers ─────────────────────────────────────────────────────────
+# ── Notification helpers ──────────────────────────────────────────────────────
 
 def _fetch_cbam_case_notification_data(case_id: str) -> dict:
     """Best-effort: return CBAM case details needed for the approval email.
 
-    Queries cbam.cbam_cases + cbam.cbam_registration using the CBAM engine.
-    Returns an empty dict on any failure (e.g. not a CBAM case, SQLite test DB,
-    missing schema).  All exceptions are swallowed — callers must handle {} gracefully.
+    Queries cbam.cbam_cases + cbam.cbam_registration.
+    Returns an empty dict on any failure.  All exceptions are swallowed.
 
     Returned keys (all optional / may be None):
         period        : "2027 Annual" or "Q1 2028"
@@ -154,8 +69,6 @@ def _fetch_cbam_case_notification_data(case_id: str) -> dict:
         tenant_name   : display name from cbam_registration or cbam_cases
     """
     try:
-        from ledger_app.api.cbam._shared import engine as _cbam_engine
-
         with _cbam_engine.connect() as conn:
             row = conn.execute(
                 text("""
@@ -165,7 +78,7 @@ def _fetch_cbam_case_notification_data(case_id: str) -> dict:
                         COALESCE(r.business_name, c.importer_name) AS tenant_name,
                         (r.business_address::jsonb)->>'email'       AS contact_email
                     FROM   cbam.cbam_cases c
-                    LEFT JOIN cbam.cbam_registration r ON r.tenant_id = c.tenant_id
+                    LEFT JOIN cbam.cbam_registration r ON r.tenant_id = c.tenant_id::uuid
                     WHERE  c.id = :case_id
                     LIMIT  1
                 """),
@@ -209,8 +122,6 @@ def _schedule_report_notification(case_id: str, background_tasks: BackgroundTask
             case_id=case_id,
             recipient_email=data.get("contact_email"),
             period=data.get("period", ""),
-            # Callers with access to the computed HMRC return can pass the exact figure;
-            # this endpoint uses a safe fallback — the full amount is in the report itself.
             total_liability_gbp_str="See your compliance report",
             base_url=os.getenv("BASE_URL", ""),
         )
@@ -218,7 +129,70 @@ def _schedule_report_notification(case_id: str, background_tasks: BackgroundTask
         log.debug("_schedule_report_notification: failed (non-fatal): %s", exc)
 
 
-# ── Reviewer endpoints (scope: review:write) ────────────────────────────────────
+# ── Internal endpoints (called by narrative pipeline, scope: cbam:write) ──────
+
+@router.post("/cases/{case_id}/review/flag", status_code=204)
+def flag_for_review(
+    case_id: str,
+    auth_context: AuthContext = Depends(require_scopes(["cbam:write"])),
+):
+    """
+    Set review_status = 'pending_review' on cbam.cbam_cases.
+
+    Idempotent — safe to call multiple times. No-op if already 'approved'
+    (approved is terminal and cannot be re-flagged).
+    """
+    with _cbam_engine.begin() as conn:
+        current = _get_case_review_status(conn, case_id)
+        if current == "approved":
+            return  # terminal — do not re-flag
+        if current == "pending_review":
+            return  # already flagged — idempotent
+        conn.execute(
+            text("""
+                UPDATE cbam.cbam_cases
+                SET review_status = 'pending_review', updated_at = NOW()
+                WHERE id = :id
+            """),
+            {"id": case_id},
+        )
+    _write_audit_event(
+        case_id, "narrative_review_required",
+        {"review_status": "pending_review"},
+        actor_sub=auth_context.sub,
+    )
+
+
+@router.post("/cases/{case_id}/review/clear", status_code=204)
+def clear_review_flag(
+    case_id: str,
+    auth_context: AuthContext = Depends(require_scopes(["cbam:write"])),
+):
+    """
+    Clear review_status back to NULL after a successful pipeline re-run.
+
+    Only clears 'pending_review' or 'rejected'. Never touches 'approved'.
+    """
+    with _cbam_engine.begin() as conn:
+        current = _get_case_review_status(conn, case_id)
+        if current not in ("pending_review", "rejected"):
+            return  # nothing to clear (null or approved)
+        conn.execute(
+            text("""
+                UPDATE cbam.cbam_cases
+                SET review_status = NULL, updated_at = NOW()
+                WHERE id = :id AND review_status IN ('pending_review', 'rejected')
+            """),
+            {"id": case_id},
+        )
+    _write_audit_event(
+        case_id, "review_cleared",
+        {"review_status": None, "reason": "pipeline_auto_cleared"},
+        actor_sub=auth_context.sub,
+    )
+
+
+# ── Reviewer endpoints (scope: review:write) ──────────────────────────────────
 
 class ReviewDecisionBody(BaseModel):
     reviewer_name: str
@@ -236,12 +210,11 @@ def approve_case(
     """
     Approve a case pending human review.
 
-    - Inserts a signoff record (decision='approved')
-    - Sets cases.review_status = 'approved'
-    - Advances cases.status = 'signed_off'
-    - Writes a signed audit log entry
+    - Sets cbam_cases.review_status = 'approved'
+    - Sets cbam_cases.status = 'signed_off'
+    - Writes a signed signoff event to cbam.audit_log
     """
-    with engine.begin() as conn:
+    with _cbam_engine.begin() as conn:
         current = _get_case_review_status(conn, case_id)
         if current != "pending_review":
             raise HTTPException(
@@ -249,46 +222,30 @@ def approve_case(
                 detail=f"Case is not pending review (review_status={current!r}). "
                        "Only 'pending_review' cases can be approved.",
             )
-        signoff = conn.execute(
-            text("""
-                INSERT INTO signoffs
-                    (case_id, reviewer_name, reviewer_email, decision, comments, actor_sub)
-                VALUES (:case_id, :name, :email, 'approved', :comments, :sub)
-                RETURNING id, created_at
-            """),
-            {
-                "case_id": case_id,
-                "name": body.reviewer_name,
-                "email": body.reviewer_email,
-                "comments": body.comments,
-                "sub": auth_context.sub,
-            },
-        ).mappings().one()
         conn.execute(
             text("""
-                UPDATE cases
+                UPDATE cbam.cbam_cases
                 SET review_status = 'approved', status = 'signed_off', updated_at = NOW()
                 WHERE id = :id
             """),
             {"id": case_id},
         )
-        _write_review_audit(
-            conn, case_id, "case_approved", auth_context.sub,
-            {
-                "decision": "approved",
-                "signoff_id": str(signoff["id"]),
-                "reviewer_name": body.reviewer_name,
-                "comments": body.comments,
-            },
-        )
-    # Fire report-ready email after the HTTP response is returned (BackgroundTask)
+
+    _write_audit_event(
+        case_id, "case_approved",
+        {
+            "decision": "approved",
+            "reviewer_name": body.reviewer_name,
+            "reviewer_email": body.reviewer_email,
+            "comments": body.comments,
+            "actor_sub": auth_context.sub,
+        },
+        actor_sub=auth_context.sub,
+    )
+
     _schedule_report_notification(case_id, background_tasks)
 
-    return {
-        "case_id": case_id,
-        "decision": "approved",
-        "signoff_id": str(signoff["id"]),
-    }
+    return {"case_id": case_id, "decision": "approved"}
 
 
 @router.post("/cases/{case_id}/review/reject", status_code=200)
@@ -300,12 +257,11 @@ def reject_case(
     """
     Reject a case pending human review.
 
-    - Inserts a signoff record (decision='rejected')
-    - Sets cases.review_status = 'rejected'
+    - Sets cbam_cases.review_status = 'rejected'
+    - Writes a signed rejection event to cbam.audit_log
     - Operator must correct data and re-run the narrative pipeline to re-submit.
-    - Writes a signed audit log entry
     """
-    with engine.begin() as conn:
+    with _cbam_engine.begin() as conn:
         current = _get_case_review_status(conn, case_id)
         if current != "pending_review":
             raise HTTPException(
@@ -313,46 +269,31 @@ def reject_case(
                 detail=f"Case is not pending review (review_status={current!r}). "
                        "Only 'pending_review' cases can be rejected.",
             )
-        signoff = conn.execute(
-            text("""
-                INSERT INTO signoffs
-                    (case_id, reviewer_name, reviewer_email, decision, comments, actor_sub)
-                VALUES (:case_id, :name, :email, 'rejected', :comments, :sub)
-                RETURNING id, created_at
-            """),
-            {
-                "case_id": case_id,
-                "name": body.reviewer_name,
-                "email": body.reviewer_email,
-                "comments": body.comments,
-                "sub": auth_context.sub,
-            },
-        ).mappings().one()
         conn.execute(
             text("""
-                UPDATE cases
+                UPDATE cbam.cbam_cases
                 SET review_status = 'rejected', updated_at = NOW()
                 WHERE id = :id
             """),
             {"id": case_id},
         )
-        _write_review_audit(
-            conn, case_id, "case_rejected", auth_context.sub,
-            {
-                "decision": "rejected",
-                "signoff_id": str(signoff["id"]),
-                "reviewer_name": body.reviewer_name,
-                "comments": body.comments,
-            },
-        )
-    return {
-        "case_id": case_id,
-        "decision": "rejected",
-        "signoff_id": str(signoff["id"]),
-    }
+
+    _write_audit_event(
+        case_id, "case_rejected",
+        {
+            "decision": "rejected",
+            "reviewer_name": body.reviewer_name,
+            "reviewer_email": body.reviewer_email,
+            "comments": body.comments,
+            "actor_sub": auth_context.sub,
+        },
+        actor_sub=auth_context.sub,
+    )
+
+    return {"case_id": case_id, "decision": "rejected"}
 
 
-# ── Read endpoint ───────────────────────────────────────────────────────────────
+# ── Read endpoint ─────────────────────────────────────────────────────────────
 
 @router.get("/cases/{case_id}/review")
 def get_review_status(
@@ -360,7 +301,10 @@ def get_review_status(
     auth_context: AuthContext = Depends(require_scopes(["cbam:read"])),
 ):
     """
-    Return the current review_status and full signoff history for a case.
+    Return the current review_status and signoff history for a CBAM case.
+
+    Signoffs are sourced from cbam.audit_log events of type 'case_approved'
+    and 'case_rejected' — no separate signoffs table is required.
 
     Response:
         {
@@ -370,25 +314,41 @@ def get_review_status(
           "signoffs": [...]
         }
     """
-    with engine.connect() as conn:
+    with _cbam_engine.connect() as conn:
         case_row = conn.execute(
-            text("SELECT review_status, status FROM cases WHERE id = :id"),
+            text("SELECT review_status, status FROM cbam.cbam_cases WHERE id = :id LIMIT 1"),
             {"id": case_id},
         ).fetchone()
         if case_row is None:
             raise HTTPException(status_code=404, detail="Case not found")
-        signoffs = conn.execute(
+
+        # Reconstruct signoff history from audit log events
+        signoff_rows = conn.execute(
             text("""
-                SELECT id, reviewer_name, reviewer_email, decision, comments, actor_sub, created_at
-                FROM signoffs
+                SELECT event_type, actor, payload, created_at
+                FROM cbam.audit_log
                 WHERE case_id = :case_id
+                  AND event_type IN ('case_approved', 'case_rejected')
                 ORDER BY created_at ASC
             """),
             {"case_id": case_id},
         ).mappings().all()
+
+    signoffs = [
+        {
+            "decision":       r["event_type"].replace("case_", ""),
+            "reviewer_name":  (r["payload"] or {}).get("reviewer_name"),
+            "reviewer_email": (r["payload"] or {}).get("reviewer_email"),
+            "comments":       (r["payload"] or {}).get("comments"),
+            "actor_sub":      r["actor"],
+            "created_at":     r["created_at"],
+        }
+        for r in signoff_rows
+    ]
+
     return {
-        "case_id": case_id,
+        "case_id":       case_id,
         "review_status": case_row[0],
-        "case_status": case_row[1],
-        "signoffs": [dict(s) for s in signoffs],
+        "case_status":   case_row[1],
+        "signoffs":      signoffs,
     }
