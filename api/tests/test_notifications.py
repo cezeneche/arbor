@@ -68,19 +68,23 @@ class TestNotifyReviewRequired:
         payload   = client.post.call_args[1]["json"]
 
         assert call_url == "https://hooks.slack.com/test-webhook"
-        # Top-level text fallback
-        assert "case-001" in payload["text"]
-        # Attachment contains blocks
+        # Top-level text fallback contains case ID and tenant name
+        assert "case-001"       in payload["text"]
+        assert "Acme Steel Ltd" in payload["text"]
+        # Attachment has blocks
         blocks = payload["attachments"][0]["blocks"]
-        # Section fields block has case ID and tenant name
-        section = next(b for b in blocks if b["type"] == "section" and "fields" in b)
-        fields_text = str(section["fields"])
-        assert "case-001"      in fields_text
-        assert "Acme Steel Ltd" in fields_text
-        # Flag text block contains the flag string
-        flag_block = next(b for b in blocks if b["type"] == "section" and "text" in b)
+        # Metadata section: single section containing company name, case ID link, no duplicates
+        meta_block = next(b for b in blocks if b["type"] == "section" and "text" in b)
+        meta_text = meta_block["text"]["text"]
+        assert "case-001"       in meta_text
+        assert "Acme Steel Ltd" in meta_text
+        # Issues section contains the flag string
+        flag_block = next(
+            b for b in blocks
+            if b["type"] == "section" and "text" in b and flags[0] in b["text"]["text"]
+        )
         assert flags[0] in flag_block["text"]["text"]
-        # Case deep-link is in the action button
+        # Action button deep-links to the case
         action_block = next(b for b in blocks if b["type"] == "actions")
         assert "case-001" in action_block["elements"][0]["url"]
 

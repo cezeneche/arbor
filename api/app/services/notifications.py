@@ -50,17 +50,25 @@ async def notify_review_required(
     tenant_name: str,
     flags: list[str],
     base_url: str = "",
+    eori: str = "",
+    period: str = "",
+    sector: str = "",
+    goods_lines_count: int | None = None,
 ) -> None:
     """POST a Slack Block Kit message when human_review_required is True.
 
     Parameters
     ----------
-    case_id     : UUID string of the CBAM case.
-    tenant_name : Importer display name (from cbam_cases.importer_name or
-                  cbam_registration.business_name).
-    flags       : List of human-readable failure strings from ValidationResult.failures.
-    base_url    : Override for the application base URL used in the deep-link.
-                  Falls back to the BASE_URL environment variable.
+    case_id           : UUID string of the CBAM case.
+    tenant_name       : Importer display name (from cbam_cases.importer_name or
+                        cbam_registration.business_name).
+    flags             : List of human-readable failure strings from ValidationResult.failures.
+    base_url          : Override for the application base URL used in the deep-link.
+                        Falls back to the BASE_URL environment variable.
+    eori              : Importer EORI number — shown in the notification for quick identification.
+    period            : Human-readable accounting period, e.g. "Q1 2027" or "2027 Annual".
+    sector            : CBAM sector (steel, aluminium, cement, fertilisers, hydrogen).
+    goods_lines_count : Number of goods lines in the case (for at-a-glance context).
     """
     webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
     if not webhook_url:
@@ -74,40 +82,46 @@ async def notify_review_required(
         f"{effective_base}/cases/{case_id}" if effective_base else f"/cases/{case_id}"
     )
     flags_text = (
-        "\n".join(f"• {f}" for f in flags) if flags else "No specific flags provided"
+        "\n".join(f"• {f}" for f in flags) if flags else "_No specific flags provided_"
     )
 
+    # Build the single metadata line: company | Case ID | optional extras
+    meta_parts: list[str] = [f":office: *{tenant_name}*", f"Case: <{case_url}|`{case_id}`>"]
+    if eori:
+        meta_parts.append(f"EORI: `{eori}`")
+    if period:
+        meta_parts.append(f"Period: *{period}*")
+    if sector:
+        meta_parts.append(f"Sector: *{sector.replace('_', ' ').title()}*")
+    if goods_lines_count is not None:
+        meta_parts.append(f"Goods lines: *{goods_lines_count}*")
+    meta_line = "   |   ".join(meta_parts)
+
+    issue_count = len(flags)
+    issue_label = f"*:warning: {issue_count} issue{'s' if issue_count != 1 else ''} requiring review:*"
+
     payload = {
-        "text": f":rotating_light: Human Review Required — Case `{case_id}`",
+        "text": f":rotating_light: Human Review Required — *{tenant_name}* (Case `{case_id}`)",
         "attachments": [
             {
                 "color": "#e01e5a",
                 "blocks": [
                     {
                         "type": "header",
-                        "text": {
-                            "type": "plain_text",
-                            "text": ":rotating_light: Human Review Required",
-                        },
+                        "text": {"type": "plain_text", "text": "Human Review Required"},
                     },
+                    # Single line: company, case link, EORI, period, sector — no repetition
                     {
                         "type": "section",
-                        "fields": [
-                            {
-                                "type": "mrkdwn",
-                                "text": f"*Case ID:*\n<{case_url}|`{case_id}`>",
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": f"*Tenant:*\n{tenant_name}",
-                            },
-                        ],
+                        "text": {"type": "mrkdwn", "text": meta_line},
                     },
+                    {"type": "divider"},
+                    # Issues list
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"*Flags triggering review:*\n{flags_text}",
+                            "text": f"{issue_label}\n{flags_text}",
                         },
                     },
                     {
