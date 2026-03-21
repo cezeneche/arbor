@@ -7,7 +7,7 @@ Tests run synchronously via asyncio.run() — no pytest-asyncio plugin required.
 Coverage:
   - Slack payload shape when human_review_required is True
   - Resend payload shape (subject, body, auth header) when a report is approved
-  - Silent no-op when SLACK_INTERNAL_WEBHOOK_URL is absent
+  - Silent no-op when SLACK_WEBHOOK_URL is absent
   - Silent no-op when RESEND_API_KEY is absent
   - Silent no-op when recipient_email is None
   - No exception raised when the HTTP call itself fails
@@ -52,7 +52,7 @@ class TestNotifyReviewRequired:
         with patch("app.services.notifications.httpx.AsyncClient", return_value=client):
             with patch.dict(
                 os.environ,
-                {"SLACK_INTERNAL_WEBHOOK_URL": "https://hooks.slack.com/test-webhook"},
+                {"SLACK_WEBHOOK_URL": "https://hooks.slack.com/test-webhook"},
             ):
                 asyncio.run(
                     notify_review_required(
@@ -85,13 +85,13 @@ class TestNotifyReviewRequired:
         assert "case-001" in action_block["elements"][0]["url"]
 
     def test_no_op_when_webhook_url_not_set(self):
-        """Returns silently — no HTTP call — when SLACK_INTERNAL_WEBHOOK_URL is absent."""
+        """Returns silently — no HTTP call — when SLACK_WEBHOOK_URL is absent."""
         from app.services.notifications import notify_review_required
 
         client = _mock_client()
 
         with patch("app.services.notifications.httpx.AsyncClient", return_value=client):
-            with patch.dict(os.environ, {"SLACK_INTERNAL_WEBHOOK_URL": ""}):
+            with patch.dict(os.environ, {"SLACK_WEBHOOK_URL": ""}):
                 asyncio.run(
                     notify_review_required(
                         case_id="case-002",
@@ -114,7 +114,7 @@ class TestNotifyReviewRequired:
         with patch("app.services.notifications.httpx.AsyncClient", return_value=client):
             with patch.dict(
                 os.environ,
-                {"SLACK_INTERNAL_WEBHOOK_URL": "https://hooks.slack.com/unreachable"},
+                {"SLACK_WEBHOOK_URL": "https://hooks.slack.com/unreachable"},
             ):
                 # Must not raise — fire-and-forget
                 asyncio.run(
@@ -134,7 +134,7 @@ class TestNotifyReviewRequired:
         with patch("app.services.notifications.httpx.AsyncClient", return_value=client):
             with patch.dict(
                 os.environ,
-                {"SLACK_INTERNAL_WEBHOOK_URL": "https://hooks.slack.com/test"},
+                {"SLACK_WEBHOOK_URL": "https://hooks.slack.com/test"},
             ):
                 asyncio.run(
                     notify_review_required(
