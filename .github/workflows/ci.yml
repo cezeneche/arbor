@@ -50,6 +50,7 @@ jobs:
           python -m pip install pytest
           python -m pip install -r nucleo-ledger/requirements.txt
           python -m pip install -r api/requirements.txt
+          python -m pip install -e nucleo-ledger -e shared_auth
 
       - name: Run tests
         run: |

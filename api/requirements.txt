@@ -2,10 +2,6 @@
 # Superset of nucleo-ledger + nucleo-narrative dependencies.
 # ARQ, Redis, prometheus-fastapi-instrumentator, slowapi, tenacity removed.
 #
-# Sibling packages installed as editable so imports resolve without sys.path hacks.
--e ../nucleo-ledger
--e ../shared_auth
-
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.3
 aiosignal==1.4.0
