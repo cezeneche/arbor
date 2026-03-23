@@ -7,7 +7,7 @@ from shared_auth.models import AuthContext
 
 from app.services.compliance_pack import build_cbam_compliance_pack
 
-router = APIRouter()
+router = APIRouter(tags=["compliance"])
 
 
 @router.post("/cbam/cases/{case_id}/compliance-pack")

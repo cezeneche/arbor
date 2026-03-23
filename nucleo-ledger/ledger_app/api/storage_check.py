@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from ledger_app.services.storage import s3_healthcheck, upload_text
 
-router = APIRouter()
+router = APIRouter(tags=["infrastructure"])
 
 @router.get("/storage-check")
 def storage_check():

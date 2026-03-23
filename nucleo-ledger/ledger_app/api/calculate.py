@@ -6,7 +6,7 @@ from ledger_app.db.session import engine
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.calculation_service import calculate_from_extraction, load_factor_set, FACTOR_SET_PATH_DEFAULT
 
-router = APIRouter()
+router = APIRouter(tags=["cases"])
 
 @router.post("/cases/{case_id}/calculate")
 def calculate_case(case_id: str):

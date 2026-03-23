@@ -6,7 +6,7 @@ from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 
-router = APIRouter()
+router = APIRouter(tags=["cases"])
 
 
 class CaseCreate(BaseModel):

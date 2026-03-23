@@ -8,7 +8,7 @@ from ledger_app.services.storage import atomic_upload_document
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.document_validator import validate_upload, MAX_BATCH_FILES
 
-router = APIRouter()
+router = APIRouter(tags=["documents"])
 
 
 def sha256_bytes(data: bytes) -> str:

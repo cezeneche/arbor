@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-router = APIRouter()
+router = APIRouter(tags=["infrastructure"])
 _index = None  # in-memory index for local testing only
 
 @router.post("/llama-index")

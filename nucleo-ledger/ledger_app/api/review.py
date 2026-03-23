@@ -39,7 +39,7 @@ from ledger_app.api.cbam._shared import engine as _cbam_engine, _write_audit_eve
 from shared_auth.dependencies import require_scopes
 from shared_auth.models import AuthContext
 
-router = APIRouter()
+router = APIRouter(tags=["review"])
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from ledger_app.api.cbam import get_cbam_report_package
 
-router = APIRouter()
+router = APIRouter(tags=["report"])
 
 
 @router.get("/cases/{case_id}/report-package")

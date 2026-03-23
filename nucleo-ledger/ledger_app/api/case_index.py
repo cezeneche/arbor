@@ -6,7 +6,7 @@ from ledger_app.db.session import engine
 from ledger_app.services.storage import download_bytes
 from ledger_app.services.llamaindex_service import index_directory, retrieve
 
-router = APIRouter()
+router = APIRouter(tags=["cases"])
 
 # In-memory indexes per case_id (dev only)
 CASE_INDEX = {}

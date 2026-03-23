@@ -20,7 +20,7 @@ from app.services.narrative import run_pipeline_stages
 from shared_auth.dependencies import require_scopes
 from shared_auth.models import AuthContext
 
-router = APIRouter()
+router = APIRouter(tags=["narrative"])
 
 
 def _blocking_response(case_id: str, data_quality: dict) -> JSONResponse:

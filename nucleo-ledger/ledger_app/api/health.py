@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from ledger_app.db.session import db_healthcheck
 
-router = APIRouter()
+router = APIRouter(tags=["health"])
 
 @router.get("/health")
 def health():

@@ -7,7 +7,7 @@ from ledger_app.services.storage import download_bytes
 from ledger_app.services.extraction_service import deterministic_extract
 from ledger_app.services.data_quality_service import score_extraction_consistency
 
-router = APIRouter()
+router = APIRouter(tags=["cases"])
 
 
 def _key_from_storage_uri(storage_uri: str) -> str:

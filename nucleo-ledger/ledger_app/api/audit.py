@@ -36,7 +36,7 @@ from ledger_app.api.cbam._shared import engine as _cbam_engine
 
 log = logging.getLogger("nucleos.audit")
 
-router = APIRouter()
+router = APIRouter(tags=["audit"])
 
 
 def _verify_cbam_event(row: dict) -> bool | None:

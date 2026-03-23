@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from ledger_app.db.session import engine
 
-router = APIRouter()
+router = APIRouter(tags=["cases"])
 
 FIELD_HINTS = {
     "electricity_kwh": {
