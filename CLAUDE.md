@@ -13,19 +13,19 @@ python3 -m venv .venv && source .venv/bin/activate
 ```
 
 ### Running tests
-Tests must be run from the **repo root** so that `pytest.ini` resolves `pythonpath` correctly (`.`, `nucleo-ledger`, `api`). Running from inside a service subdirectory breaks imports.
+Tests must be run from the **repo root** so that `pytest.ini` resolves `pythonpath` correctly (`.`, `api`). Running from inside a service subdirectory breaks imports.
 
 ```bash
-pytest                                      # all tests
-pytest nucleo-ledger/tests                  # ledger only
-pytest api/tests                            # consolidated api tests
-pytest -k "test_auth"                       # filter by name
-pytest nucleo-ledger/tests/test_auth_jwt.py # single file
+pytest                                          # all tests
+pytest api/tests/ledger/                        # ledger only
+pytest api/tests/                               # all api tests
+pytest -k "test_auth"                           # filter by name
+pytest api/tests/ledger/test_auth_jwt.py        # single file
 ```
 
 If running outside the root venv, prefix with:
 ```bash
-PYTHONPATH=.:nucleo-ledger:api python -m pytest ...
+PYTHONPATH=.:api python -m pytest ...
 ```
 
 ### Running the service locally
@@ -61,16 +61,17 @@ api/  (port 8000)
 
 ### api/ — consolidated service
 
-`api/main.py` mounts all routers. It imports ledger routers from `nucleo-ledger/ledger_app/` — both packages run in-process with no inter-service HTTP. `nucleo-narrative` has been dissolved; its live code lives in `api/app/`.
+`api/main.py` mounts all routers. All application code lives under `api/` — no separate editable installs or sibling packages.
 
 Key layers:
 - `api/app/api/` — consolidated API routers (narrative_pipeline, cbam_compliance, cpr, verification, registration, public_tools, supplier_outreach)
 - `api/app/services/` — business logic: `narrative`, `compliance_pack`, `hmrc_return_builder`, `cpr_calculator`, `report_validator`, `cbam_free_allocation`, `cbam_uk_rates`, `eu_xml_builder`, `registration_manager`, `notifications`
-- `ledger_app/api/` — 17 FastAPI routers (cases, documents, extract, calculate, bundle, resolve, report_package, cbam, auth, health, etc.)
-- `ledger_app/services/` — business logic: `cbam_extractor`, `cbam_arbiter`, `cbam_repair`, `cbam_explain`, `snapshot_store`, `storage`, and the LlamaIndex orchestration layer
-- `ledger_app/db/` — SQLAlchemy models and migrations
-- `ledger_app/models/` — Pydantic schemas
-- `ledger_app/testing.py` — shared `TestClient` factory used by conftest
+- `api/ledger_app/api/` — 17 FastAPI routers (cases, documents, extract, calculate, bundle, resolve, report_package, cbam, auth, health, etc.)
+- `api/ledger_app/services/` — business logic: `cbam_extractor`, `cbam_arbiter`, `cbam_repair`, `cbam_explain`, `snapshot_store`, `storage`, and the LlamaIndex orchestration layer
+- `api/ledger_app/db/` — SQLAlchemy models and migrations
+- `api/ledger_app/models/` — Pydantic schemas
+- `api/ledger_app/testing.py` — shared `TestClient` factory used by conftest
+- `api/shared_auth/` — HS256 JWT library (create/decode tokens, FastAPI deps, scope enforcement)
 
 Primary workflow: upload invoice → LlamaIndex routing → structured extraction → arbiter resolves conflicts → repair fills gaps → bundle into report package.
 
@@ -87,7 +88,7 @@ Key file: `api/app/api/narrative_pipeline.py` — registers at the same paths as
 
 ### shared_auth — JWT library (used by all code)
 ```
-shared_auth/
+api/shared_auth/
   jwt.py           # create_access_token / decode_access_token (HS256, pure-Python fallback)
   models.py        # AuthContext(sub, tenant_id, scopes, jti, exp)
   dependencies.py  # get_auth_context (FastAPI dep), require_scopes factory
@@ -138,6 +139,6 @@ Test conftest files set `DATABASE_URL`, `JWT_*`, and `AUTH_DEV_TOKEN_ENDPOINT` v
 - `fixtures/ledger/` — golden JSON report packages used in ledger tests
 - `fixtures/ledger/snapshots/` — auditability snapshot fixtures
 - `fixtures/narrative/` — golden narrative outputs
-- `nucleo-ledger/test_docs/sample_invoice.pdf` — sample invoice for extraction tests
+- `api/test_docs/sample_invoice.pdf` — sample invoice for extraction tests
 
 The `storage/` directory is runtime object storage and is gitignored.
