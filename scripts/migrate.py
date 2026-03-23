@@ -77,7 +77,7 @@ repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # cbam.cbam_cases exists before core 002_cbam_tenant_id.sql alters it.
 MIGRATION_DIRS = [
     os.path.join(repo_root, "db", "migrations"),
-    os.path.join(repo_root, "nucleo-ledger", "db", "migrations"),
+    os.path.join(repo_root, "api", "db", "migrations"),
 ]
 
 

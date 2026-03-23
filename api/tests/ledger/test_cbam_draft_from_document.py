@@ -15,7 +15,7 @@ from ledger_app.services.llama_structured_extractor import LineItemSchema
 def test_cbam_draft_from_document_upload_returns_expected_keys(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST.txt"
@@ -73,7 +73,7 @@ def test_cbam_draft_from_document_upload_returns_expected_keys(monkeypatch):
 def test_cbam_draft_from_document_without_emissions_keeps_emissions_ids_empty(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST.txt"
@@ -118,7 +118,7 @@ def test_cbam_draft_from_document_without_emissions_keeps_emissions_ids_empty(mo
 def test_numeric_string_coercion(monkeypatch):
     client, conn = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST.txt"
@@ -166,7 +166,7 @@ def test_numeric_string_coercion(monkeypatch):
 def test_invalid_numeric_raises_422(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST.txt"
@@ -203,7 +203,7 @@ def test_invalid_numeric_raises_422(monkeypatch):
 def test_multiline_document_creates_two_goods_lines_and_emissions(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[2]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST_MULTILINE.txt"
@@ -290,7 +290,7 @@ def test_multiline_document_creates_two_goods_lines_and_emissions(monkeypatch):
 def test_from_document_uses_layout_header_for_invoice_and_body_for_lines(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST_LAYOUT.txt"
@@ -346,7 +346,7 @@ def test_from_document_uses_layout_header_for_invoice_and_body_for_lines(monkeyp
 def test_from_document_extraction_validation_uses_mocked_llama(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST.txt"
@@ -407,7 +407,7 @@ def test_from_document_extraction_validation_uses_mocked_llama(monkeypatch):
 def test_from_document_data_quality_uses_final_payload_with_form_overrides(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_CONFLICT_TEST.txt"
@@ -478,7 +478,7 @@ def test_from_document_data_quality_uses_final_payload_with_form_overrides(monke
 def test_from_document_uses_gemini_fallback_when_low_match_and_blocking(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_CONFLICT_TEST.txt"
@@ -564,7 +564,7 @@ def test_from_document_uses_gemini_fallback_when_low_match_and_blocking(monkeypa
 def test_from_document_includes_invoice_evidence_without_hallucinated_bbox(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST.txt"

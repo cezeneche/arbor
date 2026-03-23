@@ -2,8 +2,7 @@
   "pythonVersion": "3.11",
   "extraPaths": [
     ".",
-    "nucleo-ledger",
-    "nucleo-narrative"
+    "api"
   ],
   "venvPath": ".",
   "venv": ".venv",

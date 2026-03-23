@@ -37,7 +37,7 @@ def test_llama_orchestrator_creates_nodes_and_returns_structured_output(monkeypa
 def test_llama_orchestrator_no_regression_in_from_document_flow(monkeypatch):
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST.txt"

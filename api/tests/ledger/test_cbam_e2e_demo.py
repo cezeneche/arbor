@@ -7,7 +7,7 @@ import pytest
 
 
 def test_cbam_e2e_demo_compliance_pack_fixture_schema():
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[3]
     fixture_path = repo_root / "fixtures" / "ledger" / "cbam_compliance_pack_TEST-002.json"
 
     if not fixture_path.exists():

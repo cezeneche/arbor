@@ -11,8 +11,6 @@ if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
 fi
 
 "${VENV_DIR}/bin/python" -m pip install --upgrade pip
-"${VENV_DIR}/bin/pip" install -r "${ROOT_DIR}/nucleo-ledger/requirements.txt"
 "${VENV_DIR}/bin/pip" install -r "${ROOT_DIR}/api/requirements.txt"
-"${VENV_DIR}/bin/pip" install -e "${ROOT_DIR}/nucleo-ledger" -e "${ROOT_DIR}/shared_auth"
 
 echo "Installed all dependencies into ${VENV_DIR}"

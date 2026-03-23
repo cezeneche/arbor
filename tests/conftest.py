@@ -25,7 +25,7 @@ import pytest
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-for _pkg in ["api", "nucleo-ledger", "."]:
+for _pkg in ["api", "."]:
     _p = str(_REPO_ROOT / _pkg)
     if _p not in sys.path:
         sys.path.insert(0, _p)

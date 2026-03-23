@@ -6,7 +6,9 @@
       "Bash(git stash:*)",
       "Bash(./scripts/demo_cbam_e2e.sh)",
       "Bash(curl -s http://127.0.0.1:8000/health)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(.venv/bin/python -m pytest api/tests/ledger/test_auth_jwt.py --collect-only -v)",
+      "Bash(.venv/bin/python -m pytest api/tests/ledger/test_auth_jwt.py -p no:cacheprovider --tb=long)"
     ],
     "additionalDirectories": []
   }

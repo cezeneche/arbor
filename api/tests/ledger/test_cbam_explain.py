@@ -79,7 +79,7 @@ def test_explain_field_returns_evidence_even_when_bbox_missing(monkeypatch, tmp_
 
     client, _ = _client_with_fake_engine()
     fixture_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "fixtures"
         / "documents"
         / "sample_invoice_TEST.txt"

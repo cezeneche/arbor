@@ -29,7 +29,7 @@ if _API_DIR not in sys.path:
 os.environ.setdefault("TEST_DATABASE_URL", "")
 os.environ.setdefault(
     "DATABASE_URL",
-    os.environ.get("TEST_DATABASE_URL", "sqlite:///./test_full_pipeline.db"),
+    os.environ.get("TEST_DATABASE_URL") or "sqlite:///./test_full_pipeline.db",
 )
 os.environ.setdefault("JWT_SECRET",            "test-jwt-secret-for-testing-only-32b")
 os.environ.setdefault("AUDIT_SIGNING_KEY",     "test-audit-signing-key-distinct-from-jwt!")

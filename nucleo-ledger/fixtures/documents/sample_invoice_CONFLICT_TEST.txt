@@ -1,3 +1,0 @@
-Invoice Number: INV-CONFLICT-001
-Invoice Date: 2025-01-15
-Line 1: 720711 | Conflicted steel line | quantity unknown
