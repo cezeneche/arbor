@@ -9,7 +9,7 @@ import { getAuditLog } from "@/lib/api/audit";
 import { approveCase, rejectCase } from "@/lib/api/cases";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatGbp, formatTco2e, methodLabel } from "@/lib/design-system";
+import { formatGbp, formatEmissions, methodLabel } from "@/lib/design-system";
 import type { AuditEvent, CBAMGoodsLine } from "@/lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
           {sector} · {country}
         </h1>
 
-        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginBottom: "4px" }}>
+        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginBottom: "var(--space-8)" }}>
           {case_.id}
         </p>
         <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", margin: 0 }}>
@@ -363,7 +363,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                       textAlign:  "right",
                     }}
                   >
-                    {directTco2e.toFixed(2)} tCO₂e
+                    {formatEmissions(directTco2e * 1000)}
                   </span>
                 </div>
 
@@ -373,8 +373,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                       fontSize:   "var(--text-sm)",
                       fontWeight: "var(--font-body)",
                       color:      "var(--color-text-secondary)",
-                      marginTop:  "4px",
-                      margin:     "4px 0 0",
+                      marginTop:  "var(--space-8)",
                     }}
                   >
                     Using default value of {see.toFixed(2)} tCO₂e/t — supplier data would reduce this.

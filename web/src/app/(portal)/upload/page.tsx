@@ -42,6 +42,10 @@ const STAGE_LINES = [
 
 type FileEntry = { id: string; file: File };
 type Stage     = 1 | 2 | 3;
+
+function isFileEntry(f: FileEntry | File): f is FileEntry {
+  return "id" in f && typeof (f as FileEntry).id === "string";
+}
 type LinePhase = "pending" | "running" | "done";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────────
@@ -132,7 +136,7 @@ export default function UploadPage() {
       const existing = new Set(prev.map((e) => e.file.name));
       const novel    = valid.filter((f) => !existing.has(f.name));
       return [...prev, ...novel].slice(0, MAX_FILES).map((f) =>
-        "id" in f ? f as unknown as FileEntry : { id: crypto.randomUUID(), file: f }
+        isFileEntry(f) ? f : { id: crypto.randomUUID(), file: f }
       );
     });
   }
@@ -449,7 +453,7 @@ export default function UploadPage() {
                         background:  "none",
                         border:      "none",
                         cursor:      "pointer",
-                        padding:     "0 4px",
+                        padding:     0,
                         fontSize:    "var(--text-sm)",
                         color:       "var(--color-text-tertiary)",
                         fontFamily:  "inherit",
@@ -709,16 +713,16 @@ function StageSummary({ sector, originCountry, totalLiability, report, onAddToRe
                   </span>
 
                   {/* Method badge */}
-                  <Badge variant="draft">default</Badge>
+                  <Badge variant="error">Default value</Badge>
 
                   {/* tCO₂e */}
                   <span style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>
-                    {lineTco2e.toFixed(2)} tCO₂e
+                    {lineTco2e.toFixed(3)} tCO₂e
                   </span>
                 </div>
 
                 {isDefault && (
-                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginTop: "4px" }}>
+                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginTop: "var(--space-8)" }}>
                     Using world average — no supplier data.{" "}
                     <Link href={`/supplier-request`} style={{ color: "var(--color-text-secondary)", textDecoration: "underline" }}>
                       Request data →

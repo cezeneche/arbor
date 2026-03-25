@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { saveToken } from "@/lib/auth";
 
 const schema = z.object({
-  email:    z.string().min(1, "Email is required").email("Enter a valid email"),
+  email:    z.string().min(1, "Email is required").refine((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s), "Enter a valid email"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -71,7 +71,7 @@ export default function LoginPage() {
       const data = await res.json();
       saveToken(data.access_token);
       document.cookie = `cbam_token=${encodeURIComponent(data.access_token)}; path=/; max-age=3600`;
-      router.replace("/cases");
+      router.replace("/");
     } catch {
       setAuthError("Incorrect email or password");
     } finally {
@@ -107,7 +107,7 @@ export default function LoginPage() {
             fontSize:     "var(--text-base)",
             fontWeight:   "var(--font-focal)",
             color:        "var(--color-text-primary)",
-            marginBottom: "80px",
+            marginBottom: "var(--space-80)",
           }}
         >
           Nucleos

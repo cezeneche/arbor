@@ -88,6 +88,13 @@
   }
 }
 
+/* Prevent iOS zoom on input focus — inputs must be ≥16px on mobile */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
 /* Divider — 0.5px solid only */
 .divider {
   height: var(--border-width);

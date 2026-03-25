@@ -11,7 +11,7 @@ import { saveToken } from "@/lib/auth";
 const schema = z.object({
   fullName:    z.string().min(1, "Full name is required"),
   companyName: z.string().min(1, "Company name is required"),
-  email:       z.string().min(1, "Email is required").email("Enter a valid email"),
+  email:       z.string().min(1, "Email is required").refine((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s), "Enter a valid email"),
   password:    z.string().min(8, "At least 8 characters"),
 });
 
@@ -109,7 +109,7 @@ export default function SignupPage() {
             fontSize:     "var(--text-base)",
             fontWeight:   "var(--font-focal)",
             color:        "var(--color-text-primary)",
-            marginBottom: "80px",
+            marginBottom: "var(--space-80)",
           }}
         >
           Nucleos
@@ -160,7 +160,7 @@ export default function SignupPage() {
             />
 
             {/* Password with hint */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
               <Input
                 id="password"
                 label="Password"

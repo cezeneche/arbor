@@ -252,7 +252,7 @@ function ScopeChecker() {
                     >
                       {formatGbp(liabilityPerTonne)}
                     </p>
-                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
                       estimated 2027 liability at default values · per tonne
                     </p>
                     <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
@@ -410,15 +410,15 @@ function Dashboard() {
               style={{
                 display:         "inline-flex",
                 alignItems:      "center",
-                height:          "28px",
+                height:          "var(--space-32)",
                 padding:         "0 var(--space-16)",
-                borderRadius:    "4px",
+                borderRadius:    "var(--badge-radius)",
                 fontSize:        "var(--text-xs)",
                 fontWeight:      "var(--font-focal)",
                 backgroundColor: "var(--color-amber-bg)",
                 color:           "var(--color-amber)",
                 whiteSpace:      "nowrap",
-                marginBottom:    "10px",
+                marginBottom:    "var(--space-8)",
               }}
             >
               Registration required
