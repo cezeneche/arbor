@@ -1,4 +1,25 @@
+/* ═══════════════════════════════════════════════════════════════════════════ *
+ * Nucleos — Global Styles                                                     *
+ *                                                                             *
+ * PHILOSOPHY                                                                  *
+ * The product does one thing: turn supplier documents into a compliant HMRC  *
+ * return. Every style decision must serve that transformation. If a style    *
+ * element does not help the user understand their exposure or take the next  *
+ * required action, it does not exist.                                        *
+ *                                                                             *
+ * WHAT DOES NOT EXIST IN THIS PRODUCT                                        *
+ *   No sidebar. No hamburger menu. No tab bar on desktop.                    *
+ *   No modal dialogs — inline state changes only.                            *
+ *   No toast notifications — inline confirmation only.                       *
+ *   No loading spinners — skeleton screens only.                             *
+ *   No data visualisation charts — numbers and progress bars only.           *
+ *   No empty state illustrations — typography only.                          *
+ *   No help tooltips or onboarding overlays.                                 *
+ *   No settings page (v1). No notifications bell (v1).                       *
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
 @import "../styles/tokens.css";
+/* Inter: weights 300 and 500 only — no other weights are loaded or permitted */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;500&display=swap');
 
 @tailwind base;
@@ -11,43 +32,50 @@
   }
 
   html {
-    font-size: 16px;
+    font-size:                16px;
     -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
+    text-size-adjust:         100%;
   }
 
   body {
-    background-color: var(--color-bg);
-    color: var(--color-text-primary);
-    font-family: var(--font-inter);
-    font-size: var(--text-base);
-    font-weight: var(--font-body);
-    line-height: var(--leading-body);
-    letter-spacing: var(--tracking-body);
-    -webkit-font-smoothing: antialiased;
+    background-color:        var(--color-bg);
+    color:                   var(--color-text-primary);
+    font-family:             var(--font-inter);
+    font-size:               var(--text-base);
+    font-weight:             var(--font-body);       /* 300 globally */
+    line-height:             var(--leading-body);
+    letter-spacing:          var(--tracking-body);
+    -webkit-font-smoothing:  antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Focus: visible ring only for keyboard navigation */
-  :focus-visible {
-    outline: 2px solid var(--color-navy);
-    outline-offset: 2px;
-    border-radius: 4px;
+  /*
+   * WEIGHT ENFORCEMENT
+   * Inter is loaded at 300 and 500 only. Tailwind base sets
+   * strong and b to "bold" (700), which would silently fall back
+   * to 500. Explicitly override so semantics match intent.
+   */
+  strong, b {
+    font-weight: var(--font-focal);  /* 500 — not bold, not 700 */
   }
 
-  :focus:not(:focus-visible) {
-    outline: none;
-  }
-
+  /* Headings: focal weight, display line-height, tight tracking */
   h1, h2, h3, h4, h5, h6 {
-    font-weight: var(--font-focal);
-    line-height: var(--leading-display);
+    font-weight:    var(--font-focal);
+    line-height:    var(--leading-display);
     letter-spacing: var(--tracking-heading);
-    color: var(--color-text-primary);
+    color:          var(--color-text-primary);
+    margin:         0;
   }
 
+  /* Body copy reset */
+  p {
+    margin: 0;
+  }
+
+  /* Links: navy, no underline, hover darkens */
   a {
-    color: var(--color-navy);
+    color:           var(--color-navy);
     text-decoration: none;
   }
 
@@ -55,67 +83,97 @@
     color: var(--color-navy-hover);
   }
 
-  /* Dividers */
-  hr {
-    border: none;
-    border-top: var(--border-width) solid var(--color-border);
-    margin: 0;
+  /* Keyboard focus: visible ring using navy, no glow */
+  :focus-visible {
+    outline:        2px solid var(--color-navy);
+    outline-offset: 2px;
+    border-radius:  4px;
   }
 
-  /* Respect reduced-motion */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Dividers: 0.5px only, never thicker */
+  hr {
+    border:     none;
+    border-top: var(--border-width) solid var(--color-border);
+    margin:     0;
+  }
+
+  /* Respect reduced-motion — disables all animations and transitions */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
+      animation-duration:        0.01ms !important;
+      animation-iteration-count: 1     !important;
+      transition-duration:       0.01ms !important;
     }
   }
 }
 
-/* ── LAYOUT UTILITIES ───────────────────────────────────────────────────────── */
+/* ── LAYOUT UTILITIES ────────────────────────────────────────────────────── */
 
+/*
+ * .page-content
+ * Applies max-width and horizontal padding. Use on all top-level page
+ * containers. Do not use arbitrary padding in page components.
+ */
 .page-content {
-  max-width: var(--max-width);
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: var(--space-32);
+  max-width:     var(--max-width);
+  margin-left:   auto;
+  margin-right:  auto;
+  padding-left:  var(--space-32);
   padding-right: var(--space-32);
 }
 
 @media (max-width: 640px) {
   .page-content {
-    padding-left: var(--space-16);
+    padding-left:  var(--space-16);
     padding-right: var(--space-16);
   }
 }
 
-/* Prevent iOS zoom on input focus — inputs must be ≥16px on mobile */
+/* ── MOBILE INPUT SAFETY ─────────────────────────────────────────────────── */
+
+/*
+ * iOS zooms the viewport when an input receives focus if font-size < 16px.
+ * Our token is 15px, so we override on mobile. The 16px applies only at
+ * ≤768px — desktop preserves the 15px type scale.
+ */
 @media (max-width: 768px) {
   input, textarea, select {
     font-size: 16px !important;
   }
 }
 
-/* Divider — 0.5px solid only */
+/* ── DIVIDER UTILITY ─────────────────────────────────────────────────────── */
+
 .divider {
-  height: var(--border-width);
+  height:           var(--border-width);
   background-color: var(--color-border);
 }
 
-/* Skeleton pulse animation */
+/* ── SKELETON ANIMATION ──────────────────────────────────────────────────── */
+
+/*
+ * Used by <Skeleton /> only. No spinners exist in this product.
+ * Duration 1.5s matches human perception of "loading, not broken".
+ */
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
+  0%, 100% { opacity: 1;   }
   50%       { opacity: 0.4; }
 }
 
-/* Screen-reader only */
+/* ── SCREEN-READER ONLY ──────────────────────────────────────────────────── */
+
 .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  position:   absolute;
+  width:      1px;
+  height:     1px;
+  padding:    0;
+  margin:     -1px;
+  overflow:   hidden;
+  clip:       rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
 }
