@@ -44,7 +44,6 @@ log = logging.getLogger(__name__)
 
 _EFFECTIVE_FROM = date(2023, 10, 1)  # CBAM transitional period start
 _SOURCE_REF = f"EU 2023/1773 Annex VI (table_version={TABLE_VERSION})"
-_SEEDED_BY = "startup_seeder"
 
 
 def _tables_exist(conn) -> bool:
@@ -82,29 +81,34 @@ def seed_emission_factors(engine: Engine) -> dict:
                     "cn8_prefix": entry.cn8_prefix,
                     "sector": entry.sector,
                     "production_route": entry.production_route,
-                    "direct_tco2e_per_t": str(entry.direct_tco2e_per_t),
-                    "indirect_tco2e_per_t": str(entry.indirect_tco2e_per_t),
-                    "description": entry.description,
+                    "direct_tco2e": str(entry.direct_tco2e_per_t),
+                    "indirect_tco2e": str(entry.indirect_tco2e_per_t),
                     "source_ref": _SOURCE_REF,
                     "table_version": TABLE_VERSION,
                     "effective_from": _EFFECTIVE_FROM.isoformat(),
                     "effective_to": None,
-                    "seeded_by": _SEEDED_BY,
                 }
                 result = conn.execute(text("""
                     INSERT INTO cbam.cbam_emission_factors (
                         id, cn8_prefix, sector, production_route,
-                        direct_tco2e_per_t, indirect_tco2e_per_t,
-                        description, source_ref, table_version,
-                        effective_from, effective_to, seeded_by
-                    ) VALUES (
-                        :id, :cn8_prefix, :sector, :production_route,
-                        :direct_tco2e_per_t, :indirect_tco2e_per_t,
-                        :description, :source_ref, :table_version,
-                        :effective_from, :effective_to, :seeded_by
+                        direct_tco2e, indirect_tco2e,
+                        source_ref, table_version,
+                        effective_from, effective_to
                     )
-                    ON CONFLICT (cn8_prefix, production_route, table_version)
-                    DO NOTHING
+                    SELECT
+                        :id, :cn8_prefix, :sector, :production_route,
+                        :direct_tco2e, :indirect_tco2e,
+                        :source_ref, :table_version,
+                        :effective_from, :effective_to
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM cbam.cbam_emission_factors
+                        WHERE cn8_prefix = :cn8_prefix
+                          AND table_version = :table_version
+                          AND (
+                              production_route = :production_route
+                              OR (production_route IS NULL AND :production_route IS NULL)
+                          )
+                    )
                 """), row)
                 annex_vi_count += result.rowcount
 
@@ -123,12 +127,16 @@ def seed_emission_factors(engine: Engine) -> dict:
                     INSERT INTO cbam.cbam_electricity_factors (
                         id, country_iso2, tco2e_per_mwh, source_ref,
                         table_version, effective_from, effective_to
-                    ) VALUES (
+                    )
+                    SELECT
                         :id, :country_iso2, :tco2e_per_mwh, :source_ref,
                         :table_version, :effective_from, :effective_to
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM cbam.cbam_electricity_factors
+                        WHERE country_iso2   = :country_iso2
+                          AND table_version  = :table_version
+                          AND effective_from = CAST(:effective_from AS date)
                     )
-                    ON CONFLICT (country_iso2, table_version)
-                    DO NOTHING
                 """), row)
                 electricity_count += result.rowcount
 
@@ -163,8 +171,10 @@ def get_factor_from_db(
     source_ref, table_version — or None if not found.
     """
     row = conn.execute(text("""
-        SELECT cn8_prefix, production_route, direct_tco2e_per_t,
-               indirect_tco2e_per_t, description, source_ref, table_version
+        SELECT cn8_prefix, production_route,
+               direct_tco2e  AS direct_tco2e_per_t,
+               indirect_tco2e AS indirect_tco2e_per_t,
+               source_ref, table_version
         FROM cbam.cbam_emission_factors
         WHERE cn8_prefix = :cn8_prefix
           AND (production_route = :production_route OR
