@@ -1,50 +1,118 @@
 "use client";
 
+import { use, useState } from "react";
 import Link from "next/link";
-import { use } from "react";
-import { useCase } from "@/lib/hooks/useCases";
+import { useQuery } from "@tanstack/react-query";
+import { useCase, useReportPackage } from "@/lib/hooks/useCases";
+import { useAuth } from "@/lib/auth/useAuth";
+import { getAuditLog } from "@/lib/api/audit";
+import { approveCase, rejectCase } from "@/lib/api/cases";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { toStatusVariant, statusLabel, periodLabel } from "@/lib/design-system";
+import { Button } from "@/components/ui/button";
+import { formatGbp, formatTco2e, methodLabel } from "@/lib/design-system";
+import type { AuditEvent, CBAMGoodsLine } from "@/lib/types";
 
-function DataRow({ label, value }: { label: string; value: string }) {
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const UK_ETS_RATE = 52.4;
+
+const ROUGH_SEE: Record<string, number> = {
+  iron_steel:  1.8,
+  aluminium:   2.0,
+  cement:      0.9,
+  fertilisers: 2.5,
+  hydrogen:    9.5,
+  electricity: 0.4,
+};
+
+const MONO: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function sectorLabel(s?: string): string {
+  const map: Record<string, string> = {
+    iron_steel: "Iron & steel", aluminium: "Aluminium",
+    cement: "Cement", fertilisers: "Fertilisers",
+    hydrogen: "Hydrogen", electricity: "Electricity",
+  };
+  return s ? (map[s] ?? s.replace(/_/g, " ")) : "—";
+}
+
+function fmtDate(iso?: string): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function isChainValid(events: AuditEvent[]): boolean {
+  for (let i = 1; i < events.length; i++) {
+    if (events[i].prev_hmac !== events[i - 1].hmac_sha256) return false;
+  }
+  return true;
+}
+
+// ── Section label ──────────────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
-      <span
-        style={{
-          fontSize:      "var(--text-xs)",
-          fontWeight:    "var(--font-focal)",
-          color:         "var(--color-text-tertiary)",
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-        }}
-      >
-        {label}
-      </span>
-      <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)" }}>
-        {value}
-      </span>
-    </div>
+    <p
+      style={{
+        fontSize:      "var(--text-xs)",
+        fontWeight:    "var(--font-focal)",
+        color:         "var(--color-text-tertiary)",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        margin:        0,
+      }}
+    >
+      {children}
+    </p>
   );
 }
 
+// ── Page ───────────────────────────────────────────────────────────────────────
+
 export default function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const { case_, isLoading, error } = useCase(id);
+  const { id }           = use(params);
+  const { user }         = useAuth();
+  const isReviewer       = user?.scopes.includes("review:write") ?? false;
+
+  const { case_, isLoading, error }          = useCase(id);
+  const { report }                           = useReportPackage(id);
+  const { data: auditEvents = [] }           = useQuery({
+    queryKey:  ["audit-log", id],
+    queryFn:   () => getAuditLog(id),
+    staleTime: 60_000,
+    enabled:   Boolean(id),
+  });
+
+  // Action state
+  const [actionDone,   setActionDone]   = useState<"approved" | "flagged" | null>(null);
+  const [showFlagForm, setShowFlagForm] = useState(false);
+  const [flagText,     setFlagText]     = useState("");
+  const [actioning,    setActioning]    = useState(false);
+
+  // ── Loading / error ────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
-      <div className="page-content">
-        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-          Loading…
-        </p>
+      <div style={{ maxWidth: "var(--max-width)", margin: "0 auto", padding: "var(--space-48) var(--space-32)" }}>
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>Loading…</p>
       </div>
     );
   }
 
   if (error || !case_) {
     return (
-      <div className="page-content">
+      <div style={{ maxWidth: "var(--max-width)", margin: "0 auto", padding: "var(--space-48) var(--space-32)" }}>
         <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)" }}>
           {error?.message ?? "Case not found."}
         </p>
@@ -52,155 +120,463 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  return (
-    <div className="page-content">
-      {/* Back */}
-      <Link
-        href="/cases"
-        style={{
-          fontSize:     "var(--text-sm)",
-          color:        "var(--color-text-secondary)",
-          display:      "inline-block",
-          marginBottom: "var(--space-32)",
-        }}
-      >
-        ← Cases
-      </Link>
+  // ── Derived values ─────────────────────────────────────────────────────────
 
-      {/* Header */}
+  const sector       = sectorLabel(case_.goods_lines?.[0]?.sector);
+  const country      = (case_ as typeof case_ & { shipments?: { origin_country?: string; import_date?: string }[] })
+                         .shipments?.[0]?.origin_country ?? "—";
+  const importDate   = (case_ as typeof case_ & { shipments?: { import_date?: string }[] })
+                         .shipments?.[0]?.import_date ?? case_.created_at;
+
+  const totalKgco2e    = report?.total_kgco2e ?? 0;
+  const cbamCharge     = (totalKgco2e / 1000) * UK_ETS_RATE;
+  const cpr            = 0; // CPR not yet in report package type
+  const netLiability   = cbamCharge - cpr;
+
+  const chainValid  = auditEvents.length === 0 || isChainValid(auditEvents);
+  const isPending   = case_.review_status === "pending_review";
+  const isApproved  = case_.review_status === "approved" || case_.status === "signed_off";
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+
+  async function handleApprove() {
+    setActioning(true);
+    try {
+      await approveCase(id, {
+        reviewer_name:  user?.sub ?? "reviewer",
+        reviewer_email: user?.sub ?? "reviewer@nucleos",
+        comments:       "Approved via case detail",
+      });
+      setActionDone("approved");
+    } catch { /* surface nothing — state stays unchanged */ }
+    setActioning(false);
+  }
+
+  async function handleSendFlag() {
+    if (!flagText.trim()) return;
+    setActioning(true);
+    try {
+      await rejectCase(id, {
+        reviewer_name:  user?.sub ?? "reviewer",
+        reviewer_email: user?.sub ?? "reviewer@nucleos",
+        comments:       flagText.trim(),
+      });
+      setActionDone("flagged");
+    } catch { /* ignore */ }
+    setActioning(false);
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div
+      style={{
+        maxWidth: "var(--max-width)",
+        margin:   "0 auto",
+        padding:  "0 var(--space-32) var(--space-80)",
+      }}
+    >
+
+      {/* ══════════ HEADER ══════════ */}
       <div
         style={{
-          display:      "flex",
-          alignItems:   "center",
-          gap:          "var(--space-16)",
-          marginBottom: "var(--space-32)",
+          paddingBottom: "var(--space-40)",
+          borderBottom:  "var(--border-width) solid var(--color-border)",
+          marginBottom:  "var(--space-40)",
         }}
       >
-        <h1
+        <Link
+          href="/"
           style={{
-            fontSize:  "var(--text-lg)",
-            fontWeight: "var(--font-focal)",
-            color:      "var(--color-text-primary)",
+            display:      "inline-block",
+            fontSize:     "var(--text-sm)",
+            fontWeight:   "var(--font-body)",
+            color:        "var(--color-text-secondary)",
+            textDecoration: "none",
+            marginBottom: "var(--space-40)",
           }}
         >
-          {case_.importer_name}
+          ← All cases
+        </Link>
+
+        <h1
+          style={{
+            fontSize:     "var(--text-lg)",
+            fontWeight:   "var(--font-focal)",
+            color:        "var(--color-text-primary)",
+            marginBottom: "var(--space-8)",
+          }}
+        >
+          {sector} · {country}
         </h1>
-        <Badge variant={toStatusVariant(case_.status)}>
-          {statusLabel(case_.status)}
-        </Badge>
+
+        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginBottom: "4px" }}>
+          {case_.id}
+        </p>
+        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", margin: 0 }}>
+          {fmtDate(importDate)}
+        </p>
       </div>
 
-      {/* Key facts */}
-      <Card style={{ marginBottom: "var(--space-32)" }}>
+      {/* ══════════ FINANCIAL SUMMARY ══════════ */}
+      <div
+        style={{
+          paddingBottom: "var(--space-40)",
+          borderBottom:  "var(--border-width) solid var(--color-border)",
+          marginBottom:  "var(--space-40)",
+        }}
+      >
         <div
           style={{
             display:             "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
             gap:                 "var(--space-32)",
+            marginBottom:        cpr > 0 ? "var(--space-16)" : 0,
           }}
         >
-          <DataRow label="EORI" value={case_.importer_eori} />
-          <DataRow
-            label="Period"
-            value={periodLabel(case_.reporting_year, case_.reporting_quarter)}
-          />
-          <DataRow
-            label="Goods lines"
-            value={String(case_.goods_lines?.length ?? 0)}
-          />
-        </div>
-      </Card>
+          {/* CBAM charge */}
+          <div>
+            <SectionLabel>CBAM charge</SectionLabel>
+            <p
+              style={{
+                marginTop:          "var(--space-8)",
+                fontSize:           "var(--text-lg)",
+                fontWeight:         "var(--font-focal)",
+                color:              "var(--color-navy)",
+                fontVariantNumeric: "tabular-nums",
+                ...MONO,
+              }}
+            >
+              {formatGbp(cbamCharge)}
+            </p>
+          </div>
 
-      {/* Navigation */}
-      <div
-        style={{
-          display:      "flex",
-          gap:          "var(--space-32)",
-          borderBottom: "var(--border-width) solid var(--color-border)",
-          paddingBottom: "var(--space-24)",
-          marginBottom: "var(--space-32)",
-        }}
-      >
-        {[
-          { label: "Pipeline",  href: `/cases/${id}/pipeline` },
-          { label: "Report",    href: `/cases/${id}/report`   },
-          { label: "Audit",     href: `/cases/${id}/audit`    },
-        ].map(({ label, href }) => (
-          <Link
-            key={label}
-            href={href}
-            style={{
-              fontSize:   "var(--text-sm)",
-              fontWeight: "var(--font-focal)",
-              color:      "var(--color-navy)",
-            }}
-          >
-            {label} →
-          </Link>
-        ))}
+          {/* Carbon price relief */}
+          <div>
+            <SectionLabel>Carbon price relief</SectionLabel>
+            <p
+              style={{
+                marginTop:          "var(--space-8)",
+                fontSize:           "var(--text-lg)",
+                fontWeight:         "var(--font-focal)",
+                color:              cpr > 0 ? "var(--color-green)" : "var(--color-text-tertiary)",
+                fontVariantNumeric: "tabular-nums",
+                ...MONO,
+              }}
+            >
+              {formatGbp(cpr)}
+            </p>
+          </div>
+
+          {/* Net liability */}
+          <div>
+            <SectionLabel>Net liability</SectionLabel>
+            <p
+              style={{
+                marginTop:          "var(--space-8)",
+                fontSize:           "var(--text-lg)",
+                fontWeight:         "var(--font-focal)",
+                color:              "var(--color-navy)",
+                fontVariantNumeric: "tabular-nums",
+                ...MONO,
+              }}
+            >
+              {formatGbp(netLiability)}
+            </p>
+          </div>
+        </div>
+
+        {cpr > 0 && (
+          <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", margin: 0 }}>
+            Carbon price relief applied — verified by GACI-accredited verifier
+          </p>
+        )}
       </div>
 
-      {/* Goods lines */}
-      {case_.goods_lines && case_.goods_lines.length > 0 && (
-        <div>
-          <h2
+      {/* ══════════ GOODS LINES ══════════ */}
+      <div
+        style={{
+          paddingBottom: "var(--space-40)",
+          borderBottom:  "var(--border-width) solid var(--color-border)",
+          marginBottom:  "var(--space-40)",
+        }}
+      >
+        <div style={{ marginBottom: "var(--space-16)" }}>
+          <SectionLabel>Goods lines</SectionLabel>
+        </div>
+
+        {(case_.goods_lines ?? []).length === 0 ? (
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-tertiary)" }}>No goods lines extracted yet.</p>
+        ) : (
+          (case_.goods_lines ?? []).map((line: CBAMGoodsLine, i: number) => {
+            const see        = ROUGH_SEE[line.sector] ?? 1.5;
+            const directTco2e = (line.net_mass_kg / 1000) * see;
+            const isDefault  = true; // default at this stage without verified emissions
+
+            return (
+              <div key={line.id}>
+                {i > 0 && (
+                  <div style={{ borderTop: "var(--border-width) solid var(--color-border)", margin: "var(--space-16) 0" }} />
+                )}
+
+                <div
+                  style={{
+                    display:     "flex",
+                    alignItems:  "baseline",
+                    gap:         "var(--space-16)",
+                    flexWrap:    "wrap",
+                  }}
+                >
+                  {/* CN code */}
+                  <span
+                    style={{
+                      fontSize: "var(--text-sm)",
+                      color:    "var(--color-text-tertiary)",
+                      ...MONO,
+                    }}
+                  >
+                    {line.cn_code}
+                  </span>
+
+                  {/* Description */}
+                  <span
+                    style={{
+                      flex:       1,
+                      fontSize:   "var(--text-base)",
+                      fontWeight: "var(--font-body)",
+                      color:      "var(--color-text-primary)",
+                    }}
+                  >
+                    {line.description || sectorLabel(line.sector)}
+                  </span>
+
+                  {/* Method badge */}
+                  <Badge variant="draft">{methodLabel("default")}</Badge>
+
+                  {/* Direct emissions */}
+                  <span
+                    style={{
+                      fontSize:   "var(--text-base)",
+                      fontWeight: "var(--font-focal)",
+                      color:      "var(--color-text-primary)",
+                      whiteSpace: "nowrap",
+                      textAlign:  "right",
+                    }}
+                  >
+                    {directTco2e.toFixed(2)} tCO₂e
+                  </span>
+                </div>
+
+                {isDefault && (
+                  <p
+                    style={{
+                      fontSize:   "var(--text-sm)",
+                      fontWeight: "var(--font-body)",
+                      color:      "var(--color-text-secondary)",
+                      marginTop:  "4px",
+                      margin:     "4px 0 0",
+                    }}
+                  >
+                    Using default value of {see.toFixed(2)} tCO₂e/t — supplier data would reduce this.
+                  </p>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ══════════ AUDIT TRAIL ══════════ */}
+      <div
+        style={{
+          paddingBottom: "var(--space-40)",
+          borderBottom:  "var(--border-width) solid var(--color-border)",
+          marginBottom:  "var(--space-40)",
+        }}
+      >
+        <div style={{ marginBottom: "var(--space-16)" }}>
+          <SectionLabel>Audit trail</SectionLabel>
+        </div>
+
+        {!chainValid && (
+          <p
             style={{
               fontSize:     "var(--text-sm)",
               fontWeight:   "var(--font-focal)",
-              color:        "var(--color-text-secondary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
+              color:        "var(--color-red)",
               marginBottom: "var(--space-16)",
             }}
           >
-            Goods lines
-          </h2>
+            Chain integrity check failed — this case requires manual verification
+          </p>
+        )}
 
-          <div
-            style={{
-              border:          "var(--border-width) solid var(--color-border)",
-              borderRadius:    "var(--card-radius)",
-              overflow:        "hidden",
-              backgroundColor: "var(--color-surface)",
-            }}
-          >
-            {case_.goods_lines.map((line, i) => (
-              <div
-                key={line.id}
+        {auditEvents.length === 0 ? (
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-tertiary)" }}>No audit events yet.</p>
+        ) : (
+          auditEvents.map((ev: AuditEvent) => (
+            <div
+              key={ev.id}
+              style={{
+                display:             "grid",
+                gridTemplateColumns: "180px 1fr auto",
+                gap:                 "var(--space-24)",
+                alignItems:          "center",
+                padding:             "var(--space-8) 0",
+                borderBottom:        "var(--border-width) solid var(--color-border)",
+              }}
+            >
+              {/* Timestamp */}
+              <span
                 style={{
-                  display:     "grid",
-                  gridTemplateColumns: "120px 1fr 140px",
-                  gap:         "var(--space-16)",
-                  padding:     "var(--space-16) var(--space-24)",
-                  borderTop:   i === 0 ? "none" : "var(--border-width) solid var(--color-border)",
+                  fontSize:   "var(--text-sm)",
+                  fontWeight: "var(--font-body)",
+                  color:      "var(--color-text-tertiary)",
+                  whiteSpace: "nowrap",
                 }}
               >
-                <span
+                {fmtTime(ev.created_at)}
+              </span>
+
+              {/* Stage name */}
+              <span
+                style={{
+                  fontSize:   "var(--text-sm)",
+                  fontWeight: "var(--font-body)",
+                  color:      "var(--color-text-secondary)",
+                }}
+              >
+                {ev.event_type.replace(/_/g, " ")}
+              </span>
+
+              {/* Hash — first 12 chars */}
+              <span
+                style={{
+                  fontSize: "var(--text-xs)",
+                  color:    "var(--color-text-tertiary)",
+                  ...MONO,
+                }}
+              >
+                {ev.hmac_sha256?.slice(0, 12) ?? "—"}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ══════════ ACTIONS ══════════ */}
+      <div style={{ paddingTop: "var(--space-40)" }}>
+
+        {/* Approved confirmation (inline) */}
+        {actionDone === "approved" && (
+          <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-green)" }}>
+            Case approved.{" "}
+            <Link href="/" style={{ color: "var(--color-green)" }}>
+              ← Back to all cases
+            </Link>
+          </p>
+        )}
+
+        {/* Flagged confirmation (inline) */}
+        {actionDone === "flagged" && (
+          <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
+            Flag submitted.{" "}
+            <Link href="/" style={{ color: "var(--color-text-secondary)" }}>
+              ← Back to all cases
+            </Link>
+          </p>
+        )}
+
+        {/* Pending review — reviewer can approve or flag */}
+        {!actionDone && isPending && isReviewer && (
+          <div>
+            <div style={{ display: "flex", gap: "var(--space-16)", flexWrap: "wrap" }}>
+              <Button
+                variant="primary"
+                loading={actioning && !showFlagForm}
+                onClick={handleApprove}
+              >
+                Approve case
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowFlagForm((v) => !v)}
+              >
+                Flag for review
+              </Button>
+            </div>
+
+            {showFlagForm && (
+              <div style={{ marginTop: "var(--space-24)" }}>
+                <textarea
+                  rows={3}
+                  value={flagText}
+                  onChange={(e) => setFlagText(e.target.value)}
+                  placeholder="Describe the issue…"
                   style={{
-                    fontSize:  "var(--text-sm)",
-                    color:     "var(--color-text-primary)",
-                    fontFamily: "ui-monospace, monospace",
+                    width:           "100%",
+                    padding:         "var(--space-16)",
+                    fontSize:        "var(--text-base)",
+                    fontWeight:      "var(--font-body)",
+                    fontFamily:      "inherit",
+                    color:           "var(--color-text-primary)",
+                    backgroundColor: "var(--color-surface)",
+                    border:          "var(--border-width) solid var(--color-border)",
+                    borderRadius:    "var(--btn-radius)",
+                    resize:          "vertical",
+                    outline:         "none",
+                    boxSizing:       "border-box",
                   }}
-                >
-                  {line.cn_code}
-                </span>
-                <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-                  {line.description}
-                </span>
-                <span
-                  style={{
-                    fontSize:  "var(--text-xs)",
-                    color:     "var(--color-text-tertiary)",
-                    textAlign: "right",
-                  }}
-                >
-                  {(line.net_mass_kg / 1000).toLocaleString("en-GB")} t
-                </span>
+                />
+                <div style={{ marginTop: "var(--space-8)" }}>
+                  <Button
+                    variant="secondary"
+                    loading={actioning && showFlagForm}
+                    onClick={handleSendFlag}
+                  >
+                    Send flag
+                  </Button>
+                </div>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Approved state — download actions */}
+        {!actionDone && isApproved && (
+          <div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                window.location.href = `/api-proxy/ledger/api/cases/${id}/hmrc-return`;
+              }}
+            >
+              Download HMRC return (PDF)
+            </Button>
+            <p style={{ marginTop: "var(--space-16)" }}>
+              <a
+                href={`/api-proxy/ledger/api/cases/${id}/eu-xml`}
+                style={{
+                  fontSize:       "var(--text-sm)",
+                  fontWeight:     "var(--font-body)",
+                  color:          "var(--color-text-secondary)",
+                  textDecoration: "underline",
+                }}
+              >
+                Download EU XML declaration
+              </a>
+            </p>
+          </div>
+        )}
+
+        {/* Viewer-only message */}
+        {!actionDone && !isReviewer && !isApproved && (
+          <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
+            You have view-only access. Contact your admin to approve cases.
+          </p>
+        )}
+      </div>
+
     </div>
   );
 }
