@@ -2,27 +2,55 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveToken } from "@/lib/auth";
 
-/**
- * Login page — Rams spec:
- *   Centred form. Nucleos logotype. Email + password. One primary button.
- *   Error shown inline below the form. No modal. No toast.
- */
+const schema = z.object({
+  email:    z.string().min(1, "Email is required").email("Enter a valid email"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type Errors = Partial<Record<keyof z.infer<typeof schema>, string>>;
+
 export default function LoginPage() {
   const router = useRouter();
+
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
+  const [errors,   setErrors]   = useState<Errors>({});
+  const [authError, setAuthError] = useState<string | null>(null);
   const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
+
+  // Forgot password inline state
+  const [showReset,   setShowReset]   = useState(false);
+  const [resetEmail,  setResetEmail]  = useState("");
+  const [resetSent,   setResetSent]   = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  function validate(): boolean {
+    const result = schema.safeParse({ email, password });
+    if (!result.success) {
+      const fieldErrors: Errors = {};
+      for (const issue of result.error.issues) {
+        const key = issue.path[0] as keyof Errors;
+        if (!fieldErrors[key]) fieldErrors[key] = issue.message;
+      }
+      setErrors(fieldErrors);
+      return false;
+    }
+    setErrors({});
+    return true;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) { setError("Email is required."); return; }
+    if (!validate()) return;
+
     setLoading(true);
-    setError(null);
+    setAuthError(null);
 
     try {
       const res = await fetch("/api-proxy/ledger/api/auth/token", {
@@ -36,7 +64,7 @@ export default function LoginPage() {
       });
 
       if (!res.ok) {
-        setError("Invalid credentials. Please try again.");
+        setAuthError("Incorrect email or password");
         return;
       }
 
@@ -45,10 +73,20 @@ export default function LoginPage() {
       document.cookie = `cbam_token=${encodeURIComponent(data.access_token)}; path=/; max-age=3600`;
       router.replace("/cases");
     } catch {
-      setError("Unable to reach the server. Please try again.");
+      setAuthError("Incorrect email or password");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleResetSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+    setResetLoading(true);
+    // Simulate — real reset endpoint wired when available
+    await new Promise((r) => setTimeout(r, 800));
+    setResetLoading(false);
+    setResetSent(true);
   }
 
   return (
@@ -69,7 +107,7 @@ export default function LoginPage() {
             fontSize:     "var(--text-base)",
             fontWeight:   "var(--font-focal)",
             color:        "var(--color-text-primary)",
-            marginBottom: "var(--space-48)",
+            marginBottom: "80px",
           }}
         >
           Nucleos
@@ -80,50 +118,82 @@ export default function LoginPage() {
             fontSize:     "var(--text-lg)",
             fontWeight:   "var(--font-focal)",
             color:        "var(--color-text-primary)",
-            marginBottom: "var(--space-8)",
+            marginBottom: "var(--space-32)",
           }}
         >
           Sign in
         </h1>
-        <p
-          style={{
-            fontSize:     "var(--text-sm)",
-            color:        "var(--color-text-secondary)",
-            marginBottom: "var(--space-32)",
-          }}
-        >
-          CBAM compliance platform
-        </p>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-16)" }}>
+
+            {/* Email */}
             <Input
-              label="Email"
               id="email"
+              label="Email address"
               type="email"
               autoComplete="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
+              onChange={(e) => { setEmail(e.target.value); setAuthError(null); }}
+              error={errors.email}
             />
+
+            {/* Forgot password — inline below email field */}
+            {showReset && (
+              <form
+                onSubmit={handleResetSubmit}
+                style={{
+                  display:       "flex",
+                  flexDirection: "column",
+                  gap:           "var(--space-8)",
+                  padding:       "var(--space-16)",
+                  background:    "var(--color-surface)",
+                  border:        "var(--border-width) solid var(--color-border)",
+                  borderRadius:  "var(--btn-radius)",
+                }}
+              >
+                {resetSent ? (
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+                    If that address is registered you'll receive a reset link shortly.
+                  </p>
+                ) : (
+                  <>
+                    <Input
+                      id="reset-email"
+                      label="Email address"
+                      type="email"
+                      autoComplete="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                    />
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      loading={resetLoading}
+                      style={{ alignSelf: "flex-start" }}
+                    >
+                      Send reset link
+                    </Button>
+                  </>
+                )}
+              </form>
+            )}
+
+            {/* Password */}
             <Input
-              label="Password"
               id="password"
+              label="Password"
               type="password"
               autoComplete="current-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              onChange={(e) => { setPassword(e.target.value); setAuthError(null); }}
+              error={errors.password}
             />
 
-            {error && (
-              <p
-                style={{
-                  fontSize: "var(--text-sm)",
-                  color:    "var(--color-red)",
-                }}
-              >
-                {error}
+            {/* Auth error — single line below password, never specifies which field */}
+            {authError && (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", margin: 0 }}>
+                {authError}
               </p>
             )}
 
@@ -131,12 +201,54 @@ export default function LoginPage() {
               type="submit"
               variant="primary"
               loading={loading}
-              style={{ marginTop: "var(--space-8)", width: "100%" }}
+              style={{ width: "100%", marginTop: "var(--space-8)" }}
             >
               Sign in
             </Button>
+
+            {/* Forgot password trigger — right-aligned */}
+            <div style={{ textAlign: "right" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetEmail(email);
+                  setShowReset((v) => !v);
+                  setResetSent(false);
+                }}
+                style={{
+                  background:  "none",
+                  border:      "none",
+                  padding:     0,
+                  cursor:      "pointer",
+                  fontSize:    "var(--text-sm)",
+                  color:       "var(--color-text-secondary)",
+                  fontFamily:  "inherit",
+                }}
+              >
+                Forgot your password?
+              </button>
+            </div>
           </div>
         </form>
+
+        {/* Divider + signup link */}
+        <div style={{ marginTop: "var(--space-40)" }}>
+          <div
+            style={{
+              borderTop: "var(--border-width) solid var(--color-border)",
+              marginBottom: "var(--space-24)",
+            }}
+          />
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+            New to Nucleos?{" "}
+            <Link
+              href="/signup"
+              style={{ color: "var(--color-text-secondary)", textDecoration: "underline" }}
+            >
+              Create an account →
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
