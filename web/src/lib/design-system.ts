@@ -160,11 +160,29 @@ export function statusLabel(status: string | null | undefined): string {
 /** Human-readable label for an emissions method */
 export function methodLabel(method: string | null | undefined): string {
   const map: Record<string, string> = {
-    actual:    'Actual (verified)',
-    estimated: 'Estimated',
-    default:   'Default (Annex VI)',
+    actual_verified:   'Actual (verified)',
+    actual_unverified: 'Actual (unverified)',
+    actual:            'Actual (verified)',   // backward-compat alias
+    estimated:         'Estimated',
+    default:           'Default value',
   };
   return method ? (map[method] ?? method) : '—';
+}
+
+/** Maps an emissions method string to its badge variant. */
+export function methodBadgeVariant(method: string | null | undefined): StatusVariant {
+  switch (method) {
+    case 'actual_verified':
+    case 'actual':
+      return 'approved';
+    case 'actual_unverified':
+    case 'estimated':
+      return 'pending';
+    case 'default':
+      return 'error';
+    default:
+      return 'draft';
+  }
 }
 
 /** Format a quarter period as a readable string */
@@ -178,11 +196,46 @@ export function formatTco2e(kgco2e: number): string {
   return `${t.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tCO₂e`;
 }
 
-/** Format a GBP liability figure */
+/** Format a GBP amount — "£1,234.56" always 2 decimal places. */
 export function formatGbp(amount: number): string {
   return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
+    style:                 'currency',
+    currency:              'GBP',
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
+}
+
+/** Canonical currency formatter per global spec — alias for formatGbp. */
+export const formatCurrency = formatGbp;
+
+/** Format kg CO₂e as tCO₂e — "1.234 tCO₂e" always 3 decimal places. */
+export function formatEmissions(kgco2e: number): string {
+  const t = kgco2e / 1000;
+  return `${t.toLocaleString('en-GB', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} tCO₂e`;
+}
+
+/** Format a weight — "500.0 t" if ≥ 1 000 kg, else "500 kg". */
+export function formatWeight(kg: number): string {
+  if (kg >= 1_000) {
+    return `${(kg / 1_000).toLocaleString('en-GB', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} t`;
+  }
+  return `${kg.toLocaleString('en-GB', { maximumFractionDigits: 0 })} kg`;
+}
+
+/** Format an ISO date string — "15 March 2027". */
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day:   'numeric',
+    month: 'long',
+    year:  'numeric',
+  });
+}
+
+/** Normalise a CN code to 8 digits, no spaces — "7208 1000" → "72081000". */
+export function formatCNCode(code: string): string {
+  return code.replace(/\s/g, '').padStart(8, '0');
 }

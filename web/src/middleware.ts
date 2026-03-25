@@ -8,7 +8,10 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes — always accessible (no auth required)
-  if (pathname.startsWith("/login")) return NextResponse.next();
+  // "/" renders a dual state: scope checker (unauthed) vs dashboard (authed) — never redirect
+  if (pathname === "/") return NextResponse.next();
+  if (pathname.startsWith("/login"))         return NextResponse.next();
+  if (pathname.startsWith("/signup"))        return NextResponse.next();
   if (pathname.startsWith("/design-system")) return NextResponse.next();
 
   // Protected routes — redirect to login if no token
