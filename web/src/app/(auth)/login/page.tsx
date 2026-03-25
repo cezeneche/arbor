@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -16,8 +15,6 @@ const schema = z.object({
 type Errors = Partial<Record<keyof z.infer<typeof schema>, string>>;
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [errors,   setErrors]   = useState<Errors>({});
@@ -71,7 +68,8 @@ export default function LoginPage() {
       const data = await res.json();
       saveToken(data.access_token);
       document.cookie = `cbam_token=${encodeURIComponent(data.access_token)}; path=/; max-age=3600`;
-      router.replace("/");
+      // Full reload so AuthProvider re-initialises from the new token
+      window.location.href = "/";
     } catch {
       setAuthError("Incorrect email or password");
     } finally {

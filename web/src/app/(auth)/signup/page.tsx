@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -19,8 +18,6 @@ type FormValues = z.infer<typeof schema>;
 type Errors = Partial<Record<keyof FormValues, string>>;
 
 export default function SignupPage() {
-  const router = useRouter();
-
   const [values, setValues] = useState<FormValues>({
     fullName:    "",
     companyName: "",
@@ -83,7 +80,8 @@ export default function SignupPage() {
       const data = await res.json();
       saveToken(data.access_token);
       document.cookie = `cbam_token=${encodeURIComponent(data.access_token)}; path=/; max-age=3600`;
-      router.replace("/");
+      // Full reload so AuthProvider re-initialises from the new token
+      window.location.href = "/";
     } catch {
       setApiError("Unable to reach the server. Please try again.");
     } finally {
