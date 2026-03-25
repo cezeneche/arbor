@@ -54,20 +54,20 @@ function buildEmailBody({
 
   return `Dear ${dear},
 
-We import ${prod} (CN ${cn}) and are required to report embedded carbon emissions to HMRC under the UK Carbon Border Adjustment Mechanism, effective January 2027.
+We import ${prod} (CN ${cn}) from your facility and are required to report the embedded carbon emissions of these goods to HMRC under the UK Carbon Border Adjustment Mechanism, which takes effect from January 2027.
 
-To calculate our liability accurately, we need the following for goods produced at your facility:
+To calculate our CBAM liability accurately, we need the following data for goods produced at your facility:
 
-— Specific embedded emissions (direct), in tCO₂e per tonne
-— Production route (e.g. electric arc furnace, blast furnace)
+— Specific embedded emissions (direct), in tCO₂e per tonne of product
+— Production route used (e.g. electric arc furnace, blast furnace)
 — Country and facility of production
 — The reporting period this data covers
 
-If you have completed EU CBAM reporting, this data is already available from your compliance records.
+If you have completed EU CBAM reporting, this data will already be available from your CBAM compliance records.
 
 We are required to retain this data for 6 years under UK CBAM regulations.
 
-Please reply with the data or forward to your sustainability team.
+Please reply to this email with the data, or forward this request to your sustainability or compliance team.
 
 Thank you,
 ${name}
@@ -200,7 +200,7 @@ export default function SupplierRequestPage({
       style={{
         maxWidth: 640,
         margin:   "0 auto",
-        padding:  "0 var(--space-32) var(--space-80)",
+        padding:  "var(--space-48) var(--space-32) var(--space-80)",
       }}
     >
       {/* Back link */}
@@ -327,7 +327,7 @@ export default function SupplierRequestPage({
         rows={20}
         style={{
           width:           "100%",
-          minHeight:       480,
+          minHeight:       500,
           padding:         "var(--space-24)",
           fontSize:        "var(--text-base)",
           fontWeight:      "var(--font-body)",

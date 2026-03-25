@@ -79,8 +79,7 @@ export default function LoginPage() {
     }
   }
 
-  async function handleResetSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleResetSubmit() {
     if (!resetEmail.trim()) return;
     setResetLoading(true);
     // Simulate — real reset endpoint wired when available
@@ -138,45 +137,38 @@ export default function LoginPage() {
               error={errors.email}
             />
 
-            {/* Forgot password — inline below email field */}
+            {/* Forgot password — inline below email field, no card, no modal */}
             {showReset && (
-              <form
-                onSubmit={handleResetSubmit}
-                style={{
-                  display:       "flex",
-                  flexDirection: "column",
-                  gap:           "var(--space-8)",
-                  padding:       "var(--space-16)",
-                  background:    "var(--color-surface)",
-                  border:        "var(--border-width) solid var(--color-border)",
-                  borderRadius:  "var(--btn-radius)",
-                }}
-              >
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
                 {resetSent ? (
-                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-                    If that address is registered you'll receive a reset link shortly.
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", margin: 0 }}>
+                    If that address is registered you&apos;ll receive a reset link shortly.
                   </p>
                 ) : (
                   <>
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", margin: 0 }}>
+                      Enter your email address and we&apos;ll send a reset link.
+                    </p>
                     <Input
                       id="reset-email"
-                      label="Email address"
+                      label=""
                       type="email"
                       autoComplete="email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                     />
                     <Button
-                      type="submit"
+                      type="button"
                       variant="secondary"
                       loading={resetLoading}
                       style={{ alignSelf: "flex-start" }}
+                      onClick={handleResetSubmit}
                     >
                       Send reset link
                     </Button>
                   </>
                 )}
-              </form>
+              </div>
             )}
 
             {/* Password */}

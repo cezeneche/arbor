@@ -178,7 +178,6 @@ export default function SignupPage() {
                   style={{
                     fontSize: "var(--text-xs)",
                     color:    "var(--color-text-tertiary)",
-                    paddingLeft: "2px",
                   }}
                 >
                   At least 8 characters

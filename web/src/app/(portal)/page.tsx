@@ -6,23 +6,21 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { useCases } from "@/lib/hooks/useCases";
 import { useKPIs } from "@/lib/hooks/useInsights";
 import { Badge } from "@/components/ui/badge";
-import { toStatusVariant, statusLabel } from "@/lib/design-system";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  formatCurrency,
+  toStatusVariant,
+  statusLabel,
+  methodBadgeVariant,
+  methodLabel,
+} from "@/lib/design-system";
 import type { Case } from "@/lib/api/types";
 
 // UK ETS Q1 2027 quarterly-average (mirrors backend public_tools.py constant)
 const UK_ETS_RATE = 52.4;
-const PAGE_SIZE = 20;
+const PAGE_SIZE   = 20;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────────
-
-function formatGbp(n: number): string {
-  return new Intl.NumberFormat("en-GB", {
-    style:                 "currency",
-    currency:              "GBP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -46,7 +44,17 @@ function sectorLabel(s: string | null | undefined): string {
   return s ? (map[s] ?? s.replace(/_/g, " ")) : "—";
 }
 
-// ── Scope checker — unauthenticated state ────────────────────────────────────────
+function isRegistered(): boolean {
+  try {
+    const raw = localStorage.getItem("nucleos_reg_state");
+    if (!raw) return false;
+    return JSON.parse(raw)?.hmrcSubmitted === true;
+  } catch {
+    return false;
+  }
+}
+
+// ── Scope checker — unauthenticated state ─────────────────────────────────────
 
 type ScopeResult = {
   in_scope:                boolean;
@@ -116,7 +124,7 @@ function ScopeChecker() {
             fontSize:     "var(--text-base)",
             fontWeight:   "var(--font-focal)",
             color:        "var(--color-text-primary)",
-            marginBottom: "80px",
+            marginBottom: "var(--space-80)",
           }}
         >
           Nucleos
@@ -134,7 +142,7 @@ function ScopeChecker() {
           Find out if your imports are subject to UK CBAM
         </h1>
 
-        {/* Input + inline Check button — visually one element */}
+        {/* Inline search — input + Check button as one element */}
         <form onSubmit={handleCheck}>
           <div
             style={{
@@ -178,19 +186,19 @@ function ScopeChecker() {
               type="submit"
               disabled={cleanLen < 2 || phase === "loading"}
               style={{
-                height:          "100%",
-                padding:         "0 var(--space-24)",
-                border:          "none",
-                outline:         "none",
-                background:      "none",
-                fontSize:        "var(--text-base)",
-                fontWeight:      "var(--font-focal)",
-                fontFamily:      "inherit",
-                color:           cleanLen < 2 || phase === "loading"
-                                   ? "var(--color-text-tertiary)"
-                                   : "var(--color-navy)",
-                cursor:          cleanLen < 2 || phase === "loading" ? "default" : "pointer",
-                whiteSpace:      "nowrap",
+                height:      "100%",
+                padding:     "0 var(--space-24)",
+                border:      "none",
+                outline:     "none",
+                background:  "none",
+                fontSize:    "var(--text-base)",
+                fontWeight:  "var(--font-focal)",
+                fontFamily:  "inherit",
+                color:       cleanLen < 2 || phase === "loading"
+                               ? "var(--color-text-tertiary)"
+                               : "var(--color-navy)",
+                cursor:      cleanLen < 2 || phase === "loading" ? "default" : "pointer",
+                whiteSpace:  "nowrap",
               }}
             >
               {phase === "loading" ? "Checking…" : "Check"}
@@ -238,19 +246,18 @@ function ScopeChecker() {
 
                 {liabilityPerTonne != null && (
                   <>
-                    {/* Hero number */}
                     <p
                       style={{
                         fontSize:           "var(--text-hero)",
                         fontWeight:         "var(--font-focal)",
                         color:              "var(--color-navy)",
-                        letterSpacing:      "-0.02em",
+                        letterSpacing:      "var(--tracking-hero)",
                         fontVariantNumeric: "tabular-nums",
-                        lineHeight:         1,
+                        lineHeight:         "var(--leading-display)",
                         marginBottom:       "var(--space-8)",
                       }}
                     >
-                      {formatGbp(liabilityPerTonne)}
+                      {formatCurrency(liabilityPerTonne)}
                     </p>
                     <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
                       estimated 2027 liability at default values · per tonne
@@ -263,7 +270,7 @@ function ScopeChecker() {
 
                 <Link
                   href="/signup"
-                  style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-navy)", textDecoration: "none" }}
+                  style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-navy)" }}
                 >
                   Automate your compliance →
                 </Link>
@@ -288,9 +295,9 @@ function ScopeChecker() {
               </div>
             )}
 
-            {/* Divider + sign in link */}
+            {/* Already registered sign-in link */}
             <div style={{ marginTop: "var(--space-32)" }}>
-              <div style={{ borderTop: "var(--border-width) solid var(--color-border)", marginBottom: "var(--space-16)" }} />
+              <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-16)" }} />
               <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
                 Already registered?{" "}
                 <Link href="/login" style={{ color: "var(--color-text-secondary)", textDecoration: "underline" }}>
@@ -305,19 +312,23 @@ function ScopeChecker() {
   );
 }
 
-// ── Dashboard — authenticated state ──────────────────────────────────────────────
+// ── Dashboard — authenticated state ───────────────────────────────────────────
 
 function Dashboard() {
   const { user }              = useAuth();
   const { cases, isLoading }  = useCases();
   const [visible, setVisible] = useState(PAGE_SIZE);
-  const sentinelRef           = useRef<HTMLDivElement | null>(null);
+  const [registered, setRegistered] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // EORI from first case → KPIs
   const eori = cases[0]?.importer_eori;
   const { kpis } = useKPIs(eori, 2027);
 
-  // Intersection observer — load more on scroll
+  // Read registration state from localStorage (set by /registration page)
+  useEffect(() => { setRegistered(isRegistered()); }, []);
+
+  // Intersection observer — infinite scroll
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -335,15 +346,16 @@ function Dashboard() {
     : kpis?.total_kgco2e != null       ? (kpis.total_kgco2e / 1000) * UK_ETS_RATE
     : null;
 
-  // Most recent updated_at across all cases
+  // Most recent updated_at
   const lastUpdated =
     cases.length > 0
       ? cases.reduce((latest, c) => (c.updated_at > latest ? c.updated_at : latest), cases[0].updated_at)
       : null;
 
-  // Highest-priority action
+  // Highest-priority action — one card, one call to action
   const pendingReview = cases.filter((c) => c.review_status === "pending_review");
   let action: { text: string; linkText: string; href: string } | null = null;
+
   if (pendingReview.length > 0) {
     const n = pendingReview.length;
     action = {
@@ -351,27 +363,28 @@ function Dashboard() {
       linkText: "Review now →",
       href:     "/review",
     };
-  } else if (cases.length > 0) {
+  } else if (cases.length > 0 && !registered) {
     action = {
       text:     "Registration with HMRC is required before 31 January 2028.",
-      linkText: "Registration guidance →",
-      href:     "/settings",
+      linkText: "Start registration →",
+      href:     "/registration",
     };
   }
 
   return (
     <div>
 
-      {/* ── Section 1: Exposure number ── */}
-      <div style={{ backgroundColor: "var(--color-surface)", padding: "var(--space-40)" }}>
+      {/* ── Section 1: Exposure number — full-width white background ── */}
+      <div style={{ backgroundColor: "var(--color-surface)", borderBottom: "var(--border-width) solid var(--color-border)" }}>
         <div
+          className="page-content"
           style={{
-            maxWidth:        "var(--max-width)",
-            margin:          "0 auto",
-            display:         "flex",
-            alignItems:      "flex-end",
-            justifyContent:  "space-between",
-            gap:             "var(--space-32)",
+            display:        "flex",
+            alignItems:     "flex-end",
+            justifyContent: "space-between",
+            gap:            "var(--space-32)",
+            paddingTop:     "var(--space-40)",
+            paddingBottom:  "var(--space-40)",
           }}
         >
           <div>
@@ -385,27 +398,35 @@ function Dashboard() {
             >
               Estimated 2027 CBAM liability
             </p>
-            <p
-              style={{
-                fontSize:           "var(--text-hero)",
-                fontWeight:         "var(--font-focal)",
-                color:              "var(--color-navy)",
-                letterSpacing:      "-0.02em",
-                fontVariantNumeric: "tabular-nums",
-                lineHeight:         1,
-                marginBottom:       "var(--space-8)",
-              }}
-            >
-              {isLoading ? "—" : totalLiability != null ? formatGbp(totalLiability) : "£0.00"}
-            </p>
+
+            {isLoading ? (
+              <Skeleton height={52} width={200} style={{ marginBottom: "var(--space-8)" }} />
+            ) : (
+              <p
+                style={{
+                  fontSize:           "var(--text-hero)",
+                  fontWeight:         "var(--font-focal)",
+                  color:              "var(--color-navy)",
+                  letterSpacing:      "var(--tracking-hero)",
+                  fontVariantNumeric: "tabular-nums",
+                  lineHeight:         "var(--leading-display)",
+                  marginBottom:       "var(--space-8)",
+                }}
+              >
+                {totalLiability != null ? formatCurrency(totalLiability) : "£0.00"}
+              </p>
+            )}
+
             <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)" }}>
-              across {cases.length} case{cases.length !== 1 ? "s" : ""}
-              {lastUpdated ? ` · updated ${relativeTime(lastUpdated)}` : ""}
+              {isLoading
+                ? "—"
+                : `across ${cases.length} case${cases.length !== 1 ? "s" : ""}${lastUpdated ? ` · updated ${relativeTime(lastUpdated)}` : ""}`
+              }
             </p>
           </div>
 
-          {/* Registration badge — only when cases exist */}
-          {cases.length > 0 && (
+          {/* Registration status badge — shown only when cases exist */}
+          {!isLoading && cases.length > 0 && !registered && (
             <span
               style={{
                 display:         "inline-flex",
@@ -413,12 +434,14 @@ function Dashboard() {
                 height:          "var(--space-32)",
                 padding:         "0 var(--space-16)",
                 borderRadius:    "var(--badge-radius)",
-                fontSize:        "var(--text-xs)",
-                fontWeight:      "var(--font-focal)",
+                fontSize:        "var(--badge-font-size)",
+                fontWeight:      "var(--badge-font-weight)",
                 backgroundColor: "var(--color-amber-bg)",
                 color:           "var(--color-amber)",
                 whiteSpace:      "nowrap",
-                marginBottom:    "var(--space-8)",
+                flexShrink:      0,
+                alignSelf:       "flex-start",
+                marginTop:       "var(--space-8)",
               }}
             >
               Registration required
@@ -427,15 +450,9 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ── Section 2: Action card (highest priority only) ── */}
+      {/* ── Section 2: Action card — highest-priority only ── */}
       {action && (
-        <div
-          style={{
-            maxWidth: "var(--max-width)",
-            margin:   "0 auto",
-            padding:  "var(--space-32) var(--space-32) 0",
-          }}
-        >
+        <div className="page-content" style={{ paddingTop: "var(--space-32)" }}>
           <div
             style={{
               display:         "flex",
@@ -449,12 +466,17 @@ function Dashboard() {
               borderRadius:    "0 var(--btn-radius) var(--btn-radius) 0",
             }}
           >
-            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)", margin: 0 }}>
+            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)" }}>
               {action.text}
             </p>
             <Link
               href={action.href}
-              style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-navy)", textDecoration: "none", whiteSpace: "nowrap" }}
+              style={{
+                fontSize:   "var(--text-base)",
+                fontWeight: "var(--font-focal)",
+                color:      "var(--color-navy)",
+                whiteSpace: "nowrap",
+              }}
             >
               {action.linkText}
             </Link>
@@ -463,36 +485,42 @@ function Dashboard() {
       )}
 
       {/* ── Section 3: Case list ── */}
-      <div style={{ maxWidth: "var(--max-width)", margin: "0 auto", padding: "var(--space-32)" }}>
+      <div className="page-content" style={{ paddingTop: "var(--space-32)", paddingBottom: "var(--space-64)" }}>
+
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
+          Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
               style={{
-                height:           "56px",
-                borderBottom:     "var(--border-width) solid var(--color-border)",
-                backgroundColor:  "transparent",
+                height:       "56px",
+                borderBottom: "var(--border-width) solid var(--color-border)",
+                display:      "flex",
+                alignItems:   "center",
+                gap:          "var(--space-24)",
               }}
-            />
+            >
+              <Skeleton height={14} width="45%" />
+              <Skeleton height={14} width="15%" style={{ marginLeft: "auto" }} />
+              <Skeleton height={22} width={72} borderRadius={4} />
+            </div>
           ))
         ) : cases.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "var(--space-64) 0" }}>
-            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
-              No cases yet.
+          <div style={{ paddingTop: "var(--space-64)" }}>
+            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
+              No cases yet.{" "}
+              <Link href="/upload" style={{ color: "var(--color-navy)" }}>
+                Upload your first document →
+              </Link>
             </p>
-            <Link
-              href="/cases/new"
-              style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", textDecoration: "underline" }}
-            >
-              Upload your first document →
-            </Link>
           </div>
         ) : (
           <>
             {cases.slice(0, visible).map((c) => (
               <CaseRow key={c.id} c={c} />
             ))}
-            {visible < cases.length && <div ref={sentinelRef} style={{ height: "1px" }} />}
+            {visible < cases.length && (
+              <div ref={sentinelRef} style={{ height: "1px" }} />
+            )}
           </>
         )}
       </div>
@@ -500,10 +528,29 @@ function Dashboard() {
   );
 }
 
-// ── Case row ──────────────────────────────────────────────────────────────────────
+// ── Case row ──────────────────────────────────────────────────────────────────
 
-function CaseRow({ c }: { c: Case }) {
+// The list API returns base Case fields. sector/origin_country/predominant_method/
+// estimated_liability_gbp are optional — displayed if present, gracefully hidden if not.
+interface CaseRowProps {
+  c: Case & {
+    sector?:                  string | null;
+    origin_country?:          string | null;
+    predominant_method?:      string | null;
+    estimated_liability_gbp?: number | null;
+  };
+}
+
+function CaseRow({ c }: CaseRowProps) {
   const [hovered, setHovered] = useState(false);
+
+  // Left label: sector · origin_country if available, else importer_name · period
+  const leftPrimary = c.sector
+    ? sectorLabel(c.sector)
+    : c.importer_name;
+  const leftSecondary = c.sector && c.origin_country
+    ? c.origin_country.toUpperCase()
+    : `Q${c.reporting_quarter} ${c.reporting_year}`;
 
   return (
     <Link
@@ -514,18 +561,18 @@ function CaseRow({ c }: { c: Case }) {
     >
       <div
         style={{
-          display:         "grid",
+          display:             "grid",
           gridTemplateColumns: "1fr auto auto",
-          alignItems:      "center",
-          gap:             "var(--space-24)",
-          height:          "56px",
-          padding:         "0 var(--space-8)",
-          borderBottom:    "var(--border-width) solid var(--color-border)",
-          backgroundColor: hovered ? "var(--color-surface)" : "transparent",
-          transition:      "background-color 150ms ease",
+          alignItems:          "center",
+          gap:                 "var(--space-24)",
+          height:              "56px",
+          padding:             "0 var(--space-8)",
+          borderBottom:        "var(--border-width) solid var(--color-border)",
+          backgroundColor:     hovered ? "var(--color-surface)" : "transparent",
+          transition:          "background-color var(--transition-fast)",
         }}
       >
-        {/* Left: name · period */}
+        {/* Left: primary label · secondary label */}
         <p
           style={{
             fontSize:     "var(--text-base)",
@@ -537,37 +584,62 @@ function CaseRow({ c }: { c: Case }) {
             whiteSpace:   "nowrap",
           }}
         >
-          {c.importer_name} · Q{c.reporting_quarter} {c.reporting_year}
+          {leftPrimary}
+          <span style={{ color: "var(--color-text-tertiary)" }}> · </span>
+          <span style={{ color: "var(--color-text-secondary)" }}>{leftSecondary}</span>
         </p>
 
-        {/* Centre: short case ID */}
-        <p
-          style={{
-            fontSize:           "var(--text-xs)",
-            color:              "var(--color-text-tertiary)",
-            margin:             0,
-            whiteSpace:         "nowrap",
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {c.id.slice(0, 8)}
-        </p>
+        {/* Centre: method badge (if available) + short case ID */}
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", flexShrink: 0 }}>
+          {c.predominant_method && (
+            <Badge variant={methodBadgeVariant(c.predominant_method)}>
+              {methodLabel(c.predominant_method)}
+            </Badge>
+          )}
+          <p
+            style={{
+              fontSize:           "var(--text-xs)",
+              color:              "var(--color-text-tertiary)",
+              margin:             0,
+              whiteSpace:         "nowrap",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {c.id.slice(0, 8)}
+          </p>
+        </div>
 
-        {/* Right: status badge */}
-        <Badge variant={toStatusVariant(c.status)}>
-          {statusLabel(c.status)}
-        </Badge>
+        {/* Right: liability (if available) + status badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", flexShrink: 0 }}>
+          {c.estimated_liability_gbp != null && (
+            <p
+              style={{
+                fontSize:           "var(--text-sm)",
+                fontWeight:         "var(--font-body)",
+                color:              "var(--color-text-secondary)",
+                margin:             0,
+                whiteSpace:         "nowrap",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {formatCurrency(c.estimated_liability_gbp)}
+            </p>
+          )}
+          <Badge variant={toStatusVariant(c.status)}>
+            {statusLabel(c.status)}
+          </Badge>
+        </div>
       </div>
     </Link>
   );
 }
 
-// ── Root ─────────────────────────────────────────────────────────────────────────
+// ── Root ──────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const { user, isLoading } = useAuth();
 
-  // Hold render until auth state is determined to prevent flash
+  // Hold render until auth state is resolved — prevents unauthenticated flash
   if (isLoading) return null;
   if (!user)     return <ScopeChecker />;
   return <Dashboard />;

@@ -166,7 +166,7 @@ export default function RegistrationPage() {
       style={{
         maxWidth: 640,
         margin:   "0 auto",
-        padding:  "0 var(--space-32) var(--space-80)",
+        padding:  "var(--space-48) var(--space-32) var(--space-80)",
       }}
     >
 
@@ -251,7 +251,7 @@ export default function RegistrationPage() {
               width:           `${barFillPct * 100}%`,
               borderRadius:    4,
               backgroundColor: barColor(importAmount),
-              transition:      "width 0.3s ease, background-color 0.3s ease",
+              transition:      "width var(--transition-normal), background-color var(--transition-normal)",
             }}
           />
         </div>
@@ -290,7 +290,7 @@ export default function RegistrationPage() {
                       fontWeight: "var(--font-body)",
                       color:      "var(--color-text-primary)",
                       margin:     0,
-                      lineHeight: 1.5,
+                      lineHeight: "var(--leading-body)",
                     }}
                   >
                     {item.label}
