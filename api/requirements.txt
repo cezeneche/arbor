@@ -86,6 +86,7 @@ pydantic_core==2.41.5
 pydantic-settings
 PyJWT==2.10.1
 Pygments==2.19.2
+pdfplumber>=0.11.0
 pypdf==6.7.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
