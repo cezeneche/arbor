@@ -1,214 +1,185 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { listCbamCases } from "@/lib/api";
-import { CaseStatusBadge } from "@/components/cases/CaseStatusBadge";
-import type { CBAMCase } from "@/lib/types";
+import { useCases } from "@/lib/hooks/useCases";
+import { Badge } from "@/components/ui/badge";
+import { toStatusVariant, statusLabel, periodLabel } from "@/lib/design-system";
 
-/* ── Skeleton row ─────────────────────────────────────────────────────────── */
-function SkeletonRow() {
-  return (
-    <tr>
-      {Array(7).fill(0).map((_, i) => (
-        <td key={i} style={{ padding: "var(--space-3) var(--space-4)" }}>
-          <div className="skeleton-shimmer" style={{ height: "14px", borderRadius: "var(--radius-sm)" }} />
-        </td>
-      ))}
-    </tr>
-  );
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
 }
 
 export default function CasesPage() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  const { data: cases, isLoading, error } = useQuery<CBAMCase[]>({
-    queryKey: ["cbam-cases"],
-    queryFn: listCbamCases,
-    staleTime: 30_000,
-  });
-
-  const filtered = (cases ?? []).filter((c) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !q ||
-      c.importer_eori.toLowerCase().includes(q) ||
-      (c.importer_name ?? "").toLowerCase().includes(q);
-    const matchesStatus =
-      statusFilter === "all" || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const { cases, isLoading, error } = useCases();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-
-      {/* Page header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "var(--space-4)" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-primary)" }}>
-            Cases
-          </h1>
-          <p style={{ margin: "var(--space-1) 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-            {cases ? `${cases.length} total CBAM cases` : "Loading…"}
-          </p>
-        </div>
-        <Link
-          href="/cases/new"
+    <div className="page-content">
+      <div
+        style={{
+          display:        "flex",
+          alignItems:     "baseline",
+          justifyContent: "space-between",
+          marginBottom:   "var(--space-32)",
+        }}
+      >
+        <h1
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "var(--space-2)",
-            height: "var(--touch-min)",
-            padding: "0 var(--space-5)",
-            borderRadius: "var(--radius-btn)",
-            backgroundColor: "var(--color-accent)",
-            color: "var(--color-text-on-accent)",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-weight-semibold)",
-            textDecoration: "none",
-            border: "none",
-            cursor: "pointer",
+            fontSize:   "var(--text-lg)",
+            fontWeight: "var(--font-focal)",
+            color:      "var(--color-text-primary)",
           }}
         >
-          + New Case
-        </Link>
+          Cases
+        </h1>
+        <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-tertiary)" }}>
+          {!isLoading && `${cases.length} total`}
+        </span>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by EORI or name…"
-          aria-label="Search cases"
-          style={{
-            flex: "1 1 220px",
-            minWidth: 0,
-            height: "var(--touch-min)",
-            padding: "0 var(--space-4)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border)",
-            backgroundColor: "var(--color-surface-raised)",
-            color: "var(--color-text-primary)",
-            fontSize: "var(--text-sm)",
-            outline: "none",
-          }}
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Filter by status"
-          style={{
-            height: "var(--touch-min)",
-            padding: "0 var(--space-4)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border)",
-            backgroundColor: "var(--color-surface-raised)",
-            color: "var(--color-text-primary)",
-            fontSize: "var(--text-sm)",
-            cursor: "pointer",
-          }}
-        >
-          <option value="all">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="submitted">Submitted</option>
-          <option value="processing">Processing</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-        </select>
-      </div>
+      {isLoading && (
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+          Loading cases…
+        </p>
+      )}
 
-      {/* Error */}
       {error && (
-        <div role="alert" style={{ padding: "var(--space-4)", borderRadius: "var(--radius-lg)", backgroundColor: "var(--color-error-bg)", border: "1px solid var(--color-error-border)", color: "var(--color-error-text)", fontSize: "var(--text-sm)" }}>
-          Failed to load cases — {(error as Error).message}
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)" }}>
+          {error.message}
+        </p>
+      )}
+
+      {!isLoading && !error && cases.length === 0 && (
+        <div
+          style={{
+            paddingTop:    "var(--space-80)",
+            paddingBottom: "var(--space-80)",
+            textAlign:     "center",
+          }}
+        >
+          <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-secondary)" }}>
+            No cases yet.
+          </p>
+          <p
+            style={{
+              fontSize:   "var(--text-sm)",
+              color:      "var(--color-text-tertiary)",
+              marginTop:  "var(--space-8)",
+            }}
+          >
+            Upload a document to create your first case.
+          </p>
         </div>
       )}
 
-      {/* Table */}
-      <div style={{ borderRadius: "var(--radius-xl)", border: "1px solid var(--color-border)", overflow: "hidden", backgroundColor: "var(--color-surface)" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--text-sm)" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
-              {["Importer EORI", "Company", "Quarter", "Status", "Review", "Created", ""].map((h) => (
-                <th
-                  key={h}
+      {!isLoading && cases.length > 0 && (
+        <div
+          style={{
+            border:       "var(--border-width) solid var(--color-border)",
+            borderRadius: "var(--card-radius)",
+            overflow:     "hidden",
+            backgroundColor: "var(--color-surface)",
+          }}
+        >
+          {/* Header row */}
+          <div
+            style={{
+              display:         "grid",
+              gridTemplateColumns: "1fr 120px 100px 120px",
+              gap:             "var(--space-16)",
+              padding:         "var(--space-16) var(--space-24)",
+              borderBottom:    "var(--border-width) solid var(--color-border)",
+              backgroundColor: "var(--color-bg)",
+            }}
+          >
+            {["Importer", "Period", "Status", "Created"].map((col) => (
+              <span
+                key={col}
+                style={{
+                  fontSize:   "var(--text-xs)",
+                  fontWeight: "var(--font-focal)",
+                  color:      "var(--color-text-tertiary)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {col}
+              </span>
+            ))}
+          </div>
+
+          {/* Data rows */}
+          {cases.map((c, i) => (
+            <Link
+              key={c.id}
+              href={`/cases/${c.id}`}
+              style={{
+                display:         "grid",
+                gridTemplateColumns: "1fr 120px 100px 120px",
+                gap:             "var(--space-16)",
+                padding:         "var(--space-16) var(--space-24)",
+                borderTop:       i === 0 ? "none" : "var(--border-width) solid var(--color-border)",
+                textDecoration:  "none",
+                transition:      "background-color var(--transition-fast)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--color-bg)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "transparent";
+              }}
+            >
+              <div>
+                <p
                   style={{
-                    textAlign: "left",
-                    padding: "var(--space-3) var(--space-4)",
-                    fontSize: "11px",
-                    fontWeight: "var(--font-weight-semibold)",
-                    color: "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "var(--tracking-wider)",
-                    whiteSpace: "nowrap",
+                    fontSize:   "var(--text-base)",
+                    fontWeight: "var(--font-body)",
+                    color:      "var(--color-text-primary)",
                   }}
                 >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              Array(6).fill(0).map((_, i) => <SkeletonRow key={i} />)
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} style={{ padding: "var(--space-12) var(--space-4)", textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--text-sm)" }}>
-                  {search || statusFilter !== "all"
-                    ? "No cases match this filter."
-                    : "No shipments yet. Upload your first invoice to get started."}
-                </td>
-              </tr>
-            ) : (
-              filtered.map((c) => (
-                <tr
-                  key={c.id}
-                  style={{ borderBottom: "1px solid var(--color-border)" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-surface-raised)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                  {c.importer_name}
+                </p>
+                <p
+                  style={{
+                    fontSize:  "var(--text-xs)",
+                    color:     "var(--color-text-tertiary)",
+                    marginTop: "var(--space-8)",
+                  }}
                 >
-                  <td style={{ padding: "var(--space-3) var(--space-4)", fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--color-accent-text)", whiteSpace: "nowrap" }}>
-                    {c.importer_eori}
-                  </td>
-                  <td style={{ padding: "var(--space-3) var(--space-4)", color: "var(--color-text-primary)" }}>
-                    {c.importer_name ?? "—"}
-                  </td>
-                  <td style={{ padding: "var(--space-3) var(--space-4)", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
-                    Q{c.reporting_quarter} {c.reporting_year}
-                  </td>
-                  <td style={{ padding: "var(--space-3) var(--space-4)" }}>
-                    <CaseStatusBadge status={c.status} />
-                  </td>
-                  <td style={{ padding: "var(--space-3) var(--space-4)" }}>
-                    <CaseStatusBadge status={c.review_status} />
-                  </td>
-                  <td style={{ padding: "var(--space-3) var(--space-4)", color: "var(--color-text-muted)", fontSize: "var(--text-xs)", whiteSpace: "nowrap" }}>
-                    {new Date(c.created_at).toLocaleDateString()}
-                  </td>
-                  <td style={{ padding: "var(--space-3) var(--space-4)", textAlign: "right" }}>
-                    <Link
-                      href={`/cases/${c.id}`}
-                      style={{
-                        fontSize: "var(--text-xs)",
-                        fontWeight: "var(--font-weight-semibold)",
-                        color: "var(--color-accent-text)",
-                        textDecoration: "none",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      View →
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  {c.importer_eori}
+                </p>
+              </div>
+
+              <span
+                style={{
+                  fontSize:   "var(--text-sm)",
+                  color:      "var(--color-text-secondary)",
+                  alignSelf:  "center",
+                }}
+              >
+                {periodLabel(c.reporting_year, c.reporting_quarter)}
+              </span>
+
+              <div style={{ alignSelf: "center" }}>
+                <Badge variant={toStatusVariant(c.status)}>
+                  {statusLabel(c.status)}
+                </Badge>
+              </div>
+
+              <span
+                style={{
+                  fontSize:  "var(--text-xs)",
+                  color:     "var(--color-text-tertiary)",
+                  alignSelf: "center",
+                }}
+              >
+                {formatDate(c.created_at)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,114 +1,36 @@
-/* Import design tokens — defines all CSS custom properties */
 @import "../styles/tokens.css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
- * SHADCN VARIABLE BRIDGE
- * ──────────────────────
- * shadcn/ui primitives consume HSL vars in the format `--name: h s% l%`.
- * We remap these to the institutional teal palette so all Radix primitives
- * stay consistent with our token system without touching each component.
- *
- * Teal-700 (#0F766E): 6.3:1 contrast on white → WCAG AA all text, AAA large
- * Teal-800 (#115E59): 8.1:1 contrast on white → WCAG AAA all sizes
- */
 @layer base {
-  /*
-   * SHADCN HSL VARIABLE BRIDGE — Dark Theme
-   * ─────────────────────────────────────────────────────────────────────────
-   * This portal is always dark. shadcn/ui Radix primitives consume these
-   * HSL vars. We map them to the CBAM dark palette so all Radix components
-   * stay consistent with tokens.css without touching each component.
-   *
-   * Palette ref:
-   *   page           #0a0f1a → HSL 218 45%  7%
-   *   surface        #0d1623 → HSL 218 49%  9%
-   *   surface-raised #131e2e → HSL 218 44% 13%
-   *   border         #1e2d42 → HSL 215 38% 19%
-   *   text-primary   #e8f0f7 → HSL 210 40% 93%
-   *   text-secondary #8fa5bf → HSL 210 28% 66%
-   *   text-muted     #4d6680 → HSL 210 25% 40%
-   *   accent         #1D9E75 → HSL 161 69% 37%
-   *   accent-hover   #178a64 → HSL 161 73% 31%
-   */
-  :root {
-    --background:   218 45% 7%;       /* #0a0f1a page background              */
-    --foreground:   210 40% 93%;      /* #e8f0f7 primary text                 */
-
-    --card:         218 49% 9%;       /* #0d1623 surface                      */
-    --card-foreground: 210 40% 93%;
-
-    --popover:      218 44% 13%;      /* #131e2e surface-raised               */
-    --popover-foreground: 210 40% 93%;
-
-    --primary:      161 69% 37%;      /* #1D9E75 accent teal                  */
-    --primary-foreground: 218 45% 7%;
-
-    --secondary:    218 44% 13%;      /* #131e2e surface-raised               */
-    --secondary-foreground: 210 40% 93%;
-
-    --muted:        218 44% 13%;      /* #131e2e surface-raised               */
-    --muted-foreground: 210 28% 66%;  /* #8fa5bf text-secondary               */
-
-    --accent:       161 69% 14%;      /* teal subtle background               */
-    --accent-foreground: 161 69% 65%; /* bright teal text on teal bg          */
-
-    --destructive:  1 72% 57%;        /* #E24B4A error                        */
-    --destructive-foreground: 210 40% 93%;
-
-    --border: 215 38% 19%;            /* #1e2d42 border                       */
-    --input:  218 44% 13%;            /* #131e2e surface-raised               */
-    --ring:   161 69% 50%;            /* bright teal focus ring               */
-
-    /* Charts — status colours for data visualisation                        */
-    --chart-1: 161 69% 37%;           /* approved / accent                    */
-    --chart-2: 210 70% 55%;           /* processing blue                      */
-    --chart-3: 37  87% 53%;           /* pending amber                        */
-    --chart-4: 1   72% 57%;           /* error red                            */
-    --chart-5: 18  67% 52%;           /* flagged orange                       */
-
-    /* 6px border radius                                                     */
-    --radius: 0.375rem;
-
-    /* Sidebar — same dark surface                                           */
-    --sidebar-background:         218 49% 9%;
-    --sidebar-foreground:         210 40% 93%;
-    --sidebar-primary:            161 69% 37%;
-    --sidebar-primary-foreground: 218 45% 7%;
-    --sidebar-accent:             161 69% 14%;
-    --sidebar-accent-foreground:  161 69% 65%;
-    --sidebar-border:             215 38% 19%;
-    --sidebar-ring:               161 69% 50%;
-  }
-
-  /* ─── GLOBAL BASE ─────────────────────────────────────────── */
-  * {
+  *, *::before, *::after {
     box-sizing: border-box;
-    border-color: hsl(var(--border));
   }
 
   html {
+    font-size: 16px;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    font-size: 16px;
   }
 
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-family: var(--font-sans);
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: var(--font-inter);
     font-size: var(--text-base);
-    line-height: var(--leading-relaxed);
+    font-weight: var(--font-body);
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Keyboard-visible focus ring: 3px bright teal, exceeds WCAG 3:1        */
+  /* Focus: visible ring only for keyboard navigation */
   :focus-visible {
-    outline: 3px solid hsl(161 69% 55%);
+    outline: 2px solid var(--color-navy);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -118,76 +40,61 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-weight: var(--font-weight-semibold);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
+    font-weight: var(--font-focal);
+    line-height: var(--leading-display);
+    letter-spacing: var(--tracking-heading);
+    color: var(--color-text-primary);
   }
 
   a {
-    color: var(--color-accent-text);
+    color: var(--color-navy);
+    text-decoration: none;
   }
 
-  /* Respect user's reduced-motion preference (vestibular disorders)        */
+  a:hover {
+    color: var(--color-navy-hover);
+  }
+
+  /* Dividers */
+  hr {
+    border: none;
+    border-top: var(--border-width) solid var(--color-border);
+    margin: 0;
+  }
+
+  /* Respect reduced-motion */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
   }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* ── LAYOUT UTILITIES ───────────────────────────────────────────────────────── */
+
+.page-content {
+  max-width: var(--max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-32);
+  padding-right: var(--space-32);
+}
+
+@media (max-width: 640px) {
+  .page-content {
+    padding-left: var(--space-16);
+    padding-right: var(--space-16);
   }
 }
 
-/* ── CBAM RESPONSIVE LAYOUT UTILITIES ──────────────────────────────────────
- * Consistent responsive behaviour across all portal pages.
- * ─────────────────────────────────────────────────────────────────────────── */
-
-/* 2-column grid → single column at 640px */
-.cbam-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-5);
-  align-items: stretch;
-}
-@media (max-width: 640px) {
-  .cbam-grid-2 { grid-template-columns: 1fr; }
+/* Divider — 0.5px solid only */
+.divider {
+  height: var(--border-width);
+  background-color: var(--color-border);
 }
 
-/* 4-column KPI grid → 2-col at 768px → 1-col at 480px */
-.cbam-grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
-}
-@media (max-width: 768px) {
-  .cbam-grid-4 { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 480px) {
-  .cbam-grid-4 { grid-template-columns: 1fr; }
-}
-
-/* Action-button row → stack at 480px */
-.cbam-action-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-}
-@media (max-width: 480px) {
-  .cbam-action-row { grid-template-columns: 1fr; }
-}
-
-/* Card padding: 1.5rem desktop → 1rem at 640px */
-.cbam-card-pad { padding: var(--space-6); }
-@media (max-width: 640px) {
-  .cbam-card-pad { padding: var(--space-4); }
-}
-
-/* Screen-reader-only utility */
+/* Screen-reader only */
 .sr-only {
   position: absolute;
   width: 1px;

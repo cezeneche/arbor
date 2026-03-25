@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 
-/** Root `/` → redirect to dashboard */
-export default function RootPage() {
-  redirect("/dashboard");
+export default function PortalIndexPage() {
+  redirect("/cases");
 }

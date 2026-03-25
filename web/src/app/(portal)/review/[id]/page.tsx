@@ -1,205 +1,168 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import { getReportPackage, getReview, approveCase, rejectCase } from "@/lib/api";
+import { use, useState } from "react";
+import { useCase } from "@/lib/hooks/useCases";
+import { approveCase, rejectCase } from "@/lib/api/cases";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { toStatusVariant, statusLabel, periodLabel } from "@/lib/design-system";
 
-interface Props { params: { id: string } }
+export default function ReviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const { case_, isLoading, error } = useCase(id);
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  height: "var(--touch-min)",
-  padding: "0 var(--space-4)",
-  borderRadius: "var(--radius-md)",
-  border: "1px solid var(--color-border)",
-  backgroundColor: "var(--color-surface-raised)",
-  color: "var(--color-text-primary)",
-  fontSize: "var(--text-sm)",
-  fontFamily: "var(--font-sans)",
-  boxSizing: "border-box" as const,
-  outline: "none",
-};
+  const [name,     setName]     = useState("");
+  const [email,    setEmail]    = useState("");
+  const [comments, setComments] = useState("");
+  const [action,   setAction]   = useState<"approve" | "reject" | null>(null);
+  const [saving,   setSaving]   = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [done,     setDone]     = useState(false);
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "var(--text-xs)",
-  fontWeight: "var(--font-weight-semibold)",
-  color: "var(--color-text-secondary)",
-  marginBottom: "var(--space-2)",
-  textTransform: "uppercase",
-  letterSpacing: "var(--tracking-wide)",
-};
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!action || !name.trim() || !email.trim()) return;
+    setSaving(true);
+    setSaveError(null);
 
-export default function ReviewDecisionPage({ params }: Props) {
-  const { id } = params;
-  const router         = useRouter();
-  const queryClient    = useQueryClient();
-
-  const [reviewerName,  setReviewerName]  = useState("");
-  const [reviewerEmail, setReviewerEmail] = useState("");
-  const [comments,      setComments]      = useState("");
-  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-
-  const { data: report, isLoading: reportLoading } = useQuery({
-    queryKey: ["report-package", id],
-    queryFn: () => getReportPackage(id),
-  });
-
-  const { data: reviewState } = useQuery({
-    queryKey: ["review", id],
-    queryFn: () => getReview(id),
-  });
-
-  function onSuccess(msg: string) {
-    queryClient.invalidateQueries({ queryKey: ["cbam-cases"] });
-    setToast({ type: "success", msg });
-    setTimeout(() => router.push("/review"), 1200);
+    try {
+      const decision = { reviewer_name: name.trim(), reviewer_email: email.trim(), comments: comments.trim() || undefined };
+      if (action === "approve") await approveCase(id, decision);
+      else                      await rejectCase(id, decision);
+      setDone(true);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save decision.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  const { mutate: approve, isPending: approving } = useMutation({
-    mutationFn: () => approveCase(id, { reviewer_name: reviewerName, reviewer_email: reviewerEmail, comments }),
-    onSuccess: () => onSuccess("Case approved — redirecting…"),
-    onError: (err) => setToast({ type: "error", msg: (err as Error).message }),
-  });
+  if (isLoading) {
+    return (
+      <div className="page-content">
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>Loading…</p>
+      </div>
+    );
+  }
 
-  const { mutate: reject, isPending: rejecting } = useMutation({
-    mutationFn: () => rejectCase(id, { reviewer_name: reviewerName, reviewer_email: reviewerEmail, comments }),
-    onSuccess: () => onSuccess("Case rejected — redirecting…"),
-    onError: (err) => setToast({ type: "error", msg: (err as Error).message }),
-  });
+  if (error || !case_) {
+    return (
+      <div className="page-content">
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)" }}>{error?.message ?? "Case not found."}</p>
+      </div>
+    );
+  }
 
-  const alreadyDecided = reviewState?.review_status === "approved" || reviewState?.review_status === "rejected";
-  const formValid = reviewerName.trim() && reviewerEmail.trim();
-  const busy = approving || rejecting;
+  if (done) {
+    return (
+      <div className="page-content">
+        <p style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: "var(--color-text-primary)", marginBottom: "var(--space-16)" }}>
+          {action === "approve" ? "Case approved." : "Case rejected."}
+        </p>
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-32)" }}>
+          The decision has been recorded in the audit log.
+        </p>
+        <Link href="/review" style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-navy)" }}>
+          ← Back to review queue
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <Link href="/review" style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", textDecoration: "none" }}>
-        ← Back to review queue
+    <div className="page-content">
+      <Link
+        href="/review"
+        style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "inline-block", marginBottom: "var(--space-32)" }}
+      >
+        ← Review queue
       </Link>
 
-      <div>
-        <h1 style={{ margin: 0, fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-primary)" }}>
-          Review Decision
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-16)", marginBottom: "var(--space-32)" }}>
+        <h1 style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: "var(--color-text-primary)" }}>
+          {case_.importer_name}
         </h1>
-        <p style={{ margin: "var(--space-1) 0 0", fontSize: "var(--text-xs)", color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>{id}</p>
+        <Badge variant={toStatusVariant(case_.status)}>{statusLabel(case_.status)}</Badge>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div role="alert" style={{ padding: "var(--space-4)", borderRadius: "var(--radius-lg)", backgroundColor: toast.type === "success" ? "var(--color-approved-bg)" : "var(--color-error-bg)", border: `1px solid ${toast.type === "success" ? "var(--color-approved-border)" : "var(--color-error-border)"}`, color: toast.type === "success" ? "var(--color-approved-text)" : "var(--color-error-text)", fontSize: "var(--text-sm)" }}>
-          {toast.msg}
-        </div>
-      )}
+      <div style={{ display: "flex", gap: "var(--space-32)", marginBottom: "var(--space-48)" }}>
+        <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+          {case_.importer_eori}
+        </span>
+        <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+          {periodLabel(case_.reporting_year, case_.reporting_quarter)}
+        </span>
+        <Link href={`/cases/${id}/report`} style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-navy)" }}>
+          View report →
+        </Link>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "var(--space-6)", alignItems: "start" }}>
+      <div className="divider" style={{ marginBottom: "var(--space-48)" }} />
 
-        {/* Narrative */}
-        <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-xl)", padding: "var(--space-6)" }}>
-          <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wide)" }}>
-            Compliance narrative
-          </p>
-          {reportLoading ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-              {Array(6).fill(0).map((_, i) => (
-                <div key={i} className="skeleton-shimmer" style={{ height: "14px", borderRadius: "var(--radius-sm)" }} />
-              ))}
-            </div>
-          ) : report?.narrative ? (
-            <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: "var(--leading-relaxed)" }}>
-              <ReactMarkdown>{report.narrative}</ReactMarkdown>
-            </div>
-          ) : (
-            <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
-              No narrative available yet. Run the pipeline first.
-            </p>
-          )}
-        </div>
+      {/* Review form */}
+      <form onSubmit={handleSubmit} style={{ maxWidth: "480px" }}>
+        <h2 style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-text-primary)", marginBottom: "var(--space-24)" }}>
+          Record decision
+        </h2>
 
-        {/* Decision form */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-          <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-xl)", padding: "var(--space-5)" }}>
-            <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wide)" }}>
-              Reviewer details
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-              <div>
-                <label htmlFor="reviewer-name" style={labelStyle}>Full name *</label>
-                <input id="reviewer-name" type="text" value={reviewerName} onChange={(e) => setReviewerName(e.target.value)} placeholder="Jane Smith" disabled={alreadyDecided} style={inputStyle} />
-              </div>
-              <div>
-                <label htmlFor="reviewer-email" style={labelStyle}>Email *</label>
-                <input id="reviewer-email" type="email" value={reviewerEmail} onChange={(e) => setReviewerEmail(e.target.value)} placeholder="j.smith@eu.int" disabled={alreadyDecided} style={inputStyle} />
-              </div>
-              <div>
-                <label htmlFor="comments" style={labelStyle}>Comments <span style={{ fontWeight: "var(--font-weight-regular)", textTransform: "none", letterSpacing: 0 }}>(required for rejection)</span></label>
-                <textarea
-                  id="comments"
-                  value={comments}
-                  onChange={(e) => setComments(e.target.value)}
-                  placeholder="Add notes or reasons…"
-                  disabled={alreadyDecided}
-                  rows={4}
-                  style={{ ...inputStyle, height: "auto", padding: "var(--space-3) var(--space-4)", resize: "vertical" }}
-                />
-              </div>
-            </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-16)", marginBottom: "var(--space-32)" }}>
+          <Input label="Your name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input label="Your email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
+            <label style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", fontWeight: "var(--font-body)" }}>
+              Comments (optional)
+            </label>
+            <textarea
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              rows={3}
+              style={{
+                padding:         "var(--space-16)",
+                border:          "var(--border-width) solid var(--color-border)",
+                borderRadius:    "var(--input-radius)",
+                fontSize:        "var(--text-base)",
+                fontWeight:      "var(--font-body)",
+                fontFamily:      "inherit",
+                color:           "var(--color-text-primary)",
+                backgroundColor: "var(--color-surface)",
+                resize:          "vertical",
+                outline:         "none",
+                width:           "100%",
+              }}
+            />
           </div>
-
-          {alreadyDecided ? (
-            <div style={{ padding: "var(--space-4)", backgroundColor: "var(--color-surface-raised)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", textTransform: "capitalize" }}>
-                Decision: {reviewState?.review_status}
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-              <button
-                type="button"
-                onClick={() => approve()}
-                disabled={busy || !formValid}
-                style={{
-                  height: "var(--touch-min)",
-                  borderRadius: "var(--radius-btn)",
-                  border: "none",
-                  backgroundColor: busy || !formValid ? "var(--color-border)" : "var(--color-approved)",
-                  color: busy || !formValid ? "var(--color-text-muted)" : "#ffffff",
-                  fontSize: "var(--text-sm)",
-                  fontWeight: "var(--font-weight-semibold)",
-                  cursor: busy || !formValid ? "not-allowed" : "pointer",
-                  width: "100%",
-                }}
-              >
-                {approving ? "Approving…" : "✓ Approve"}
-              </button>
-              <button
-                type="button"
-                onClick={() => reject()}
-                disabled={busy || !formValid || !comments.trim()}
-                style={{
-                  height: "var(--touch-min)",
-                  borderRadius: "var(--radius-btn)",
-                  border: "1px solid var(--color-error-border)",
-                  backgroundColor: "var(--color-error-bg)",
-                  color: busy || !formValid || !comments.trim() ? "var(--color-text-muted)" : "var(--color-error-text)",
-                  fontSize: "var(--text-sm)",
-                  fontWeight: "var(--font-weight-semibold)",
-                  cursor: busy || !formValid || !comments.trim() ? "not-allowed" : "pointer",
-                  width: "100%",
-                }}
-              >
-                {rejecting ? "Rejecting…" : "✕ Reject"}
-              </button>
-              <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-muted)", textAlign: "center" }}>
-                Comments required to reject.
-              </p>
-            </div>
-          )}
         </div>
-      </div>
+
+        {saveError && (
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginBottom: "var(--space-16)" }}>
+            {saveError}
+          </p>
+        )}
+
+        {/* Inline action selection — no modal */}
+        <div style={{ display: "flex", gap: "var(--space-16)" }}>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={saving && action === "approve"}
+            disabled={saving}
+            onClick={() => setAction("approve")}
+          >
+            Approve
+          </Button>
+          <Button
+            type="submit"
+            variant="secondary"
+            loading={saving && action === "reject"}
+            disabled={saving}
+            onClick={() => setAction("reject")}
+          >
+            Reject
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

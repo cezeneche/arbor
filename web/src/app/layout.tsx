@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+const inter = Inter({
+  subsets: ["latin"],
+  weight:  ["300", "500"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "CBAM Platform",
-  description: "Carbon Border Adjustment Mechanism Reporting",
+  title:       "Nucleos — CBAM Compliance",
+  description: "Carbon Border Adjustment Mechanism compliance platform for UK and EU importers",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-50`}>
+    <html lang="en" className={inter.variable}>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

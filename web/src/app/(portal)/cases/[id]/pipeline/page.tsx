@@ -1,115 +1,222 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import { runPipeline, getCbamCase } from "@/lib/api";
-import { PipelineSteps, derivePipelineSteps } from "@/components/pipeline/PipelineSteps";
-import type { PipelineResult } from "@/lib/types";
+import { use, useState } from "react";
+import { useCase } from "@/lib/hooks/useCases";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { narrativeFetch } from "@/lib/api/client";
+import type { CaseStatus } from "@/lib/types";
 
-interface Props { params: { id: string } }
+const STAGES: { key: CaseStatus; label: string; description: string }[] = [
+  { key: "submitted",         label: "Submitted",         description: "Document uploaded and queued" },
+  { key: "extracted",         label: "Extracted",         description: "CBAM data extracted from document" },
+  { key: "calculated",        label: "Calculated",        description: "Embedded emissions calculated" },
+  { key: "resolved",          label: "Resolved",          description: "Conflicts arbitrated and resolved" },
+  { key: "bundled",           label: "Bundled",           description: "Report package assembled" },
+  { key: "narrative_drafted", label: "Narrative drafted", description: "Compliance narrative generated" },
+  { key: "signed_off",        label: "Signed off",        description: "Case approved and complete" },
+];
 
-export default function PipelinePage({ params }: Props) {
-  const { id } = params;
-  const [result, setResult] = useState<PipelineResult | null>(null);
+const STATUS_ORDER: CaseStatus[] = [
+  "draft", "submitted", "extracted", "calculated",
+  "resolved", "bundled", "narrative_drafted", "signed_off",
+];
 
-  useQuery({ queryKey: ["cbam-case", id], queryFn: () => getCbamCase(id) });
+function stageStatus(stageKey: CaseStatus, currentStatus: CaseStatus): "done" | "current" | "pending" {
+  const stageIdx   = STATUS_ORDER.indexOf(stageKey);
+  const currentIdx = STATUS_ORDER.indexOf(currentStatus);
+  if (stageIdx < currentIdx)  return "done";
+  if (stageIdx === currentIdx) return "current";
+  return "pending";
+}
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: () => runPipeline(id),
-    onSuccess: (data) => setResult(data),
-  });
+export default function PipelinePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const { case_, isLoading, error, refetch } = useCase(id);
+  const [running,      setRunning]      = useState(false);
+  const [runError,     setRunError]     = useState<string | null>(null);
+  const [runComplete,  setRunComplete]  = useState(false);
+  const [reviewNeeded, setReviewNeeded] = useState(false);
 
-  const steps = derivePipelineSteps(result, isPending);
+  async function runPipeline() {
+    setRunning(true);
+    setRunError(null);
+    try {
+      const result = await narrativeFetch<{ human_review_required: boolean }>(
+        `/api/cases/${id}/narrative/pipeline?packet_kind=cbam`,
+        { method: "POST" }
+      );
+      setRunComplete(true);
+      setReviewNeeded(result.human_review_required);
+      refetch();
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Pipeline failed. Please try again.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="page-content">
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>Loading…</p>
+      </div>
+    );
+  }
+
+  if (error || !case_) {
+    return (
+      <div className="page-content">
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)" }}>
+          {error?.message ?? "Case not found."}
+        </p>
+      </div>
+    );
+  }
+
+  const canRun = ["bundled", "resolved", "calculated", "extracted"].includes(case_.status);
 
   return (
-    <div style={{ maxWidth: "900px", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <Link href={`/cases/${id}`} style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", textDecoration: "none" }}>
-        ← Back to case
+    <div className="page-content">
+      <Link
+        href={`/cases/${id}`}
+        style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "inline-block", marginBottom: "var(--space-32)" }}
+      >
+        ← {case_.importer_name}
       </Link>
 
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "var(--space-4)" }}>
+      <h1
+        style={{
+          fontSize:     "var(--text-lg)",
+          fontWeight:   "var(--font-focal)",
+          color:        "var(--color-text-primary)",
+          marginBottom: "var(--space-48)",
+        }}
+      >
+        Processing pipeline
+      </h1>
+
+      {/* Stage list */}
+      <div style={{ marginBottom: "var(--space-48)" }}>
+        {STAGES.map((stage, i) => {
+          const status = stageStatus(stage.key, case_.status);
+          return (
+            <div
+              key={stage.key}
+              style={{
+                display:     "flex",
+                gap:         "var(--space-24)",
+                paddingBottom: i < STAGES.length - 1 ? "var(--space-24)" : 0,
+              }}
+            >
+              {/* Indicator */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div
+                  style={{
+                    width:           "12px",
+                    height:          "12px",
+                    borderRadius:    "50%",
+                    backgroundColor:
+                      status === "done"    ? "var(--color-green)" :
+                      status === "current" ? "var(--color-navy)"  : "var(--color-border)",
+                    flexShrink: 0,
+                    marginTop:  "4px",
+                  }}
+                />
+                {i < STAGES.length - 1 && (
+                  <div
+                    style={{
+                      width:           "1px",
+                      flex:            1,
+                      minHeight:       "24px",
+                      backgroundColor: status === "done" ? "var(--color-green)" : "var(--color-border)",
+                      marginTop:       "var(--space-8)",
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Content */}
+              <div style={{ paddingBottom: i < STAGES.length - 1 ? "var(--space-8)" : 0 }}>
+                <p
+                  style={{
+                    fontSize:  "var(--text-base)",
+                    fontWeight: status === "current" ? "var(--font-focal)" : "var(--font-body)",
+                    color:
+                      status === "pending" ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
+                  }}
+                >
+                  {stage.label}
+                </p>
+                <p
+                  style={{
+                    fontSize:  "var(--text-sm)",
+                    color:     "var(--color-text-secondary)",
+                    marginTop: "var(--space-8)",
+                  }}
+                >
+                  {stage.description}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Run pipeline */}
+      {canRun && !runComplete && (
         <div>
-          <h1 style={{ margin: 0, fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-primary)" }}>
-            Narrative Pipeline
-          </h1>
-          <p style={{ margin: "var(--space-1) 0 0", fontSize: "var(--text-xs)", color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
-            {id}
-          </p>
+          {runError && (
+            <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginBottom: "var(--space-16)" }}>
+              {runError}
+            </p>
+          )}
+          <Button variant="primary" loading={running} onClick={runPipeline}>
+            Run narrative pipeline
+          </Button>
         </div>
-        <button
-          type="button"
-          onClick={() => mutate()}
-          disabled={isPending}
+      )}
+
+      {/* Inline confirmation */}
+      {runComplete && (
+        <div
           style={{
-            height: "var(--touch-min)",
-            padding: "0 var(--space-5)",
-            borderRadius: "var(--radius-btn)",
-            border: "none",
-            backgroundColor: isPending ? "var(--color-border)" : "var(--color-accent)",
-            color: isPending ? "var(--color-text-muted)" : "var(--color-text-on-accent)",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--font-weight-semibold)",
-            cursor: isPending ? "not-allowed" : "pointer",
+            padding:         "var(--space-24)",
+            border:          "var(--border-width) solid var(--color-border)",
+            borderRadius:    "var(--card-radius)",
+            backgroundColor: "var(--color-surface)",
           }}
         >
-          {isPending ? "Running…" : "▶ Run Pipeline"}
-        </button>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: "var(--space-6)", alignItems: "start" }}>
-        {/* Pipeline steps */}
-        <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-xl)", padding: "var(--space-5)" }}>
-          <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wide)" }}>
-            Pipeline stages
-          </p>
-          <PipelineSteps steps={steps} />
-        </div>
-
-        {/* Result area */}
-        <div>
-          {!result && !isPending && (
-            <div style={{ backgroundColor: "var(--color-surface)", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-xl)", padding: "var(--space-12)", textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
-                Click Run Pipeline to generate the compliance narrative.
+          {reviewNeeded ? (
+            <>
+              <Badge variant="pending">Human review required</Badge>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginTop: "var(--space-16)" }}>
+                The pipeline flagged this case for review before the report can be finalised.
               </p>
-            </div>
-          )}
-
-          {result && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-              {/* Status banner */}
-              {result.human_review_required ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-4)", backgroundColor: "var(--alert-warning-bg)", border: "1px solid var(--alert-warning-border)", borderRadius: "var(--radius-lg)" }}>
-                  <span style={{ fontSize: "18px" }} aria-hidden="true">⚠</span>
-                  <div>
-                    <p style={{ margin: "0 0 2px", fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: "var(--alert-warning-text)" }}>Human review required</p>
-                    <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>Gemini flagged this narrative. A reviewer must approve before bundling.</p>
-                  </div>
-                </div>
-              ) : result.final_narrative_md ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-4)", backgroundColor: "var(--color-approved-bg)", border: "1px solid var(--color-approved-border)", borderRadius: "var(--radius-lg)" }}>
-                  <span style={{ fontSize: "18px" }} aria-hidden="true">✓</span>
-                  <p style={{ margin: 0, fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-approved-text)" }}>Pipeline complete — narrative approved</p>
-                </div>
-              ) : null}
-
-              {/* Narrative */}
-              {result.final_narrative_md && (
-                <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-xl)", padding: "var(--space-6)" }}>
-                  <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wide)" }}>
-                    Final narrative
-                  </p>
-                  <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: "var(--leading-relaxed)" }}>
-                    <ReactMarkdown>{result.final_narrative_md}</ReactMarkdown>
-                  </div>
-                </div>
-              )}
-            </div>
+              <Link
+                href={`/review/${id}`}
+                style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-navy)", display: "inline-block", marginTop: "var(--space-16)" }}
+              >
+                Go to review →
+              </Link>
+            </>
+          ) : (
+            <>
+              <Badge variant="approved">Pipeline complete</Badge>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginTop: "var(--space-16)" }}>
+                Narrative generated. The report is ready.
+              </p>
+              <Link
+                href={`/cases/${id}/report`}
+                style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-navy)", display: "inline-block", marginTop: "var(--space-16)" }}
+              >
+                View report →
+              </Link>
+            </>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
