@@ -39,7 +39,7 @@ export function TopBar() {
       >
         {/* Logotype */}
         <Link
-          href="/cases"
+          href="/"
           style={{
             fontSize:      "var(--text-base)",
             fontWeight:    "var(--font-focal)",
@@ -59,7 +59,7 @@ export function TopBar() {
           }}
         >
           <Link
-            href="/cases/new"
+            href="/upload"
             style={{
               fontSize:   "var(--text-base)",
               fontWeight: "var(--font-focal)",
