@@ -18,7 +18,7 @@ Coverage
    - cbam_electricity_factors table has expected columns
    - cbam_emissions now has factor_table_version and production_route
 
-4. Seeder is idempotent (ON CONFLICT DO NOTHING behaviour)
+4. Seeder is idempotent (WHERE NOT EXISTS behaviour)
 
 5. Users table column shape
 """
@@ -71,7 +71,7 @@ def _make_engine(tables_present: bool = True, rowcount: int = 1):
         if "information_schema.tables" in sql:
             # Migration 007 tables present or absent
             return _FakeResult(rows=[{"table_name": "cbam_emission_factors"}] if tables_present else [])
-        if "ON CONFLICT" in sql:
+        if "WHERE NOT EXISTS" in sql or "ON CONFLICT" in sql:
             return _FakeResult(rowcount=rowcount)
         return _FakeResult(rows=[])
 
