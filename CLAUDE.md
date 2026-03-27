@@ -4,6 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @CBAM-reg.md
 
+@.claude/nucleos-skills/ceo.md
+@.claude/nucleos-skills/design.md
+@.claude/nucleos-skills/marketing.md
+@.claude/nucleos-skills/operations.md
+@.claude/nucleos-skills/product.md
+@.claude/nucleos-skills/project.md
+@.claude/nucleos-skills/sales.md
+@.claude/nucleos-skills/skills.md
+@.claude/nucleos-skills/software.md
+@.claude/nucleos-skills/test.md
+
 ---
 
 ## Commands
