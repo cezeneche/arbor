@@ -104,55 +104,6 @@ export interface DraftResult {
   created_at:   string;
 }
 
-// ── Insights ─────────────────────────────────────────────────────────────────
-
-/** Response from GET /api/cbam/insights/kpis */
-export interface KPIs {
-  importer_eori:        string;
-  reporting_year:       number;
-  total_cases:          number;
-  total_kgco2e:         number;
-  total_direct_kgco2e:  number;
-  total_indirect_kgco2e: number;
-  avg_data_quality:     number;
-  method_breakdown:     Record<import("@/lib/types").EmissionsMethod, number>;
-  top_cn_codes:         { cn_code: string; kgco2e: number }[];
-  eu_ets_price_eur?:    number;
-  estimated_cbam_cost?: number;
-}
-
-/** One supplier row from GET /api/cbam/insights/supplier-comparison */
-export interface SupplierRanking {
-  supplier_name:        string;
-  origin_country:       string;
-  cn_code:              string;
-  avg_kgco2e_per_unit:  number;
-  data_quality:         number;
-  method:               import("@/lib/types").EmissionsMethod;
-  case_count:           number;
-}
-
-/** One country row from GET /api/cbam/insights/country-intensity */
-export interface CountryIntensity {
-  country_code:         string;
-  country_name:         string;
-  avg_kgco2e_per_tonne: number;
-  case_count:           number;
-  total_kgco2e:         number;
-  method_mix:           Record<import("@/lib/types").EmissionsMethod, number>;
-}
-
-/** One sector row from GET /api/cbam/insights/sector-summary */
-export interface SectorSummary {
-  sector:               import("@/lib/types").CBAMSector;
-  total_kgco2e:         number;
-  direct_kgco2e:        number;
-  indirect_kgco2e:      number;
-  avg_data_quality:     number;
-  case_count:           number;
-  method_breakdown:     Record<import("@/lib/types").EmissionsMethod, number>;
-}
-
 // ── Audit export ──────────────────────────────────────────────────────────────
 
 export interface AuditExport {

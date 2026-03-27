@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useCases } from "@/lib/hooks/useCases";
-import { useKPIs } from "@/lib/hooks/useInsights";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -321,10 +320,6 @@ function Dashboard() {
   const [registered, setRegistered] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // EORI from first case → KPIs
-  const eori = cases[0]?.importer_eori;
-  const { kpis } = useKPIs(eori, 2027);
-
   // Read registration state from localStorage (set by /registration page)
   useEffect(() => { setRegistered(isRegistered()); }, []);
 
@@ -340,10 +335,9 @@ function Dashboard() {
     return () => obs.disconnect();
   }, [cases.length]);
 
-  // Total estimated liability
-  const totalLiability =
-    kpis?.estimated_cbam_cost != null  ? kpis.estimated_cbam_cost
-    : kpis?.total_kgco2e != null       ? (kpis.total_kgco2e / 1000) * UK_ETS_RATE
+  // Total estimated liability — summed from per-case estimated_liability_gbp when available
+  const totalLiability = cases.length > 0 && cases.some((c: any) => c.estimated_liability_gbp != null)
+    ? cases.reduce((sum, c: any) => sum + (c.estimated_liability_gbp ?? 0), 0)
     : null;
 
   // Most recent updated_at
