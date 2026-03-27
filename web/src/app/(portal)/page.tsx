@@ -502,13 +502,21 @@ function Dashboard() {
             </div>
           ))
         ) : cases.length === 0 ? (
-          <div style={{ paddingTop: "var(--space-64)" }}>
-            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
-              No cases yet.{" "}
-              <Link href="/upload" style={{ color: "var(--color-navy)" }}>
-                Upload your first document →
-              </Link>
+          <div style={{ paddingTop: "var(--space-64)", textAlign: "center" }}>
+            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
+              No cases yet.
             </p>
+            <Link
+              href="/upload"
+              style={{
+                fontSize:       "var(--text-base)",
+                fontWeight:     "var(--font-body)",
+                color:          "var(--color-navy)",
+                textDecoration: "none",
+              }}
+            >
+              Upload your first document
+            </Link>
           </div>
         ) : (
           <>
