@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     icon: "/favicon.svg",
   },
   other: {
-    "theme-color": "#1B3557",
+    "theme-color": "#1B2F4A",
   },
 };
 

@@ -50,38 +50,26 @@
 // Import from here — never hardcode in components.
 
 export const brand = {
-  /** Legal and display names */
-  name:         'Nucleos',
+  /** The wordmark is the name "nucleos" — Inter 300, letter-spacing -0.03em.
+   *  Always lowercase. No icon, no mark, no symbol alongside it. */
+  name:         'nucleos',
   legalName:    'Nucleos Compliance Ltd',
-  category:     'CBAM Compliance Platform',
+  category:     'CBAM carbon calculation software',
 
-  /** The tagline. Appears ONLY below the liability number on the homepage
-   *  IN SCOPE result — after the number has been shown, never before. */
-  tagline:      'Your number. Confirmed.',
-
-  /** One-line product description — used in footer, metadata, og:description. */
-  description:  'Nucleos turns supplier documents into HMRC returns.',
+  /** One-line product description — used in footer, metadata, og:description.
+   *  From brand voice rules: plain, specific, no jargon. */
+  description:  'nucleos reads your supply chain documents and calculates the carbon price of your imports.',
 
   /** Copyright — import this, never write the year as a literal string. */
   copyrightYear: 2026,
 
-  /** Mark size constraints — enforced in NucleosMark component. */
-  mark: {
-    /** Minimum render size in px. Below this the mark is illegible. */
-    minSizePx:       16,
-    /** TopBar / nav size */
-    navSizePx:       24,
-    /** Footer size — smallest permitted in context */
-    footerSizePx:    20,
-    /** Standalone hero use (auth pages, homepage) */
-    heroSizePx:      40,
-  },
-
-  /** Approved colour roles per brand spec */
-  colorRoles: {
-    primary:  'navy',    // --color-navy  — the brand
-    signal:   'red',     // --color-red   — action, liability, alert
-    neutral:  'surface', // --color-surface — structure and support
+  /** Wordmark sizes — text rendered at these sizes in UI contexts.
+   *  Minimum: 11px. Nav bar: 15px. Auth pages: 20px. */
+  wordmark: {
+    navPx:    15,
+    authPx:   20,
+    footerPx: 15,
+    minPx:    11,
   },
 } as const;
 

@@ -1,15 +1,12 @@
 import Link from "next/link";
-import { NucleosMark } from "@/components/ui/NucleosMark";
 import { brand } from "@/lib/design-system";
 
 /**
  * Footer — brand spec:
- *   Left: NucleosMark at footerSizePx (20px) — smallest permitted size.
- *         One-line product description beneath it.
- *   Right: Privacy · Terms (links). Copyright line.
- *
- *   No tagline. No marketing copy. Voice description only.
- *   Quiet, correct, consistent.
+ *   Left: "nucleos" wordmark — Inter 300, tight tracking, #141414.
+ *         One-line product description beneath it (from brand spec voice rules).
+ *   Right: Privacy · Terms. Copyright line.
+ *   No tagline. No icon. No marketing copy.
  */
 export function Footer() {
   return (
@@ -33,9 +30,18 @@ export function Footer() {
           paddingBottom:  0,
         }}
       >
-        {/* Left: mark + description */}
+        {/* Left: wordmark + description */}
         <div>
-          <NucleosMark variant="wordmark" colour="navy" size={brand.mark.footerSizePx} />
+          <span style={{
+            fontSize:      "15px",
+            fontWeight:    300,
+            color:         "var(--color-text-primary)",
+            letterSpacing: "-0.03em",
+            lineHeight:    1,
+            fontFamily:    "inherit",
+          }}>
+            nucleos
+          </span>
           <p
             style={{
               fontSize:   "var(--text-xs)",

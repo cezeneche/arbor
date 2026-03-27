@@ -8,8 +8,23 @@
       "Bash(curl -s http://127.0.0.1:8000/health)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
       "Bash(.venv/bin/python -m pytest api/tests/ledger/test_auth_jwt.py --collect-only -v)",
-      "Bash(.venv/bin/python -m pytest api/tests/ledger/test_auth_jwt.py -p no:cacheprovider --tb=long)"
+      "Bash(.venv/bin/python -m pytest api/tests/ledger/test_auth_jwt.py -p no:cacheprovider --tb=long)",
+      "Bash(npx tsc:*)",
+      "Bash(ls /Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/\\\\\\(portal\\\\\\)/)",
+      "Bash(psql \"postgresql://postgres.lqpclgkwdqixbulckbpf:caqruw-bimgoZ-9vysvy@aws-1-eu-west-1.pooler.supabase.com:6543/postgres\" -c \"\\\\sf public.current_tenant_id\")",
+      "Bash(psql \"postgresql://postgres.lqpclgkwdqixbulckbpf:caqruw-bimgoZ-9vysvy@aws-1-eu-west-1.pooler.supabase.com:6543/postgres\" -f /Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/api/db/migrations/014_fix_function_search_paths.sql)",
+      "Bash(psql \"postgresql://postgres.lqpclgkwdqixbulckbpf:caqruw-bimgoZ-9vysvy@aws-1-eu-west-1.pooler.supabase.com:6543/postgres\" -c \"\\\\d cbam.cbam_emission_factors\")",
+      "Bash(psql \"postgresql://postgres.lqpclgkwdqixbulckbpf:caqruw-bimgoZ-9vysvy@aws-1-eu-west-1.pooler.supabase.com:6543/postgres\" -c \"\\\\d cbam.cbam_electricity_factors\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -X POST http://localhost:8000/api/auth/token -H \"Content-Type: application/json\" -d '{\"\"sub\"\":\"\"test@example.com\"\",\"\"tenant_id\"\":\"\"test\"\",\"\"scopes\"\":[\"\"cbam:read\"\",\"\"cbam:write\"\"]}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/token -H \"Content-Type: application/json\" -d '{\"\"sub\"\":\"\"test@example.com\"\",\"\"tenant_id\"\":\"\"test\"\",\"\"scopes\"\":[\"\"cbam:read\"\",\"\"cbam:write\"\"]}')",
+      "Read(//Users/chisom/.claude/**)",
+      "Read(//private/tmp/**)",
+      "Bash(open http://localhost:3000)",
+      "Bash(git commit:*)",
+      "Bash(calculation software\", description from voice spec, no tagline, no mark sizes:*)"
     ],
-    "additionalDirectories": []
+    "additionalDirectories": [
+      "/Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/(portal)/supplier-request"
+    ]
   }
 }

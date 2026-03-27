@@ -6,8 +6,6 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveToken } from "@/lib/auth";
-import { NucleosMark } from "@/components/ui/NucleosMark";
-import { brand } from "@/lib/design-system";
 
 const schema = z.object({
   fullName:    z.string().min(1, "Full name is required"),
@@ -108,9 +106,18 @@ export default function SignupPage() {
       }}
     >
       <div style={{ width: "100%", maxWidth: "400px" }}>
-        {/* Brand mark */}
+        {/* Wordmark — Inter 300, tight tracking, always lowercase */}
         <div style={{ marginBottom: "var(--space-80)" }}>
-          <NucleosMark variant="wordmark" colour="navy" size={brand.mark.heroSizePx} />
+          <span style={{
+            fontSize:      "20px",
+            fontWeight:    300,
+            color:         "var(--color-text-primary)",
+            letterSpacing: "-0.03em",
+            lineHeight:    1,
+            fontFamily:    "inherit",
+          }}>
+            nucleos
+          </span>
         </div>
 
         <h1

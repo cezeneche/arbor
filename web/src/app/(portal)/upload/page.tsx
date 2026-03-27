@@ -651,12 +651,8 @@ function StageSummary({
       >
         {formatCurrency(totalLiability)}
       </p>
-      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
+      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-40)" }}>
         estimated 2027 liability
-      </p>
-      {/* Tagline — appears only after the number has been shown, not before */}
-      <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginBottom: "var(--space-40)", letterSpacing: "0.04em" }}>
-        Your number. Confirmed.
       </p>
 
       {/* Divider */}

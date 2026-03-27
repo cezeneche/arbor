@@ -4,18 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuthContext } from "@/lib/auth/AuthProvider";
-import { NucleosMark } from "@/components/ui/NucleosMark";
-import { brand } from "@/lib/design-system";
 
 /**
  * TopBar — brand spec:
- *   56px tall. Left: NucleosMark wordmark (links to /).
+ *   56px tall. Left: wordmark "nucleos" — Inter 300, tight tracking, #141414.
  *   Centre: Cases · Review · Registration · Insights nav links.
- *   Right: "Upload documents →" (navy, 500), user first name, Sign out.
+ *   Right: "Upload →" (navy, 500), user first name, Sign out.
  *
- *   Mobile (<768px): wordmark collapses to icon. Centre nav hidden.
- *   User name + sign out accessible via tap on a minimal account area.
- *   No hamburger menu — no navigation that requires explanation.
+ *   Mobile (<768px): wordmark at same size. Centre nav hidden.
+ *   User name + sign out accessible via tap on account area.
+ *   No hamburger. No icon alongside the wordmark.
  */
 
 const NAV_LINKS = [
@@ -59,15 +57,17 @@ export function TopBar() {
           paddingBottom:  0,
         }}
       >
-        {/* ── Left: brand mark ─────────────────────────────────────── */}
-        <Link href="/" aria-label={brand.name} style={{ flexShrink: 0 }}>
-          {/* Desktop: full wordmark */}
-          <span className="topbar-wordmark">
-            <NucleosMark variant="wordmark" colour="navy" size={brand.mark.navSizePx} />
-          </span>
-          {/* Mobile: icon only */}
-          <span className="topbar-icon">
-            <NucleosMark variant="icon" colour="navy" size={brand.mark.navSizePx} />
+        {/* ── Left: wordmark ───────────────────────────────────────── */}
+        <Link href="/" aria-label="nucleos" style={{ flexShrink: 0, textDecoration: "none" }}>
+          <span style={{
+            fontSize:      "15px",
+            fontWeight:    300,
+            color:         "var(--color-text-primary)",
+            letterSpacing: "-0.03em",
+            lineHeight:    1,
+            fontFamily:    "inherit",
+          }}>
+            nucleos
           </span>
         </Link>
 
@@ -145,7 +145,7 @@ export function TopBar() {
             </button>
           </div>
 
-          {/* Mobile: tap NucleosMark icon to reveal account panel */}
+          {/* Mobile: tap to reveal account panel */}
           <button
             className="topbar-user-mobile"
             onClick={() => setMobileMenuOpen((o) => !o)}
@@ -230,16 +230,12 @@ export function TopBar() {
 
       {/* ── Responsive CSS ────────────────────────────────────────────── */}
       <style>{`
-        .topbar-icon       { display: none; }
-        .topbar-wordmark   { display: inline-flex; }
-        .topbar-nav        { display: flex; gap: var(--space-32); align-items: center; }
-        .topbar-upload     { display: inline; }
+        .topbar-nav          { display: flex; gap: var(--space-32); align-items: center; }
+        .topbar-upload       { display: inline; }
         .topbar-user-desktop { display: flex; }
         .topbar-user-mobile  { display: none !important; }
 
         @media (max-width: 768px) {
-          .topbar-wordmark     { display: none; }
-          .topbar-icon         { display: inline-flex; }
           .topbar-nav          { display: none; }
           .topbar-upload       { display: none; }
           .topbar-user-desktop { display: none !important; }
