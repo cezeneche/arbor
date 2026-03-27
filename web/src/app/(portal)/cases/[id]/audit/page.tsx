@@ -32,7 +32,7 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
         href={`/cases/${id}`}
         style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "inline-block", marginBottom: "var(--space-32)" }}
       >
-        ← Case
+        ← Back to case
       </Link>
 
       <div

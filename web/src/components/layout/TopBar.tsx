@@ -1,17 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { useAuthContext } from "@/lib/auth/AuthProvider";
+import { NucleosMark } from "@/components/ui/NucleosMark";
+import { brand } from "@/lib/design-system";
 
 /**
- * TopBar — Rams spec:
- *   56px tall. Left: "Nucleos" logotype. Right: "Upload documents →" (navy, 500),
- *   user first name (13px secondary), "Sign out" (13px secondary).
- *   No sidebar. No icons. No hamburger.
+ * TopBar — brand spec:
+ *   56px tall. Left: NucleosMark wordmark (links to /).
+ *   Centre: Cases · Review · Registration · Insights nav links.
+ *   Right: "Upload documents →" (navy, 500), user first name, Sign out.
+ *
+ *   Mobile (<768px): wordmark collapses to icon. Centre nav hidden.
+ *   User name + sign out accessible via tap on a minimal account area.
+ *   No hamburger menu — no navigation that requires explanation.
  */
+
+const NAV_LINKS = [
+  { label: "Cases",        href: "/" },
+  { label: "Review",       href: "/review" },
+  { label: "Registration", href: "/registration" },
+  { label: "Insights",     href: "/insights" },
+] as const;
+
 export function TopBar() {
   const { user, signOut } = useAuthContext();
-  const firstName = user?.name?.split(" ")[0] ?? user?.sub ?? "";
+  const pathname = usePathname();
+  const firstName = user?.name?.split(" ")[0] ?? user?.sub?.split("@")[0] ?? "";
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  }
 
   return (
     <header
@@ -19,8 +42,6 @@ export function TopBar() {
         height:          "var(--topbar-height)",
         backgroundColor: "var(--color-surface)",
         borderBottom:    "var(--border-width) solid var(--color-border)",
-        display:         "flex",
-        alignItems:      "center",
         position:        "sticky",
         top:             0,
         zIndex:          100,
@@ -33,77 +54,198 @@ export function TopBar() {
           alignItems:     "center",
           justifyContent: "space-between",
           width:          "100%",
+          height:         "100%",
           paddingTop:     0,
           paddingBottom:  0,
         }}
       >
-        {/* Logotype */}
-        <Link
-          href="/"
-          style={{
-            fontSize:      "var(--text-base)",
-            fontWeight:    "var(--font-focal)",
-            color:         "var(--color-text-primary)",
-            letterSpacing: "var(--tracking-body)",
-          }}
-        >
-          Nucleos
+        {/* ── Left: brand mark ─────────────────────────────────────── */}
+        <Link href="/" aria-label={brand.name} style={{ flexShrink: 0 }}>
+          {/* Desktop: full wordmark */}
+          <span className="topbar-wordmark">
+            <NucleosMark variant="wordmark" colour="navy" size={brand.mark.navSizePx} />
+          </span>
+          {/* Mobile: icon only */}
+          <span className="topbar-icon">
+            <NucleosMark variant="icon" colour="navy" size={brand.mark.navSizePx} />
+          </span>
         </Link>
 
-        {/* Right side */}
-        <nav
+        {/* ── Centre: primary nav (desktop only) ───────────────────── */}
+        <nav className="topbar-nav" aria-label="Primary navigation">
+          {NAV_LINKS.map(({ label, href }) => (
+            <Link
+              key={href}
+              href={href}
+              style={{
+                fontSize:      "var(--text-sm)",
+                fontWeight:    isActive(href) ? "var(--font-focal)" : "var(--font-body)",
+                color:         isActive(href)
+                  ? "var(--color-text-primary)"
+                  : "var(--color-text-secondary)",
+                textDecoration: "none",
+                transition:    "color var(--transition-fast)",
+                paddingBottom: isActive(href) ? "2px" : "0",
+                borderBottom:  isActive(href)
+                  ? "var(--border-width) solid var(--color-navy)"
+                  : "var(--border-width) solid transparent",
+              }}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* ── Right: upload CTA + user ──────────────────────────────── */}
+        <div
           style={{
             display:    "flex",
             alignItems: "center",
-            gap:        "var(--space-32)",
+            gap:        "var(--space-24)",
+            flexShrink: 0,
           }}
         >
           <Link
             href="/upload"
+            className="topbar-upload"
             style={{
               fontSize:   "var(--text-base)",
               fontWeight: "var(--font-focal)",
               color:      "var(--color-navy)",
+              textDecoration: "none",
             }}
           >
-            Upload documents →
+            Upload →
           </Link>
 
-          {firstName && (
-            <span
+          {/* Desktop: name + sign out inline */}
+          <div className="topbar-user-desktop" style={{ display: "flex", alignItems: "center", gap: "var(--space-16)" }}>
+            {firstName && (
+              <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+                {firstName}
+              </span>
+            )}
+            <button
+              onClick={signOut}
               style={{
-                fontSize: "var(--text-sm)",
-                color:    "var(--color-text-secondary)",
+                fontSize:   "var(--text-sm)",
+                color:      "var(--color-text-secondary)",
+                background: "none",
+                border:     "none",
+                cursor:     "pointer",
+                padding:    0,
+                fontFamily: "inherit",
+                fontWeight: "var(--font-body)",
+                transition: "color var(--transition-fast)",
               }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)"; }}
             >
-              {firstName}
-            </span>
-          )}
+              Sign out
+            </button>
+          </div>
 
+          {/* Mobile: tap NucleosMark icon to reveal account panel */}
           <button
-            onClick={signOut}
+            className="topbar-user-mobile"
+            onClick={() => setMobileMenuOpen((o) => !o)}
+            aria-expanded={mobileMenuOpen}
+            aria-label="Account menu"
             style={{
-              fontSize:        "var(--text-sm)",
-              color:           "var(--color-text-secondary)",
-              background:      "none",
-              border:          "none",
-              cursor:          "pointer",
-              padding:         0,
-              fontFamily:      "inherit",
-              fontWeight:      "var(--font-body)",
-              transition:      "color var(--transition-fast)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
+              background: "none",
+              border:     "none",
+              cursor:     "pointer",
+              padding:    0,
+              display:    "none", // shown via CSS
+              fontSize:   "var(--text-sm)",
+              color:      "var(--color-text-secondary)",
+              fontFamily: "inherit",
+              fontWeight: "var(--font-body)",
             }}
           >
-            Sign out
+            {firstName || "Account"}
           </button>
-        </nav>
+        </div>
       </div>
+
+      {/* ── Mobile account dropdown (no hamburger — account only) ── */}
+      {mobileMenuOpen && (
+        <div
+          className="topbar-mobile-menu"
+          style={{
+            position:        "absolute",
+            top:             "var(--topbar-height)",
+            right:           0,
+            left:            0,
+            backgroundColor: "var(--color-surface)",
+            borderBottom:    "var(--border-width) solid var(--color-border)",
+            padding:         "var(--space-16) var(--space-24)",
+            display:         "flex",
+            flexDirection:   "column",
+            gap:             "var(--space-16)",
+            zIndex:          99,
+          }}
+        >
+          {/* Mobile nav links */}
+          {NAV_LINKS.map(({ label, href }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                fontSize:   "var(--text-base)",
+                fontWeight: isActive(href) ? "var(--font-focal)" : "var(--font-body)",
+                color:      isActive(href) ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+                textDecoration: "none",
+              }}
+            >
+              {label}
+            </Link>
+          ))}
+
+          <div style={{ borderTop: "var(--border-width) solid var(--color-border)", paddingTop: "var(--space-16)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {firstName && (
+              <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+                {firstName}
+              </span>
+            )}
+            <button
+              onClick={() => { setMobileMenuOpen(false); signOut(); }}
+              style={{
+                fontSize:   "var(--text-sm)",
+                color:      "var(--color-text-secondary)",
+                background: "none",
+                border:     "none",
+                cursor:     "pointer",
+                padding:    0,
+                fontFamily: "inherit",
+                fontWeight: "var(--font-body)",
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Responsive CSS ────────────────────────────────────────────── */}
+      <style>{`
+        .topbar-icon       { display: none; }
+        .topbar-wordmark   { display: inline-flex; }
+        .topbar-nav        { display: flex; gap: var(--space-32); align-items: center; }
+        .topbar-upload     { display: inline; }
+        .topbar-user-desktop { display: flex; }
+        .topbar-user-mobile  { display: none !important; }
+
+        @media (max-width: 768px) {
+          .topbar-wordmark     { display: none; }
+          .topbar-icon         { display: inline-flex; }
+          .topbar-nav          { display: none; }
+          .topbar-upload       { display: none; }
+          .topbar-user-desktop { display: none !important; }
+          .topbar-user-mobile  { display: inline !important; }
+        }
+      `}</style>
     </header>
   );
 }

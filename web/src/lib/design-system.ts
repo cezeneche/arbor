@@ -45,6 +45,46 @@
 // All values are CSS custom property references. Components import from here;
 // they never hardcode hex values, pixel numbers, or arbitrary strings.
 
+// ── Brand identity constants ──────────────────────────────────────────────────
+// Single source of truth for all identity strings and mark constraints.
+// Import from here — never hardcode in components.
+
+export const brand = {
+  /** Legal and display names */
+  name:         'Nucleos',
+  legalName:    'Nucleos Compliance Ltd',
+  category:     'CBAM Compliance Platform',
+
+  /** The tagline. Appears ONLY below the liability number on the homepage
+   *  IN SCOPE result — after the number has been shown, never before. */
+  tagline:      'Your number. Confirmed.',
+
+  /** One-line product description — used in footer, metadata, og:description. */
+  description:  'Nucleos turns supplier documents into HMRC returns.',
+
+  /** Copyright — import this, never write the year as a literal string. */
+  copyrightYear: 2026,
+
+  /** Mark size constraints — enforced in NucleosMark component. */
+  mark: {
+    /** Minimum render size in px. Below this the mark is illegible. */
+    minSizePx:       16,
+    /** TopBar / nav size */
+    navSizePx:       24,
+    /** Footer size — smallest permitted in context */
+    footerSizePx:    20,
+    /** Standalone hero use (auth pages, homepage) */
+    heroSizePx:      40,
+  },
+
+  /** Approved colour roles per brand spec */
+  colorRoles: {
+    primary:  'navy',    // --color-navy  — the brand
+    signal:   'red',     // --color-red   — action, liability, alert
+    neutral:  'surface', // --color-surface — structure and support
+  },
+} as const;
+
 export const ds = {
 
   colors: {

@@ -65,7 +65,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
           The decision has been recorded in the audit log.
         </p>
         <Link href="/review" style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-navy)" }}>
-          ← Back to review queue
+          ← Review
         </Link>
       </div>
     );
@@ -77,7 +77,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
         href="/review"
         style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "inline-block", marginBottom: "var(--space-32)" }}
       >
-        ← Review queue
+        ← Review
       </Link>
 
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-16)", marginBottom: "var(--space-32)" }}>

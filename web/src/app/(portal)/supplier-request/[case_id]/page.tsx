@@ -214,7 +214,7 @@ export default function SupplierRequestPage({
           marginBottom: "var(--space-40)",
         }}
       >
-        ← Back to case {case_id.slice(0, 8)}
+        ← Back to case
       </Link>
 
       {/* Heading */}

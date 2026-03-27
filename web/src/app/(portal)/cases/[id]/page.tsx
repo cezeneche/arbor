@@ -150,7 +150,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     return (
       <div className="page-content" style={{ paddingTop: "var(--space-48)" }}>
         <Link href="/" style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "inline-block", marginBottom: "var(--space-40)" }}>
-          ← All cases
+          ← Cases
         </Link>
         <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)" }}>
           {error?.message ?? "Case not found."}
@@ -237,7 +237,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
               marginBottom:   "var(--space-40)",
             }}
           >
-            ← All cases
+            ← Cases
           </Link>
 
           {/* Sector · Country — no separate page title */}
@@ -478,7 +478,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
             <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)" }}>
               Case approved.{" "}
               <Link href="/" style={{ color: "var(--color-navy)" }}>
-                ← Back to all cases
+                ← Cases
               </Link>
             </p>
           )}
@@ -488,7 +488,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
             <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
               Flag submitted.{" "}
               <Link href="/" style={{ color: "var(--color-text-secondary)" }}>
-                ← Back to all cases
+                ← Cases
               </Link>
             </p>
           )}

@@ -6,6 +6,8 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveToken } from "@/lib/auth";
+import { NucleosMark } from "@/components/ui/NucleosMark";
+import { brand } from "@/lib/design-system";
 
 const schema = z.object({
   fullName:    z.string().min(1, "Full name is required"),
@@ -62,12 +64,17 @@ export default function SignupPage() {
     try {
       // Register — issue a dev token using the new user's email as subject.
       // Swap for a real /api/auth/register endpoint when available.
+      // Generate or reuse a UUID tenant — stored so login can reuse it
+      const stored = localStorage.getItem("nucleos_tenant_id");
+      const tenantId = stored ?? crypto.randomUUID();
+      if (!stored) localStorage.setItem("nucleos_tenant_id", tenantId);
+
       const res = await fetch("/api-proxy/ledger/api/auth/token", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           sub:       values.email.trim(),
-          tenant_id: values.companyName.trim().toLowerCase().replace(/\s+/g, "-"),
+          tenant_id: tenantId,
           scopes:    ["cbam:read", "cbam:write", "narrative:run", "review:write"],
         }),
       });
@@ -101,17 +108,10 @@ export default function SignupPage() {
       }}
     >
       <div style={{ width: "100%", maxWidth: "400px" }}>
-        {/* Logotype */}
-        <p
-          style={{
-            fontSize:     "var(--text-base)",
-            fontWeight:   "var(--font-focal)",
-            color:        "var(--color-text-primary)",
-            marginBottom: "var(--space-80)",
-          }}
-        >
-          Nucleos
-        </p>
+        {/* Brand mark */}
+        <div style={{ marginBottom: "var(--space-80)" }}>
+          <NucleosMark variant="wordmark" colour="navy" size={brand.mark.heroSizePx} />
+        </div>
 
         <h1
           style={{

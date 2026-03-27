@@ -11,8 +11,17 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title:       "Nucleos — CBAM Compliance",
-  description: "Carbon Border Adjustment Mechanism compliance platform for UK and EU importers",
+  title: {
+    default:  "Nucleos",
+    template: "%s — Nucleos",
+  },
+  description: "Nucleos turns supplier documents into HMRC returns.",
+  icons: {
+    icon: "/favicon.svg",
+  },
+  other: {
+    "theme-color": "#1B3557",
+  },
 };
 
 export default function RootLayout({

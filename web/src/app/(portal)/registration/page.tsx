@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/useAuth";
 import { Button } from "@/components/ui/button";
+import { ledgerFetch } from "@/lib/api/client";
 
 // ── Types & constants ─────────────────────────────────────────────────────────
 
@@ -33,7 +34,8 @@ const ITEMS = [
 
 type ItemKey = typeof ITEMS[number]["key"];
 
-const STORAGE_KEY = "nucleos_reg_state";
+const STORAGE_KEY  = "nucleos_reg_state";
+const API_BASE     = "/api-proxy/ledger/api/cbam/registration";
 const THRESHOLD   = 50_000;
 const DEADLINE    = new Date("2028-02-01"); // past 31 Jan 2028
 
@@ -119,17 +121,62 @@ export default function RegistrationPage() {
   const [saved, setSaved]   = useState<RegState>(EMPTY);
   const [draft, setDraft]   = useState("");
 
-  // Load persisted state
+  // Load from API (falls back to localStorage if API unavailable)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setSaved({ ...EMPTY, ...(JSON.parse(raw) as Partial<RegState>) });
-    } catch { /* ignore */ }
+    async function load() {
+      try {
+        const data = await ledgerFetch<{ checklist: {
+          eori_number?: string | null;
+          vat_registration_number?: string | null;
+          business_legal_name?: string | null;
+          business_address?: { text?: string } | null;
+          cbam_goods_import_value_estimate_gbp?: string | null;
+          registration_status?: string | null;
+          registration_reference?: string | null;
+        } }>(`${API_BASE}/status`);
+        const c = data.checklist;
+        setSaved({
+          eori:          c.eori_number ?? "",
+          vat:           c.vat_registration_number ?? "",
+          businessName:  c.business_legal_name ?? "",
+          address:       c.business_address?.text ?? "",
+          importValue:   c.cbam_goods_import_value_estimate_gbp ?? "",
+          hmrcSubmitted: c.registration_status === "submitted" || c.registration_status === "confirmed",
+          hmrcRef:       c.registration_reference ?? "",
+        });
+      } catch {
+        // API unavailable — fall back to localStorage
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) setSaved({ ...EMPTY, ...(JSON.parse(raw) as Partial<RegState>) });
+        } catch { /* ignore */ }
+      }
+    }
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist on change
+  // Persist to API on change (also mirror to localStorage as offline backup)
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch { /* ignore */ }
+    async function persist() {
+      try {
+        await ledgerFetch(`${API_BASE}`, {
+          method: "PUT",
+          body:   JSON.stringify({
+            eori_number:                         saved.eori || null,
+            vat_registration_number:             saved.vat || null,
+            business_legal_name:                 saved.businessName || null,
+            business_address:                    saved.address ? { text: saved.address } : null,
+            cbam_goods_import_value_estimate_gbp: saved.importValue || null,
+            registration_status:                 saved.hmrcSubmitted ? "submitted" : "in_progress",
+            registration_reference:              saved.hmrcRef || null,
+          }),
+        });
+      } catch { /* API unavailable — localStorage backup already written above */ }
+    }
+    persist();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved]);
 
   // Derived

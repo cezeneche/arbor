@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useCase } from "@/lib/hooks/useCases";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { narrativeFetch } from "@/lib/api/client";
 import type { CaseStatus } from "@/lib/types";
@@ -77,13 +76,21 @@ export default function PipelinePage({ params }: { params: Promise<{ id: string 
 
   const canRun = ["bundled", "resolved", "calculated", "extracted"].includes(case_.status);
 
+  // Auto-trigger the pipeline — this is a backend concern, not a user action
+  useEffect(() => {
+    if (canRun && !runComplete && !running) {
+      runPipeline();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canRun]);
+
   return (
     <div className="page-content">
       <Link
         href={`/cases/${id}`}
         style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "inline-block", marginBottom: "var(--space-32)" }}
       >
-        ← {case_.importer_name}
+        ← Back to case
       </Link>
 
       <h1
@@ -164,18 +171,11 @@ export default function PipelinePage({ params }: { params: Promise<{ id: string 
         })}
       </div>
 
-      {/* Run pipeline */}
-      {canRun && !runComplete && (
-        <div>
-          {runError && (
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginBottom: "var(--space-16)" }}>
-              {runError}
-            </p>
-          )}
-          <Button variant="primary" loading={running} onClick={runPipeline}>
-            Run narrative pipeline
-          </Button>
-        </div>
+      {/* Auto-running — show error inline if pipeline fails */}
+      {runError && (
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginBottom: "var(--space-24)" }}>
+          {runError}
+        </p>
       )}
 
       {/* Inline confirmation */}

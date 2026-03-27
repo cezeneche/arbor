@@ -276,7 +276,8 @@ export default function UploadPage() {
     } catch { /* non-blocking */ }
     qc.invalidateQueries({ queryKey: ["cases"] });
     qc.invalidateQueries({ queryKey: ["kpis"] });
-    router.push("/");
+    // Return to case detail — not homepage — so the user keeps context
+    router.push(`/cases/${caseIdRef.current}`);
   }
 
   // ── Reset ─────────────────────────────────────────────────────────────────────
@@ -575,7 +576,7 @@ export default function UploadPage() {
                 </div>
 
                 <div style={{ marginTop: "var(--space-32)" }}>
-                  <Button variant="secondary" onClick={() => router.push("/")}>
+                  <Button variant="secondary" onClick={() => router.push(`/cases/${caseIdRef.current}`)}>
                     I&apos;ll sort this — notify me when it&apos;s resolved
                   </Button>
                 </div>
@@ -630,7 +631,13 @@ function StageSummary({
         {[sector ? sectorLabel(sector) : null, originCountry].filter(Boolean).join(" · ") || "—"}
       </p>
 
-      {/* Hero: liability */}
+      {/* Hero: liability — always estimated at upload stage (default SEE values) */}
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", marginBottom: "var(--space-8)" }}>
+        <Badge variant="pending">Estimated</Badge>
+        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", fontWeight: "var(--font-body)" }}>
+          based on world-average default values
+        </span>
+      </div>
       <p
         style={{
           fontSize:           "var(--text-hero)",
@@ -644,8 +651,12 @@ function StageSummary({
       >
         {formatCurrency(totalLiability)}
       </p>
-      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-40)" }}>
+      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
         estimated 2027 liability
+      </p>
+      {/* Tagline — appears only after the number has been shown, not before */}
+      <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginBottom: "var(--space-40)", letterSpacing: "0.04em" }}>
+        Your number. Confirmed.
       </p>
 
       {/* Divider */}

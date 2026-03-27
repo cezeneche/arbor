@@ -28,7 +28,7 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
           href={`/cases/${id}`}
           style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "inline-block", marginBottom: "var(--space-32)" }}
         >
-          ← {case_?.importer_name ?? "Case"}
+          ← Back to case
         </Link>
         <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-secondary)" }}>
           Report not yet available.
@@ -54,7 +54,7 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
         href={`/cases/${id}`}
         style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "inline-block", marginBottom: "var(--space-32)" }}
       >
-        ← {case_?.importer_name ?? "Case"}
+        ← Back to case
       </Link>
 
       {/* Hero — liability number. One per screen. */}
