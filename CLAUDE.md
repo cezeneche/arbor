@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 @CBAM-reg.md
 
 @.claude/nucleos-skills/ceo.md
+@.claude/nucleos-skills/brand.md
 @.claude/nucleos-skills/design.md
 @.claude/nucleos-skills/marketing.md
 @.claude/nucleos-skills/operations.md
