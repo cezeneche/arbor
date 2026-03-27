@@ -374,7 +374,7 @@ function Dashboard() {
   return (
     <div>
 
-      {/* ── Section 1: Exposure number — full-width white background ── */}
+      {/* ── Section 1: Exposure number — full-width white surface ── */}
       <div style={{ backgroundColor: "var(--color-surface)", borderBottom: "var(--border-width) solid var(--color-border)" }}>
         <div
           className="page-content"
@@ -382,11 +382,11 @@ function Dashboard() {
             display:        "flex",
             alignItems:     "flex-end",
             justifyContent: "space-between",
-            gap:            "var(--space-32)",
             paddingTop:     "var(--space-40)",
             paddingBottom:  "var(--space-40)",
           }}
         >
+          {/* LEFT: label · figure · meta */}
           <div>
             <p
               style={{
@@ -400,7 +400,7 @@ function Dashboard() {
             </p>
 
             {isLoading ? (
-              <Skeleton height={52} width={200} style={{ marginBottom: "var(--space-8)" }} />
+              <Skeleton height={52} width={200} />
             ) : (
               <p
                 style={{
@@ -410,14 +410,13 @@ function Dashboard() {
                   letterSpacing:      "var(--tracking-hero)",
                   fontVariantNumeric: "tabular-nums",
                   lineHeight:         "var(--leading-display)",
-                  marginBottom:       "var(--space-8)",
                 }}
               >
                 {totalLiability != null ? formatCurrency(totalLiability) : "£0.00"}
               </p>
             )}
 
-            <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)" }}>
+            <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginTop: "var(--space-8)" }}>
               {isLoading
                 ? "—"
                 : `across ${cases.length} case${cases.length !== 1 ? "s" : ""}${lastUpdated ? ` · updated ${relativeTime(lastUpdated)}` : ""}`
@@ -425,7 +424,7 @@ function Dashboard() {
             </p>
           </div>
 
-          {/* Registration status badge — shown only when cases exist */}
+          {/* RIGHT: status badge — empty when all clear */}
           {!isLoading && cases.length > 0 && !registered && (
             <span
               style={{
@@ -440,8 +439,6 @@ function Dashboard() {
                 color:           "var(--color-amber)",
                 whiteSpace:      "nowrap",
                 flexShrink:      0,
-                alignSelf:       "flex-start",
-                marginTop:       "var(--space-8)",
               }}
             >
               Registration required
