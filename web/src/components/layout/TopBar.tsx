@@ -1,28 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuthContext } from "@/lib/auth/AuthProvider";
-
-/**
- * TopBar — brand spec (nucleos-brand-identity.html + nucleos-nav-avatar.html):
- *   56px tall. Left: "nucleos" wordmark — Inter 300, -0.03em, #141414.
- *   Centre: Cases · Review · Registration · Insights (desktop only).
- *   Right: "Upload →" (navy, 500) · avatar (32px circle, initials, navy).
- *
- *   Avatar opens a 256px dropdown:
- *     identity block (name + email) · notification toggle · sign out · delete account.
- *   Delete account reveals inline confirmation — no modal.
- *   Click-outside and Escape close the dropdown.
- */
-
-const NAV_LINKS = [
-  { label: "Cases",        href: "/" },
-  { label: "Review",       href: "/review" },
-  { label: "Registration", href: "/registration" },
-  { label: "Insights",     href: "/insights" },
-] as const;
 
 function getInitials(name?: string | null, sub?: string | null): string {
   if (name) {
@@ -36,12 +16,10 @@ function getInitials(name?: string | null, sub?: string | null): string {
 
 export function TopBar() {
   const { user, signOut } = useAuthContext();
-  const pathname = usePathname();
 
   const [avatarOpen,    setAvatarOpen]    = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [notifOn,       setNotifOn]       = useState(true);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const avatarWrapRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +27,6 @@ export function TopBar() {
   const email    = user?.sub ?? "";
   const fullName = user?.name ?? email;
 
-  // Close dropdown on click-outside or Escape
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (avatarWrapRef.current && !avatarWrapRef.current.contains(e.target as Node)) {
@@ -70,11 +47,6 @@ export function TopBar() {
   function closeDropdown() {
     setAvatarOpen(false);
     setDeleteConfirm(false);
-  }
-
-  function isActive(href: string) {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
   }
 
   return (
@@ -100,8 +72,8 @@ export function TopBar() {
           paddingBottom:  0,
         }}
       >
-        {/* ── Left: wordmark ───────────────────────────────────────── */}
-        <Link href="/" aria-label="nucleos" style={{ flexShrink: 0, textDecoration: "none" }}>
+        {/* LEFT: wordmark */}
+        <Link href="/" aria-label="nucleos" style={{ textDecoration: "none", flexShrink: 0 }}>
           <span style={{
             fontSize:      "15px",
             fontWeight:    300,
@@ -114,69 +86,25 @@ export function TopBar() {
           </span>
         </Link>
 
-        {/* ── Centre: primary nav (desktop only) ───────────────────── */}
-        <nav className="topbar-nav" aria-label="Primary navigation">
-          {NAV_LINKS.map(({ label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                fontSize:       "var(--text-sm)",
-                fontWeight:     isActive(href) ? "var(--font-focal)" : "var(--font-body)",
-                color:          isActive(href) ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-                textDecoration: "none",
-                transition:     "color var(--transition-fast)",
-                paddingBottom:  isActive(href) ? "2px" : "0",
-                borderBottom:   isActive(href)
-                  ? "var(--border-width) solid var(--color-navy)"
-                  : "var(--border-width) solid transparent",
-              }}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* ── Right: upload CTA + avatar ────────────────────────────── */}
+        {/* RIGHT: Upload documents + avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-24)", flexShrink: 0 }}>
 
           <Link
             href="/upload"
-            className="topbar-upload"
             style={{
-              fontSize:       "var(--text-base)",
-              fontWeight:     "var(--font-focal)",
+              fontSize:       "15px",
+              fontWeight:     500,
               color:          "var(--color-navy)",
               textDecoration: "none",
+              fontFamily:     "inherit",
             }}
           >
-            Upload →
+            Upload documents
           </Link>
 
-          {/* Mobile nav toggle */}
-          <button
-            className="topbar-mobile-nav-btn"
-            onClick={() => setMobileNavOpen((o) => !o)}
-            aria-label="Navigation menu"
-            style={{
-              display:    "none",
-              background: "none",
-              border:     "none",
-              cursor:     "pointer",
-              padding:    0,
-              fontSize:   "var(--text-sm)",
-              color:      "var(--color-text-secondary)",
-              fontFamily: "inherit",
-              fontWeight: "var(--font-body)",
-            }}
-          >
-            Menu
-          </button>
-
-          {/* ── Avatar + dropdown ──────────────────────────────────── */}
+          {/* Avatar + dropdown */}
           <div ref={avatarWrapRef} style={{ position: "relative" }}>
 
-            {/* Avatar button */}
             <button
               onClick={() => { setAvatarOpen((o) => !o); if (avatarOpen) setDeleteConfirm(false); }}
               aria-label="Account settings"
@@ -251,7 +179,6 @@ export function TopBar() {
                 <span style={{ fontSize: "var(--text-sm)", fontWeight: 300, color: "var(--color-text-primary)" }}>
                   Email notifications
                 </span>
-                {/* Toggle */}
                 <div
                   onClick={() => setNotifOn((v) => !v)}
                   style={{
@@ -282,19 +209,19 @@ export function TopBar() {
               <button
                 onClick={() => { closeDropdown(); signOut(); }}
                 style={{
-                  display:         "flex",
-                  alignItems:      "center",
-                  padding:         "11px 20px",
-                  fontSize:        "var(--text-sm)",
-                  fontWeight:      300,
-                  color:           "var(--color-text-primary)",
-                  cursor:          "pointer",
-                  border:          "none",
-                  background:      "none",
-                  width:           "100%",
-                  textAlign:       "left",
-                  fontFamily:      "inherit",
-                  transition:      "background-color 100ms",
+                  display:    "flex",
+                  alignItems: "center",
+                  padding:    "11px 20px",
+                  fontSize:   "var(--text-sm)",
+                  fontWeight: 300,
+                  color:      "var(--color-text-primary)",
+                  cursor:     "pointer",
+                  border:     "none",
+                  background: "none",
+                  width:      "100%",
+                  textAlign:  "left",
+                  fontFamily: "inherit",
+                  transition: "background-color 100ms",
                 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--color-bg)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
@@ -310,21 +237,21 @@ export function TopBar() {
                 <button
                   onClick={() => setDeleteConfirm(true)}
                   style={{
-                    display:         "flex",
-                    alignItems:      "center",
-                    padding:         "11px 20px",
-                    fontSize:        "var(--text-sm)",
-                    fontWeight:      300,
-                    color:           "var(--color-red)",
-                    cursor:          "pointer",
-                    border:          "none",
-                    borderTop:       "var(--border-width) solid var(--color-border)",
-                    marginTop:       "4px",
-                    background:      "none",
-                    width:           "100%",
-                    textAlign:       "left",
-                    fontFamily:      "inherit",
-                    transition:      "background-color 100ms",
+                    display:    "flex",
+                    alignItems: "center",
+                    padding:    "11px 20px",
+                    fontSize:   "var(--text-sm)",
+                    fontWeight: 300,
+                    color:      "var(--color-red)",
+                    cursor:     "pointer",
+                    border:     "none",
+                    borderTop:  "var(--border-width) solid var(--color-border)",
+                    marginTop:  "4px",
+                    background: "none",
+                    width:      "100%",
+                    textAlign:  "left",
+                    fontFamily: "inherit",
+                    transition: "background-color 100ms",
                   }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--color-red-bg)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
@@ -347,16 +274,16 @@ export function TopBar() {
                     <button
                       onClick={() => setDeleteConfirm(false)}
                       style={{
-                        flex:        1,
-                        height:      "32px",
-                        border:      "var(--border-width) solid var(--color-border)",
+                        flex:         1,
+                        height:       "32px",
+                        border:       "var(--border-width) solid var(--color-border)",
                         borderRadius: "6px",
-                        background:  "var(--color-surface)",
-                        fontFamily:  "inherit",
-                        fontSize:    "12px",
-                        fontWeight:  300,
-                        color:       "var(--color-text-primary)",
-                        cursor:      "pointer",
+                        background:   "var(--color-surface)",
+                        fontFamily:   "inherit",
+                        fontSize:     "12px",
+                        fontWeight:   300,
+                        color:        "var(--color-text-primary)",
+                        cursor:       "pointer",
                       }}
                     >
                       Cancel
@@ -364,16 +291,16 @@ export function TopBar() {
                     <button
                       onClick={() => { closeDropdown(); /* DELETE /api/account in production */ }}
                       style={{
-                        flex:        1,
-                        height:      "32px",
-                        border:      "none",
+                        flex:         1,
+                        height:       "32px",
+                        border:       "none",
                         borderRadius: "6px",
-                        background:  "var(--color-red)",
-                        fontFamily:  "inherit",
-                        fontSize:    "12px",
-                        fontWeight:  500,
-                        color:       "#FFFFFF",
-                        cursor:      "pointer",
+                        background:   "var(--color-red)",
+                        fontFamily:   "inherit",
+                        fontSize:     "12px",
+                        fontWeight:   500,
+                        color:        "#FFFFFF",
+                        cursor:       "pointer",
                       }}
                     >
                       Delete account
@@ -381,59 +308,10 @@ export function TopBar() {
                   </div>
                 </div>
               )}
-
             </div>
           </div>
         </div>
       </div>
-
-      {/* ── Mobile nav menu (nav links only — account is in avatar dropdown) ── */}
-      {mobileNavOpen && (
-        <div
-          style={{
-            position:        "absolute",
-            top:             "var(--topbar-height)",
-            right:           0,
-            left:            0,
-            backgroundColor: "var(--color-surface)",
-            borderBottom:    "var(--border-width) solid var(--color-border)",
-            padding:         "var(--space-16) var(--space-24)",
-            display:         "flex",
-            flexDirection:   "column",
-            gap:             "var(--space-16)",
-            zIndex:          99,
-          }}
-        >
-          {NAV_LINKS.map(({ label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMobileNavOpen(false)}
-              style={{
-                fontSize:       "var(--text-base)",
-                fontWeight:     isActive(href) ? "var(--font-focal)" : "var(--font-body)",
-                color:          isActive(href) ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-                textDecoration: "none",
-              }}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* ── Responsive CSS ─────────────────────────────────────────── */}
-      <style>{`
-        .topbar-nav            { display: flex; gap: var(--space-32); align-items: center; }
-        .topbar-upload         { display: inline; }
-        .topbar-mobile-nav-btn { display: none !important; }
-
-        @media (max-width: 768px) {
-          .topbar-nav            { display: none; }
-          .topbar-upload         { display: none; }
-          .topbar-mobile-nav-btn { display: inline !important; }
-        }
-      `}</style>
     </header>
   );
 }
