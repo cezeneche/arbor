@@ -1,33 +1,30 @@
 "use client";
 
 /**
- * lib/hooks/useUpload.ts — 3-step upload state machine
+ * lib/hooks/useUpload.ts — single-call upload state machine
  *
- * Step 1 — uploading    (XHR with progress 0–100)
- * Step 2 — extracting   (polls extractDocument every 2 s until complete/failed)
- * Step 3 — creating     (createDraftFromDocument → DraftResult)
+ * Sends the file to POST /api/cbam/drafts/from-document which handles
+ * extraction, arbitration, repair, and CBAM draft creation in one request.
  *
- * Returns: { step, progress, result, error, upload(file, caseId?), reset }
+ * Steps:
+ *   uploading   — file bytes being transferred (progress 0–100)
+ *   processing  — bytes sent, server extracting and creating draft
+ *   done        — result available
+ *   error       — something went wrong
  *
- * caseId is required for upload (backend route is /cases/{caseId}/documents/upload).
- * createDraftFromDocument in step 3 uses the same caseId to build the CBAM structure.
+ * Returns: { step, progress, result, error, upload(file), reset }
  */
 
 import { useCallback, useRef, useState } from "react";
-import {
-  uploadDocument,
-  extractDocument,
-  createDraftFromDocument,
-} from "@/lib/api/documents";
-import type { DraftResult, ExtractionResult } from "@/lib/api/types";
+import { createDraftFromDocument } from "@/lib/api/documents";
+import type { DraftResult } from "@/lib/api/types";
 
 /* ── Step type ────────────────────────────────────────────────────────────────── */
 
 export type UploadStep =
   | "idle"
   | "uploading"
-  | "extracting"
-  | "creating"
+  | "processing"
   | "done"
   | "error";
 
@@ -35,36 +32,13 @@ export type UploadStep =
 
 export interface UseUploadReturn {
   step:     UploadStep;
-  /** 0–100 during "uploading", 100 once upload is complete */
+  /** 0–100 during "uploading", 100 once upload bytes are sent */
   progress: number;
   result:   DraftResult | undefined;
   error:    Error | null;
-  /** Start the 3-step pipeline. */
-  upload:   (file: File, caseId: string) => Promise<void>;
+  /** Start the upload. Returns the draft result, or null on error. */
+  upload:   (file: File) => Promise<DraftResult | null>;
   reset:    () => void;
-}
-
-/* ── Poll helper ──────────────────────────────────────────────────────────────── */
-
-const POLL_INTERVAL_MS = 2_000;
-const MAX_POLLS        = 30;   // 60 s hard timeout
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-async function pollExtraction(
-  caseId:     string,
-  documentId: string,
-  abortRef:   React.MutableRefObject<boolean>
-): Promise<ExtractionResult> {
-  for (let i = 0; i < MAX_POLLS; i++) {
-    if (abortRef.current) throw new Error("Upload cancelled.");
-    const res = await extractDocument(caseId, documentId);
-    if (res.status === "complete" || res.status === "failed") return res;
-    await sleep(POLL_INTERVAL_MS);
-  }
-  throw new Error("Extraction timed out. Please try again.");
 }
 
 /* ── Hook ─────────────────────────────────────────────────────────────────────── */
@@ -86,7 +60,7 @@ export function useUpload(): UseUploadReturn {
     setTimeout(() => { abortRef.current = false; }, 0);
   }, []);
 
-  const upload = useCallback(async (file: File, caseId: string) => {
+  const upload = useCallback(async (file: File): Promise<DraftResult | null> => {
     abortRef.current = false;
     setStep("uploading");
     setProgress(0);
@@ -94,43 +68,17 @@ export function useUpload(): UseUploadReturn {
     setError(null);
 
     try {
-      /* ── Step 1: upload ──────────────────────────────────────────────────────── */
-      const uploadRes = await uploadDocument(file, caseId, (pct) => {
+      const draft = await createDraftFromDocument(file, (pct) => {
         setProgress(pct);
+        // Once bytes are fully sent, server processing begins
+        if (pct >= 100) setStep("processing");
       });
-      setProgress(100);
 
-      if (abortRef.current) return;
-
-      /* ── Step 2: extract ─────────────────────────────────────────────────────── */
-      setStep("extracting");
-
-      const extractRes = await pollExtraction(
-        uploadRes.case_id,
-        uploadRes.document_id,
-        abortRef
-      );
-
-      if (abortRef.current) return;
-
-      if (extractRes.status === "failed") {
-        throw new Error(
-          "Document extraction failed. Please check the file format and try again."
-        );
-      }
-
-      /* ── Step 3: create draft ────────────────────────────────────────────────── */
-      setStep("creating");
-
-      const draft = await createDraftFromDocument(
-        uploadRes.document_id,
-        uploadRes.case_id
-      );
-
-      if (abortRef.current) return;
+      if (abortRef.current) return null;
 
       setResult(draft);
       setStep("done");
+      return draft;
     } catch (err) {
       if (!abortRef.current) {
         setError(
@@ -138,6 +86,7 @@ export function useUpload(): UseUploadReturn {
         );
         setStep("error");
       }
+      return null;
     }
   }, []);
 

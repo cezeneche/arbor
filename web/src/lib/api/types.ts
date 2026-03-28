@@ -97,11 +97,15 @@ export interface ExtractionResult {
 
 /** Response from POST /api/cbam/drafts/from-document */
 export interface DraftResult {
-  case_id:      string;
-  status:       import("@/lib/types").CaseStatus;
-  shipments:    number;
-  goods_lines:  number;
-  created_at:   string;
+  created: {
+    case_id:       string;
+    shipment_id:   string;
+    goods_line_ids: string[];
+    emissions_ids: string[];
+    warnings:      string[];
+  };
+  warnings:        string[];
+  document_sha256: string;
 }
 
 // ── Audit export ──────────────────────────────────────────────────────────────

@@ -199,6 +199,25 @@ def _bad_request(message: str) -> HTTPException:
 
 
 def _table_columns(conn: Connection, table_name: str) -> dict[str, dict[str, str | None]]:
+    # SQLite: use PRAGMA table_info — information_schema is not available.
+    # getattr is used so that FakeConnection (test mock, no dialect attr) falls
+    # through to the information_schema path it already intercepts.
+    _dialect_name = getattr(getattr(conn, "dialect", None), "name", None)
+    if _dialect_name == "sqlite":
+        rows = conn.execute(
+            text(f"PRAGMA table_info({table_name})")  # noqa: S608
+        ).mappings().all()
+        if not rows:
+            raise HTTPException(status_code=500, detail="Internal server error")
+        return {
+            row["name"]: {
+                "is_nullable": "NO" if row["notnull"] else "YES",
+                "column_default": row["dflt_value"],
+            }
+            for row in rows
+        }
+
+    # PostgreSQL (production / Supabase)
     rows = conn.execute(
         text(
             """

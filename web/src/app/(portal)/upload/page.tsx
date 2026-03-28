@@ -115,7 +115,7 @@ export default function UploadPage() {
   const [report,     setReport]     = useState<ReportPackage | null>(null);
   const [fetching3,  setFetching3]  = useState(false);
 
-  const { step, error, upload, reset } = useUpload();
+  const { step, result, error, upload, reset } = useUpload();
 
   // ── Document title ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -178,15 +178,14 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (stage !== 2) return;
-    if (step === "uploading")  { advanceLine(0); }
-    else if (step === "extracting") {
+    if (step === "uploading") { advanceLine(0); }
+    else if (step === "processing") {
+      // Bytes sent — server now extracting and building the draft
       advanceLine(1);
-      const t = setTimeout(() => advanceLine(2), 4_000);
-      return () => clearTimeout(t);
-    } else if (step === "creating") {
-      advanceLine(3);
-      const t = setTimeout(() => advanceLine(4), 2_000);
-      return () => clearTimeout(t);
+      const t1 = setTimeout(() => advanceLine(2), 3_000);
+      const t2 = setTimeout(() => advanceLine(3), 6_000);
+      const t3 = setTimeout(() => advanceLine(4), 9_000);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     } else if (step === "done")  { setLines(Array(5).fill("done")); }
     else if (step === "error")   { setLines(Array(5).fill("pending")); }
   }, [step, stage, advanceLine]);
@@ -203,10 +202,12 @@ export default function UploadPage() {
 
   // ── Fetch Stage 3 data when upload completes ──────────────────────────────────
   useEffect(() => {
-    if (step !== "done" || fetching3 || !caseIdRef.current) return;
+    if (step !== "done" || fetching3) return;
+    const caseId = result?.created?.case_id;
+    if (!caseId) return;
 
     setFetching3(true);
-    const caseId = caseIdRef.current;
+    caseIdRef.current = caseId;
 
     const t = setTimeout(async () => {
       try {
@@ -222,7 +223,7 @@ export default function UploadPage() {
     }, 900); // let "Preparing your report" visually complete
 
     return () => clearTimeout(t);
-  }, [step, fetching3]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, fetching3, result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Submit: Stage 1 → 2 ───────────────────────────────────────────────────────
   async function handleProcess() {
@@ -233,32 +234,22 @@ export default function UploadPage() {
     setElapsed(0);
 
     try {
-      const newCase = await ledgerFetch<{ case_id: string; id: string }>(
-        "/api/cbam/cases",
-        {
-          method: "POST",
-          body:   JSON.stringify({
-            importer_eori:     "PENDING",
-            reporting_year:    new Date().getFullYear(),
-            reporting_quarter: Math.ceil((new Date().getMonth() + 1) / 3) as 1|2|3|4,
-          }),
+      // Primary file: upload + extract + create CBAM draft in one request
+      const draft = await upload(files[0].file);
+      const caseId = draft?.created?.case_id;
+
+      // Additional files: best-effort upload to CBAM document endpoint, non-blocking
+      if (caseId) {
+        const token = document.cookie.match(/cbam_token=([^;]+)/)?.[1] ?? "";
+        for (const { file } of files.slice(1)) {
+          const form = new FormData();
+          form.append("file", file);
+          fetch(`/api-proxy/ledger/api/cbam/cases/${caseId}/documents`, {
+            method:  "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body:    form,
+          }).catch(() => {});
         }
-      );
-      const caseId = newCase.case_id ?? newCase.id;
-      caseIdRef.current = caseId;
-
-      // Primary file drives the pipeline
-      await upload(files[0].file, caseId);
-
-      // Additional files: best-effort upload, non-blocking
-      for (const { file } of files.slice(1)) {
-        const form = new FormData();
-        form.append("file", file);
-        fetch(`/api-proxy/ledger/api/cases/${caseId}/documents/upload`, {
-          method:  "POST",
-          headers: { Authorization: `Bearer ${document.cookie.match(/cbam_token=([^;]+)/)?.[1] ?? ""}` },
-          body:    form,
-        }).catch(() => {});
       }
     } catch { /* step becomes "error" — Stage 2 handles the display */ }
   }
