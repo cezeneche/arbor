@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUpload } from "@/lib/hooks/useUpload";
 import { useAuth } from "@/lib/auth/useAuth";
+import { useCases } from "@/lib/hooks/useCases";
 import { ledgerFetch } from "@/lib/api/client";
 import { approveCase } from "@/lib/api/cases";
 import {
@@ -85,6 +86,385 @@ function sectorLabel(s: string | null | undefined): string {
     electricity: "Electricity",
   };
   return s ? (map[s] ?? s.replace(/_/g, " ")) : "—";
+}
+
+// ── Inline scope checker ───────────────────────────────────────────────────────
+
+type ScopeResult = {
+  in_scope:                 boolean;
+  sector?:                  string | null;
+  cn_description?:          string | null;
+  reason?:                  string;
+  default_see_tco2e_per_t?: number | null;
+};
+
+function InlineScopeChecker() {
+  const { cases } = useCases();
+
+  const [open,    setOpen]    = useState(false);
+  const [code,    setCode]    = useState("");
+  const [qty,     setQty]     = useState("");
+  const [phase,   setPhase]   = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [result,  setResult]  = useState<ScopeResult | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [codeErr, setCodeErr] = useState("");
+  const [qtyErr,  setQtyErr]  = useState("");
+  // Session-only recent checks — cleared on reload
+  const [history, setHistory] = useState<Array<{ cn: string; qty: string }>>([]);
+
+  async function runCheck(cn: string, qtyStr: string) {
+    setPhase("loading");
+    setVisible(false);
+    setResult(null);
+    try {
+      const res = await fetch("/api-proxy/ledger/api/public/cbam-scope-check", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ cn8_code: cn, annual_import_value_gbp: 50000, regime: "UK" }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json() as ScopeResult;
+      setResult(data);
+      setPhase("done");
+      requestAnimationFrame(() => setVisible(true));
+      setHistory(prev => {
+        const without = prev.filter(h => h.cn !== cn);
+        return [{ cn, qty: qtyStr }, ...without].slice(0, 3);
+      });
+    } catch {
+      setPhase("error");
+    }
+  }
+
+  async function handleCheck(e: React.FormEvent) {
+    e.preventDefault();
+    const cn     = code.replace(/\D/g, "").slice(0, 8);
+    const qtyNum = Number(qty);
+    let valid = true;
+    if (!cn)       { setCodeErr("Enter a commodity code"); valid = false; }
+    else             setCodeErr("");
+    if (!qty.trim())   { setQtyErr("Enter your approximate annual quantity"); valid = false; }
+    else if (qtyNum < 1) { setQtyErr("Enter a quantity above zero"); valid = false; }
+    else                   setQtyErr("");
+    if (!valid) return;
+    await runCheck(cn, qty);
+  }
+
+  const qtyNum = Number(qty) || 0;
+  const cn     = code.replace(/\D/g, "").slice(0, 8);
+
+  // Check if any loaded case has a goods line matching this CN code
+  type CaseWithLines = (typeof cases)[0] & { goods_lines?: Array<{ cn_code: string }> };
+  const matchedCase = result?.in_scope
+    ? (cases as CaseWithLines[]).find(c => c.goods_lines?.some(l => l.cn_code === cn))
+    : undefined;
+
+  const liabilityPerTonne =
+    result?.default_see_tco2e_per_t != null
+      ? result.default_see_tco2e_per_t * UK_ETS_RATE
+      : null;
+  const annualLiability =
+    liabilityPerTonne != null && qtyNum > 0 ? liabilityPerTonne * qtyNum : null;
+
+  return (
+    <>
+      <style>{`
+        .isc-fields { display: flex; align-items: flex-start; gap: 8px; }
+        .isc-f1 { flex: 2; min-width: 0; display: flex; flex-direction: column; }
+        .isc-f2 { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .isc-f2-inner {
+          display: flex; align-items: stretch; height: 40px;
+          border: 0.5px solid var(--color-border);
+          border-radius: 6px; background: var(--color-surface); overflow: hidden;
+        }
+        .isc-f2-inner:focus-within { border-color: var(--color-navy); }
+        .isc-code { border: 0.5px solid var(--color-border); border-radius: 6px; }
+        .isc-code:focus { border-color: var(--color-navy) !important; outline: none; box-shadow: none; }
+        .isc-btn { flex-shrink: 0; }
+        .isc-btn-mobile { display: none !important; }
+        @media (max-width: 768px) {
+          .isc-fields { flex-direction: column; }
+          .isc-f1, .isc-f2 { flex: none; width: 100%; }
+          .isc-btn { display: none !important; }
+          .isc-btn-mobile { display: block !important; width: 100%; margin-top: 8px; }
+        }
+      `}</style>
+
+      {/* 32px gap + divider + 32px gap */}
+      <div style={{ marginTop: "var(--space-32)" }}>
+        <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-32)" }} />
+
+        {/* Collapsed trigger — entire row is clickable */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setOpen(o => !o)}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(o => !o); } }}
+          style={{
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "space-between",
+            cursor:         "pointer",
+            userSelect:     "none",
+          }}
+        >
+          <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", margin: 0 }}>
+            Not sure if your goods are covered by UK CBAM? Check a commodity code
+          </p>
+          <svg
+            width="16" height="16" viewBox="0 0 16 16"
+            fill="none" stroke="var(--color-text-tertiary)"
+            strokeWidth="1.5" strokeLinecap="square"
+            style={{
+              flexShrink: 0,
+              marginLeft: "var(--space-8)",
+              transform:  open ? "rotate(90deg)" : "rotate(0deg)",
+              transition: "transform 150ms ease",
+            }}
+          >
+            <path d="M6 4l4 4-4 4" />
+          </svg>
+        </div>
+
+        {/* Expandable panel — grows downward, drop zone never shifts */}
+        <div style={{ overflow: "hidden", maxHeight: open ? "1200px" : "0", transition: "max-height 200ms ease" }}>
+          <div style={{ paddingTop: "var(--space-24)" }}>
+
+            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-text-primary)", marginBottom: "var(--space-16)" }}>
+              Is this covered by UK CBAM?
+            </p>
+
+            {/* Recent checks chips — session only */}
+            {history.length > 0 && (
+              <div style={{ display: "flex", gap: "var(--space-8)", marginBottom: "var(--space-16)", flexWrap: "wrap" }}>
+                {history.map(h => (
+                  <button
+                    key={h.cn}
+                    type="button"
+                    onClick={() => { setCode(h.cn); setQty(h.qty); runCheck(h.cn, h.qty); }}
+                    style={{
+                      fontSize:        "var(--text-xs)",
+                      fontWeight:      "var(--font-body)",
+                      color:           "var(--color-text-tertiary)",
+                      backgroundColor: "var(--color-bg)",
+                      border:          "0.5px solid var(--color-border)",
+                      borderRadius:    "4px",
+                      padding:         "3px 8px",
+                      cursor:          "pointer",
+                      fontFamily:      "inherit",
+                    }}
+                  >
+                    {h.cn}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleCheck} noValidate>
+              <div className="isc-fields">
+
+                {/* Field 1 — Commodity code */}
+                <div className="isc-f1">
+                  <input
+                    className="isc-code"
+                    type="text"
+                    inputMode="numeric"
+                    value={code}
+                    onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 8)); setCodeErr(""); }}
+                    placeholder="Commodity code e.g. 72082700"
+                    autoComplete="off"
+                    style={{
+                      width:           "100%",
+                      height:          "40px",
+                      padding:         "0 var(--space-16)",
+                      outline:         "none",
+                      fontSize:        "var(--text-base)",
+                      fontWeight:      "var(--font-body)",
+                      fontFamily:      "inherit",
+                      color:           "var(--color-text-primary)",
+                      backgroundColor: "var(--color-surface)",
+                      ...(codeErr ? { borderColor: "var(--color-red)" } : {}),
+                    }}
+                  />
+                  {codeErr && (
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", margin: "4px 0 0" }}>{codeErr}</p>
+                  )}
+                </div>
+
+                {/* Field 2 — Annual quantity with "t" suffix */}
+                <div className="isc-f2">
+                  <div
+                    className="isc-f2-inner"
+                    style={qtyErr ? { borderColor: "var(--color-red)" } : undefined}
+                  >
+                    <input
+                      type="number"
+                      min={1}
+                      value={qty}
+                      onChange={e => { setQty(e.target.value); setQtyErr(""); }}
+                      placeholder="Annual tonnes e.g. 500"
+                      autoComplete="off"
+                      style={{
+                        flex:            1,
+                        height:          "100%",
+                        padding:         "0 0 0 var(--space-16)",
+                        border:          "none",
+                        outline:         "none",
+                        fontSize:        "var(--text-base)",
+                        fontWeight:      "var(--font-body)",
+                        fontFamily:      "inherit",
+                        color:           "var(--color-text-primary)",
+                        backgroundColor: "transparent",
+                        minWidth:        0,
+                      }}
+                    />
+                    <span style={{
+                      fontSize:      "var(--text-sm)",
+                      fontWeight:    "var(--font-body)",
+                      color:         "var(--color-text-tertiary)",
+                      alignSelf:     "center",
+                      paddingRight:  "12px",
+                      flexShrink:    0,
+                      pointerEvents: "none",
+                      userSelect:    "none",
+                    }}>t</span>
+                  </div>
+                  {qtyErr && (
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", margin: "4px 0 0" }}>{qtyErr}</p>
+                  )}
+                </div>
+
+                {/* Check button — desktop */}
+                <button
+                  type="submit"
+                  className="isc-btn"
+                  style={{
+                    height:          "40px",
+                    padding:         "0 var(--space-24)",
+                    border:          "none",
+                    borderRadius:    "6px",
+                    backgroundColor: "var(--color-navy)",
+                    color:           "var(--color-surface)",
+                    fontSize:        "var(--text-base)",
+                    fontWeight:      "var(--font-focal)",
+                    fontFamily:      "inherit",
+                    cursor:          phase === "loading" ? "default" : "pointer",
+                    whiteSpace:      "nowrap",
+                  }}
+                >
+                  {phase === "loading" ? "Checking…" : "Check"}
+                </button>
+              </div>
+
+              {/* Check button — mobile only */}
+              <button
+                type="submit"
+                className="isc-btn-mobile"
+                style={{
+                  height:          "40px",
+                  border:          "none",
+                  borderRadius:    "6px",
+                  backgroundColor: "var(--color-navy)",
+                  color:           "var(--color-surface)",
+                  fontSize:        "var(--text-base)",
+                  fontWeight:      "var(--font-focal)",
+                  fontFamily:      "inherit",
+                  cursor:          phase === "loading" ? "default" : "pointer",
+                }}
+              >
+                {phase === "loading" ? "Checking…" : "Check"}
+              </button>
+            </form>
+
+            {phase === "error" && (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginTop: "var(--space-8)" }}>
+                Unable to check. Please try again.
+              </p>
+            )}
+
+            {/* Result */}
+            {phase === "done" && result && (
+              <div style={{ opacity: visible ? 1 : 0, transition: "opacity 150ms ease", marginTop: "var(--space-16)" }}>
+                {result.in_scope ? (
+                  <div style={{
+                    backgroundColor: "var(--color-surface)",
+                    border:          "var(--border-width) solid var(--color-border)",
+                    borderLeft:      "3px solid var(--color-navy)",
+                    borderRadius:    "0 8px 8px 0",
+                    padding:         "var(--space-24)",
+                  }}>
+                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-green)", marginBottom: "var(--space-16)" }}>
+                      In scope
+                    </p>
+
+                    <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)", marginBottom: "var(--space-24)" }}>
+                      Your {sectorLabel(result.sector).toLowerCase()} imports will be subject to UK CBAM from January 2027.
+                    </p>
+
+                    {annualLiability != null ? (
+                      <>
+                        <p style={{
+                          fontSize:           "var(--text-hero)",
+                          fontWeight:         "var(--font-focal)",
+                          color:              "var(--color-navy)",
+                          letterSpacing:      "var(--tracking-hero)",
+                          fontVariantNumeric: "tabular-nums",
+                          lineHeight:         "var(--leading-display)",
+                          marginBottom:       "var(--space-8)",
+                        }}>
+                          {formatCurrency(annualLiability)}
+                        </p>
+                        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
+                          estimated annual liability across {qtyNum.toLocaleString("en-GB")} tonnes at default values
+                        </p>
+                      </>
+                    ) : (
+                      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
+                        No default emissions rate available for this commodity code.
+                      </p>
+                    )}
+
+                    <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-24)" }} />
+
+                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
+                      Drop your documents above to calculate your exact liability.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{
+                    backgroundColor: "var(--color-surface)",
+                    border:          "var(--border-width) solid var(--color-border)",
+                    borderLeft:      "3px solid var(--color-green)",
+                    borderRadius:    "0 8px 8px 0",
+                    padding:         "var(--space-24)",
+                  }}>
+                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-green)", marginBottom: "12px" }}>
+                      Not in scope
+                    </p>
+                    <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
+                      {result.reason ?? "This commodity code is not currently covered by UK CBAM. No liability applies."}
+                    </p>
+                  </div>
+                )}
+
+                {/* Existing case match */}
+                {matchedCase && (
+                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-amber)", marginTop: "var(--space-16)" }}>
+                    You already have a case for this commodity.{" "}
+                    <Link href={`/cases/${matchedCase.id}`} style={{ color: "var(--color-amber)", textDecoration: "underline" }}>
+                      View case →
+                    </Link>
+                  </p>
+                )}
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -441,6 +821,9 @@ export default function UploadPage() {
                 </Button>
               </div>
             )}
+
+            {/* Inline scope checker — below the drop zone, Stage 1 only */}
+            <InlineScopeChecker />
           </>
         )}
 
