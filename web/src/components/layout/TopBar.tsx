@@ -75,7 +75,7 @@ export function TopBar() {
         {/* LEFT: wordmark */}
         <Link href="/" aria-label="nucleos" style={{ textDecoration: "none", flexShrink: 0 }}>
           <span style={{
-            fontSize:      "15px",
+            fontSize:      "24px",
             fontWeight:    500,
             color:         "var(--color-text-primary)",
             letterSpacing: "-0.03em",

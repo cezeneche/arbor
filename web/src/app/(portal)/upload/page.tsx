@@ -303,7 +303,7 @@ export default function UploadPage() {
       <div
         key={stageKey}
         style={{
-          maxWidth:   "640px",
+          maxWidth:   stage === 1 ? "100%" : "640px",
           opacity:    fadeIn ? 1 : 0,
           transition: "opacity 200ms ease",
         }}
