@@ -21,10 +21,28 @@
       "Read(//private/tmp/**)",
       "Bash(open http://localhost:3000)",
       "Bash(git commit:*)",
-      "Bash(calculation software\", description from voice spec, no tagline, no mark sizes:*)"
+      "Bash(calculation software\", description from voice spec, no tagline, no mark sizes:*)",
+      "Bash(open -a \"Google Chrome\" --args --incognito \"http://localhost:3001\")",
+      "Bash(open -a Safari \"http://localhost:3001\")",
+      "Bash(cat /Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/\\\\\\(portal\\\\\\)/layout.tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/health)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(PYTHONPATH=.:api python3 -c \":*)",
+      "Bash(python3 -c \":*)",
+      "Bash(python3 -m pytest api/tests/ledger/test_cbam_document_ingest.py -x -q)",
+      "Bash(python3 -m pytest api/tests/ledger/ -q)",
+      "Bash(open -a Safari http://localhost:3000)",
+      "Bash(open -a Safari \"https://www.figma.com/design/b6l2XyjCrVgYJncSrVu5f9/nucleos?node-id=0-1&t=XnJZ5Uwj4nfqvlAz-1\")",
+      "mcp__figma__whoami",
+      "mcp__figma__get_metadata",
+      "mcp__figma__generate_figma_design",
+      "mcp__figma__use_figma",
+      "mcp__figma__get_design_context",
+      "mcp__figma__get_screenshot"
     ],
     "additionalDirectories": [
-      "/Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/(portal)/supplier-request"
+      "/Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/(portal)/supplier-request",
+      "/Users/chisom/.claude"
     ]
   }
 }
