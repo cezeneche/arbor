@@ -93,7 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /* Initialise on mount (client only) */
   useEffect(() => {
     const t = readToken();
-    if (!t) { setIsLoading(false); router.replace("/login"); return; }
+    if (!t) {
+      setIsLoading(false);
+      // "/" is a public dual-state page — render scope checker without redirecting
+      if (window.location.pathname !== "/") router.replace("/login");
+      return;
+    }
 
     const u = decodeUser(t);
     if (!u || isExpired(u)) {

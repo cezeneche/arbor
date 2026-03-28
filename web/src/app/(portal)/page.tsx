@@ -122,7 +122,7 @@ function ScopeChecker() {
           style={{
             display:       "block",
             fontSize:      "var(--text-base)",
-            fontWeight:    300,
+            fontWeight:    500,
             color:         "var(--color-text-primary)",
             letterSpacing: "-0.03em",
             lineHeight:    1,

@@ -103,11 +103,11 @@ export default function LoginPage() {
       }}
     >
       <div style={{ width: "100%", maxWidth: "400px" }}>
-        {/* Wordmark — Inter 300, tight tracking, always lowercase */}
+        {/* Wordmark — Inter 500, tight tracking, always lowercase */}
         <div style={{ marginBottom: "var(--space-80)" }}>
           <span style={{
             fontSize:      "20px",
-            fontWeight:    300,
+            fontWeight:    500,
             color:         "var(--color-text-primary)",
             letterSpacing: "-0.03em",
             lineHeight:    1,
