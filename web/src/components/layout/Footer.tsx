@@ -3,7 +3,7 @@ import { brand } from "@/lib/design-system";
 
 /**
  * Footer — brand spec:
- *   Left: "nucleos" wordmark — Inter 300, tight tracking, #141414.
+ *   Left: "nucleos" wordmark — Inter 300, 13px, --color-text-tertiary.
  *         One-line product description beneath it (from brand spec voice rules).
  *   Right: Privacy · Terms. Copyright line.
  *   No tagline. No icon. No marketing copy.
@@ -33,9 +33,9 @@ export function Footer() {
         {/* Left: wordmark + description */}
         <div>
           <span style={{
-            fontSize:      "15px",
+            fontSize:      "var(--text-sm)",
             fontWeight:    300,
-            color:         "var(--color-text-primary)",
+            color:         "var(--color-text-tertiary)",
             letterSpacing: "-0.03em",
             lineHeight:    1,
             fontFamily:    "inherit",

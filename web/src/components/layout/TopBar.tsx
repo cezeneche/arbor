@@ -130,7 +130,7 @@ export function TopBar() {
               <span style={{
                 fontSize:      "11px",
                 fontWeight:    500,
-                color:         "#FFFFFF",
+                color:         "var(--color-surface)",
                 letterSpacing: "0.02em",
                 lineHeight:    1,
                 fontFamily:    "inherit",
@@ -160,8 +160,8 @@ export function TopBar() {
               }}
             >
               {/* Identity */}
-              <div style={{ padding: "16px 20px", borderBottom: "var(--border-width) solid var(--color-border)" }}>
-                <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--color-text-primary)", display: "block", marginBottom: "3px" }}>
+              <div style={{ padding: "var(--space-16) var(--space-24)", borderBottom: "var(--border-width) solid var(--color-border)" }}>
+                <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--color-text-primary)", display: "block", marginBottom: "var(--space-8)" }}>
                   {fullName}
                 </span>
                 <span style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-tertiary)", display: "block" }}>
@@ -170,12 +170,12 @@ export function TopBar() {
               </div>
 
               {/* Preferences */}
-              <div style={{ padding: "12px 20px 6px" }}>
-                <span style={{ fontSize: "10px", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--color-text-tertiary)" }}>
+              <div style={{ padding: "var(--space-8) var(--space-24)" }}>
+                <span style={{ fontSize: "var(--text-xs)", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--color-text-tertiary)" }}>
                   Preferences
                 </span>
               </div>
-              <div style={{ padding: "8px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "var(--border-width) solid var(--color-border)" }}>
+              <div style={{ padding: "var(--space-8) var(--space-24)", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "var(--border-width) solid var(--color-border)" }}>
                 <span style={{ fontSize: "var(--text-sm)", fontWeight: 300, color: "var(--color-text-primary)" }}>
                   Email notifications
                 </span>
@@ -199,7 +199,7 @@ export function TopBar() {
                     width:           "14px",
                     height:          "14px",
                     borderRadius:    "50%",
-                    backgroundColor: "#FFFFFF",
+                    backgroundColor: "var(--color-surface)",
                     transition:      "left 200ms",
                   }} />
                 </div>
@@ -211,7 +211,7 @@ export function TopBar() {
                 style={{
                   display:    "flex",
                   alignItems: "center",
-                  padding:    "11px 20px",
+                  padding:    "var(--space-8) var(--space-24)",
                   fontSize:   "var(--text-sm)",
                   fontWeight: 300,
                   color:      "var(--color-text-primary)",
@@ -226,7 +226,7 @@ export function TopBar() {
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--color-bg)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
               >
-                <svg style={{ width: "16px", height: "16px", marginRight: "10px", opacity: 0.5, flexShrink: 0 }} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square">
+                <svg style={{ width: "16px", height: "16px", marginRight: "var(--space-8)", opacity: 0.5, flexShrink: 0 }} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square">
                   <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10 11l3-3-3-3M13 8H6"/>
                 </svg>
                 Sign out
@@ -239,14 +239,14 @@ export function TopBar() {
                   style={{
                     display:    "flex",
                     alignItems: "center",
-                    padding:    "11px 20px",
+                    padding:    "var(--space-8) var(--space-24)",
                     fontSize:   "var(--text-sm)",
                     fontWeight: 300,
                     color:      "var(--color-red)",
                     cursor:     "pointer",
                     border:     "none",
                     borderTop:  "var(--border-width) solid var(--color-border)",
-                    marginTop:  "4px",
+                    marginTop:  "var(--space-8)",
                     background: "none",
                     width:      "100%",
                     textAlign:  "left",
@@ -256,7 +256,7 @@ export function TopBar() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--color-red-bg)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
                 >
-                  <svg style={{ width: "16px", height: "16px", marginRight: "10px", opacity: 0.7, flexShrink: 0 }} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square">
+                  <svg style={{ width: "16px", height: "16px", marginRight: "var(--space-8)", opacity: 0.7, flexShrink: 0 }} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square">
                     <path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/>
                   </svg>
                   Delete account
@@ -265,8 +265,8 @@ export function TopBar() {
 
               {/* Inline delete confirmation */}
               {deleteConfirm && (
-                <div style={{ padding: "16px 20px", borderTop: "var(--border-width) solid var(--color-border)" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 300, color: "var(--color-text-primary)", lineHeight: 1.7, marginBottom: "12px" }}>
+                <div style={{ padding: "var(--space-16) var(--space-24)", borderTop: "var(--border-width) solid var(--color-border)" }}>
+                  <p style={{ fontSize: "var(--text-sm)", fontWeight: 300, color: "var(--color-text-primary)", lineHeight: 1.7, marginBottom: "var(--space-16)" }}>
                     This will permanently delete your account and all associated data.{" "}
                     <strong style={{ fontWeight: 500, color: "var(--color-red)" }}>This cannot be undone.</strong>
                   </p>
@@ -280,7 +280,7 @@ export function TopBar() {
                         borderRadius: "6px",
                         background:   "var(--color-surface)",
                         fontFamily:   "inherit",
-                        fontSize:     "12px",
+                        fontSize:     "var(--text-xs)",
                         fontWeight:   300,
                         color:        "var(--color-text-primary)",
                         cursor:       "pointer",
@@ -297,9 +297,9 @@ export function TopBar() {
                         borderRadius: "6px",
                         background:   "var(--color-red)",
                         fontFamily:   "inherit",
-                        fontSize:     "12px",
+                        fontSize:     "var(--text-xs)",
                         fontWeight:   500,
-                        color:        "#FFFFFF",
+                        color:        "var(--color-surface)",
                         cursor:       "pointer",
                       }}
                     >

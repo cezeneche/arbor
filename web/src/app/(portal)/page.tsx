@@ -598,6 +598,7 @@ function CaseRow({ c }: CaseRowProps) {
           <p
             style={{
               fontSize:           "var(--text-xs)",
+              fontWeight:         "var(--font-body)",
               color:              "var(--color-text-tertiary)",
               margin:             0,
               whiteSpace:         "nowrap",
