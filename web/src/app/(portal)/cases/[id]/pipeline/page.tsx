@@ -56,6 +56,16 @@ export default function PipelinePage({ params }: { params: Promise<{ id: string 
     }
   }
 
+  const canRun = !isLoading && !!case_ && ["bundled", "resolved", "calculated", "extracted"].includes(case_.status);
+
+  // Auto-trigger the pipeline — must be before any early returns (Rules of Hooks)
+  useEffect(() => {
+    if (canRun && !runComplete && !running) {
+      runPipeline();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canRun]);
+
   if (isLoading) {
     return (
       <div className="page-content">
@@ -73,16 +83,6 @@ export default function PipelinePage({ params }: { params: Promise<{ id: string 
       </div>
     );
   }
-
-  const canRun = ["bundled", "resolved", "calculated", "extracted"].includes(case_.status);
-
-  // Auto-trigger the pipeline — this is a backend concern, not a user action
-  useEffect(() => {
-    if (canRun && !runComplete && !running) {
-      runPipeline();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRun]);
 
   return (
     <div className="page-content">

@@ -313,9 +313,17 @@ function ScopeChecker() {
 
 // ── Dashboard — authenticated state ───────────────────────────────────────────
 
+// Extended case shape — list API may return enriched fields
+type CaseListItem = Case & {
+  sector?:                  string | null;
+  origin_country?:          string | null;
+  predominant_method?:      string | null;
+  estimated_liability_gbp?: number | null;
+};
+
 function Dashboard() {
-  const { user }              = useAuth();
-  const { cases, isLoading }  = useCases();
+  const { cases: rawCases, isLoading } = useCases();
+  const cases = rawCases as CaseListItem[];
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [registered, setRegistered] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -336,8 +344,8 @@ function Dashboard() {
   }, [cases.length]);
 
   // Total estimated liability — summed from per-case estimated_liability_gbp when available
-  const totalLiability = cases.length > 0 && cases.some((c: any) => c.estimated_liability_gbp != null)
-    ? cases.reduce((sum, c: any) => sum + (c.estimated_liability_gbp ?? 0), 0)
+  const totalLiability = cases.length > 0 && cases.some((c) => c.estimated_liability_gbp != null)
+    ? cases.reduce((sum, c) => sum + (c.estimated_liability_gbp ?? 0), 0)
     : null;
 
   // Most recent updated_at
@@ -364,6 +372,13 @@ function Dashboard() {
       href:     "/registration",
     };
   }
+
+  // Sort by estimated liability descending — highest exposure at top; no-liability cases last
+  const sortedCases = [...cases].sort((a, b) => {
+    const aL = a.estimated_liability_gbp ?? -Infinity;
+    const bL = b.estimated_liability_gbp ?? -Infinity;
+    return bL - aL;
+  });
 
   return (
     <div>
@@ -483,16 +498,23 @@ function Dashboard() {
             <div
               key={i}
               style={{
-                height:       "56px",
+                display:     "flex",
+                alignItems:  "center",
+                height:      "56px",
+                borderTop:   i === 0 ? "var(--border-width) solid var(--color-border)" : undefined,
                 borderBottom: "var(--border-width) solid var(--color-border)",
-                display:      "flex",
-                alignItems:   "center",
-                gap:          "var(--space-24)",
+                gap:         "var(--space-24)",
               }}
             >
-              <Skeleton height={14} width="45%" />
-              <Skeleton height={14} width="15%" style={{ marginLeft: "auto" }} />
-              <Skeleton height={22} width={72} borderRadius={4} />
+              <Skeleton height={13} width="40%" />
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
+                <Skeleton height={20} width={100} borderRadius={4} />
+                <Skeleton height={13} width={56} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
+                <Skeleton height={13} width={72} />
+                <Skeleton height={20} width={80} borderRadius={4} />
+              </div>
             </div>
           ))
         ) : cases.length === 0 ? (
@@ -514,10 +536,10 @@ function Dashboard() {
           </div>
         ) : (
           <>
-            {cases.slice(0, visible).map((c) => (
-              <CaseRow key={c.id} c={c} />
+            {sortedCases.slice(0, visible).map((c, i) => (
+              <CaseRow key={c.id} c={c} isFirst={i === 0} />
             ))}
-            {visible < cases.length && (
+            {visible < sortedCases.length && (
               <div ref={sentinelRef} style={{ height: "1px" }} />
             )}
           </>
@@ -529,27 +551,20 @@ function Dashboard() {
 
 // ── Case row ──────────────────────────────────────────────────────────────────
 
-// The list API returns base Case fields. sector/origin_country/predominant_method/
-// estimated_liability_gbp are optional — displayed if present, gracefully hidden if not.
 interface CaseRowProps {
-  c: Case & {
-    sector?:                  string | null;
-    origin_country?:          string | null;
-    predominant_method?:      string | null;
-    estimated_liability_gbp?: number | null;
-  };
+  c:        CaseListItem;
+  isFirst?: boolean;
 }
 
-function CaseRow({ c }: CaseRowProps) {
+function CaseRow({ c, isFirst }: CaseRowProps) {
   const [hovered, setHovered] = useState(false);
 
-  // Left label: sector · origin_country if available, else importer_name · period
-  const leftPrimary = c.sector
-    ? sectorLabel(c.sector)
-    : c.importer_name;
-  const leftSecondary = c.sector && c.origin_country
+  // Left: "[Sector] · [Country code]", falling back to importer_name · quarter if not enriched
+  const sector  = c.sector ? sectorLabel(c.sector) : c.importer_name;
+  const country = c.sector && c.origin_country
     ? c.origin_country.toUpperCase()
     : `Q${c.reporting_quarter} ${c.reporting_year}`;
+  const leftLabel = `${sector} · ${country}`;
 
   return (
     <Link
@@ -560,20 +575,20 @@ function CaseRow({ c }: CaseRowProps) {
     >
       <div
         style={{
-          display:             "grid",
-          gridTemplateColumns: "1fr auto auto",
-          alignItems:          "center",
-          gap:                 "var(--space-24)",
-          height:              "56px",
-          padding:             "0 var(--space-8)",
-          borderBottom:        "var(--border-width) solid var(--color-border)",
-          backgroundColor:     hovered ? "var(--color-surface)" : "transparent",
-          transition:          "background-color var(--transition-fast)",
+          display:         "flex",
+          alignItems:      "center",
+          gap:             "var(--space-24)",
+          height:          "56px",
+          borderTop:       isFirst ? "var(--border-width) solid var(--color-border)" : undefined,
+          borderBottom:    "var(--border-width) solid var(--color-border)",
+          backgroundColor: hovered ? "var(--color-surface)" : "transparent",
+          transition:      "background-color 100ms",
         }}
       >
-        {/* Left: primary label · secondary label */}
+        {/* LEFT — what it is: flex:1 so it absorbs all remaining space */}
         <p
           style={{
+            flex:         1,
             fontSize:     "var(--text-base)",
             fontWeight:   "var(--font-body)",
             color:        "var(--color-text-primary)",
@@ -583,47 +598,43 @@ function CaseRow({ c }: CaseRowProps) {
             whiteSpace:   "nowrap",
           }}
         >
-          {leftPrimary}
-          <span style={{ color: "var(--color-text-tertiary)" }}> · </span>
-          <span style={{ color: "var(--color-text-secondary)" }}>{leftSecondary}</span>
+          {leftLabel}
         </p>
 
-        {/* Centre: method badge (if available) + short case ID */}
+        {/* CENTRE — how it was calculated: method badge + case ID */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", flexShrink: 0 }}>
           {c.predominant_method && (
             <Badge variant={methodBadgeVariant(c.predominant_method)}>
               {methodLabel(c.predominant_method)}
             </Badge>
           )}
-          <p
+          <span
             style={{
               fontSize:           "var(--text-xs)",
               fontWeight:         "var(--font-body)",
               color:              "var(--color-text-tertiary)",
-              margin:             0,
               whiteSpace:         "nowrap",
               fontVariantNumeric: "tabular-nums",
             }}
           >
             {c.id.slice(0, 8)}
-          </p>
+          </span>
         </div>
 
-        {/* Right: liability (if available) + status badge */}
+        {/* RIGHT — what it costs and where it stands */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", flexShrink: 0 }}>
           {c.estimated_liability_gbp != null && (
-            <p
+            <span
               style={{
-                fontSize:           "var(--text-sm)",
-                fontWeight:         "var(--font-body)",
-                color:              "var(--color-text-secondary)",
-                margin:             0,
+                fontSize:           "var(--text-base)",
+                fontWeight:         "var(--font-focal)",
+                color:              "var(--color-navy)",
                 whiteSpace:         "nowrap",
                 fontVariantNumeric: "tabular-nums",
               }}
             >
               {formatCurrency(c.estimated_liability_gbp)}
-            </p>
+            </span>
           )}
           <Badge variant={toStatusVariant(c.status)}>
             {statusLabel(c.status)}
