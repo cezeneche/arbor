@@ -117,17 +117,21 @@ function ScopeChecker() {
     >
       <div style={{ width: "100%", maxWidth: "640px" }}>
 
-        {/* Logotype */}
-        <p
+        {/* Wordmark */}
+        <span
           style={{
-            fontSize:     "var(--text-base)",
-            fontWeight:   "var(--font-focal)",
-            color:        "var(--color-text-primary)",
-            marginBottom: "var(--space-80)",
+            display:       "block",
+            fontSize:      "var(--text-base)",
+            fontWeight:    300,
+            color:         "var(--color-text-primary)",
+            letterSpacing: "-0.03em",
+            lineHeight:    1,
+            fontFamily:    "inherit",
+            marginBottom:  "var(--space-80)",
           }}
         >
-          Nucleos
-        </p>
+          nucleos
+        </span>
 
         {/* Heading */}
         <h1
