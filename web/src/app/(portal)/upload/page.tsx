@@ -101,16 +101,27 @@ type ScopeResult = {
 function InlineScopeChecker() {
   const { cases } = useCases();
 
-  const [open,    setOpen]    = useState(false);
-  const [code,    setCode]    = useState("");
-  const [qty,     setQty]     = useState("");
-  const [phase,   setPhase]   = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [result,  setResult]  = useState<ScopeResult | null>(null);
-  const [visible, setVisible] = useState(false);
-  const [codeErr, setCodeErr] = useState("");
-  const [qtyErr,  setQtyErr]  = useState("");
+  const [open,     setOpen]     = useState(false);
+  const [code,     setCode]     = useState("");
+  const [qty,      setQty]      = useState("");
+  const [phase,    setPhase]    = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [result,   setResult]   = useState<ScopeResult | null>(null);
+  const [visible,  setVisible]  = useState(false);
+  const [codeErr,  setCodeErr]  = useState("");
+  const [qtyErr,   setQtyErr]   = useState("");
+  const [codeFocus, setCodeFocus] = useState(false);
+  const [qtyFocus,  setQtyFocus]  = useState(false);
   // Session-only recent checks — cleared on reload
   const [history, setHistory] = useState<Array<{ cn: string; qty: string }>>([]);
+  // Responsive — resolved client-side only to avoid hydration mismatch
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   async function runCheck(cn: string, qtyStr: string) {
     setPhase("loading");
@@ -167,179 +178,154 @@ function InlineScopeChecker() {
     liabilityPerTonne != null && qtyNum > 0 ? liabilityPerTonne * qtyNum : null;
 
   return (
-    <>
-      <style>{`
-        .isc-fields { display: flex; align-items: flex-start; gap: 8px; }
-        .isc-f1 { flex: 2; min-width: 0; display: flex; flex-direction: column; }
-        .isc-f2 { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-        .isc-f2-inner {
-          display: flex; align-items: stretch; height: 40px;
-          border: 0.5px solid var(--color-border);
-          border-radius: 6px; background: var(--color-surface); overflow: hidden;
-        }
-        .isc-f2-inner:focus-within { border-color: var(--color-navy); }
-        .isc-code { border: 0.5px solid var(--color-border); border-radius: 6px; }
-        .isc-code:focus { border-color: var(--color-navy) !important; outline: none; box-shadow: none; }
-        .isc-btn { flex-shrink: 0; }
-        .isc-btn-mobile { display: none !important; }
-        @media (max-width: 768px) {
-          .isc-fields { flex-direction: column; }
-          .isc-f1, .isc-f2 { flex: none; width: 100%; }
-          .isc-btn { display: none !important; }
-          .isc-btn-mobile { display: block !important; width: 100%; margin-top: 8px; }
-        }
-      `}</style>
+    <div style={{ marginTop: "var(--space-32)" }}>
+      <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-32)" }} />
 
-      {/* 32px gap + divider + 32px gap */}
-      <div style={{ marginTop: "var(--space-32)" }}>
-        <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-32)" }} />
-
-        {/* Collapsed trigger — entire row is clickable */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setOpen(o => !o)}
-          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(o => !o); } }}
-          style={{
-            display:        "flex",
-            alignItems:     "center",
-            justifyContent: "space-between",
-            cursor:         "pointer",
-            userSelect:     "none",
-          }}
+      {/* Collapsed trigger — entire row is clickable */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(o => !o)}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(o => !o); } }}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" }}
+      >
+        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", margin: 0 }}>
+          Not sure if your goods are covered by UK CBAM? Check a commodity code
+        </p>
+        <svg
+          width="16" height="16" viewBox="0 0 16 16"
+          fill="none" stroke="var(--color-text-tertiary)"
+          strokeWidth="1.5" strokeLinecap="square"
+          style={{ flexShrink: 0, marginLeft: "var(--space-8)", transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 150ms ease" }}
         >
-          <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", margin: 0 }}>
-            Not sure if your goods are covered by UK CBAM? Check a commodity code
+          <path d="M6 4l4 4-4 4" />
+        </svg>
+      </div>
+
+      {/* Expandable panel — grows downward only */}
+      <div style={{ overflow: "hidden", maxHeight: open ? "1200px" : "0", transition: "max-height 200ms ease" }}>
+        <div style={{ paddingTop: "var(--space-24)" }}>
+
+          <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-text-primary)", marginBottom: "var(--space-16)" }}>
+            Is this covered by UK CBAM?
           </p>
-          <svg
-            width="16" height="16" viewBox="0 0 16 16"
-            fill="none" stroke="var(--color-text-tertiary)"
-            strokeWidth="1.5" strokeLinecap="square"
-            style={{
-              flexShrink: 0,
-              marginLeft: "var(--space-8)",
-              transform:  open ? "rotate(90deg)" : "rotate(0deg)",
-              transition: "transform 150ms ease",
-            }}
-          >
-            <path d="M6 4l4 4-4 4" />
-          </svg>
-        </div>
 
-        {/* Expandable panel — grows downward, drop zone never shifts */}
-        <div style={{ overflow: "hidden", maxHeight: open ? "1200px" : "0", transition: "max-height 200ms ease" }}>
-          <div style={{ paddingTop: "var(--space-24)" }}>
+          {/* Recent checks chips — session only */}
+          {history.length > 0 && (
+            <div style={{ display: "flex", gap: "var(--space-8)", marginBottom: "var(--space-16)", flexWrap: "wrap" }}>
+              {history.map(h => (
+                <button
+                  key={h.cn}
+                  type="button"
+                  onClick={() => { setCode(h.cn); setQty(h.qty); runCheck(h.cn, h.qty); }}
+                  style={{
+                    fontSize:        "var(--text-xs)",
+                    fontWeight:      "var(--font-body)",
+                    color:           "var(--color-text-tertiary)",
+                    backgroundColor: "var(--color-bg)",
+                    border:          "0.5px solid var(--color-border)",
+                    borderRadius:    "4px",
+                    padding:         "3px 8px",
+                    cursor:          "pointer",
+                    fontFamily:      "inherit",
+                  }}
+                >
+                  {h.cn}
+                </button>
+              ))}
+            </div>
+          )}
 
-            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-text-primary)", marginBottom: "var(--space-16)" }}>
-              Is this covered by UK CBAM?
-            </p>
+          {/* Form */}
+          <form onSubmit={handleCheck} noValidate>
+            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: "flex-start", gap: "var(--space-8)" }}>
 
-            {/* Recent checks chips — session only */}
-            {history.length > 0 && (
-              <div style={{ display: "flex", gap: "var(--space-8)", marginBottom: "var(--space-16)", flexWrap: "wrap" }}>
-                {history.map(h => (
-                  <button
-                    key={h.cn}
-                    type="button"
-                    onClick={() => { setCode(h.cn); setQty(h.qty); runCheck(h.cn, h.qty); }}
-                    style={{
-                      fontSize:        "var(--text-xs)",
-                      fontWeight:      "var(--font-body)",
-                      color:           "var(--color-text-tertiary)",
-                      backgroundColor: "var(--color-bg)",
-                      border:          "0.5px solid var(--color-border)",
-                      borderRadius:    "4px",
-                      padding:         "3px 8px",
-                      cursor:          "pointer",
-                      fontFamily:      "inherit",
-                    }}
-                  >
-                    {h.cn}
-                  </button>
-                ))}
+              {/* Field 1 — Commodity code */}
+              <div style={{ flex: isMobile ? "none" : 2, width: isMobile ? "100%" : undefined, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={code}
+                  onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 8)); setCodeErr(""); }}
+                  onFocus={() => setCodeFocus(true)}
+                  onBlur={() => setCodeFocus(false)}
+                  placeholder="Commodity code e.g. 72082700"
+                  autoComplete="off"
+                  style={{
+                    width:           "100%",
+                    height:          "40px",
+                    padding:         "0 var(--space-16)",
+                    border:          `0.5px solid ${codeErr ? "var(--color-red)" : codeFocus ? "var(--color-navy)" : "var(--color-border)"}`,
+                    borderRadius:    "6px",
+                    outline:         "none",
+                    fontSize:        "var(--text-base)",
+                    fontWeight:      "var(--font-body)",
+                    fontFamily:      "inherit",
+                    color:           "var(--color-text-primary)",
+                    backgroundColor: "var(--color-surface)",
+                  }}
+                />
+                {codeErr && (
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", margin: "4px 0 0" }}>{codeErr}</p>
+                )}
               </div>
-            )}
 
-            {/* Form */}
-            <form onSubmit={handleCheck} noValidate>
-              <div className="isc-fields">
-
-                {/* Field 1 — Commodity code */}
-                <div className="isc-f1">
+              {/* Field 2 — Annual quantity with "t" suffix */}
+              <div style={{ flex: isMobile ? "none" : 1, width: isMobile ? "100%" : undefined, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <div style={{
+                  display:         "flex",
+                  alignItems:      "stretch",
+                  height:          "40px",
+                  border:          `0.5px solid ${qtyErr ? "var(--color-red)" : qtyFocus ? "var(--color-navy)" : "var(--color-border)"}`,
+                  borderRadius:    "6px",
+                  backgroundColor: "var(--color-surface)",
+                  overflow:        "hidden",
+                }}>
                   <input
-                    className="isc-code"
-                    type="text"
-                    inputMode="numeric"
-                    value={code}
-                    onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 8)); setCodeErr(""); }}
-                    placeholder="Commodity code e.g. 72082700"
+                    type="number"
+                    min={1}
+                    value={qty}
+                    onChange={e => { setQty(e.target.value); setQtyErr(""); }}
+                    onFocus={() => setQtyFocus(true)}
+                    onBlur={() => setQtyFocus(false)}
+                    placeholder="Annual tonnes e.g. 500"
                     autoComplete="off"
                     style={{
-                      width:           "100%",
-                      height:          "40px",
-                      padding:         "0 var(--space-16)",
+                      flex:            1,
+                      height:          "100%",
+                      padding:         "0 0 0 var(--space-16)",
+                      border:          "none",
                       outline:         "none",
                       fontSize:        "var(--text-base)",
                       fontWeight:      "var(--font-body)",
                       fontFamily:      "inherit",
                       color:           "var(--color-text-primary)",
-                      backgroundColor: "var(--color-surface)",
-                      ...(codeErr ? { borderColor: "var(--color-red)" } : {}),
+                      backgroundColor: "transparent",
+                      minWidth:        0,
                     }}
                   />
-                  {codeErr && (
-                    <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", margin: "4px 0 0" }}>{codeErr}</p>
-                  )}
+                  <span style={{
+                    fontSize:      "var(--text-sm)",
+                    fontWeight:    "var(--font-body)",
+                    color:         "var(--color-text-tertiary)",
+                    alignSelf:     "center",
+                    paddingRight:  "12px",
+                    flexShrink:    0,
+                    pointerEvents: "none",
+                    userSelect:    "none",
+                  }}>t</span>
                 </div>
+                {qtyErr && (
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", margin: "4px 0 0" }}>{qtyErr}</p>
+                )}
+              </div>
 
-                {/* Field 2 — Annual quantity with "t" suffix */}
-                <div className="isc-f2">
-                  <div
-                    className="isc-f2-inner"
-                    style={qtyErr ? { borderColor: "var(--color-red)" } : undefined}
-                  >
-                    <input
-                      type="number"
-                      min={1}
-                      value={qty}
-                      onChange={e => { setQty(e.target.value); setQtyErr(""); }}
-                      placeholder="Annual tonnes e.g. 500"
-                      autoComplete="off"
-                      style={{
-                        flex:            1,
-                        height:          "100%",
-                        padding:         "0 0 0 var(--space-16)",
-                        border:          "none",
-                        outline:         "none",
-                        fontSize:        "var(--text-base)",
-                        fontWeight:      "var(--font-body)",
-                        fontFamily:      "inherit",
-                        color:           "var(--color-text-primary)",
-                        backgroundColor: "transparent",
-                        minWidth:        0,
-                      }}
-                    />
-                    <span style={{
-                      fontSize:      "var(--text-sm)",
-                      fontWeight:    "var(--font-body)",
-                      color:         "var(--color-text-tertiary)",
-                      alignSelf:     "center",
-                      paddingRight:  "12px",
-                      flexShrink:    0,
-                      pointerEvents: "none",
-                      userSelect:    "none",
-                    }}>t</span>
-                  </div>
-                  {qtyErr && (
-                    <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", margin: "4px 0 0" }}>{qtyErr}</p>
-                  )}
-                </div>
-
-                {/* Check button — desktop */}
+              {/* Check button — inline on desktop, hidden on mobile */}
+              {!isMobile && (
                 <button
                   type="submit"
-                  className="isc-btn"
                   style={{
+                    flexShrink:      0,
                     height:          "40px",
                     padding:         "0 var(--space-24)",
                     border:          "none",
@@ -355,14 +341,17 @@ function InlineScopeChecker() {
                 >
                   {phase === "loading" ? "Checking…" : "Check"}
                 </button>
-              </div>
+              )}
+            </div>
 
-              {/* Check button — mobile only */}
+            {/* Check button — mobile, full width below fields */}
+            {isMobile && (
               <button
                 type="submit"
-                className="isc-btn-mobile"
                 style={{
+                  width:           "100%",
                   height:          "40px",
+                  marginTop:       "var(--space-8)",
                   border:          "none",
                   borderRadius:    "6px",
                   backgroundColor: "var(--color-navy)",
@@ -375,95 +364,95 @@ function InlineScopeChecker() {
               >
                 {phase === "loading" ? "Checking…" : "Check"}
               </button>
-            </form>
-
-            {phase === "error" && (
-              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginTop: "var(--space-8)" }}>
-                Unable to check. Please try again.
-              </p>
             )}
+          </form>
 
-            {/* Result */}
-            {phase === "done" && result && (
-              <div style={{ opacity: visible ? 1 : 0, transition: "opacity 150ms ease", marginTop: "var(--space-16)" }}>
-                {result.in_scope ? (
-                  <div style={{
-                    backgroundColor: "var(--color-surface)",
-                    border:          "var(--border-width) solid var(--color-border)",
-                    borderLeft:      "3px solid var(--color-navy)",
-                    borderRadius:    "0 8px 8px 0",
-                    padding:         "var(--space-24)",
-                  }}>
-                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-green)", marginBottom: "var(--space-16)" }}>
-                      In scope
-                    </p>
+          {phase === "error" && (
+            <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginTop: "var(--space-8)" }}>
+              Unable to check. Please try again.
+            </p>
+          )}
 
-                    <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)", marginBottom: "var(--space-24)" }}>
-                      Your {sectorLabel(result.sector).toLowerCase()} imports will be subject to UK CBAM from January 2027.
-                    </p>
-
-                    {annualLiability != null ? (
-                      <>
-                        <p style={{
-                          fontSize:           "var(--text-hero)",
-                          fontWeight:         "var(--font-focal)",
-                          color:              "var(--color-navy)",
-                          letterSpacing:      "var(--tracking-hero)",
-                          fontVariantNumeric: "tabular-nums",
-                          lineHeight:         "var(--leading-display)",
-                          marginBottom:       "var(--space-8)",
-                        }}>
-                          {formatCurrency(annualLiability)}
-                        </p>
-                        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
-                          estimated annual liability across {qtyNum.toLocaleString("en-GB")} tonnes at default values
-                        </p>
-                      </>
-                    ) : (
-                      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
-                        No default emissions rate available for this commodity code.
-                      </p>
-                    )}
-
-                    <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-24)" }} />
-
-                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
-                      Drop your documents above to calculate your exact liability.
-                    </p>
-                  </div>
-                ) : (
-                  <div style={{
-                    backgroundColor: "var(--color-surface)",
-                    border:          "var(--border-width) solid var(--color-border)",
-                    borderLeft:      "3px solid var(--color-green)",
-                    borderRadius:    "0 8px 8px 0",
-                    padding:         "var(--space-24)",
-                  }}>
-                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-green)", marginBottom: "12px" }}>
-                      Not in scope
-                    </p>
-                    <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
-                      {result.reason ?? "This commodity code is not currently covered by UK CBAM. No liability applies."}
-                    </p>
-                  </div>
-                )}
-
-                {/* Existing case match */}
-                {matchedCase && (
-                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-amber)", marginTop: "var(--space-16)" }}>
-                    You already have a case for this commodity.{" "}
-                    <Link href={`/cases/${matchedCase.id}`} style={{ color: "var(--color-amber)", textDecoration: "underline" }}>
-                      View case →
-                    </Link>
+          {/* Result */}
+          {phase === "done" && result && (
+            <div style={{ opacity: visible ? 1 : 0, transition: "opacity 150ms ease", marginTop: "var(--space-16)" }}>
+              {result.in_scope ? (
+                <div style={{
+                  backgroundColor: "var(--color-surface)",
+                  border:          "var(--border-width) solid var(--color-border)",
+                  borderLeft:      "3px solid var(--color-navy)",
+                  borderRadius:    "0 8px 8px 0",
+                  padding:         "var(--space-24)",
+                }}>
+                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-green)", marginBottom: "var(--space-16)" }}>
+                    In scope
                   </p>
-                )}
-              </div>
-            )}
 
-          </div>
+                  <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)", marginBottom: "var(--space-24)" }}>
+                    Your {sectorLabel(result.sector).toLowerCase()} imports will be subject to UK CBAM from January 2027.
+                  </p>
+
+                  {annualLiability != null ? (
+                    <>
+                      <p style={{
+                        fontSize:           "var(--text-hero)",
+                        fontWeight:         "var(--font-focal)",
+                        color:              "var(--color-navy)",
+                        letterSpacing:      "var(--tracking-hero)",
+                        fontVariantNumeric: "tabular-nums",
+                        lineHeight:         "var(--leading-display)",
+                        marginBottom:       "var(--space-8)",
+                      }}>
+                        {formatCurrency(annualLiability)}
+                      </p>
+                      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
+                        estimated annual liability across {qtyNum.toLocaleString("en-GB")} tonnes at default values
+                      </p>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
+                      No default emissions rate available for this commodity code.
+                    </p>
+                  )}
+
+                  <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-24)" }} />
+
+                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
+                    Drop your documents above to calculate your exact liability.
+                  </p>
+                </div>
+              ) : (
+                <div style={{
+                  backgroundColor: "var(--color-surface)",
+                  border:          "var(--border-width) solid var(--color-border)",
+                  borderLeft:      "3px solid var(--color-green)",
+                  borderRadius:    "0 8px 8px 0",
+                  padding:         "var(--space-24)",
+                }}>
+                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-green)", marginBottom: "12px" }}>
+                    Not in scope
+                  </p>
+                  <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
+                    {result.reason ?? "This commodity code is not currently covered by UK CBAM. No liability applies."}
+                  </p>
+                </div>
+              )}
+
+              {/* Existing case match */}
+              {matchedCase && (
+                <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-amber)", marginTop: "var(--space-16)" }}>
+                  You already have a case for this commodity.{" "}
+                  <Link href={`/cases/${matchedCase.id}`} style={{ color: "var(--color-amber)", textDecoration: "underline" }}>
+                    View case →
+                  </Link>
+                </p>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
