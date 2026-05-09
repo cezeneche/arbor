@@ -238,10 +238,11 @@ function InlineScopeChecker() {
 
           {/* Form */}
           <form onSubmit={handleCheck} noValidate>
-            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: "flex-start", gap: "var(--space-8)" }}>
+            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "flex-end", gap: "var(--space-8)" }}>
 
               {/* Field 1 — Commodity code */}
               <div style={{ flex: isMobile ? "none" : 2, width: isMobile ? "100%" : undefined, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "11px", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "4px", display: "block" }}>Commodity code</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -249,7 +250,7 @@ function InlineScopeChecker() {
                   onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 8)); setCodeErr(""); }}
                   onFocus={() => setCodeFocus(true)}
                   onBlur={() => setCodeFocus(false)}
-                  placeholder="Commodity code e.g. 72082700"
+                  placeholder="e.g. 72082700"
                   autoComplete="off"
                   style={{
                     width:           "100%",
@@ -272,6 +273,13 @@ function InlineScopeChecker() {
 
               {/* Field 2 — Annual quantity with "t" suffix */}
               <div style={{ flex: isMobile ? "none" : 1, width: isMobile ? "100%" : undefined, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <span style={{
+                  fontSize:     "var(--text-xs)",
+                  fontWeight:   "var(--font-body)",
+                  color:        "var(--color-text-secondary)",
+                  marginBottom: "4px",
+                  display:      "block",
+                }}>Annual ton</span>
                 <div style={{
                   display:         "flex",
                   alignItems:      "stretch",
@@ -288,7 +296,7 @@ function InlineScopeChecker() {
                     onChange={e => { setQty(e.target.value); setQtyErr(""); }}
                     onFocus={() => setQtyFocus(true)}
                     onBlur={() => setQtyFocus(false)}
-                    placeholder="Annual tonnes e.g. 500"
+                    placeholder="e.g. 500"
                     autoComplete="off"
                     style={{
                       flex:            1,
@@ -327,13 +335,13 @@ function InlineScopeChecker() {
                   style={{
                     flexShrink:      0,
                     height:          "40px",
-                    padding:         "0 var(--space-24)",
+                    padding:         "0 24px",
                     border:          "none",
                     borderRadius:    "6px",
                     backgroundColor: "var(--color-navy)",
-                    color:           "var(--color-surface)",
-                    fontSize:        "var(--text-base)",
-                    fontWeight:      "var(--font-focal)",
+                    color:           "#FFFFFF",
+                    fontSize:        "15px",
+                    fontWeight:      500,
                     fontFamily:      "inherit",
                     cursor:          phase === "loading" ? "default" : "pointer",
                     whiteSpace:      "nowrap",
@@ -351,13 +359,13 @@ function InlineScopeChecker() {
                 style={{
                   width:           "100%",
                   height:          "40px",
-                  marginTop:       "var(--space-8)",
+                  marginTop:       "8px",
                   border:          "none",
                   borderRadius:    "6px",
                   backgroundColor: "var(--color-navy)",
-                  color:           "var(--color-surface)",
-                  fontSize:        "var(--text-base)",
-                  fontWeight:      "var(--font-focal)",
+                  color:           "#FFFFFF",
+                  fontSize:        "15px",
+                  fontWeight:      500,
                   fontFamily:      "inherit",
                   cursor:          phase === "loading" ? "default" : "pointer",
                 }}
@@ -417,6 +425,10 @@ function InlineScopeChecker() {
 
                   <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-24)" }} />
 
+                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginBottom: "var(--space-24)" }}>
+                    UK CBAM applies if your annual imports of these goods exceed £50,000 in value. Below this threshold you will not be required to register.
+                  </p>
+
                   <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
                     Drop your documents above to calculate your exact liability.
                   </p>
@@ -433,7 +445,8 @@ function InlineScopeChecker() {
                     Not in scope
                   </p>
                   <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
-                    {result.reason ?? "This commodity code is not currently covered by UK CBAM. No liability applies."}
+                    {result.reason ?? "This commodity code is not covered by UK CBAM."}{" "}
+                    You will not be subject to UK CBAM from January 2027.
                   </p>
                 </div>
               )}

@@ -90,16 +90,29 @@ export function TopBar() {
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-24)", flexShrink: 0 }}>
 
           <Link
-            href="/upload"
+            href="/suppliers"
             style={{
-              fontSize:       "15px",
-              fontWeight:     500,
+              fontSize:       "13px",
+              fontWeight:     300,
               color:          "var(--color-navy)",
               textDecoration: "none",
               fontFamily:     "inherit",
             }}
           >
-            Upload documents
+            Emissions data
+          </Link>
+
+          <Link
+            href="/carbon-relief"
+            style={{
+              fontSize:       "13px",
+              fontWeight:     300,
+              color:          "var(--color-navy)",
+              textDecoration: "none",
+              fontFamily:     "inherit",
+            }}
+          >
+            Carbon relief
           </Link>
 
           {/* Avatar + dropdown */}
@@ -111,10 +124,10 @@ export function TopBar() {
               aria-expanded={avatarOpen}
               aria-haspopup="true"
               style={{
-                width:           "32px",
-                height:          "32px",
+                width:           "26px",
+                height:          "26px",
                 borderRadius:    "50%",
-                backgroundColor: "var(--color-navy)",
+                backgroundColor: "rgba(27, 47, 74, 0.7)",
                 display:         "flex",
                 alignItems:      "center",
                 justifyContent:  "center",
@@ -124,11 +137,11 @@ export function TopBar() {
                 outline:         "none",
                 transition:      "background-color 150ms",
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--color-navy-hover)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--color-navy)"; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(27, 47, 74, 0.9)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(27, 47, 74, 0.7)"; }}
             >
               <span style={{
-                fontSize:      "11px",
+                fontSize:      "10px",
                 fontWeight:    500,
                 color:         "var(--color-surface)",
                 letterSpacing: "0.02em",
