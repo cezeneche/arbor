@@ -176,6 +176,7 @@ function InlineScopeChecker() {
       : null;
   const annualLiability =
     liabilityPerTonne != null && qtyNum > 0 ? liabilityPerTonne * qtyNum : null;
+  const belowThreshold = result !== null && result.in_scope && annualLiability !== null && annualLiability < 50000;
 
   return (
     <div style={{ marginTop: "var(--space-32)" }}>
@@ -384,7 +385,7 @@ function InlineScopeChecker() {
           {/* Result */}
           {phase === "done" && result && (
             <div style={{ opacity: visible ? 1 : 0, transition: "opacity 150ms ease", marginTop: "var(--space-16)" }}>
-              {result.in_scope ? (
+              {result.in_scope && !belowThreshold ? (
                 <div style={{
                   backgroundColor: "var(--color-surface)",
                   border:          "var(--border-width) solid var(--color-border)",
@@ -445,8 +446,10 @@ function InlineScopeChecker() {
                     Not in scope
                   </p>
                   <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
-                    {result.reason ?? "This commodity code is not covered by UK CBAM."}{" "}
-                    You will not be subject to UK CBAM from January 2027.
+                    {belowThreshold
+                      ? `Your ${sectorLabel(result.sector).toLowerCase()} imports will not be subject to UK CBAM from January 2027.`
+                      : `${result.reason ?? "This commodity code is not covered by UK CBAM."} You will not be subject to UK CBAM from January 2027.`
+                    }
                   </p>
                 </div>
               )}

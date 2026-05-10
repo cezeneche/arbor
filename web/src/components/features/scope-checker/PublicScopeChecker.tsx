@@ -86,6 +86,7 @@ export function PublicScopeChecker() {
       : null;
   const annualLiability =
     liabilityPerTonne != null && qtyNum > 0 ? liabilityPerTonne * qtyNum : null;
+  const belowThreshold = result !== null && result.in_scope && annualLiability !== null && annualLiability < 50000;
 
   const inputStyle: React.CSSProperties = {
     flex:            1,
@@ -287,7 +288,7 @@ export function PublicScopeChecker() {
               marginTop:  "var(--space-24)",
             }}
           >
-            {result.in_scope ? (
+            {result.in_scope && !belowThreshold ? (
               <div
                 style={{
                   backgroundColor: "var(--color-surface)",
@@ -356,8 +357,10 @@ export function PublicScopeChecker() {
                   Not in scope
                 </p>
                 <p style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-secondary)" }}>
-                  {result.reason ?? `CN code ${code} is not covered by UK CBAM.`}{" "}
-                  You will not be subject to UK CBAM from January 2027.
+                  {belowThreshold
+                    ? `Your ${sectorLabel(result.sector).toLowerCase()} imports will not be subject to UK CBAM from January 2027.`
+                    : `${result.reason ?? `CN code ${code} is not covered by UK CBAM.`} You will not be subject to UK CBAM from January 2027.`
+                  }
                 </p>
               </div>
             )}
