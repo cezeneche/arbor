@@ -80,6 +80,7 @@ export function useUpload(): UseUploadReturn {
       setStep("done");
       return draft;
     } catch (err) {
+      console.error("[useUpload] upload failed:", err);
       if (!abortRef.current) {
         setError(
           err instanceof Error ? err : new Error("An unexpected error occurred.")

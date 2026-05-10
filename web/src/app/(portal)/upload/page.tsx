@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useUpload } from "@/lib/hooks/useUpload";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useCases } from "@/lib/hooks/useCases";
-import { ledgerFetch } from "@/lib/api/client";
+import { ledgerFetch, ApiError } from "@/lib/api/client";
 import { approveCase } from "@/lib/api/cases";
 import {
   formatCurrency,
@@ -677,7 +677,9 @@ export default function UploadPage() {
           }).catch(() => {});
         }
       }
-    } catch { /* step becomes "error" — Stage 2 handles the display */ }
+    } catch (err) {
+      console.error("[upload] handleProcess error:", err);
+    }
   }
 
   // ── Add to return ─────────────────────────────────────────────────────────────
@@ -888,25 +890,39 @@ export default function UploadPage() {
             </h1>
 
             {step === "error" && error ? (
-              /* Error: single line, danger red */
-              <p style={{ fontSize: "var(--text-base)", color: "var(--color-red)", margin: 0 }}>
-                Something went wrong.{" "}
-                <button
-                  onClick={handleReset}
-                  style={{
-                    background:      "none",
-                    border:          "none",
-                    padding:         0,
-                    cursor:          "pointer",
-                    fontSize:        "inherit",
-                    fontFamily:      "inherit",
-                    color:           "var(--color-red)",
-                    textDecoration:  "underline",
-                  }}
-                >
-                  Try again →
-                </button>
-              </p>
+              /* Error state — message based on status code */
+              <div>
+                <p style={{ fontSize: "var(--text-base)", color: "var(--color-red)", margin: "0 0 var(--space-8) 0" }}>
+                  {error instanceof ApiError && error.status === 413
+                    ? "File is too large. Please upload a file under 10 MB."
+                    : error instanceof ApiError && error.status === 422
+                    ? "We couldn't extract the required data from this document. Please try a PDF invoice, mill certificate, or customs declaration."
+                    : error instanceof ApiError && error.status === 0
+                    ? "Upload failed. Please check your internet connection and try again."
+                    : "Something went wrong processing your document."
+                  }{" "}
+                  <button
+                    onClick={handleReset}
+                    style={{
+                      background:      "none",
+                      border:          "none",
+                      padding:         0,
+                      cursor:          "pointer",
+                      fontSize:        "inherit",
+                      fontFamily:      "inherit",
+                      color:           "var(--color-red)",
+                      textDecoration:  "underline",
+                    }}
+                  >
+                    Try again →
+                  </button>
+                </p>
+                {error instanceof ApiError && error.status !== 0 && error.status !== 413 && error.status !== 422 && (
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-tertiary)", margin: 0 }}>
+                    {error.message}
+                  </p>
+                )}
+              </div>
             ) : (
               /* Five processing lines */
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-32)" }}>
