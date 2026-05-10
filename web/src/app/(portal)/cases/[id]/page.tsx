@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useCase } from "@/lib/hooks/useCases";
@@ -90,8 +90,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-export default function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id }  = use(params);
+export default function CaseDetailPage({ params }: { params: { id: string } }) {
+  const { id }  = params;
   const { user } = useAuth();
   const role     = useRole();
   const isAdmin  = role === "admin";
