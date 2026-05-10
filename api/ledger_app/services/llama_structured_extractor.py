@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import json
+import logging
 import os
+import re
 from typing import Any
 
 from pydantic import BaseModel
 from pydantic import Field
+
+_logger = logging.getLogger("ledger.structured_extractor")
 
 
 class LineItemSchema(BaseModel):
@@ -26,45 +31,59 @@ def _empty_invoice() -> InvoiceSchema:
 
 
 def extract_structured_invoice(full_text: str) -> InvoiceSchema:
-    """Extract structured invoice fields via LlamaIndex structured output."""
+    """Extract structured invoice fields via Claude gap-fill.
+
+    EU 2023/1773 Art. 4 — only values literally present in source text are accepted.
+    Returns null for absent fields; never invents values.
+    """
     if not full_text.strip():
         return _empty_invoice()
 
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return _empty_invoice()
+
     try:
-        from llama_index.core.program import LLMTextCompletionProgram
-        from llama_index.core.prompts import PromptTemplate
-        from llama_index.llms.openai import OpenAI
-    except Exception:
+        import anthropic
+    except ImportError:
         return _empty_invoice()
 
-    if not os.getenv("OPENAI_API_KEY"):
-        return _empty_invoice()
-
-    prompt = PromptTemplate(
-        "Extract invoice fields from the text below and return valid JSON only.\n"
-        "Populate these fields: importer_name, invoice_number, invoice_date, origin_country, line_items[].\n"
-        "For line_items, include cn_code, description, quantity.\n"
-        "Text:\n{full_text}\n"
+    prompt = (
+        "Extract invoice fields from the text below. "
+        "Return valid JSON only — no markdown fences, no explanation.\n"
+        "Fields to extract:\n"
+        "  importer_name: string or null\n"
+        "  invoice_number: string or null\n"
+        "  invoice_date: YYYY-MM-DD or null\n"
+        "  origin_country: ISO 3166-1 alpha-2 or null\n"
+        "  line_items: array of {cn_code, description, quantity} — empty array if none found\n"
+        "Rules:\n"
+        "- Only return values that appear literally in the source text.\n"
+        "- Set a field to null if it is absent — never invent values.\n"
+        "- cn_code must be 6–8 digits if present, otherwise null.\n"
+        "- invoice_date must be in YYYY-MM-DD format if present, otherwise null.\n"
+        "- origin_country must be a 2-letter ISO code if present, otherwise null.\n"
+        "\nText:\n" + full_text[:8000]
     )
 
     try:
-        llm = OpenAI(model=os.getenv("LLAMA_STRUCTURED_MODEL", "gpt-4o-mini"), temperature=0)
-        program = LLMTextCompletionProgram.from_defaults(
-            llm=llm,
-            output_cls=InvoiceSchema,
-            prompt=prompt,
+        client = anthropic.Anthropic(api_key=api_key)
+        model = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+        response = client.messages.create(
+            model=model,
+            max_tokens=1024,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
         )
-        result = program(full_text=full_text)
-        if isinstance(result, InvoiceSchema):
-            return result
-        if isinstance(result, BaseModel):
-            return InvoiceSchema.model_validate(result.model_dump())
-        if isinstance(result, dict):
-            return InvoiceSchema.model_validate(result)
-    except Exception:
+        raw = response.content[0].text.strip()
+        # Strip markdown fences if the model included them despite the instruction
+        raw = re.sub(r"^```[a-z]*\n?", "", raw)
+        raw = re.sub(r"\n?```$", "", raw).strip()
+        data = json.loads(raw)
+        return InvoiceSchema.model_validate(data)
+    except Exception as exc:
+        _logger.debug("Claude extraction failed: %s", exc)
         return _empty_invoice()
-
-    return _empty_invoice()
 
 
 def _rule_invoice_number(rule_output: dict[str, Any]) -> str | None:
@@ -119,7 +138,7 @@ def compare_extractions(
         matches += 1
     else:
         differences.append(
-            f"invoice_number mismatch: rule={rule_invoice_number!r}, llama={invoice.invoice_number!r}"
+            f"invoice_number mismatch: rule={rule_invoice_number!r}, claude={invoice.invoice_number!r}"
         )
 
     checks += 1
@@ -127,15 +146,15 @@ def compare_extractions(
     if rule_invoice_date == invoice.invoice_date:
         matches += 1
     else:
-        differences.append(f"invoice_date mismatch: rule={rule_invoice_date!r}, llama={invoice.invoice_date!r}")
+        differences.append(f"invoice_date mismatch: rule={rule_invoice_date!r}, claude={invoice.invoice_date!r}")
 
     checks += 1
     rule_line_items = _rule_line_count(rule_output)
-    llama_line_items = len(invoice.line_items)
-    if rule_line_items == llama_line_items:
+    claude_line_items = len(invoice.line_items)
+    if rule_line_items == claude_line_items:
         matches += 1
     else:
-        differences.append(f"line_items count mismatch: rule={rule_line_items}, llama={llama_line_items}")
+        differences.append(f"line_items count mismatch: rule={rule_line_items}, claude={claude_line_items}")
 
     match_score = (matches / checks) * 100.0 if checks else 0.0
     return {"match_score": round(match_score, 2), "differences": differences}
