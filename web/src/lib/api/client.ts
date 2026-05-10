@@ -157,7 +157,11 @@ export function xhrUpload<T>(
 
     xhr.onload = () => {
       if (xhr.status === 401) { dispatchUnauthorized(); reject(new ApiError(401)); return; }
-      if (xhr.status < 200 || xhr.status >= 300) { reject(new ApiError(xhr.status)); return; }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        console.error(`[xhrUpload] ${xhr.status} from server:`, xhr.responseText);
+        reject(new ApiError(xhr.status));
+        return;
+      }
       try { resolve(JSON.parse(xhr.responseText) as T); }
       catch { reject(new ApiError(500, "The server returned an unexpected response.")); }
     };
