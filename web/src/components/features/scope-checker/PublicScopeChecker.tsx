@@ -324,6 +324,10 @@ export function PublicScopeChecker() {
                       estimated annual liability across {qtyNum.toLocaleString("en-GB")} tonnes at default values
                     </p>
                   </>
+                ) : qtyNum === 0 ? (
+                  <p style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
+                    Enter your annual tonnage above to see whether you fall within scope and estimate your liability.
+                  </p>
                 ) : (
                   <p style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
                     No default emissions rate available for this commodity code.
