@@ -393,11 +393,14 @@ function InlineScopeChecker() {
                   padding:         "var(--space-24)",
                 }}>
                   <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-green)", marginBottom: "var(--space-16)" }}>
-                    In scope
+                    {qtyNum === 0 ? "In scope?" : "In scope"}
                   </p>
 
                   <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)", marginBottom: "var(--space-24)" }}>
-                    Your {sectorLabel(result.sector).toLowerCase()} imports will be subject to UK CBAM from January 2027.
+                    {qtyNum === 0
+                      ? "Enter your annual tonnage above to see whether you fall within scope and estimate your liability."
+                      : `Your ${sectorLabel(result.sector).toLowerCase()} imports will be subject to UK CBAM from January 2027.`
+                    }
                   </p>
 
                   {annualLiability != null ? (
@@ -417,24 +420,16 @@ function InlineScopeChecker() {
                         estimated annual liability across {qtyNum.toLocaleString("en-GB")} tonnes at default values
                       </p>
                     </>
-                  ) : qtyNum === 0 ? (
-                    <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
-                      Enter your annual tonnage above to see whether you fall within scope and estimate your liability.
-                    </p>
-                  ) : (
+                  ) : qtyNum > 0 ? (
                     <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
                       No default emissions rate available for this commodity code.
                     </p>
-                  )}
+                  ) : null}
 
                   <div style={{ height: "var(--border-width)", backgroundColor: "var(--color-border)", marginBottom: "var(--space-24)" }} />
 
-                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginBottom: "var(--space-24)" }}>
+                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)" }}>
                     UK CBAM applies if your annual imports of these goods exceed £50,000 in value. Below this threshold you will not be required to register.
-                  </p>
-
-                  <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
-                    Drop your documents above to calculate your exact liability.
                   </p>
                 </div>
               ) : belowThreshold ? (

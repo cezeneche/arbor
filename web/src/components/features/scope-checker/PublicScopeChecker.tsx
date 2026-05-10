@@ -298,10 +298,13 @@ export function PublicScopeChecker() {
                 }}
               >
                 <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-green)", marginBottom: "var(--space-16)" }}>
-                  In scope
+                  {qtyNum === 0 ? "In scope?" : "In scope"}
                 </p>
                 <p style={{ fontSize: "15px", fontWeight: 300, color: "var(--color-text-primary)", marginBottom: "var(--space-24)" }}>
-                  Your {sectorLabel(result.sector).toLowerCase()} imports will be subject to UK CBAM from January 2027.
+                  {qtyNum === 0
+                    ? "Enter your annual tonnage above to see whether you fall within scope and estimate your liability."
+                    : `Your ${sectorLabel(result.sector).toLowerCase()} imports will be subject to UK CBAM from January 2027.`
+                  }
                 </p>
 
                 {annualLiability != null ? (
@@ -323,15 +326,11 @@ export function PublicScopeChecker() {
                       estimated annual liability across {qtyNum.toLocaleString("en-GB")} tonnes at default values
                     </p>
                   </>
-                ) : qtyNum === 0 ? (
-                  <p style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
-                    Enter your annual tonnage above to see whether you fall within scope and estimate your liability.
-                  </p>
-                ) : (
+                ) : qtyNum > 0 ? (
                   <p style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
                     No default emissions rate available for this commodity code.
                   </p>
-                )}
+                ) : null}
 
                 <div style={{ height: "0.5px", backgroundColor: "var(--color-border)", margin: "var(--space-24) 0" }} />
 
