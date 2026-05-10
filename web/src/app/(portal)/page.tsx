@@ -43,15 +43,6 @@ function sectorLabel(s: string | null | undefined): string {
   return s ? (map[s] ?? s.replace(/_/g, " ")) : "—";
 }
 
-function isRegistered(): boolean {
-  try {
-    const raw = localStorage.getItem("nucleos_reg_state");
-    if (!raw) return false;
-    return JSON.parse(raw)?.hmrcSubmitted === true;
-  } catch {
-    return false;
-  }
-}
 
 // ── Dashboard — authenticated state ───────────────────────────────────────────
 
@@ -67,11 +58,7 @@ function Dashboard() {
   const { cases: rawCases, isLoading } = useCases();
   const cases = rawCases as CaseListItem[];
   const [visible, setVisible] = useState(PAGE_SIZE);
-  const [registered, setRegistered] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  // Read registration state from localStorage (set by /registration page)
-  useEffect(() => { setRegistered(isRegistered()); }, []);
 
   // Intersection observer — infinite scroll
   useEffect(() => {
@@ -96,24 +83,9 @@ function Dashboard() {
       ? cases.reduce((latest, c) => (c.updated_at > latest ? c.updated_at : latest), cases[0].updated_at)
       : null;
 
-  // Highest-priority action — one card, one call to action
+  // Pending review alert — only surfaced action on the dashboard
   const pendingReview = cases.filter((c) => c.review_status === "pending_review");
-  let action: { text: string; linkText: string; href: string } | null = null;
-
-  if (pendingReview.length > 0) {
-    const n = pendingReview.length;
-    action = {
-      text:     `${n} case${n > 1 ? "s" : ""} require human review before submission.`,
-      linkText: "Review now →",
-      href:     "/review",
-    };
-  } else if (cases.length > 0 && !registered) {
-    action = {
-      text:     "Registration with HMRC is required before 31 January 2028.",
-      linkText: "Start registration →",
-      href:     "/registration",
-    };
-  }
+  const hasPendingReview = pendingReview.length > 0;
 
   // Sort by estimated liability descending — highest exposure at top; no-liability cases last
   const sortedCases = [...cases].sort((a, b) => {
@@ -130,76 +102,49 @@ function Dashboard() {
         <div
           className="page-content"
           style={{
-            display:        "flex",
-            alignItems:     "flex-end",
-            justifyContent: "space-between",
-            paddingTop:     "var(--space-40)",
-            paddingBottom:  "var(--space-40)",
+            paddingTop:    "var(--space-40)",
+            paddingBottom: "var(--space-40)",
           }}
         >
-          {/* LEFT: label · figure · meta */}
-          <div>
+          <p
+            style={{
+              fontSize:     "var(--text-sm)",
+              fontWeight:   "var(--font-body)",
+              color:        "var(--color-text-secondary)",
+              marginBottom: "var(--space-8)",
+            }}
+          >
+            Estimated 2027 CBAM liability
+          </p>
+
+          {isLoading ? (
+            <Skeleton height={52} width={200} />
+          ) : (
             <p
               style={{
-                fontSize:     "var(--text-sm)",
-                fontWeight:   "var(--font-body)",
-                color:        "var(--color-text-secondary)",
-                marginBottom: "var(--space-8)",
+                fontSize:           "var(--text-hero)",
+                fontWeight:         "var(--font-focal)",
+                color:              "var(--color-navy)",
+                letterSpacing:      "var(--tracking-hero)",
+                fontVariantNumeric: "tabular-nums",
+                lineHeight:         "var(--leading-display)",
               }}
             >
-              Estimated 2027 CBAM liability
+              {totalLiability != null ? formatCurrency(totalLiability) : "£0.00"}
             </p>
-
-            {isLoading ? (
-              <Skeleton height={52} width={200} />
-            ) : (
-              <p
-                style={{
-                  fontSize:           "var(--text-hero)",
-                  fontWeight:         "var(--font-focal)",
-                  color:              "var(--color-navy)",
-                  letterSpacing:      "var(--tracking-hero)",
-                  fontVariantNumeric: "tabular-nums",
-                  lineHeight:         "var(--leading-display)",
-                }}
-              >
-                {totalLiability != null ? formatCurrency(totalLiability) : "£0.00"}
-              </p>
-            )}
-
-            <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginTop: "var(--space-8)" }}>
-              {isLoading
-                ? "—"
-                : `across ${cases.length} case${cases.length !== 1 ? "s" : ""}${lastUpdated ? ` · updated ${relativeTime(lastUpdated)}` : ""}`
-              }
-            </p>
-          </div>
-
-          {/* RIGHT: status badge — empty when all clear */}
-          {!isLoading && cases.length > 0 && !registered && (
-            <span
-              style={{
-                display:         "inline-flex",
-                alignItems:      "center",
-                height:          "var(--space-32)",
-                padding:         "0 var(--space-16)",
-                borderRadius:    "var(--badge-radius)",
-                fontSize:        "var(--badge-font-size)",
-                fontWeight:      "var(--badge-font-weight)",
-                backgroundColor: "var(--color-amber-bg)",
-                color:           "var(--color-amber)",
-                whiteSpace:      "nowrap",
-                flexShrink:      0,
-              }}
-            >
-              Registration required
-            </span>
           )}
+
+          <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginTop: "var(--space-8)" }}>
+            {isLoading
+              ? "—"
+              : `across ${cases.length} case${cases.length !== 1 ? "s" : ""}${lastUpdated ? ` · updated ${relativeTime(lastUpdated)}` : ""}`
+            }
+          </p>
         </div>
       </div>
 
-      {/* ── Section 2: Action card — highest-priority only ── */}
-      {action && (
+      {/* ── Section 2: Pending review alert (only when cases need action) ── */}
+      {!isLoading && hasPendingReview && (
         <div className="page-content" style={{ paddingTop: "var(--space-32)" }}>
           <div
             style={{
@@ -215,37 +160,58 @@ function Dashboard() {
             }}
           >
             <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)" }}>
-              {action.text}
+              {pendingReview.length} case{pendingReview.length > 1 ? "s" : ""} require human review before submission.
             </p>
             <Link
-              href={action.href}
-              style={{
-                fontSize:   "var(--text-base)",
-                fontWeight: "var(--font-focal)",
-                color:      "var(--color-navy)",
-                whiteSpace: "nowrap",
-              }}
+              href="/review"
+              style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", color: "var(--color-navy)", whiteSpace: "nowrap" }}
             >
-              {action.linkText}
+              Review now →
             </Link>
           </div>
         </div>
       )}
 
-      {/* ── Section 3: Case list ── */}
+      {/* ── Section 3: Upload button + case list ── */}
       <div className="page-content" style={{ paddingTop: "var(--space-32)", paddingBottom: "var(--space-64)" }}>
+
+        {/* Upload document — always visible above the list */}
+        {!isLoading && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-24)" }}>
+            <Link
+              href="/upload"
+              style={{
+                display:         "inline-flex",
+                alignItems:      "center",
+                justifyContent:  "center",
+                height:          "36px",
+                padding:         "0 var(--space-24)",
+                backgroundColor: "var(--color-navy)",
+                color:           "#FFFFFF",
+                fontSize:        "var(--text-sm)",
+                fontWeight:      500,
+                fontFamily:      "inherit",
+                textDecoration:  "none",
+                borderRadius:    "6px",
+                whiteSpace:      "nowrap",
+              }}
+            >
+              Upload document
+            </Link>
+          </div>
+        )}
 
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
               style={{
-                display:     "flex",
-                alignItems:  "center",
-                height:      "56px",
-                borderTop:   i === 0 ? "var(--border-width) solid var(--color-border)" : undefined,
+                display:      "flex",
+                alignItems:   "center",
+                height:       "56px",
+                borderTop:    i === 0 ? "var(--border-width) solid var(--color-border)" : undefined,
                 borderBottom: "var(--border-width) solid var(--color-border)",
-                gap:         "var(--space-24)",
+                gap:          "var(--space-24)",
               }}
             >
               <Skeleton height={13} width="40%" />
@@ -261,29 +227,9 @@ function Dashboard() {
           ))
         ) : cases.length === 0 ? (
           <div style={{ paddingTop: "var(--space-64)", textAlign: "center" }}>
-            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
-              No cases yet.
+            <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
+              No cases yet. Upload a supplier document to get started.
             </p>
-            <Link
-              href="/upload"
-              style={{
-                display:         "inline-flex",
-                alignItems:      "center",
-                justifyContent:  "center",
-                height:          "40px",
-                padding:         "0 var(--space-24)",
-                backgroundColor: "var(--color-navy)",
-                color:           "#FFFFFF",
-                fontSize:        "var(--text-base)",
-                fontWeight:      500,
-                fontFamily:      "inherit",
-                textDecoration:  "none",
-                borderRadius:    "6px",
-                whiteSpace:      "nowrap",
-              }}
-            >
-              Upload document
-            </Link>
           </div>
         ) : (
           <>

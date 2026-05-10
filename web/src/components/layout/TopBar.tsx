@@ -115,26 +115,6 @@ export function TopBar() {
             Carbon relief
           </Link>
 
-          <Link
-            href="/upload"
-            style={{
-              display:         "inline-flex",
-              alignItems:      "center",
-              height:          "32px",
-              padding:         "0 var(--space-16)",
-              backgroundColor: "var(--color-navy)",
-              color:           "#FFFFFF",
-              fontSize:        "13px",
-              fontWeight:      500,
-              fontFamily:      "inherit",
-              textDecoration:  "none",
-              borderRadius:    "6px",
-              whiteSpace:      "nowrap",
-            }}
-          >
-            Upload document
-          </Link>
-
           {/* Avatar + dropdown */}
           <div ref={avatarWrapRef} style={{ position: "relative" }}>
 
