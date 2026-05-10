@@ -154,9 +154,8 @@ function InlineScopeChecker() {
     let valid = true;
     if (!cn)       { setCodeErr("Enter a commodity code"); valid = false; }
     else             setCodeErr("");
-    if (!qty.trim())   { setQtyErr("Enter your approximate annual quantity"); valid = false; }
-    else if (qtyNum < 1) { setQtyErr("Enter a quantity above zero"); valid = false; }
-    else                   setQtyErr("");
+    if (qty.trim() && qtyNum < 1) { setQtyErr("Enter a quantity above zero"); valid = false; }
+    else                            setQtyErr("");
     if (!valid) return;
     await runCheck(cn, qty);
   }
@@ -280,7 +279,7 @@ function InlineScopeChecker() {
                   color:        "var(--color-text-secondary)",
                   marginBottom: "4px",
                   display:      "block",
-                }}>Annual ton</span>
+                }}>Annual ton (optional)</span>
                 <div style={{
                   display:         "flex",
                   alignItems:      "stretch",

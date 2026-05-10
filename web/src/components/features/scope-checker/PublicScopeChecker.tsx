@@ -53,9 +53,8 @@ export function PublicScopeChecker() {
     let valid = true;
     if (!cn) { setCodeErr("Enter a commodity code"); valid = false; }
     else       setCodeErr("");
-    if (!qty.trim())   { setQtyErr("Enter your approximate annual quantity"); valid = false; }
-    else if (qtyNum < 1) { setQtyErr("Enter a quantity above zero"); valid = false; }
-    else                   setQtyErr("");
+    if (qty.trim() && qtyNum < 1) { setQtyErr("Enter a quantity above zero"); valid = false; }
+    else                            setQtyErr("");
     if (!valid) return;
 
     setPhase("loading");
@@ -196,7 +195,7 @@ export function PublicScopeChecker() {
 
             {/* Field 2 — Annual quantity + Check button */}
             <div className="sc-f2">
-              <span style={LABEL}>Annual ton</span>
+              <span style={LABEL}>Annual ton (optional)</span>
               <div className="sc-f2-box">
                 <input
                   type="number"
