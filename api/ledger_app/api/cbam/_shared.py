@@ -749,7 +749,10 @@ def _build_parsed_invoice_request_from_extraction(
         or structured_data.get("importer_eori")
     )
     if not parsed_importer_eori:
-        raise ValueError("importer_eori is required but was not found in form fields or extracted document.")
+        # EORI not found in document — flag for completion before HMRC submission
+        # rather than rejecting the upload entirely (DQ precheck will mark as blocking)
+        parsed_importer_eori = ""
+        warnings.append("importer_eori_missing:flag_for_human_completion_before_hmrc_submission")
 
     parsed_invoice_number = None
     parsed_origin_country = None
