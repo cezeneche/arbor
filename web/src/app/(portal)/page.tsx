@@ -202,29 +202,31 @@ function Dashboard() {
         )}
 
         {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                display:      "flex",
-                alignItems:   "center",
-                height:       "56px",
-                borderTop:    i === 0 ? "var(--border-width) solid var(--color-border)" : undefined,
-                borderBottom: "var(--border-width) solid var(--color-border)",
-                gap:          "var(--space-24)",
-              }}
-            >
-              <Skeleton height={13} width="40%" />
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
-                <Skeleton height={20} width={100} borderRadius={4} />
-                <Skeleton height={13} width={56} />
+          <div style={{ border: "var(--border-width) solid var(--color-border)", borderRadius: "8px", overflow: "hidden" }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  display:      "flex",
+                  alignItems:   "center",
+                  height:       "56px",
+                  borderBottom: i < 4 ? "var(--border-width) solid var(--color-border)" : undefined,
+                  gap:          "var(--space-24)",
+                  padding:      "0 var(--space-24)",
+                }}
+              >
+                <Skeleton height={13} width="40%" />
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
+                  <Skeleton height={20} width={100} borderRadius={4} />
+                  <Skeleton height={13} width={56} />
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
+                  <Skeleton height={13} width={72} />
+                  <Skeleton height={20} width={80} borderRadius={4} />
+                </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
-                <Skeleton height={13} width={72} />
-                <Skeleton height={20} width={80} borderRadius={4} />
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : cases.length === 0 ? (
           <div style={{ paddingTop: "var(--space-64)", textAlign: "center" }}>
             <p style={{ fontSize: "var(--text-base)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
@@ -232,14 +234,14 @@ function Dashboard() {
             </p>
           </div>
         ) : (
-          <>
+          <div style={{ border: "var(--border-width) solid var(--color-border)", borderRadius: "8px", overflow: "hidden" }}>
             {sortedCases.slice(0, visible).map((c, i) => (
-              <CaseRow key={c.id} c={c} isFirst={i === 0} />
+              <CaseRow key={c.id} c={c} isLast={i === sortedCases.slice(0, visible).length - 1} />
             ))}
             {visible < sortedCases.length && (
               <div ref={sentinelRef} style={{ height: "1px" }} />
             )}
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -249,11 +251,11 @@ function Dashboard() {
 // ── Case row ──────────────────────────────────────────────────────────────────
 
 interface CaseRowProps {
-  c:        CaseListItem;
-  isFirst?: boolean;
+  c:       CaseListItem;
+  isLast?: boolean;
 }
 
-function CaseRow({ c, isFirst }: CaseRowProps) {
+function CaseRow({ c, isLast }: CaseRowProps) {
   const [hovered, setHovered] = useState(false);
 
   // Left: "[Sector] · [Country code]", falling back to importer_name · quarter if not enriched
@@ -276,8 +278,8 @@ function CaseRow({ c, isFirst }: CaseRowProps) {
           alignItems:      "center",
           gap:             "var(--space-24)",
           height:          "56px",
-          borderTop:       isFirst ? "var(--border-width) solid var(--color-border)" : undefined,
-          borderBottom:    "var(--border-width) solid var(--color-border)",
+          padding:         "0 var(--space-24)",
+          borderBottom:    isLast ? undefined : "var(--border-width) solid var(--color-border)",
           backgroundColor: hovered ? "var(--color-surface)" : "transparent",
           transition:      "background-color 100ms",
         }}
