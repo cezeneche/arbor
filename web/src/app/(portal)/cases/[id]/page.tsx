@@ -116,7 +116,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
   if (isLoading) {
     return (
       <div className="page-content" style={{ paddingTop: "var(--space-48)", paddingBottom: "var(--space-80)" }}>
-        <div style={{ maxWidth: "640px" }}>
+        <div>
           {/* Header skeleton */}
           <div style={{ paddingBottom: "var(--space-40)", borderBottom: "var(--border-width) solid var(--color-border)", marginBottom: "var(--space-40)" }}>
             <Skeleton height={14} width={80} style={{ marginBottom: "var(--space-40)" }} />
@@ -216,7 +216,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
       className="page-content"
       style={{ paddingTop: "var(--space-48)", paddingBottom: "var(--space-80)" }}
     >
-      <div style={{ maxWidth: "640px" }}>
+      <div>
 
         {/* ══════════════════════ HEADER ══════════════════════ */}
         <div
