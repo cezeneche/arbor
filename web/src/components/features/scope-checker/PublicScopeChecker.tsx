@@ -343,6 +343,57 @@ export function PublicScopeChecker() {
                   Get your exact figure →
                 </Link>
               </div>
+            ) : belowThreshold ? (
+              <div
+                style={{
+                  backgroundColor: "var(--color-surface)",
+                  border:          "0.5px solid var(--color-border)",
+                  borderLeft:      "3px solid var(--color-green)",
+                  borderRadius:    "0 8px 8px 0",
+                  padding:         "var(--space-24)",
+                }}
+              >
+                <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-green)", marginBottom: "var(--space-16)" }}>
+                  Not in scope
+                </p>
+                <p style={{ fontSize: "15px", fontWeight: 300, color: "var(--color-text-primary)", marginBottom: "var(--space-24)" }}>
+                  Your {sectorLabel(result.sector).toLowerCase()} imports will not be subject to UK CBAM from January 2027.
+                </p>
+
+                {annualLiability != null && (
+                  <>
+                    <p
+                      style={{
+                        fontSize:           "var(--text-hero)",
+                        fontWeight:         500,
+                        color:              "var(--color-navy)",
+                        letterSpacing:      "-0.03em",
+                        fontVariantNumeric: "tabular-nums",
+                        lineHeight:         1.1,
+                        marginBottom:       "8px",
+                      }}
+                    >
+                      {formatCurrency(annualLiability)}
+                    </p>
+                    <p style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
+                      estimated annual liability across {qtyNum.toLocaleString("en-GB")} tonnes at default values
+                    </p>
+                  </>
+                )}
+
+                <div style={{ height: "0.5px", backgroundColor: "var(--color-border)", margin: "var(--space-24) 0" }} />
+
+                <p style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "var(--space-24)" }}>
+                  UK CBAM applies if your annual imports of these goods exceed £50,000 in value. Below this threshold you will not be required to register.
+                </p>
+
+                <Link
+                  href="/signup"
+                  style={{ fontSize: "15px", fontWeight: 500, color: "var(--color-navy)" }}
+                >
+                  Get your exact figure →
+                </Link>
+              </div>
             ) : (
               <div
                 style={{
@@ -357,10 +408,8 @@ export function PublicScopeChecker() {
                   Not in scope
                 </p>
                 <p style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-secondary)" }}>
-                  {belowThreshold
-                    ? `Your ${sectorLabel(result.sector).toLowerCase()} imports will not be subject to UK CBAM from January 2027.`
-                    : `${result.reason ?? `CN code ${code} is not covered by UK CBAM.`} You will not be subject to UK CBAM from January 2027.`
-                  }
+                  {result.reason ?? `CN code ${code} is not covered by UK CBAM.`}{" "}
+                  You will not be subject to UK CBAM from January 2027.
                 </p>
               </div>
             )}
