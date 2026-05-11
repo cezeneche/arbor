@@ -200,6 +200,7 @@ export function toStatusVariant(status: string | null | undefined): StatusVarian
     case 'calculated':
     case 'extracted':
     case 'submitted':
+    case 'processing':
       return 'pending';
     case 'error':
     case 'failed':
@@ -213,10 +214,11 @@ export function toStatusVariant(status: string | null | undefined): StatusVarian
 /** Human-readable label for a case status. */
 export function statusLabel(status: string | null | undefined): string {
   const map: Record<string, string> = {
-    draft:             'Draft',
+    draft:             'Processed',
+    processing:        'Processing',
     submitted:         'Submitted',
-    extracted:         'Extracted',
-    calculated:        'Calculated',
+    extracted:         'Processed',
+    calculated:        'Processed',
     resolved:          'Resolved',
     bundled:           'Bundled',
     narrative_drafted: 'Ready for review',
