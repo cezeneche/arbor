@@ -3,10 +3,29 @@
 import Link from "next/link";
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ledgerFetch } from "@/lib/api/client";
+import { getAuditLog } from "@/lib/api/audit";
 import type { AuditEvent } from "@/lib/types";
 
-function shortHash(hash: string) {
+const MONO: React.CSSProperties = { fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace" };
+
+const EVENT_LABELS: Record<string, string> = {
+  case_created:               "Case created",
+  case_fields_updated:        "Fields updated",
+  document_uploaded:          "Document uploaded",
+  extraction_complete:        "Extraction complete",
+  cbam_calculation_completed: "Calculation completed",
+  human_review_required:      "Human review required",
+  review_approved:            "Case approved",
+  review_rejected:            "Case flagged",
+  report_package_generated:   "Report package generated",
+};
+
+function eventLabel(type: string): string {
+  return EVENT_LABELS[type] ?? type.replace(/_/g, " ");
+}
+
+function shortHash(hash: string | undefined) {
+  if (!hash) return "—";
   return hash.slice(0, 8) + "…" + hash.slice(-6);
 }
 
@@ -17,13 +36,22 @@ function formatTs(iso: string) {
   });
 }
 
+function safePayload(raw: unknown): Record<string, unknown> | null {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw as Record<string, unknown>;
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw) as Record<string, unknown>; } catch { return null; }
+  }
+  return null;
+}
+
 export default function AuditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
-  const { data: events, isLoading, error } = useQuery<AuditEvent[]>({
-    queryKey:  ["audit", id],
-    queryFn:   () => ledgerFetch<AuditEvent[]>(`/api/cbam/cases/${id}/audit`),
-    staleTime: 60_000,
+  const { data: events = [], isLoading, error } = useQuery<AuditEvent[]>({
+    queryKey:  ["audit-log", id],
+    queryFn:   () => getAuditLog(id),
+    staleTime: 30_000,
   });
 
   return (
@@ -52,9 +80,9 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
         >
           Audit chain
         </h1>
-        {events && events.length > 0 && (
+        {events.length > 0 && (
           <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-tertiary)" }}>
-            {events.length} events
+            {events.length} event{events.length !== 1 ? "s" : ""}
           </span>
         )}
       </div>
@@ -69,13 +97,13 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
         </p>
       )}
 
-      {events && events.length === 0 && (
+      {!isLoading && !error && events.length === 0 && (
         <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
           No audit events recorded yet.
         </p>
       )}
 
-      {events && events.length > 0 && (
+      {events.length > 0 && (
         <div
           style={{
             border:          "var(--border-width) solid var(--color-border)",
@@ -84,53 +112,65 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
             backgroundColor: "var(--color-surface)",
           }}
         >
-          {events.map((event, i) => (
-            <div
-              key={event.id}
-              style={{
-                display:   "grid",
-                gridTemplateColumns: "1fr 160px 200px",
-                gap:       "var(--space-24)",
-                padding:   "var(--space-16) var(--space-24)",
-                borderTop: i === 0 ? "none" : "var(--border-width) solid var(--color-border)",
-              }}
-            >
-              {/* Event type */}
-              <div>
-                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)" }}>
-                  {event.event_type.replace(/_/g, " ")}
-                </p>
-                <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", marginTop: "var(--space-8)" }}>
-                  {event.actor_type === "human" ? event.actor_sub : "System"}
-                </p>
+          {events.map((event, i) => {
+            const hmac    = event.hmac_sha256 ?? event.signature;
+            const actor   = event.actor ?? event.actor_sub;
+            const payload = safePayload(event.payload);
+            const changes = payload?.field_changes as Record<string, { from: string; to: string }> | undefined;
+
+            return (
+              <div
+                key={event.id}
+                style={{
+                  padding:   "var(--space-16) var(--space-24)",
+                  borderTop: i === 0 ? "none" : "var(--border-width) solid var(--color-border)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-16)" }}>
+                  {/* Left: event label + changes */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)" }}>
+                        {formatTs(event.created_at)}
+                      </span>
+                      {event.verified === false && (
+                        <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-red)", backgroundColor: "var(--color-red-bg)", padding: "1px 6px", borderRadius: "3px" }}>
+                          invalid
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)", margin: "0 0 4px" }}>
+                      {eventLabel(event.event_type)}
+                    </p>
+                    {changes && Object.entries(changes).length > 0 && Object.entries(changes).map(([label, val]) => {
+                      const from = typeof val === "object" && val !== null ? String((val as { from?: unknown }).from ?? "") : "";
+                      const to   = typeof val === "object" && val !== null ? String((val as { to?: unknown }).to   ?? "") : "";
+                      return (
+                        <div key={label} style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "2px" }}>
+                          <span style={{ fontWeight: 500 }}>{label}:</span>{" "}
+                          {from ? (
+                            <><span style={{ textDecoration: "line-through", color: "var(--color-text-tertiary)" }}>{from}</span>{" → "}{to}</>
+                          ) : (
+                            <span style={{ color: "var(--color-green)" }}>{to}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right: actor + HMAC */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", flexShrink: 0 }}>
+                    {actor && actor !== "system" && (
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>{actor}</span>
+                    )}
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", ...MONO }} title={hmac}>
+                      {shortHash(hmac)}
+                    </span>
+                  </div>
+                </div>
               </div>
-
-              {/* HMAC hash */}
-              <span
-                style={{
-                  fontSize:   "var(--text-xs)",
-                  color:      "var(--color-text-tertiary)",
-                  fontFamily: "ui-monospace, monospace",
-                  alignSelf:  "center",
-                }}
-                title={event.hmac_sha256}
-              >
-                {shortHash(event.hmac_sha256)}
-              </span>
-
-              {/* Timestamp */}
-              <span
-                style={{
-                  fontSize:  "var(--text-xs)",
-                  color:     "var(--color-text-tertiary)",
-                  alignSelf: "center",
-                  textAlign: "right",
-                }}
-              >
-                {formatTs(event.created_at)}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

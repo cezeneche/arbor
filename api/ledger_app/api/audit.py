@@ -173,6 +173,13 @@ def get_audit_log(
     result_rows = []
     for row in rows:
         r = dict(row)
+        # Ensure payload is a dict — some driver configurations return JSONB as a string.
+        if isinstance(r.get("payload"), str):
+            try:
+                import json as _json
+                r["payload"] = _json.loads(r["payload"])
+            except Exception:
+                r["payload"] = {}
         r["verified"] = _verify_cbam_event(r)
         result_rows.append(r)
 

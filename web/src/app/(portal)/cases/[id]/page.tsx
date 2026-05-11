@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCase } from "@/lib/hooks/useCases";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useRole } from "@/lib/auth/useRole";
 import { getAuditLog } from "@/lib/api/audit";
-import { approveCase, rejectCase } from "@/lib/api/cases";
+import { approveCase, rejectCase, deleteCase, patchCase } from "@/lib/api/cases";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,13 +44,6 @@ const MONO: React.CSSProperties = {
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type ActiveTab = "details" | "emissions" | "audit" | "settings";
-
-type LocalChange = {
-  id:        string;
-  timestamp: string;
-  summary:   string;
-  fields:    { label: string; from: string; to: string }[];
-};
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +99,33 @@ function Divider() {
 // EU 2023/1773 Art. 4–6 / HMRC CBAM return fields. All 11 fields hardcoded.
 // Pre-filled from deterministic extraction; asterisk (*) marks missing fields.
 
+// Quality score weights (sum = 100).
+// Green ≥ 80: all required fields + verified supplier data.
+// Amber ≥ 40: core CBAM-required fields present, using default rates.
+// Red  < 40:  critical data missing, cannot generate a return.
+const QUALITY_WEIGHTS: Record<string, number> = {
+  cn_code:              12,
+  net_mass_kg:          12,
+  verified_emissions:   12,
+  sector:                9,
+  importer_eori:         9,
+  origin_country:        9,
+  emissions_data:        9,
+  importer_vat_number:   8,
+  entry_reference:       8,
+  installation_id:       5,
+  incoterm:              4,
+  invoice_number:        3,
+};
+
+function computeQualityScore(fields: Record<string, string>): number {
+  let score = 0;
+  for (const [key, weight] of Object.entries(QUALITY_WEIGHTS)) {
+    if (fields[key] && fields[key].trim().length > 0) score += weight;
+  }
+  return score;
+}
+
 type FieldDef = {
   key:         string;
   label:       string;
@@ -112,20 +133,22 @@ type FieldDef = {
   required:    boolean;
   mono:        boolean;
   fullWidth?:  boolean;
+  options?:    string[];
 };
 
 const FIELD_DEFS: FieldDef[] = [
-  { key: "sector",             label: "Sector",                     placeholder: "e.g. Iron & steel",               required: true,  mono: false },
-  { key: "importer_eori",      label: "Importer EORI",              placeholder: "e.g. GB123456789000",             required: true,  mono: true  },
-  { key: "origin_country",     label: "Country of origin",          placeholder: "e.g. DE",                         required: true,  mono: false },
-  { key: "cn_code",            label: "CN8 commodity code",         placeholder: "e.g. 72082700",                   required: true,  mono: true  },
-  { key: "net_mass_kg",        label: "Net weight (kg)",            placeholder: "e.g. 5000",                       required: true,  mono: false },
-  { key: "invoice_number",     label: "Invoice / reference",        placeholder: "e.g. INV-2027-001",               required: false, mono: false },
-  { key: "entry_reference",    label: "Customs entry ref (MRN)",    placeholder: "18-character MRN",                required: false, mono: true  },
-  { key: "incoterm",           label: "Incoterms",                  placeholder: "e.g. CIF, FOB, EXW",              required: false, mono: false },
-  { key: "installation_id",    label: "Supplier installation ID",   placeholder: "EU CBAM installation ID",         required: false, mono: true  },
-  { key: "emissions_data",     label: "Emissions data",             placeholder: "Verified, estimated, or Annex VI default", required: true, mono: false, fullWidth: true },
-  { key: "verified_emissions", label: "Supplier-verified (tCO₂e)", placeholder: "e.g. 12.450 — without this you pay conservative default rates", required: false, mono: false, fullWidth: true },
+  { key: "sector",               label: "Sector",                     placeholder: "e.g. Iron & steel",               required: true,  mono: false },
+  { key: "importer_eori",        label: "Importer EORI",              placeholder: "e.g. GB123456789000",             required: true,  mono: true  },
+  { key: "importer_vat_number",  label: "Importer VAT number",        placeholder: "e.g. GB123456789",                required: true,  mono: true  },
+  { key: "origin_country",       label: "Country of origin",          placeholder: "e.g. DE",                         required: true,  mono: false },
+  { key: "cn_code",              label: "CN8 commodity code",         placeholder: "e.g. 72082700",                   required: true,  mono: true  },
+  { key: "net_mass_kg",          label: "Net weight (kg)",            placeholder: "e.g. 5000",                       required: true,  mono: false },
+  { key: "entry_reference",      label: "Customs entry ref (MRN)",    placeholder: "18-character MRN",                required: true,  mono: true  },
+  { key: "incoterm",             label: "Incoterms",                  placeholder: "e.g. CIF, FOB, EXW",              required: false, mono: false },
+  { key: "installation_id",      label: "Supplier installation ID",   placeholder: "EU CBAM installation ID",         required: false, mono: true  },
+  { key: "verified_emissions",   label: "Supplier-verified (tCO₂e)", placeholder: "e.g. 12.450",                     required: false, mono: false },
+  { key: "invoice_number",       label: "Invoice / reference",        placeholder: "e.g. INV-2027-001",               required: false, mono: false },
+  { key: "emissions_data",       label: "Emissions tier",             placeholder: "",                                required: true,  mono: false, options: ["Annex VI default", "Estimated (unverified)", "Supplier-verified"] },
 ];
 
 type FieldState = Record<string, string>;
@@ -135,73 +158,137 @@ function initFields(case_: CaseDetail): FieldState {
   const gl       = (case_.goods_lines ?? [])[0] as RichGoodsLine | undefined;
   const m        = gl?.method;
   return {
-    sector:             sectorLabel(gl?.sector),
-    importer_eori:      case_.importer_eori ?? "",
-    origin_country:     shipment?.origin_country ?? gl?.origin_country ?? "",
-    cn_code:            gl?.cn_code ?? "",
-    net_mass_kg:        gl?.net_mass_kg != null ? String(gl.net_mass_kg) : gl?.quantity != null ? String(gl.quantity) : "",
-    invoice_number:     "",
-    entry_reference:    shipment?.entry_reference ?? "",
-    incoterm:           shipment?.incoterm ?? "",
-    installation_id:    gl?.installation_id ?? "",
-    emissions_data:     m === "actual" ? "Verified supplier data" : m === "estimated" ? "Estimated" : m === "default" ? "Annex VI default values" : (m ?? ""),
-    verified_emissions: (m === "actual" && gl?.direct_kgco2e != null) ? (gl.direct_kgco2e / 1000).toFixed(3) : "",
+    sector:              gl?.sector ? sectorLabel(gl.sector) : "",
+    importer_eori:       case_.importer_eori ?? "",
+    importer_vat_number: "",
+    origin_country:      shipment?.origin_country ?? gl?.origin_country ?? "",
+    cn_code:             gl?.cn_code ?? "",
+    net_mass_kg:         gl?.net_mass_kg != null ? String(gl.net_mass_kg) : gl?.quantity != null ? String(gl.quantity) : "",
+    entry_reference:     shipment?.entry_reference ?? "",
+    incoterm:            shipment?.incoterm ?? "",
+    installation_id:     gl?.installation_id ?? "",
+    verified_emissions:  (m === "actual" && gl?.direct_kgco2e != null) ? (gl.direct_kgco2e / 1000).toFixed(3) : "",
+    invoice_number:      "",
+    emissions_data:      m === "actual" ? "Supplier-verified" : m === "estimated" ? "Estimated (unverified)" : m === "default" ? "Annex VI default" : "",
   };
 }
 
+// Maps display values in the form to DB-level values sent to the API
+const SECTOR_DB: Record<string, string> = {
+  "Iron & steel": "iron_steel", "Aluminium": "aluminium", "Cement": "cement",
+  "Fertilisers": "fertilisers", "Hydrogen": "hydrogen", "Electricity": "electricity",
+};
+const EMISSIONS_METHOD_DB: Record<string, string> = {
+  "Annex VI default": "default", "Estimated (unverified)": "estimated", "Supplier-verified": "actual",
+};
+
 function DocumentFieldsForm({
   case_,
-  qualityScore,
-  onSave,
+  actorName,
+  onSaved,
 }: {
-  case_:        CaseDetail;
-  qualityScore: number | null;
-  onSave:       (change: LocalChange) => void;
+  case_:     CaseDetail;
+  actorName: string;
+  onSaved:   () => void;
 }) {
   const [fields,  setFields]  = useState<FieldState>(() => initFields(case_));
-  const [initial]             = useState<FieldState>(() => initFields(case_));
+  const [initial, setInitial] = useState<FieldState>(() => initFields(case_));
   const [focused, setFocused] = useState<string | null>(null);
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSaved]   = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
 
-  const isDirty = FIELD_DEFS.some(f => fields[f.key] !== initial[f.key]);
+  // After our own save the query re-fetches with a new updated_at — skip that one reset.
+  const justSavedRef    = useRef(false);
+  const prevUpdatedAt   = useRef(case_.updated_at);
+
+  useEffect(() => {
+    if (case_.updated_at === prevUpdatedAt.current) return;
+    prevUpdatedAt.current = case_.updated_at;
+    if (justSavedRef.current) {
+      // This re-fetch was triggered by our own PATCH — don't overwrite the form
+      justSavedRef.current = false;
+      return;
+    }
+    // An external update (another tab, background polling) — sync the form
+    const fresh = initFields(case_);
+    setFields(fresh);
+    setInitial(fresh);
+  }, [case_]);
+
+  const isDirty      = FIELD_DEFS.some(f => fields[f.key] !== initial[f.key]);
+  const qualityScore = computeQualityScore(fields);
 
   function handleChange(key: string, val: string) {
     setFields(prev => ({ ...prev, [key]: val }));
     setSaved(false);
+    setSaveErr(null);
   }
 
   async function handleSave() {
     setSaving(true);
-    await new Promise(r => setTimeout(r, 350));
+    setSaveErr(null);
 
     const changed = FIELD_DEFS.filter(f => fields[f.key] !== initial[f.key]);
-    const change: LocalChange = {
-      id:        crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      summary:   `Updated ${changed.map(f => f.label.toLowerCase()).join(", ")}`,
-      fields:    changed.map(f => ({ label: f.label, from: initial[f.key] ?? "", to: fields[f.key] ?? "" })),
+    const fieldChanges = Object.fromEntries(
+      changed.map(f => [f.label, { from: initial[f.key] ?? "", to: fields[f.key] ?? "" }])
+    ) as Record<string, { from: string; to: string }>;
+
+    // Build typed patch payload — map display values to DB keys
+    const patch: import("@/lib/api/cases").CasePatch = {
+      actor_name:    actorName,
+      field_changes: fieldChanges,
     };
-    onSave(change);
+    if (fields.importer_eori   !== initial.importer_eori)   patch.importer_eori   = fields.importer_eori;
+    if (fields.origin_country  !== initial.origin_country)   patch.origin_country  = fields.origin_country;
+    if (fields.entry_reference !== initial.entry_reference)  patch.entry_reference = fields.entry_reference;
+    if (fields.incoterm        !== initial.incoterm)         patch.incoterm        = fields.incoterm;
+    if (fields.cn_code         !== initial.cn_code)          patch.cn_code         = fields.cn_code;
+    if (fields.installation_id !== initial.installation_id)  patch.installation_id = fields.installation_id;
+    if (fields.net_mass_kg     !== initial.net_mass_kg && fields.net_mass_kg) {
+      const parsed = parseFloat(fields.net_mass_kg);
+      if (!isNaN(parsed)) patch.net_mass_kg = parsed;
+    }
+    if (fields.sector !== initial.sector && SECTOR_DB[fields.sector]) {
+      patch.sector = SECTOR_DB[fields.sector];
+    }
+    if (fields.emissions_data !== initial.emissions_data && EMISSIONS_METHOD_DB[fields.emissions_data]) {
+      patch.emissions_method = EMISSIONS_METHOD_DB[fields.emissions_data];
+    }
+    if (fields.verified_emissions !== initial.verified_emissions && fields.verified_emissions) {
+      const tco2e = parseFloat(fields.verified_emissions);
+      if (!isNaN(tco2e)) patch.direct_kgco2e = tco2e * 1000; // tCO2e → kgCO2e
+    }
+
+    try {
+      justSavedRef.current = true;
+      await patchCase(case_.id, patch);
+      setInitial({ ...fields });
+      setSaved(true);
+      onSaved();
+    } catch (err) {
+      justSavedRef.current = false;
+      setSaveErr((err as Error).message ?? "Save failed — please try again.");
+    }
     setSaving(false);
-    setSaved(true);
   }
 
   const scoreColor =
-    qualityScore == null    ? "var(--color-text-tertiary)" :
-    qualityScore >= 80      ? "var(--color-green)" :
-    qualityScore >= 50      ? "var(--color-amber)" :
-                              "var(--color-red)";
+    qualityScore >= 80 ? "var(--color-green)" :
+    qualityScore >= 40 ? "var(--color-amber)" :
+                         "var(--color-red)";
+  const scoreBg =
+    qualityScore >= 80 ? "var(--color-green-bg)" :
+    qualityScore >= 40 ? "var(--color-amber-bg)" :
+                         "var(--color-red-bg)";
 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-24)" }}>
         <SectionLabel>Document fields</SectionLabel>
-        {qualityScore != null && (
-          <span style={{ fontSize: "var(--text-xs)", fontWeight: 500, color: scoreColor, fontVariantNumeric: "tabular-nums" }}>
-            {qualityScore}/100
-          </span>
-        )}
+        <span style={{ fontSize: "var(--text-xs)", fontWeight: 500, color: scoreColor, backgroundColor: scoreBg, padding: "2px 8px", borderRadius: "3px", fontVariantNumeric: "tabular-nums" }}>
+          {qualityScore}/100
+        </span>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-16)" }}>
@@ -225,6 +312,30 @@ function DocumentFieldsForm({
                   <span style={{ fontSize: "11px", fontWeight: 500, color: accent, lineHeight: 1 }}>*</span>
                 )}
               </div>
+              {field.options ? (
+              <select
+                id={`cf-${field.key}`}
+                value={val}
+                onChange={e => handleChange(field.key, e.target.value)}
+                onFocus={() => setFocused(field.key)}
+                onBlur={() => setFocused(null)}
+                style={{
+                  display: "block", width: "100%", height: "40px",
+                  padding: "0 var(--space-16)",
+                  fontSize: "var(--text-base)", fontWeight: "var(--font-body)",
+                  fontFamily: "inherit",
+                  color: val ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
+                  backgroundColor: "var(--color-surface)",
+                  border: `0.5px solid ${border}`,
+                  borderRadius: "6px", outline: "none", boxSizing: "border-box",
+                  appearance: "none", cursor: "pointer",
+                  transition: "border-color 100ms",
+                }}
+              >
+                <option value="">Select…</option>
+                {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            ) : (
               <input
                 id={`cf-${field.key}`}
                 type="text"
@@ -246,6 +357,7 @@ function DocumentFieldsForm({
                   transition: "border-color 100ms",
                 }}
               />
+            )}
             </div>
           );
         })}
@@ -255,6 +367,7 @@ function DocumentFieldsForm({
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-16)", marginTop: "var(--space-24)" }}>
           <Button variant="primary" loading={saving} onClick={handleSave}>Save changes</Button>
           {saved && <span style={{ fontSize: "var(--text-xs)", color: "var(--color-green)" }}>Saved</span>}
+          {saveErr && <span style={{ fontSize: "var(--text-xs)", color: "var(--color-red)" }}>{saveErr}</span>}
         </div>
       )}
     </div>
@@ -263,7 +376,7 @@ function DocumentFieldsForm({
 
 // ── Emissions tab ──────────────────────────────────────────────────────────────
 
-function EmissionsTab({ case_ }: { case_: CaseDetail }) {
+function EmissionsTab({ case_, onProvideData }: { case_: CaseDetail; onProvideData: () => void }) {
   const goods_lines = (case_.goods_lines ?? []) as RichGoodsLine[];
 
   if (goods_lines.length === 0) {
@@ -419,9 +532,25 @@ function EmissionsTab({ case_ }: { case_: CaseDetail }) {
 
           {isAnyDefault && (
             <div style={{ marginTop: "var(--space-32)", padding: "var(--space-16) var(--space-24)", backgroundColor: "var(--color-surface)", border: "var(--border-width) solid var(--color-border)", borderLeft: "3px solid var(--color-amber)", borderRadius: "0 6px 6px 0" }}>
-              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", margin: 0, lineHeight: 1.6 }}>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", margin: "0 0 var(--space-16)", lineHeight: 1.6 }}>
                 This liability uses conservative Annex VI default values. Provide supplier-verified emissions data to replace default values and potentially reduce your liability.
               </p>
+              <div style={{ display: "flex", gap: "var(--space-12)" }}>
+                <Button variant="primary" onClick={onProvideData}>Provide data</Button>
+                <Link
+                  href={`/suppliers?case=${case_.id}`}
+                  style={{
+                    display: "inline-flex", alignItems: "center", height: "40px",
+                    padding: "0 var(--space-24)", borderRadius: "var(--btn-radius)",
+                    fontSize: "var(--text-base)", fontWeight: "var(--font-focal)",
+                    color: "var(--color-text-primary)", backgroundColor: "var(--color-surface)",
+                    border: "var(--border-width) solid var(--color-border)",
+                    textDecoration: "none", whiteSpace: "nowrap",
+                  }}
+                >
+                  Request supplier data
+                </Link>
+              </div>
             </div>
           )}
         </>
@@ -432,11 +561,42 @@ function EmissionsTab({ case_ }: { case_: CaseDetail }) {
 
 // ── Audit chain tab ────────────────────────────────────────────────────────────
 
-function AuditTrailTab({ caseId, localChanges }: { caseId: string; localChanges: LocalChange[] }) {
+const AUDIT_EVENT_LABELS: Record<string, string> = {
+  case_created:            "Case created",
+  case_fields_updated:     "Fields updated",
+  document_uploaded:       "Document uploaded",
+  extraction_complete:     "Extraction complete",
+  cbam_calculation_completed: "Calculation completed",
+  human_review_required:   "Human review required",
+  review_approved:         "Case approved",
+  review_rejected:         "Case flagged",
+  report_package_generated:"Report package generated",
+};
+
+function eventLabel(type: string): string {
+  return AUDIT_EVENT_LABELS[type] ?? type.replace(/_/g, " ");
+}
+
+function safePayload(raw: unknown): Record<string, unknown> | null {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw as Record<string, unknown>;
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw) as Record<string, unknown>; } catch { return null; }
+  }
+  return null;
+}
+
+function eventActor(ev: AuditEvent): string {
+  const payload = safePayload(ev.payload);
+  if (payload?.actor_name && typeof payload.actor_name === "string") return payload.actor_name;
+  return actorLabel(ev);
+}
+
+function AuditTrailTab({ caseId }: { caseId: string }) {
   const { data: raw = [] } = useQuery<AuditEvent[]>({
     queryKey:  ["audit-log", caseId],
     queryFn:   () => getAuditLog(caseId),
-    staleTime: 60_000,
+    staleTime: 0,
     enabled:   Boolean(caseId),
   });
 
@@ -445,7 +605,39 @@ function AuditTrailTab({ caseId, localChanges }: { caseId: string; localChanges:
     : ((raw as { events?: AuditEvent[] }).events ?? []);
 
   const chainValid = auditEvents.length === 0 || isChainValid(auditEvents);
-  const totalEvents = auditEvents.length + localChanges.length;
+
+  // ── Filters ────────────────────────────────────────────────────────────────
+  const [filterActor, setFilterActor] = useState("");
+  const [filterType,  setFilterType]  = useState("");
+  const [filterFrom,  setFilterFrom]  = useState("");
+  const [filterTo,    setFilterTo]    = useState("");
+
+  const allActors = Array.from(new Set(auditEvents.map(ev => eventActor(ev)).filter(Boolean)));
+  const allTypes  = Array.from(new Set(auditEvents.map(ev => ev.event_type)));
+
+  const filtered = auditEvents.filter(ev => {
+    if (filterActor && eventActor(ev) !== filterActor) return false;
+    if (filterType  && ev.event_type !== filterType)   return false;
+    if (filterFrom) {
+      const fromTs = new Date(filterFrom).getTime();
+      if (new Date(ev.created_at).getTime() < fromTs) return false;
+    }
+    if (filterTo) {
+      const toTs = new Date(filterTo).getTime() + 86_400_000; // inclusive end-of-day
+      if (new Date(ev.created_at).getTime() > toTs) return false;
+    }
+    return true;
+  });
+
+  const hasFilter = Boolean(filterActor || filterType || filterFrom || filterTo);
+
+  const inputStyle: React.CSSProperties = {
+    height: "32px", padding: "0 10px", fontSize: "var(--text-xs)",
+    fontFamily: "inherit", color: "var(--color-text-primary)",
+    backgroundColor: "var(--color-surface)",
+    border: "0.5px solid var(--color-border)", borderRadius: "6px",
+    outline: "none", boxSizing: "border-box" as const, appearance: "none" as const,
+  };
 
   return (
     <div>
@@ -457,86 +649,100 @@ function AuditTrailTab({ caseId, localChanges }: { caseId: string; localChanges:
         </div>
       )}
 
-      {chainValid && totalEvents > 0 && (
+      {chainValid && auditEvents.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", marginBottom: "var(--space-24)" }}>
           <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--color-green)", flexShrink: 0 }} />
           <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)" }}>
-            Chain integrity verified — {totalEvents} event{totalEvents !== 1 ? "s" : ""}
-            {localChanges.length > 0 && ` (${localChanges.length} pending)`}
+            Chain integrity verified — {auditEvents.length} event{auditEvents.length !== 1 ? "s" : ""}
           </span>
         </div>
       )}
 
-      {totalEvents === 0 && (
+      {/* ── Filter bar ── */}
+      {auditEvents.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-8)", marginBottom: "var(--space-24)", padding: "var(--space-16)", backgroundColor: "var(--color-surface)", border: "var(--border-width) solid var(--color-border)", borderRadius: "8px" }}>
+          <select value={filterActor} onChange={e => setFilterActor(e.target.value)} style={inputStyle}>
+            <option value="">All actors</option>
+            {allActors.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} style={inputStyle}>
+            <option value="">All events</option>
+            {allTypes.map(t => <option key={t} value={t}>{eventLabel(t)}</option>)}
+          </select>
+          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} style={{ ...inputStyle, width: "140px" }} />
+          <input type="date" value={filterTo}   onChange={e => setFilterTo(e.target.value)}   style={{ ...inputStyle, width: "140px" }} />
+          {hasFilter && (
+            <button
+              onClick={() => { setFilterActor(""); setFilterType(""); setFilterFrom(""); setFilterTo(""); }}
+              style={{ height: "32px", padding: "0 10px", fontSize: "var(--text-xs)", fontFamily: "inherit", color: "var(--color-text-secondary)", backgroundColor: "transparent", border: "0.5px solid var(--color-border)", borderRadius: "6px", cursor: "pointer" }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
+      {auditEvents.length === 0 && (
         <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-tertiary)" }}>No audit events yet.</p>
       )}
 
-      <div style={{ border: totalEvents > 0 ? "var(--border-width) solid var(--color-border)" : "none", borderRadius: "8px", overflow: "hidden" }}>
-        {/* Local (pending) changes — shown at top */}
-        {localChanges.map((change, i) => (
-          <div
-            key={change.id}
-            style={{
-              padding:         "var(--space-16) var(--space-24)",
-              borderBottom:    (i < localChanges.length - 1 || auditEvents.length > 0) ? "var(--border-width) solid var(--color-border)" : undefined,
-              backgroundColor: "var(--color-surface)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-16)" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", marginBottom: "var(--space-8)" }}>
-                  <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", whiteSpace: "nowrap" }}>
-                    {fmtTime(change.timestamp)}
-                  </span>
-                  <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-amber)", backgroundColor: "var(--color-amber-bg)", padding: "1px 6px", borderRadius: "3px" }}>
-                    pending
-                  </span>
-                </div>
-                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)", margin: "0 0 8px" }}>
-                  {change.summary}
-                </p>
-                {change.fields.map(f => (
-                  <div key={f.label} style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>{f.label}:</span>{" "}
-                    {f.from ? (
-                      <><span style={{ textDecoration: "line-through", color: "var(--color-text-tertiary)" }}>{f.from}</span> → {f.to}</>
-                    ) : (
-                      <span style={{ color: "var(--color-green)" }}>{f.to}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", whiteSpace: "nowrap", flexShrink: 0 }}>
-                you
-              </span>
-            </div>
-          </div>
-        ))}
+      {filtered.length === 0 && auditEvents.length > 0 && (
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-tertiary)" }}>No events match the current filter.</p>
+      )}
 
-        {/* Server-signed events */}
-        {auditEvents.map((ev, i) => {
-          const hmac   = ev.hmac_sha256 ?? ev.signature;
-          const actor  = actorLabel(ev);
-          const isLast = i === auditEvents.length - 1;
+      <div style={{ border: filtered.length > 0 ? "var(--border-width) solid var(--color-border)" : "none", borderRadius: "8px", overflow: "hidden" }}>
+        {filtered.map((ev, i) => {
+          const hmac      = ev.hmac_sha256 ?? ev.signature;
+          const actor     = eventActor(ev);
+          const isLast    = i === filtered.length - 1;
+          const payload   = safePayload(ev.payload);
+          const rawChanges = payload?.field_changes;
+          const changes   = rawChanges && typeof rawChanges === "object" && !Array.isArray(rawChanges)
+            ? rawChanges as Record<string, unknown>
+            : null;
+          const changeEntries = changes ? Object.entries(changes) : [];
+
           return (
             <div
               key={ev.id}
-              style={{ display: "grid", gridTemplateColumns: "160px 1fr auto", alignItems: "center", gap: "var(--space-24)", padding: "var(--space-12) var(--space-24)", borderBottom: isLast ? undefined : "var(--border-width) solid var(--color-border)" }}
+              style={{ padding: "var(--space-16) var(--space-24)", borderBottom: isLast ? undefined : "var(--border-width) solid var(--color-border)" }}
             >
-              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", whiteSpace: "nowrap" }}>
-                {fmtTime(ev.created_at)}
-              </span>
-              <div>
-                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)", margin: 0 }}>
-                  {ev.event_type.replace(/_/g, " ")}
-                </p>
-                {actor !== "system" && (
-                  <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", margin: "2px 0 0" }}>{actor}</p>
-                )}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
-                {ev.verified === false && <span style={{ fontSize: "var(--text-xs)", color: "var(--color-red)" }}>invalid</span>}
-                <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", ...MONO }}>{hmac?.slice(0, 12) ?? "—"}</span>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-16)" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", marginBottom: "4px" }}>
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", whiteSpace: "nowrap" }}>
+                      {fmtTime(ev.created_at)}
+                    </span>
+                    {ev.verified === false && (
+                      <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-red)", backgroundColor: "var(--color-red-bg)", padding: "1px 6px", borderRadius: "3px" }}>
+                        invalid
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)", margin: "0 0 4px" }}>
+                    {eventLabel(ev.event_type)}
+                  </p>
+                  {changeEntries.map(([label, val]) => {
+                    const from = typeof val === "object" && val !== null ? String((val as { from?: unknown }).from ?? "") : "";
+                    const to   = typeof val === "object" && val !== null ? String((val as { to?: unknown }).to   ?? "") : "";
+                    return (
+                      <div key={label} style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "2px" }}>
+                        <span style={{ fontWeight: 500 }}>{label}:</span>{" "}
+                        {from ? (
+                          <><span style={{ textDecoration: "line-through", color: "var(--color-text-tertiary)" }}>{from}</span>{" → "}{to}</>
+                        ) : (
+                          <span style={{ color: "var(--color-green)" }}>{to}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", flexShrink: 0 }}>
+                  {actor && actor !== "system" && (
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{actor}</span>
+                  )}
+                  <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", ...MONO, whiteSpace: "nowrap" }}>{hmac?.slice(0, 12) ?? "—"}</span>
+                </div>
               </div>
             </div>
           );
@@ -549,13 +755,37 @@ function AuditTrailTab({ caseId, localChanges }: { caseId: string; localChanges:
 // ── Settings tab ───────────────────────────────────────────────────────────────
 
 function SettingsTab({ case_ }: { case_: CaseDetail }) {
-  const [year,     setYear]     = useState(String(case_.reporting_year ?? ""));
-  const [quarter,  setQuarter]  = useState(String(case_.reporting_quarter ?? "1"));
-  const [regime,   setRegime]   = useState<"UK" | "EU">("UK");
-  const [savingP,  setSavingP]  = useState(false);
-  const [savedP,   setSavedP]   = useState(false);
-  const [confirm,  setConfirm]  = useState(false);
-  const [focused,  setFocused]  = useState<string | null>(null);
+  const router      = useRouter();
+  const queryClient = useQueryClient();
+  const initYear    = String(case_.reporting_year ?? "");
+  const initQuarter = String(case_.reporting_quarter ?? "1");
+  const [year,      setYear]      = useState(initYear);
+  const [quarter,   setQuarter]   = useState(initQuarter);
+  const [regime,    setRegime]    = useState<"UK" | "EU">("UK");
+  const [savingP,   setSavingP]   = useState(false);
+  const [savedP,    setSavedP]    = useState(false);
+  const [confirm,   setConfirm]   = useState(false);
+  const [deleting,  setDeleting]  = useState(false);
+  const [deleteErr, setDeleteErr] = useState<string | null>(null);
+  const [focused,   setFocused]   = useState<string | null>(null);
+
+  const isPeriodDirty = year !== initYear || quarter !== initQuarter;
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDeleteErr(null);
+    try {
+      await deleteCase(case_.id);
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["cases"] });
+        router.refresh();
+        router.push("/");
+      }, 1000);
+    } catch (e) {
+      setDeleteErr((e as Error).message ?? "Delete failed. Please try again.");
+      setDeleting(false);
+    }
+  }
 
   async function handleSavePeriod() {
     setSavingP(true);
@@ -628,12 +858,14 @@ function SettingsTab({ case_ }: { case_: CaseDetail }) {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-16)" }}>
-          <Button variant="primary" loading={savingP} onClick={handleSavePeriod}>
-            Save period
-          </Button>
-          {savedP && <span style={{ fontSize: "var(--text-xs)", color: "var(--color-green)" }}>Saved</span>}
-        </div>
+        {isPeriodDirty && (
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-16)" }}>
+            <Button variant="primary" loading={savingP} onClick={handleSavePeriod}>
+              Save period
+            </Button>
+            {savedP && <span style={{ fontSize: "var(--text-xs)", color: "var(--color-green)" }}>Saved</span>}
+          </div>
+        )}
       </div>
 
       <Divider />
@@ -670,9 +902,12 @@ function SettingsTab({ case_ }: { case_: CaseDetail }) {
             <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-16)", lineHeight: 1.6 }}>
               Deleting a case permanently removes all documents, extracted data, and the audit chain. This cannot be undone.
             </p>
-            <Button variant="secondary" onClick={() => setConfirm(true)}>
+            <button
+              onClick={() => setConfirm(true)}
+              style={{ height: "40px", padding: "0 var(--space-24)", border: "none", borderRadius: "var(--btn-radius)", backgroundColor: "var(--color-red)", color: "#ffffff", fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", fontFamily: "inherit", cursor: "pointer" }}
+            >
               Delete case
-            </Button>
+            </button>
           </div>
         ) : (
           <div style={{ padding: "var(--space-24)", border: "var(--border-width) solid var(--color-red)", borderRadius: "8px" }}>
@@ -682,12 +917,18 @@ function SettingsTab({ case_ }: { case_: CaseDetail }) {
             <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-16)", lineHeight: 1.6 }}>
               This will permanently delete the case and all associated data. The audit chain will be destroyed.
             </p>
+            {deleteErr && (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginBottom: "var(--space-16)" }}>
+                {deleteErr}
+              </p>
+            )}
             <div style={{ display: "flex", gap: "var(--space-16)" }}>
               <button
-                onClick={() => { /* TODO: DELETE /api/cbam/cases/{case_.id} */ }}
-                style={{ height: "40px", padding: "0 var(--space-24)", border: "none", borderRadius: "6px", backgroundColor: "var(--color-red)", color: "#ffffff", fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", fontFamily: "inherit", cursor: "pointer" }}
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{ height: "40px", padding: "0 var(--space-24)", border: "none", borderRadius: "6px", backgroundColor: "var(--color-red)", color: "#ffffff", fontSize: "var(--text-base)", fontWeight: "var(--font-focal)", fontFamily: "inherit", cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.6 : 1 }}
               >
-                Delete permanently
+                {deleting ? "Deleting…" : "Delete permanently"}
               </button>
               <Button variant="secondary" onClick={() => setConfirm(false)}>Cancel</Button>
             </div>
@@ -701,23 +942,35 @@ function SettingsTab({ case_ }: { case_: CaseDetail }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function CaseDetailPage({ params }: { params: { id: string } }) {
-  const { id }   = params;
-  const { user } = useAuth();
-  const role     = useRole();
-  const isAdmin  = role === "admin";
+  const { id }        = params;
+  const { user }      = useAuth();
+  const role          = useRole();
+  const isAdmin       = role === "admin";
+  const router        = useRouter();
+  const queryClient   = useQueryClient();
 
   const { case_, isLoading, error } = useCase(id);
 
-  const [activeTab,    setActiveTab]    = useState<ActiveTab>("details");
-  const [actionDone,   setActionDone]   = useState<"approved" | "flagged" | null>(null);
-  const [showFlagForm, setShowFlagForm] = useState(false);
-  const [flagText,     setFlagText]     = useState("");
-  const [actioning,    setActioning]    = useState(false);
-  const [localChanges, setLocalChanges] = useState<LocalChange[]>([]);
+  const [activeTab,       setActiveTab]       = useState<ActiveTab>("details");
+  const [actionDone,      setActionDone]       = useState<"approved" | "flagged" | null>(null);
+  const [showFlagForm,    setShowFlagForm]     = useState(false);
+  const [flagText,        setFlagText]         = useState("");
+  const [actioning,       setActioning]        = useState(false);
+  const [unseenAuditCount, setUnseenAuditCount] = useState(0);
 
-  const handleFieldSave = useCallback((change: LocalChange) => {
-    setLocalChanges(prev => [change, ...prev]);
-  }, []);
+  // Actor display name: prefer JWT name claim, fall back to sub (email/id)
+  const actorName = user?.name ?? user?.sub ?? "unknown";
+
+  function handleTabClick(tab: ActiveTab) {
+    setActiveTab(tab);
+    if (tab === "audit") setUnseenAuditCount(0);
+  }
+
+  const handleSaved = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["audit-log", id] });
+    queryClient.invalidateQueries({ queryKey: ["case", id] });
+    setUnseenAuditCount(c => c + 1);
+  }, [queryClient, id]);
 
   if (isLoading) {
     return (
@@ -779,13 +1032,23 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
   const isProcessing = case_.status === "processing";
   const isPending    = case_.review_status === "pending_review";
   const isApproved   = case_.review_status === "approved" || case_.status === "signed_off";
-  const qualityScore = (case_.open_gaps as { score?: number } | null)?.score ?? null;
+
+  function refreshAll() {
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ["case", id] });
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+      queryClient.invalidateQueries({ queryKey: ["audit-log", id] });
+      setUnseenAuditCount(c => c + 1);
+      router.refresh();
+    }, 1000);
+  }
 
   async function handleApprove() {
     setActioning(true);
     try {
       await approveCase(id, { reviewer_name: user?.sub ?? "reviewer", reviewer_email: user?.sub ?? "reviewer@nucleos", comments: "Approved via case detail" });
       setActionDone("approved");
+      refreshAll();
     } catch { /* unchanged */ }
     setActioning(false);
   }
@@ -796,6 +1059,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     try {
       await rejectCase(id, { reviewer_name: user?.sub ?? "reviewer", reviewer_email: user?.sub ?? "reviewer@nucleos", comments: flagText.trim() });
       setActionDone("flagged");
+      refreshAll();
     } catch { /* ignore */ }
     setActioning(false);
   }
@@ -875,7 +1139,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
           {TABS.map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => handleTabClick(tab.key)}
               style={{
                 paddingBottom: "var(--space-12)",
                 fontSize:      "var(--text-sm)",
@@ -889,7 +1153,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
               }}
             >
               {tab.label}
-              {tab.key === "audit" && localChanges.length > 0 && (
+              {tab.key === "audit" && unseenAuditCount > 0 && activeTab !== "audit" && (
                 <span style={{ position: "absolute", top: "2px", right: "-10px", width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--color-amber)" }} />
               )}
             </button>
@@ -899,8 +1163,26 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         {/* ══ DETAILS TAB ══ */}
         {activeTab === "details" && (
           <div>
+            {/* Case details — no title */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-24)", marginBottom: "var(--space-40)" }}>
+              <div>
+                <p style={{ fontSize: "11px", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "4px" }}>Sector</p>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)", margin: 0 }}>{sector}</p>
+              </div>
+              <div>
+                <p style={{ fontSize: "11px", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "4px" }}>Country of origin</p>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)", margin: 0 }}>{country}</p>
+              </div>
+              <div>
+                <p style={{ fontSize: "11px", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "4px" }}>Import date</p>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)", margin: 0 }}>{fmtDate(importDate)}</p>
+              </div>
+            </div>
+
+            <Divider />
+
             {!isProcessing && (
-              <DocumentFieldsForm case_={case_} qualityScore={qualityScore} onSave={handleFieldSave} />
+              <DocumentFieldsForm case_={case_} actorName={actorName} onSaved={handleSaved} />
             )}
 
             <Divider />
@@ -959,10 +1241,10 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         )}
 
         {/* ══ EMISSIONS TAB ══ */}
-        {activeTab === "emissions" && <EmissionsTab case_={case_} />}
+        {activeTab === "emissions" && <EmissionsTab case_={case_} onProvideData={() => setActiveTab("details")} />}
 
         {/* ══ AUDIT CHAIN TAB ══ */}
-        {activeTab === "audit" && <AuditTrailTab caseId={id} localChanges={localChanges} />}
+        {activeTab === "audit" && <AuditTrailTab caseId={id} />}
 
         {/* ══ SETTINGS TAB ══ */}
         {activeTab === "settings" && <SettingsTab case_={case_} />}
