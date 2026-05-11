@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/design-system";
-
-const UK_ETS_RATE = 52.4;
+import { UK_ETS_RATE, sectorLabel } from "@/lib/constants";
 
 const LABEL: React.CSSProperties = {
   fontSize:     "11px",
@@ -22,18 +21,6 @@ type ScopeResult = {
   reason?:                  string;
   default_see_tco2e_per_t?: number | null;
 };
-
-function sectorLabel(s: string | null | undefined): string {
-  const map: Record<string, string> = {
-    iron_steel:  "Iron & steel",
-    aluminium:   "Aluminium",
-    cement:      "Cement",
-    fertilisers: "Fertilisers",
-    hydrogen:    "Hydrogen",
-    electricity: "Electricity",
-  };
-  return s ? (map[s] ?? s.replace(/_/g, " ")) : "—";
-}
 
 export function PublicScopeChecker() {
   const [code,    setCode]    = useState("");

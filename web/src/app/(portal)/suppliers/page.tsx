@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useCases, useCase } from "@/lib/hooks/useCases";
 import { ledgerFetch } from "@/lib/api/client";
 import { formatCurrency } from "@/lib/design-system";
+import { UK_ETS_RATE, sectorLabel } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { Case } from "@/lib/api/types";
@@ -35,14 +36,6 @@ interface LetterResult {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const UK_ETS_RATE = 52.4;
-
-const SECTOR: Record<string, string> = {
-  iron_steel:  "Iron & steel", aluminium:   "Aluminium",
-  cement:      "Cement",       fertilisers: "Fertilisers",
-  hydrogen:    "Hydrogen",     electricity: "Electricity",
-};
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
@@ -453,7 +446,7 @@ export default function RequestDataPage() {
         </div>
       ) : (
         cases.map((c, i) => {
-          const label   = c.sector ? (SECTOR[c.sector] ?? c.sector.replace(/_/g, " ")) : c.importer_name;
+          const label   = c.sector ? sectorLabel(c.sector) : c.importer_name;
           const country = c.origin_country ? ` · ${c.origin_country.toUpperCase()}` : "";
           const isOpen  = expanded === c.id;
 

@@ -600,13 +600,12 @@ def _check_reconciliation_warnings(
     """
     Blocking reconciliation warnings must not be silently ignored.
 
-    Any data_quality.warnings entry tagged with a reconciliation prefix is
-    considered "unaddressed" if it is not mentioned in narrative.limitations.
-    This triggers human_review_required.
+    Any data_quality.warnings entry tagged with a reconciliation prefix triggers
+    human_review_required. Whether those warnings appear in narrative.limitations
+    is a separate check (_check_warnings_surfaced_in_limitations).
     """
     data_quality = report_package.get("data_quality") or {}
     warnings = data_quality.get("warnings") or []
-    limitations_text = str({}).lower()  # placeholder — we only check existence, not text
 
     recon_warnings = [
         w for w in warnings

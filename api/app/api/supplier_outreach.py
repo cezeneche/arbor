@@ -43,7 +43,7 @@ from app.services.supplier_templates import (
     generate_supplier_request,
     render_pdf_letter,
 )
-from ledger_app.api.cbam._shared import engine
+from ledger_app.db.session import engine
 from shared_auth.dependencies import require_scopes
 from shared_auth.models import AuthContext
 

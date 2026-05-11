@@ -8,10 +8,10 @@ import { useUpload } from "@/lib/hooks/useUpload";
 import { useCases } from "@/lib/hooks/useCases";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrency } from "@/lib/design-system";
+import { UK_ETS_RATE, sectorLabel } from "@/lib/constants";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const UK_ETS_RATE = 52.4;
 const MAX_FILES   = 20;
 const MAX_BYTES   = 10 * 1024 * 1024;
 const ACCEPT      = ".pdf,.xml,.csv,.xlsx";
@@ -35,18 +35,6 @@ function formatBytes(b: number): string {
 
 function truncate(s: string, max = 40): string {
   return s.length > max ? s.slice(0, max - 1) + "…" : s;
-}
-
-function sectorLabel(s: string | null | undefined): string {
-  const map: Record<string, string> = {
-    iron_steel:  "Iron & steel",
-    aluminium:   "Aluminium",
-    cement:      "Cement",
-    fertilisers: "Fertilisers",
-    hydrogen:    "Hydrogen",
-    electricity: "Electricity",
-  };
-  return s ? (map[s] ?? s.replace(/_/g, " ")) : "—";
 }
 
 // ── Inline scope checker ───────────────────────────────────────────────────────

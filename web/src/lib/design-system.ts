@@ -29,15 +29,15 @@
  *   Buttons: One primary per screen. Never two.
  *   Borders: 0.5px only. Never 1px.
  *
- * WHAT DOES NOT EXIST
- *   No sidebar. No hamburger. No tab bar on desktop.
- *   No modal dialogs       → use inline state changes.
- *   No toast notifications → use inline confirmation.
- *   No loading spinners    → use <Skeleton />.
- *   No charts              → use numbers and progress bars.
- *   No empty illustrations → use typography only.
- *   No tooltips or onboarding overlays.
- *   No settings page (v1). No notifications bell (v1).
+ * COMPONENT CONSTRAINTS
+ *   Loading states:  use <Skeleton />, not spinners.
+ *   Empty states:    use typography only, no illustrations.
+ *   Navigation:      sidebar component exists; no hamburger or tab bar on desktop.
+ *   Overlays:        dialog and tooltip components exist; use sparingly — prefer
+ *                    inline state changes where the workflow allows it.
+ *   Notifications:   toast component exists for transient feedback; use inline
+ *                    confirmation for permanent state changes.
+ *   Charts:          use numbers and progress bars, not chart libraries.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 

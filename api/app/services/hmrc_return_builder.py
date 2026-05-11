@@ -140,6 +140,8 @@ class HMRCReturnDocument:
     # ── Metadata ───────────────────────────────────────────────────────────────
     source_package_snapshot_hash: str | None
     warnings: list[str]                # non-blocking build warnings
+    narrative_limitations: str | None = None
+    """Methodology / limitations text from the narrative pipeline (rendered in PDF)."""
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
@@ -511,6 +513,7 @@ def build_hmrc_return(
         consignments                 = consignments,
         source_package_snapshot_hash = snapshot_hash if snapshot_hash != "no-snapshot" else None,
         warnings                     = warnings,
+        narrative_limitations        = input_data.narrative_limitations,
     )
 
 
@@ -813,18 +816,7 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
     # ═══════════════════════════════════════════════════════════════════════════
     story.append(Paragraph("Calculation Methodology and Limitations", section_style))
     story.append(hr())
-    limitations_text = (
-        return_doc.warnings[0]  # not ideal — use narrative_limitations when available
-        if False  # placeholder; see below
-        else None
-    )
-    # Pull the narrative_limitations that was stored on the input_data before
-    # asdict() dropped it — recover via the first warning that references it, or
-    # use the placeholder.  The caller should pass narrative_limitations via
-    # HMRCReturnInput; we surface it here if it was supplied.
-    # Since asdict() doesn't preserve the input, we rely on the caller to pass
-    # narrative_limitations directly to return_to_pdf when available.
-    notes_text = (
+    notes_text = return_doc.narrative_limitations or (
         "Embedded emissions were calculated in accordance with UK CBAM secondary "
         "legislation (Finance (No.2) Act 2025-26). Direct embedded emissions are "
         "reported per tonne of CBAM good using the method declared by the supplier "

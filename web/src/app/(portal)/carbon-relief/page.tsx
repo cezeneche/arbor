@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCases, useCase } from "@/lib/hooks/useCases";
 import { ledgerFetch } from "@/lib/api/client";
 import { formatCurrency } from "@/lib/design-system";
+import { sectorLabel } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
@@ -38,12 +39,6 @@ const schemeName = (iso2: string) =>
 
 const currencyFor = (iso2: string) =>
   iso2.toUpperCase() === "CH" ? "CHF" : "EUR";
-
-const SECTOR: Record<string, string> = {
-  iron_steel: "Iron & steel", aluminium: "Aluminium",
-  cement:     "Cement",       fertilisers: "Fertilisers",
-  hydrogen:   "Hydrogen",    electricity: "Electricity",
-};
 
 const inputBase: React.CSSProperties = {
   width:           "100%",
@@ -579,7 +574,7 @@ export default function CarbonReliefPage() {
         </div>
       ) : (
         qualifying.map((c, i) => {
-          const label   = c.sector ? (SECTOR[c.sector] ?? c.sector.replace(/_/g, " ")) : c.importer_name;
+          const label   = c.sector ? sectorLabel(c.sector) : c.importer_name;
           const country = c.origin_country?.toUpperCase() ?? "";
           const isOpen  = expanded === c.id;
 

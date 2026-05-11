@@ -14,6 +14,7 @@ import {
   methodBadgeVariant,
   methodLabel,
 } from "@/lib/design-system";
+import { sectorLabel } from "@/lib/constants";
 import type { Case } from "@/lib/api/types";
 
 // UK ETS Q1 2027 quarterly-average (mirrors backend public_tools.py constant)
@@ -30,19 +31,6 @@ function relativeTime(iso: string): string {
   if (hrs < 24)  return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
-
-function sectorLabel(s: string | null | undefined): string {
-  const map: Record<string, string> = {
-    iron_steel:  "Iron & steel",
-    aluminium:   "Aluminium",
-    cement:      "Cement",
-    fertilisers: "Fertilisers",
-    hydrogen:    "Hydrogen",
-    electricity: "Electricity",
-  };
-  return s ? (map[s] ?? s.replace(/_/g, " ")) : "—";
-}
-
 
 // ── Dashboard — authenticated state ───────────────────────────────────────────
 
