@@ -28,31 +28,6 @@ interface ScopeResult {
   default_see_tco2e_per_t?: number | null;
 }
 
-interface LetterResult {
-  email_subject:            string;
-  email_text:               string;
-  translation_recommended:  boolean;
-  translation_language_hint: string | null;
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-// ── Shared styles ─────────────────────────────────────────────────────────────
-
-const inputBase: React.CSSProperties = {
-  width:           "100%",
-  height:          "var(--input-height)",
-  padding:         "0 var(--space-16)",
-  fontSize:        "var(--text-base)",
-  fontWeight:      300,
-  fontFamily:      "inherit",
-  color:           "var(--color-text-primary)",
-  backgroundColor: "var(--color-surface)",
-  border:          "var(--border-width) solid var(--color-border)",
-  borderRadius:    "var(--input-radius)",
-  outline:         "none",
-  boxSizing:       "border-box" as const,
-};
 
 // ── Path selector card ────────────────────────────────────────────────────────
 
@@ -122,22 +97,16 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
   const { case_, isLoading } = useCase(caseId);
   const [path, setPath] = useState<DataPath>(null);
 
-  // Lookup path state
   const [lookupResult,  setLookupResult]  = useState<ScopeResult | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
 
-  // Supplier path state
-  const [supplierEmail,  setSupplierEmail]  = useState("");
-  const [emailError,     setEmailError]     = useState("");
-  const [letterSubject,  setLetterSubject]  = useState("");
-  const [letterBody,     setLetterBody]     = useState("");
-  const [letterLoading,  setLetterLoading]  = useState(false);
-  const [translationHint, setTranslationHint] = useState<string | null>(null);
-  const [sent,           setSent]           = useState(false);
+  const [formUrl,      setFormUrl]      = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenError,   setTokenError]   = useState<string | null>(null);
+  const [copied,       setCopied]       = useState(false);
 
   const firstLine = case_?.goods_lines?.[0];
 
-  // Fetch reference value when lookup path is selected
   useEffect(() => {
     if (path !== "lookup" || !firstLine?.cn_code) return;
     setLookupLoading(true);
@@ -153,48 +122,28 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, firstLine?.cn_code]);
 
-  // Fetch backend-generated letter when supplier path is selected
-  useEffect(() => {
-    if (path !== "supplier" || !firstLine?.id) return;
-    setLetterLoading(true);
-    ledgerFetch<LetterResult>(
-      `/api-proxy/ledger/api/cbam/goods-lines/${firstLine.id}/generate-supplier-request?format=email`,
-      {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ jurisdiction: "UK" }),
-      }
-    )
-      .then((d) => {
-        setLetterSubject(d.email_subject);
-        setLetterBody(d.email_text);
-        if (d.translation_recommended && d.translation_language_hint) {
-          setTranslationHint(d.translation_language_hint);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLetterLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, firstLine?.id]);
-
-  function handleSend() {
-    if (!supplierEmail.trim() || !supplierEmail.includes("@")) {
-      setEmailError("Enter a valid supplier email address.");
-      return;
+  async function handleGenerateLink() {
+    if (!firstLine?.id) return;
+    setTokenLoading(true);
+    setTokenError(null);
+    try {
+      const data = await ledgerFetch<{ form_url: string }>(
+        `/api/cbam/goods-lines/${firstLine.id}/supplier-token`,
+        { method: "POST" },
+      );
+      setFormUrl(data.form_url);
+    } catch (e) {
+      setTokenError((e as Error).message ?? "Failed to generate link.");
+    } finally {
+      setTokenLoading(false);
     }
-    setEmailError("");
-    const mailto =
-      `mailto:${encodeURIComponent(supplierEmail)}` +
-      `?subject=${encodeURIComponent(letterSubject)}` +
-      `&body=${encodeURIComponent(letterBody)}`;
-    window.location.href = mailto;
-    setSent(true);
   }
 
-  async function handleCopy() {
-    try { await navigator.clipboard.writeText(`Subject: ${letterSubject}\n\n${letterBody}`); }
-    catch { /* blocked — fail silently */ }
-    setSent(true);
+  async function handleCopyLink() {
+    if (!formUrl) return;
+    try { await navigator.clipboard.writeText(formUrl); } catch { /* blocked */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   const sectionStyle: React.CSSProperties = {
@@ -211,32 +160,29 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
     );
   }
 
-  // Lookup path — reference value from Annex VI
   const see     = lookupResult?.default_see_tco2e_per_t;
-  const estLiab = see != null ? see * UK_ETS_RATE * 1.2 : null; // 2027: +20% default mark-up
+  const estLiab = see != null ? see * UK_ETS_RATE * 1.2 : null;
 
   return (
     <div style={sectionStyle}>
 
-      {/* Path selector */}
       <div style={{ display: "flex", gap: "var(--space-16)", marginBottom: path ? "var(--space-24)" : 0 }}>
         <PathCard
           selected={path === "lookup"}
           onClick={() => setPath(path === "lookup" ? null : "lookup")}
           title="Known installation database"
           body="Check Annex VI reference values for this CN code. Shows the default that applies if supplier data is unavailable."
-          currentState="Now: Annex VI regulatory defaults. Coming: per-installation EPD data from WorldSteel, European Aluminium, and national EPD programmes."
+          currentState="Annex VI regulatory defaults. Per-installation EPD data coming later."
         />
         <PathCard
           selected={path === "supplier"}
           onClick={() => setPath(path === "supplier" ? null : "supplier")}
-          title="Tokenized supplier form"
-          body="Send a structured data request. If they file EU CBAM reports, this data already exists at their installation."
-          currentState="Now: backend-generated email template with regulation references. Coming: no-login web form — supplier fills in directly, data lands in your case."
+          title="Supplier form"
+          body="Generate a secure one-time link. Your supplier opens it, fills in their emissions data, and it lands directly in this case — no login required."
+          currentState="Supplier submits SEE, production route, and facility name. Data writes to the case as Tier 1 actual."
         />
       </div>
 
-      {/* Lookup content */}
       {path === "lookup" && (
         <div style={{ marginTop: "var(--space-8)" }}>
           {lookupLoading ? (
@@ -281,86 +227,72 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
         </div>
       )}
 
-      {/* Supplier request content */}
       {path === "supplier" && (
         <div style={{ marginTop: "var(--space-8)" }}>
-          {letterLoading ? (
-            <Skeleton height={13} width={280} />
+          {!formUrl ? (
+            <>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-16)", lineHeight: 1.6 }}>
+                The link expires in 30 days and can only be used once. Share it with
+                whoever handles CBAM or emissions reporting at the installation.
+              </p>
+              {tokenError && (
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginBottom: "var(--space-16)" }}>
+                  {tokenError}
+                </p>
+              )}
+              <Button variant="primary" loading={tokenLoading} onClick={handleGenerateLink}>
+                Generate secure link
+              </Button>
+            </>
           ) : (
             <>
-              {translationHint && (
-                <p style={{
+              <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "var(--space-8)" }}>
+                Supplier link — share this with your supplier
+              </p>
+              <div style={{
+                display:         "flex",
+                alignItems:      "center",
+                gap:             "var(--space-16)",
+                padding:         "0 var(--space-16)",
+                height:          "40px",
+                backgroundColor: "var(--color-surface)",
+                border:          "var(--border-width) solid var(--color-border)",
+                borderRadius:    "6px",
+                marginBottom:    "var(--space-16)",
+              }}>
+                <span style={{
+                  flex:         1,
                   fontSize:     "var(--text-sm)",
                   fontWeight:   300,
                   color:        "var(--color-text-secondary)",
-                  marginBottom: "var(--space-16)",
-                  lineHeight:   1.6,
+                  overflow:     "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace:   "nowrap",
+                  fontFamily:   "ui-monospace, 'SF Mono', Menlo, monospace",
                 }}>
-                  Consider sending this in {translationHint} — your supplier may find it easier to respond in their language.
-                </p>
-              )}
-
-              {/* Supplier email */}
-              <div style={{ marginBottom: "var(--space-16)" }}>
-                <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
-                  Supplier email
-                </p>
-                <input
-                  type="email"
-                  value={supplierEmail}
-                  onChange={(e) => { setSupplierEmail(e.target.value); setEmailError(""); }}
-                  placeholder="supplier@example.com"
-                  style={{ ...inputBase, fontSize: "max(16px, var(--text-base))" }}
-                />
-                {emailError && (
-                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginTop: "var(--space-8)" }}>
-                    {emailError}
-                  </p>
-                )}
+                  {formUrl}
+                </span>
+                <button
+                  onClick={handleCopyLink}
+                  style={{
+                    background:  "none",
+                    border:      "none",
+                    padding:     0,
+                    cursor:      "pointer",
+                    fontSize:    "var(--text-sm)",
+                    fontWeight:  300,
+                    fontFamily:  "inherit",
+                    color:       copied ? "var(--color-green)" : "var(--color-navy)",
+                    whiteSpace:  "nowrap",
+                    flexShrink:  0,
+                  }}
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
               </div>
-
-              {/* Subject */}
-              <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "var(--space-8)" }}>
-                Subject: <span style={{ color: "var(--color-text-secondary)" }}>{letterSubject}</span>
+              <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-tertiary)", lineHeight: 1.5 }}>
+                When your supplier submits, the data will appear in the case automatically.
               </p>
-
-              {/* Letter body — editable */}
-              <textarea
-                value={letterBody}
-                onChange={(e) => setLetterBody(e.target.value)}
-                rows={18}
-                style={{
-                  width:           "100%",
-                  padding:         "var(--space-24)",
-                  fontSize:        "var(--text-sm)",
-                  fontWeight:      300,
-                  fontFamily:      "inherit",
-                  lineHeight:      1.7,
-                  color:           "var(--color-text-primary)",
-                  backgroundColor: "var(--color-surface)",
-                  border:          "var(--border-width) solid var(--color-border)",
-                  borderRadius:    "8px",
-                  outline:         "none",
-                  resize:          "vertical",
-                  boxSizing:       "border-box",
-                  marginBottom:    "var(--space-16)",
-                }}
-              />
-
-              {sent ? (
-                <p style={{ fontSize: "var(--text-sm)", fontWeight: 300, color: "var(--color-green)" }}>
-                  Request sent.
-                </p>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-24)" }}>
-                  <Button variant="primary" onClick={handleSend}>
-                    Send email
-                  </Button>
-                  <Button variant="secondary" onClick={handleCopy}>
-                    Copy
-                  </Button>
-                </div>
-              )}
             </>
           )}
         </div>

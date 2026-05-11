@@ -95,17 +95,23 @@ def _register_platform(app: FastAPI) -> None:
     from app.api.public_tools import router as public_tools_router
     from app.api.registration import router as registration_router
     from app.api.supplier_outreach import router as supplier_outreach_router
+    from app.api.supplier_token import (
+        protected_router as supplier_token_protected_router,
+        public_router as supplier_token_public_router,
+    )
     from app.api.verification import router as verification_router
 
     _auth = [Depends(get_auth_context)]
 
     # Public — no auth
     app.include_router(public_tools_router, prefix="/api")
+    app.include_router(supplier_token_public_router, prefix="/api")
 
     # Auth-gated platform endpoints
     app.include_router(cpr_router, prefix="/api", dependencies=_auth)
     app.include_router(registration_router, prefix="/api", dependencies=_auth)
-    app.include_router(supplier_outreach_router, prefix="/api", dependencies=_auth)
+    app.include_router(supplier_outreach_router,        prefix="/api", dependencies=_auth)
+    app.include_router(supplier_token_protected_router, prefix="/api", dependencies=_auth)
     app.include_router(verification_router, prefix="/api", dependencies=_auth)
     app.include_router(cbam_compliance_router, prefix="/api", dependencies=_auth)
     app.include_router(narrative_pipeline_router, prefix="/api", dependencies=_auth)

@@ -13,6 +13,7 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith("/login"))         return NextResponse.next();
   if (pathname.startsWith("/signup"))        return NextResponse.next();
   if (pathname.startsWith("/design-system")) return NextResponse.next();
+  if (pathname.startsWith("/supplier/"))     return NextResponse.next();
 
   // Protected routes — redirect to login if no token
   if (!token) {
