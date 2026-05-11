@@ -346,8 +346,7 @@ function CaseRow({ c, isLast }: CaseRowProps) {
 export default function HomePage() {
   const { user, isLoading } = useAuth();
 
-  // Hold render until auth state is resolved — prevents unauthenticated flash
-  if (isLoading) return null;
+  if (isLoading) return <div style={{ minHeight: "100vh", backgroundColor: "var(--color-bg)" }} />;
   if (!user)     return <PublicScopeChecker />;
   return <Dashboard />;
 }

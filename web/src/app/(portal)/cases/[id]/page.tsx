@@ -180,37 +180,29 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* ══ PROCESSING NOTICE ══ */}
-        {isProcessing && (
-          <div style={{ padding: "var(--space-16) var(--space-24)", marginBottom: "var(--space-40)", backgroundColor: "var(--color-surface)", border: "var(--border-width) solid var(--color-border)", borderLeft: "3px solid var(--color-navy)", borderRadius: "0 var(--btn-radius) var(--btn-radius) 0" }}>
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", margin: 0 }}>
-              Document is being processed. Fields will populate shortly.
-            </p>
-          </div>
-        )}
 
         {/* ══ FINANCIAL SUMMARY ══ */}
         <div style={{ paddingBottom: "var(--space-40)", borderBottom: "var(--border-width) solid var(--color-border)", marginBottom: "var(--space-40)" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--space-32)" }}>
             <div>
               <SectionLabel>CBAM charge</SectionLabel>
-              <p style={{ marginTop: "var(--space-8)", fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: "var(--color-navy)", fontVariantNumeric: "tabular-nums" }}>
-                {formatCurrency(cbamCharge)}
+              <p style={{ marginTop: "var(--space-8)", fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: isProcessing ? "var(--color-text-tertiary)" : "var(--color-navy)", fontVariantNumeric: "tabular-nums" }}>
+                {isProcessing ? "—" : formatCurrency(cbamCharge)}
               </p>
-              {goods_lines.some(gl => gl.direct_kgco2e == null) && (
+              {!isProcessing && goods_lines.some(gl => gl.direct_kgco2e == null) && (
                 <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginTop: "4px" }}>Annex VI default</p>
               )}
             </div>
             <div>
               <SectionLabel>Carbon price relief</SectionLabel>
               <p style={{ marginTop: "var(--space-8)", fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: "var(--color-text-tertiary)", fontVariantNumeric: "tabular-nums" }}>
-                £0.00
+                {isProcessing ? "—" : "£0.00"}
               </p>
             </div>
             <div>
               <SectionLabel>Net liability</SectionLabel>
-              <p style={{ marginTop: "var(--space-8)", fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: "var(--color-navy)", fontVariantNumeric: "tabular-nums" }}>
-                {formatCurrency(netLiability)}
+              <p style={{ marginTop: "var(--space-8)", fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: isProcessing ? "var(--color-text-tertiary)" : "var(--color-navy)", fontVariantNumeric: "tabular-nums" }}>
+                {isProcessing ? "—" : formatCurrency(netLiability)}
               </p>
             </div>
           </div>
@@ -262,7 +254,11 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
 
             <Divider />
 
-            {!isProcessing && (
+            {isProcessing ? (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", paddingBottom: "var(--space-40)" }}>
+                Extracting fields from your document — this page will update automatically when complete.
+              </p>
+            ) : (
               <DocumentFieldsForm case_={case_} actorName={actorName} onSaved={handleSaved} />
             )}
 

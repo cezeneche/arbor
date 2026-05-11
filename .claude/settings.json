@@ -46,11 +46,32 @@
       "Bash(python3 -c \"import sys,json; data=sys.stdin.read\\(\\); lines=data.split\\('\\\\n'\\); print\\(lines[-1]\\); body='\\\\n'.join\\(lines[:-1]\\); d=json.loads\\(body\\); print\\('warnings:', d.get\\('warnings',[]\\)\\); print\\('case_id:', d.get\\('created',{}\\).get\\('case_id'\\)\\)\")",
       "Bash(pkill -f \"uvicorn main:app\")",
       "Read(//opt/homebrew/Cellar/python@3.11/3.11.14_3/Frameworks/Python.framework/Versions/3.11/bin/**)",
-      "Bash(\"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform/.venv/bin/python\" --version)"
+      "Bash(\"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform/.venv/bin/python\" --version)",
+      "Bash(python3 -)",
+      "Bash(psql postgresql://postgres.lqpclgkwdqixbulckbpf:caqruw-bimgoZ-9vysvy@aws-1-eu-west-1.pooler.supabase.com:6543/postgres -c ' *)",
+      "Bash(psql \"postgresql://postgres.lqpclgkwdqixbulckbpf:caqruw-bimgoZ-9vysvy@aws-1-eu-west-1.pooler.supabase.com:6543/postgres\" -c \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'cbam' ORDER BY table_name;\")",
+      "Bash(python3 -c \"import os; os.environ['WEB_BASE_URL']='http://localhost:3000'; base = os.getenv\\('WEB_BASE_URL',''\\).rstrip\\('/'\\); print\\(f'{base}/supplier/abc123token'\\)\")",
+      "Bash(cat next.config.ts)",
+      "Bash(cat next.config.js)",
+      "Bash(cat next.config.mjs)",
+      "Bash(npx next *)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/login)",
+      "Bash(.venv/bin/python -m uvicorn main:app --reload --app-dir api --port 8000)",
+      "Bash(curl -s http://localhost:8000/api/public/supplier-form/test-token-that-does-not-exist)",
+      "Bash(.venv/bin/python -c ' *)",
+      "Bash(curl -s http://localhost:8000/api/public/supplier-form/nonexistent-token-xyz)",
+      "Bash(curl -s \"http://localhost:8000/api/public/supplier-form/YFg5PKTFch9KK4Dvx0mmSLkHzUqGsBAPVDdUpULsB94\")",
+      "Bash(open \"http://localhost:3000/supplier/YFg5PKTFch9KK4Dvx0mmSLkHzUqGsBAPVDdUpULsB94\")",
+      "Bash(xargs cat *)",
+      "Bash(git -C \"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform\" status)",
+      "Bash(git -C \"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform\" diff api/ledger_app/api/cbam/drafts.py web/src/app/\\\\\\(portal\\\\\\)/upload/page.tsx)",
+      "Bash(git -C \"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform\" log --oneline -5)"
     ],
     "additionalDirectories": [
       "/Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/(portal)/supplier-request",
-      "/Users/chisom/.claude"
+      "/Users/chisom/.claude",
+      "/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform/web/src/app/supplier"
     ]
   }
 }
