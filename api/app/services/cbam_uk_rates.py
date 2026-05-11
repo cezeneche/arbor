@@ -14,7 +14,7 @@ IMPORTANT: rates are populated as HMRC publishes them.  Rows marked with
 with HMRC-published figures before use in a real HMRC return.
 
 Sectors (CN8 prefixes map to these sector codes):
-  steel           7206, 7207, 7208–7229, 7301, 7302, 7304–7306
+  iron_steel      7206, 7207, 7208–7229, 7301, 7302, 7304–7306
   aluminium       7601, 7602, 7603, 7604, 7605, 7606, 7607, 7608, 7609
   cement          2523, 6810, 6811
   fertilisers     2808, 2814, 2834, 3102, 3105
@@ -25,6 +25,7 @@ Public API
 get_uk_cbam_rate(sector, year, quarter) → Decimal | None
     Return the HMRC-published CBAM rate (£/tCO₂e) for the given period,
     or None if no rate has been entered yet.
+    sector must match the canonical DB name: "iron_steel", "aluminium", etc.
 
 get_uk_cbam_rate_or_raise(sector, year, quarter) → Decimal
     Raises UKCBAMRateMissing if no rate is found.
@@ -81,7 +82,7 @@ class UKCBAMRateEntry:
 # Maps sector code → list of CN4 / CN6 prefixes (first N digits of CN8)
 # Source: UK CBAM (Finance No.2 Bill 2025-26) Schedule 1
 UK_CBAM_SECTORS: dict[str, list[str]] = {
-    "steel": [
+    "iron_steel": [
         "7206", "7207",
         "7208", "7209", "7210", "7211", "7212", "7213", "7214", "7215", "7216",
         "7217", "7218", "7219", "7220", "7221", "7222", "7223", "7224", "7225",
@@ -119,13 +120,13 @@ def get_sector_for_cn8(cn8_code: str) -> str | None:
 #
 # Engineering estimate basis (placeholder rates):
 #   Assumed UK ETS price ≈ £45/tCO₂e (2027 annual average estimate)
-#   Free allocation factor: steel ≈ 0.85, aluminium ≈ 0.80, cement ≈ 0.75,
+#   Free allocation factor: iron_steel ≈ 0.85, aluminium ≈ 0.80, cement ≈ 0.75,
 #                           fertilisers ≈ 0.70, hydrogen ≈ 0.65
 #   cbam_rate = uk_ets_price × (1 - free_alloc)
 
 _RATES: list[UKCBAMRateEntry] = [
     # 2027 Annual return (Finance No.2 Bill 2025-26 transitional first year)
-    UKCBAMRateEntry("steel",       2027, None, Decimal("6.75"),  "placeholder",
+    UKCBAMRateEntry("iron_steel",  2027, None, Decimal("6.75"),  "placeholder",
                     "Estimate: £45 × (1−0.85); replace with HMRC Q4-2027 notice"),
     UKCBAMRateEntry("aluminium",   2027, None, Decimal("9.00"),  "placeholder",
                     "Estimate: £45 × (1−0.80); replace with HMRC Q4-2027 notice"),

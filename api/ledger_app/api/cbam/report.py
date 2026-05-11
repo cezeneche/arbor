@@ -7,12 +7,31 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from . import _shared
 from ledger_app.db.rls import set_tenant_context
 
 router = APIRouter()
+
+
+class HMRCReturnRequest(BaseModel):
+    importer_vat_number: str = Field(..., description="UK VAT registration number (e.g. 'GB123456789').")
+    importer_address: dict[str, str] = Field(
+        ..., description="Importer postal address — line1, city, postcode at minimum."
+    )
+    accuracy_declaration: bool = Field(
+        True, description="Must be True — certifies the return is accurate."
+    )
+    cbam_rate_override: Decimal | None = Field(
+        None,
+        description=(
+            "Override the HMRC CBAM rate (£/tCO₂e). When omitted the rate is "
+            "derived from the case's primary sector and reporting period via the "
+            "UK CBAM rate table."
+        ),
+    )
 
 
 @router.get("/cases/{case_id}/summary")
@@ -439,3 +458,151 @@ def get_regulatory_tables():
             "version": APP_VERSION,
         },
     }
+
+
+@router.post("/cases/{case_id}/hmrc-return")
+def build_case_hmrc_return(
+    request: Request,
+    case_id: UUID,
+    payload: HMRCReturnRequest,
+    export_format: Literal["json", "pdf"] = Query(
+        default="json",
+        alias="format",
+        description="json returns the structured return document; pdf triggers a file download.",
+    ),
+):
+    """Build the UK HMRC CBAM tax return for a case.
+
+    Fetches the report package, loads all confirmed CPR claims, derives the
+    applicable CBAM rate, and assembles the HMRCReturnDocument.
+
+    CPR claims persisted via POST /api/cbam/cpr/claims are automatically
+    summed per consignment and applied as Carbon Price Relief — reducing the
+    net CBAM liability in the return.
+
+    Requires: accuracy_declaration = True (certifies the return is accurate).
+    """
+    from app.services.cbam_uk_rates import get_uk_cbam_rate  # noqa: PLC0415
+    from app.services.cpr_calculator import get_cpr_by_consignment_db  # noqa: PLC0415
+    from app.services.hmrc_return_builder import (  # noqa: PLC0415
+        HMRCReturnInput,
+        HMRCReturnValidationError,
+        build_hmrc_return,
+        return_to_json,
+        return_to_pdf,
+    )
+
+    if not payload.accuracy_declaration:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="accuracy_declaration must be True — the importer must certify the return.",
+        )
+
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
+
+    with _shared.engine.begin() as conn:
+        set_tenant_context(conn, tenant_id)
+        columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(columns, tenant_id)
+        tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
+
+        case_rows = conn.execute(
+            text(
+                f"""
+                SELECT *
+                FROM cbam.cbam_cases
+                WHERE id = :id {tenant_filter}
+                LIMIT 1
+                """
+            ),
+            {"id": str(case_id), "tenant_id": tenant_id},
+        ).mappings().all()
+
+        if not case_rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+        case_row = dict(case_rows[0])
+
+        # ── CPR: sum claims per consignment ───────────────────────────────────
+        cpr_by_consignment = get_cpr_by_consignment_db(conn, str(case_id), tenant_id)
+
+        # ── Build report package ──────────────────────────────────────────────
+        shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
+
+    # ── Derive CBAM rate ──────────────────────────────────────────────────────
+    # Use the override when provided; otherwise resolve from the primary sector.
+    if payload.cbam_rate_override is not None:
+        cbam_rate = payload.cbam_rate_override
+    else:
+        year    = int(case_row.get("reporting_year") or 0)
+        quarter = int(case_row.get("reporting_quarter") or 1) if year > 2027 else None
+
+        # Derive primary sector from the first goods line across shipments
+        primary_sector: str | None = None
+        for ship_item in shipments_payload:
+            for gl_item in ship_item.get("goods_lines") or []:
+                gl = gl_item.get("goods_line") or {}
+                if gl.get("sector"):
+                    primary_sector = str(gl["sector"])
+                    break
+            if primary_sector:
+                break
+
+        cbam_rate = get_uk_cbam_rate(primary_sector or "iron_steel", year, quarter)
+        if cbam_rate is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"No UK CBAM rate found for sector={primary_sector!r} "
+                    f"year={year} quarter={quarter}. "
+                    "Supply cbam_rate_override in the request body."
+                ),
+            )
+
+    report_package = {
+        "type": "cbam_report_package_v1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "case": case_row,
+        "shipments": shipments_payload,
+    }
+
+    return_input = HMRCReturnInput(
+        importer_vat_number     = payload.importer_vat_number,
+        importer_address        = payload.importer_address,
+        cbam_rate_gbp_per_tco2e = cbam_rate,
+        accuracy_declaration    = True,
+        cpr_by_consignment      = cpr_by_consignment,
+    )
+
+    try:
+        return_doc = build_hmrc_return(report_package, return_input)
+    except HMRCReturnValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "HMRC return validation failed", "failures": exc.failures},
+        ) from exc
+
+    safe_id = str(case_id).replace("/", "_")
+
+    if export_format == "pdf":
+        return Response(
+            content=return_to_pdf(return_doc),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="hmrc-cbam-return-{safe_id}.pdf"'},
+        )
+
+    import json as _json  # noqa: PLC0415
+    from dataclasses import asdict  # noqa: PLC0415
+
+    def _serial(obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        from datetime import date, datetime as dt
+        if isinstance(obj, (date, dt)):
+            return obj.isoformat()
+        raise TypeError(type(obj).__name__)
+
+    return Response(
+        content=return_to_json(return_doc).encode("utf-8"),
+        media_type="application/json",
+    )
