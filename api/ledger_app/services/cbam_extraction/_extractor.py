@@ -245,15 +245,15 @@ class ClaudeCBAMExtractor:
     def _call_claude(self, document_text: str) -> str:
         import anthropic  # lazy import; fails gracefully if not installed
 
-        client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
+        client = anthropic.Anthropic(timeout=25.0)
         message = client.messages.create(
             model=self.model,
-            max_tokens=2048,
+            max_tokens=800,
             messages=[
                 {
                     "role": "user",
                     "content": self._PROMPT.replace(
-                        "{document_text}", document_text[:8000]
+                        "{document_text}", document_text[:4000]
                     ),
                 }
             ],

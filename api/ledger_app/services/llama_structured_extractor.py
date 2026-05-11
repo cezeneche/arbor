@@ -63,15 +63,15 @@ def extract_structured_invoice(full_text: str) -> InvoiceSchema:
         "- cn_code must be 6–8 digits if present, otherwise null.\n"
         "- invoice_date must be in YYYY-MM-DD format if present, otherwise null.\n"
         "- origin_country must be a 2-letter ISO code if present, otherwise null.\n"
-        "\nText:\n" + full_text[:8000]
+        "\nText:\n" + full_text[:4000]
     )
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, timeout=25.0)
         model = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
         response = client.messages.create(
             model=model,
-            max_tokens=1024,
+            max_tokens=800,
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
         )

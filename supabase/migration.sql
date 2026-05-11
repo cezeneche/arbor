@@ -498,6 +498,45 @@ CREATE POLICY qr_tenant_insert ON cbam.quarterly_reconciliation
   FOR INSERT WITH CHECK (tenant_id = public.current_tenant_id() OR public.current_tenant_id() IS NULL);
 
 -- =============================================================================
+-- 015: tokenised supplier emissions form
+-- Regulatory basis:
+--   Finance (No.2) Bill 2025-26, s.7(3) — importer must obtain SEE data from
+--   the installation operator where Tier 1 actual data is available.
+--   EU 2023/1773, Art. 4(1)(a) — Tier 1 actual specific embedded emissions.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS cbam.cbam_supplier_tokens (
+    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    token          VARCHAR(64) UNIQUE NOT NULL,
+    tenant_id      TEXT        NOT NULL,
+    case_id        UUID        NOT NULL,
+    goods_line_id  UUID        NOT NULL,
+    created_by     TEXT        NOT NULL,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at     TIMESTAMPTZ NOT NULL,
+    used_at        TIMESTAMPTZ,
+    recipient_email TEXT,
+    email_sent_at  TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_cbam_supplier_tokens_token
+    ON cbam.cbam_supplier_tokens (token);
+
+CREATE INDEX IF NOT EXISTS idx_cbam_supplier_tokens_goods_line
+    ON cbam.cbam_supplier_tokens (goods_line_id);
+
+ALTER TABLE cbam.cbam_supplier_tokens ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY supplier_tokens_tenant_select ON cbam.cbam_supplier_tokens
+  FOR SELECT USING (tenant_id = public.current_tenant_id() OR public.current_tenant_id() IS NULL);
+
+CREATE POLICY supplier_tokens_tenant_insert ON cbam.cbam_supplier_tokens
+  FOR INSERT WITH CHECK (tenant_id = public.current_tenant_id() OR public.current_tenant_id() IS NULL);
+
+CREATE POLICY supplier_tokens_tenant_update ON cbam.cbam_supplier_tokens
+  FOR UPDATE USING (tenant_id = public.current_tenant_id() OR public.current_tenant_id() IS NULL);
+
+-- =============================================================================
 -- GRANT USAGE on cbam schema to Supabase roles
 -- anon  → used for unauthenticated public routes (none in this app, but required)
 -- authenticated → used for JWT-authenticated requests

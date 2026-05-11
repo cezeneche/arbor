@@ -1,209 +1,13 @@
 from __future__ import annotations
 
-import concurrent.futures
-import os
-import re
 import tempfile
 from pathlib import Path
 from typing import Any
 
-_LLAMA_TIMEOUT_SECONDS = int(os.getenv("LLAMA_TIMEOUT_SECONDS", "90"))
-
 from fastapi import HTTPException
 
-from ledger_app.schemas.evidence import EvidenceAtom
 from ledger_app.services.cbam_extractor import extract as extract_cbam_document
 from ledger_app.services.document_text_extractor import extract_document_from_upload
-from ledger_app.services.llama_orchestrator import LlamaOrchestrator
-
-
-def _layout_zone_text(layout: dict[str, Any] | None, zone: str) -> str:
-    if not isinstance(layout, dict):
-        return ""
-
-    direct = layout.get(zone)
-    if isinstance(direct, str):
-        return direct.strip()
-
-    blocks = layout.get("blocks")
-    if isinstance(blocks, list):
-        return "\n".join(
-            str(block.get("text", "")).strip()
-            for block in blocks
-            if isinstance(block, dict) and str(block.get("type", "")).strip().lower() == zone
-        ).strip()
-
-    return ""
-
-
-def _header_invoice_number(header_text: str) -> str | None:
-    if not header_text:
-        return None
-    match = re.search(
-        r"invoice\s*(?:number|no\.?|#)\s*[:\-]\s*([A-Za-z0-9\-_/]+)",
-        header_text,
-        flags=re.IGNORECASE,
-    )
-    return match.group(1) if match else None
-
-
-def _header_invoice_date(header_text: str) -> str | None:
-    if not header_text:
-        return None
-    match = re.search(r"\b\d{4}-\d{2}-\d{2}\b", header_text)
-    return match.group(0) if match else None
-
-
-def _rule_value(candidate: dict[str, Any], key: str) -> Any:
-    invoice = candidate.get("invoice")
-    if isinstance(invoice, dict):
-        return invoice.get(key)
-    return None
-
-
-def _line_items_empty(candidate: dict[str, Any]) -> bool:
-    lines = candidate.get("lines")
-    return not (isinstance(lines, list) and len(lines) > 0)
-
-
-def _line_items_incomplete(candidate: dict[str, Any]) -> bool:
-    lines = candidate.get("lines")
-    if not isinstance(lines, list):
-        return False
-    for line in lines:
-        if not isinstance(line, dict):
-            continue
-        if not line.get("cn_code"):
-            return True
-        if line.get("quantity") is None and line.get("net_mass_kg") is None:
-            return True
-    return False
-
-
-def _conflicts_likely(rule_candidate: dict[str, Any], layout: dict[str, Any] | None) -> bool:
-    header_text = _layout_zone_text(layout, "header")
-    if not header_text:
-        return False
-
-    header_invoice = _header_invoice_number(header_text)
-    header_date = _header_invoice_date(header_text)
-    rule_invoice = _rule_value(rule_candidate, "invoice_number")
-    rule_date = _rule_value(rule_candidate, "invoice_date")
-
-    if header_invoice and rule_invoice and str(header_invoice).strip() != str(rule_invoice).strip():
-        return True
-    if header_date and rule_date and str(header_date).strip() != str(rule_date).strip():
-        return True
-    return False
-
-
-def _should_run_llama(rule_candidate: dict[str, Any], layout: dict[str, Any] | None) -> tuple[bool, list[str]]:
-    reasons: list[str] = []
-
-    if not _rule_value(rule_candidate, "invoice_number"):
-        reasons.append("missing_invoice_number")
-    if not _rule_value(rule_candidate, "invoice_date"):
-        reasons.append("missing_invoice_date")
-    if _line_items_empty(rule_candidate):
-        reasons.append("line_items_empty")
-    if _line_items_incomplete(rule_candidate):
-        reasons.append("line_items_incomplete")
-    if _conflicts_likely(rule_candidate, layout):
-        reasons.append("conflicts_likely")
-
-    return len(reasons) > 0, reasons
-
-
-def _llama_candidate_from_structured(
-    rule_candidate: dict[str, Any],
-    llama_output: Any,
-    raw_text: str,
-    layout_payload: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    if llama_output is None:
-        return None
-
-    if hasattr(llama_output, "model_dump"):
-        llama_data = llama_output.model_dump()
-    elif isinstance(llama_output, dict):
-        llama_data = llama_output
-    else:
-        return None
-
-    if not isinstance(llama_data, dict):
-        return None
-
-    normalized_lines: list[dict[str, Any]] = []
-    line_items = llama_data.get("line_items")
-    if isinstance(line_items, list):
-        for item in line_items:
-            if not isinstance(item, dict):
-                continue
-            quantity = item.get("quantity")
-            normalized_lines.append(
-                {
-                    "cn_code": item.get("cn_code"),
-                    "description": item.get("description"),
-                    "quantity": quantity,
-                    "quantity_unit": "kg" if quantity is not None else None,
-                    "net_mass_kg": quantity,
-                }
-            )
-
-    has_signal = any(
-        llama_data.get(field)
-        for field in ("importer_name", "invoice_number", "invoice_date", "origin_country")
-    ) or bool(normalized_lines)
-    if not has_signal:
-        return None
-
-    base_importer = rule_candidate.get("importer")
-    base_invoice = rule_candidate.get("invoice")
-    base_importer_eori = base_importer.get("eori") if isinstance(base_importer, dict) else None
-    base_incoterm = base_invoice.get("incoterm") if isinstance(base_invoice, dict) else None
-    base_entry_reference = base_invoice.get("entry_reference") if isinstance(base_invoice, dict) else None
-    evidence: list[dict[str, Any]] = []
-
-    def _append_llm_evidence(field: str, value: Any) -> None:
-        if value in (None, ""):
-            return
-        evidence.append(
-            EvidenceAtom(
-                field=field,
-                value=value,
-                source="llm",
-                confidence=0.35,
-                snippet=None,
-            ).model_dump(mode="json")
-        )
-
-    _append_llm_evidence("invoice.invoice_number", llama_data.get("invoice_number"))
-    _append_llm_evidence("invoice.invoice_date", llama_data.get("invoice_date"))
-    _append_llm_evidence("invoice.origin_country", llama_data.get("origin_country"))
-    for idx, line in enumerate(normalized_lines):
-        _append_llm_evidence(f"lines[{idx}].cn_code", line.get("cn_code"))
-        _append_llm_evidence(f"lines[{idx}].net_mass_kg", line.get("net_mass_kg"))
-
-    return {
-        "source": "llama",
-        "importer": {
-            "name": llama_data.get("importer_name"),
-            "eori": base_importer_eori,
-        },
-        "invoice": {
-            "invoice_number": llama_data.get("invoice_number"),
-            "invoice_date": llama_data.get("invoice_date"),
-            "origin_country": llama_data.get("origin_country"),
-            "incoterm": base_incoterm,
-            "entry_reference": base_entry_reference,
-        },
-        "lines": normalized_lines,
-        "emissions": rule_candidate.get("emissions"),
-        "structured": rule_candidate.get("structured"),
-        "layout": layout_payload,
-        "full_text": raw_text,
-        "evidence": evidence,
-    }
 
 
 def run_document_ingest_plan(filename: str, content_type: str | None, data: bytes) -> dict[str, Any]:
@@ -247,66 +51,18 @@ def run_document_ingest_plan(filename: str, content_type: str | None, data: byte
         if not isinstance(rule_candidate.get("evidence"), list):
             rule_candidate["evidence"] = []
 
-        candidates: list[dict[str, Any]] = [rule_candidate]
-        should_run, route_reasons = _should_run_llama(rule_candidate, layout_payload)
-        routing_trace: dict[str, Any] = {
-            "llama_should_run": should_run,
-            "llama_route_reasons": route_reasons,
-            "llama_invoked": False,
-            "llama_skipped_reason": None,
-            "llama_nodes_count": 0,
-        }
-
-        if should_run:
-            if not os.getenv("OPENAI_API_KEY"):
-                routing_trace["llama_skipped_reason"] = "missing_openai_api_key"
-            else:
-                _orchestrator = LlamaOrchestrator()
-                _pages_arg = pages_payload if isinstance(pages_payload, list) else None
-                _meta = {"filename": filename, "content_type": content_type}
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
-                    _future = _ex.submit(
-                        _orchestrator.extract_structured,
-                        raw_text,
-                        metadata=_meta,
-                        pages=_pages_arg,
-                    )
-                    try:
-                        llama_output, llama_nodes = _future.result(timeout=_LLAMA_TIMEOUT_SECONDS)
-                    except concurrent.futures.TimeoutError:
-                        routing_trace["llama_skipped_reason"] = "llm_timeout"
-                        llama_output, llama_nodes = None, []
-                    except Exception as _exc:
-                        routing_trace["llama_skipped_reason"] = f"llm_error:{_exc}"
-                        llama_output, llama_nodes = None, []
-
-                if llama_output is not None:
-                    routing_trace["llama_invoked"] = True
-                    routing_trace["llama_nodes_count"] = len(llama_nodes)
-                    if hasattr(llama_output, "model_dump"):
-                        routing_trace["llama_output"] = llama_output.model_dump()
-                    elif isinstance(llama_output, dict):
-                        routing_trace["llama_output"] = llama_output
-                    else:
-                        routing_trace["llama_output"] = None
-
-                    llama_candidate = _llama_candidate_from_structured(
-                        rule_candidate=rule_candidate,
-                        llama_output=llama_output,
-                        raw_text=raw_text,
-                        layout_payload=layout_payload,
-                    )
-                    if llama_candidate is not None:
-                        candidates.append(llama_candidate)
-        else:
-            routing_trace["llama_skipped_reason"] = "rule_candidate_sufficient"
-
         return {
             "raw_text": raw_text,
             "layout": layout_payload,
             "pages": pages_for_extract,
-            "candidates": candidates,
-            "routing_trace": routing_trace,
+            "candidates": [rule_candidate],
+            "routing_trace": {
+                "llama_should_run": False,
+                "llama_route_reasons": [],
+                "llama_invoked": False,
+                "llama_skipped_reason": "disabled_claude_handles_gap_fill",
+                "llama_nodes_count": 0,
+            },
         }
     finally:
         if tmp_path and tmp_path.exists():

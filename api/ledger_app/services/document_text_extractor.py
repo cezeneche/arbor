@@ -347,7 +347,7 @@ def _extract_pdf_document_hybrid(data: bytes) -> dict[str, object]:
         raise HTTPException(status_code=422, detail="Unable to rasterize PDF for OCR") from exc
 
     pages_ocr: list[dict[str, object]] = []
-    for page_idx, image in enumerate(images, start=1):
+    for page_idx, image in enumerate(images[:1], start=1):  # cap at 1 page — OCR is the slow path
         page_text = _extract_text_with_paddleocr_image(image).strip()
         pages_ocr.append(
             {

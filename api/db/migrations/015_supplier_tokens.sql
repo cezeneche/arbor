@@ -13,13 +13,15 @@
 CREATE TABLE IF NOT EXISTS cbam.cbam_supplier_tokens (
     id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     token          VARCHAR(64) UNIQUE NOT NULL,
-    tenant_id      UUID        NOT NULL,
+    tenant_id      TEXT        NOT NULL,
     case_id        UUID        NOT NULL,
     goods_line_id  UUID        NOT NULL,
     created_by     TEXT        NOT NULL,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at     TIMESTAMPTZ NOT NULL,
-    used_at        TIMESTAMPTZ
+    used_at        TIMESTAMPTZ,
+    recipient_email TEXT,
+    email_sent_at  TIMESTAMPTZ
 );
 
 COMMENT ON TABLE cbam.cbam_supplier_tokens IS
