@@ -25,7 +25,16 @@ import type { CBAMShipment } from "@/lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const UK_ETS_RATE = 52.4;
+// UK CBAM rates (£/tCO₂e) — HMRC placeholder estimates, Finance No.2 Bill 2025-26.
+// Formula: UK ETS price × (1 − free_allocation_factor_for_sector).
+// Mirrors cbam_uk_rates.py so the case detail and home page totals are consistent.
+const UK_CBAM_RATES: Record<string, number> = {
+  iron_steel:  6.75,   // £45 × (1 − 0.85)
+  aluminium:   9.00,   // £45 × (1 − 0.80)
+  cement:     11.25,   // £45 × (1 − 0.75)
+  fertilisers: 13.50,  // £45 × (1 − 0.70)
+  hydrogen:   15.75,   // £45 × (1 − 0.65)
+};
 
 const ROUGH_SEE: Record<string, number> = {
   iron_steel: 1.8, aluminium: 2.0, cement: 0.9,
@@ -387,12 +396,13 @@ function EmissionsTab({ case_, onProvideData }: { case_: CaseDetail; onProvideDa
     );
   }
 
-  const totalDirectKgco2e = goods_lines.reduce((sum, gl) => {
-    const kg  = gl.net_mass_kg ?? gl.quantity ?? 0;
-    if (gl.direct_kgco2e != null) return sum + gl.direct_kgco2e;
-    return sum + (kg / 1000) * (ROUGH_SEE[gl.sector ?? ""] ?? 1.5) * 1000;
+  const cbamCharge = goods_lines.reduce((sum, gl) => {
+    const kg       = gl.net_mass_kg ?? gl.quantity ?? 0;
+    const see      = ROUGH_SEE[gl.sector ?? ""] ?? 1.5;
+    const directKg = gl.direct_kgco2e ?? (kg > 0 ? (kg / 1000) * see * 1000 : 0);
+    const rate     = UK_CBAM_RATES[gl.sector ?? ""] ?? UK_CBAM_RATES["iron_steel"];
+    return sum + (directKg / 1000) * rate;
   }, 0);
-  const cbamCharge   = (totalDirectKgco2e / 1000) * UK_ETS_RATE;
   const isAnyDefault = goods_lines.some(gl => !gl.method || gl.method === "default");
 
   return (
@@ -403,7 +413,8 @@ function EmissionsTab({ case_, onProvideData }: { case_: CaseDetail; onProvideDa
         const see      = ROUGH_SEE[gl.sector ?? ""] ?? 1.5;
         const directKg = gl.direct_kgco2e ?? (kg > 0 ? (kg / 1000) * see * 1000 : 0);
         const directT  = directKg / 1000;
-        const charge   = directT * UK_ETS_RATE;
+        const rate     = UK_CBAM_RATES[gl.sector ?? ""] ?? UK_CBAM_RATES["iron_steel"];
+        const charge   = directT * rate;
         const method   = gl.method ?? "default";
         const isLast   = i === goods_lines.length - 1;
 
@@ -460,12 +471,12 @@ function EmissionsTab({ case_, onProvideData }: { case_: CaseDetail; onProvideDa
             <div style={{ backgroundColor: "var(--color-bg)", border: "var(--border-width) solid var(--color-border)", borderRadius: "6px", padding: "var(--space-16)", marginBottom: "var(--space-16)" }}>
               <p style={{ fontSize: "11px", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "8px" }}>CBAM calculation</p>
               <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", margin: "0 0 4px", fontVariantNumeric: "tabular-nums" }}>
-                {directT.toFixed(3)} tCO₂e × £{UK_ETS_RATE.toFixed(2)}/tCO₂e
+                {directT.toFixed(3)} tCO₂e × £{rate.toFixed(2)}/tCO₂e
                 {" = "}
                 <span style={{ fontWeight: 500, color: "var(--color-navy)" }}>{formatCurrency(charge)}</span>
               </p>
               <p style={{ fontSize: "11px", fontWeight: 300, color: "var(--color-text-tertiary)", margin: 0 }}>
-                UK ETS rate: £{UK_ETS_RATE.toFixed(2)}/tCO₂e (Q1 2027 placeholder)
+                UK CBAM rate: £{rate.toFixed(2)}/tCO₂e (ETS price × (1 − free allocation), Q1 2027 placeholder)
               </p>
             </div>
 
@@ -1022,12 +1033,13 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
   const country    = (case_.shipments?.[0] as { origin_country?: string })?.origin_country ?? goods_lines[0]?.origin_country ?? "—";
   const importDate = (case_.shipments?.[0] as { import_date?: string })?.import_date ?? goods_lines[0]?.import_date ?? case_.created_at;
 
-  const totalDirectKgco2e = goods_lines.reduce((sum, gl) => {
-    const kg = gl.net_mass_kg ?? gl.quantity ?? 0;
-    if (gl.direct_kgco2e != null) return sum + gl.direct_kgco2e;
-    return sum + (kg / 1000) * (ROUGH_SEE[gl.sector ?? ""] ?? 1.5) * 1000;
+  const cbamCharge = goods_lines.reduce((sum, gl) => {
+    const kg       = gl.net_mass_kg ?? gl.quantity ?? 0;
+    const see      = ROUGH_SEE[gl.sector ?? ""] ?? 1.5;
+    const directKg = gl.direct_kgco2e ?? (kg > 0 ? (kg / 1000) * see * 1000 : 0);
+    const rate     = UK_CBAM_RATES[gl.sector ?? ""] ?? UK_CBAM_RATES["iron_steel"];
+    return sum + (directKg / 1000) * rate;
   }, 0);
-  const cbamCharge   = (totalDirectKgco2e / 1000) * UK_ETS_RATE;
   const netLiability = cbamCharge;
 
   const isProcessing = case_.status === "processing";

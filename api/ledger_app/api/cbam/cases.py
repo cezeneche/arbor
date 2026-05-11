@@ -43,11 +43,6 @@ _ROUGH_SEE_TCO2_PER_T: dict[str, Decimal] = {
     "electricity": Decimal("0.4"),
 }
 
-# UK ETS Q1 2027 quarterly average — mirrors public_tools.py constant.
-# Used as the rate for rough estimates so the home page matches the case detail page.
-_UK_ETS_RATE_PLACEHOLDER = Decimal("52.40")
-
-
 def _enrich_cases_with_liability(
     conn: Any,
     items: list[dict],
@@ -170,10 +165,10 @@ def _enrich_cases_with_liability(
             if effective_kgco2e <= 0:
                 continue
 
-            cbam_rate = get_uk_cbam_rate(sector, year, quarter)
-            # Fall back to raw ETS rate when no CBAM-adjusted rate is published yet,
-            # matching the planning estimate shown on the case detail page.
-            rate = cbam_rate if cbam_rate is not None else _UK_ETS_RATE_PLACEHOLDER
+            rate = get_uk_cbam_rate(sector, year, quarter)
+            if rate is None:
+                continue  # No published CBAM rate for this sector/period — skip
+
             total_liability += (effective_kgco2e / Decimal("1000") * rate).quantize(
                 Decimal("0.01")
             )
