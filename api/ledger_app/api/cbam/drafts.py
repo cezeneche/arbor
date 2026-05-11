@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import datetime
 import logging
-import threading
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -488,9 +487,6 @@ def _create_stub_processing_case(tenant_id: str) -> str:
         return str(row["id"])
 
 
-_PIPELINE_TIMEOUT_SECONDS = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "300"))
-
-
 def _run_document_pipeline(
     case_id:               str,
     file_bytes:            bytes,
@@ -522,15 +518,6 @@ def _run_document_pipeline(
             pass
         _log.error("[pipeline] case %s failed: %s", case_id, msg)
 
-    # ── Overall deadline — mark error if pipeline exceeds PIPELINE_TIMEOUT_SECONDS ──
-    _deadline = threading.Timer(
-        _PIPELINE_TIMEOUT_SECONDS,
-        _mark_error,
-        args=(f"pipeline_timeout_after_{_PIPELINE_TIMEOUT_SECONDS}s",),
-    )
-    _deadline.daemon = True
-    _deadline.start()
-
     try:
         _run_document_pipeline_inner(
             case_id=case_id,
@@ -551,8 +538,8 @@ def _run_document_pipeline(
             APP_GIT_SHA=APP_GIT_SHA,
             APP_VERSION=APP_VERSION,
         )
-    finally:
-        _deadline.cancel()
+    except Exception as exc:
+        _mark_error(str(exc))
 
 
 def _run_document_pipeline_inner(
@@ -574,7 +561,6 @@ def _run_document_pipeline_inner(
     APP_GIT_SHA:           str,
     APP_VERSION:           str,
 ) -> None:
-    """Inner pipeline body — called by _run_document_pipeline under a deadline timer."""
     def _mark_error(msg: str) -> None:  # type: ignore[no-redef]
         return mark_error(msg)
 

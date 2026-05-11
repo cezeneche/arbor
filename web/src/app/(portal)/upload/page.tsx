@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -326,7 +326,7 @@ function InlineScopeChecker() {
 
 // ── Processing bar ─────────────────────────────────────────────────────────────
 
-function ProcessingBar({ pct }: { pct: number }) {
+function ProcessingBar({ pct, label }: { pct: number; label: string }) {
   return (
     <div style={{ marginTop: "var(--space-32)" }}>
       <div style={{
@@ -336,7 +336,7 @@ function ProcessingBar({ pct }: { pct: number }) {
         marginBottom:   "var(--space-8)",
       }}>
         <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", margin: 0 }}>
-          Processing
+          {label}
         </p>
         <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", margin: 0, fontVariantNumeric: "tabular-nums" }}>
           {pct}%
@@ -366,8 +366,6 @@ function ProcessingBar({ pct }: { pct: number }) {
 export default function UploadPage() {
   const router   = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const caseIdRef = useRef<string>("");
-
   const [stage,    setStage]    = useState<Stage>(1);
   const [fadeIn,   setFadeIn]   = useState(true);
   const [stageKey, setStageKey] = useState(0);
@@ -375,63 +373,16 @@ export default function UploadPage() {
   // Stage 1 state
   const [files,       setFiles]       = useState<FileEntry[]>([]);
   const [dragOver,    setDragOver]    = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingPct, setProcessingPct] = useState(0);
-  const [processError,  setProcessError]  = useState<string | null>(null);
+  const [isProcessing,   setIsProcessing]   = useState(false);
+  const [processingPct,  setProcessingPct]  = useState(0);
+  const [processingLabel, setProcessingLabel] = useState("Uploading...");
+  const [processError,   setProcessError]   = useState<string | null>(null);
 
-  const [fetching3,  setFetching3]  = useState(false);
+  const { step, error, upload, reset } = useUpload();
 
-  const { step, result, error, upload, reset } = useUpload();
-
-  // ── Document title ────────────────────────────────────────────────────────────
   useEffect(() => {
     document.title = stage === 1 ? "Upload — Nucleos" : "Here's what we found — Nucleos";
   }, [stage]);
-
-  // ── Animate processing bar ────────────────────────────────────────────────────
-  // Fake-progress: ticks up quickly at first, slows down — snaps to 100 on done.
-  const pctRef = useRef<number>(0);
-
-  const advancePct = useCallback(() => {
-    setProcessingPct(prev => {
-      const gap   = 92 - prev;            // never goes past 92 until real done
-      const delta = Math.max(1, gap * 0.12);
-      const next  = Math.min(92, prev + delta);
-      pctRef.current = next;
-      return Math.round(next);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!isProcessing || processError) return;
-    const id = setInterval(advancePct, 600);
-    return () => clearInterval(id);
-  }, [isProcessing, processError, advancePct]);
-
-  // ── Navigate to case when upload completes ────────────────────────────────────
-  useEffect(() => {
-    if (step !== "done" || fetching3) return;
-
-    const caseId = result?.created?.case_id;
-    if (!caseId) {
-      // No case_id in response — fall back to cases list
-      setIsProcessing(false);
-      setProcessingPct(0);
-      router.push("/");
-      return;
-    }
-
-    setFetching3(true);
-    setProcessingPct(100);
-    caseIdRef.current = caseId;
-
-    // Brief pause so the bar visibly hits 100%, then navigate
-    const t = setTimeout(() => {
-      router.push(`/cases/${caseId}`);
-    }, 400);
-
-    return () => clearTimeout(t);
-  }, [step, fetching3, result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Surface upload error inline
   useEffect(() => {
@@ -486,27 +437,68 @@ export default function UploadPage() {
 
     setIsProcessing(true);
     setProcessingPct(0);
+    setProcessingLabel("Uploading...");
     setProcessError(null);
-    pctRef.current = 0;
 
-    try {
-      const draft  = await upload(files[0].file);
-      const caseId = draft?.created?.case_id;
+    // Phase 1: animate 0 → 45% while HTTP upload is in flight
+    const uploadTick = setInterval(() => {
+      setProcessingPct(prev => {
+        if (prev >= 45) return prev;
+        return Math.round(Math.min(45, prev + Math.max(1, (45 - prev) * 0.12)));
+      });
+    }, 500);
 
-      if (caseId) {
-        const token = document.cookie.match(/cbam_token=([^;]+)/)?.[1] ?? "";
-        for (const { file } of files.slice(1)) {
-          const form = new FormData();
-          form.append("file", file);
-          fetch(`/api-proxy/ledger/api/cbam/cases/${caseId}/documents`, {
-            method:  "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body:    form,
-          }).catch(() => {});
-        }
+    const draft = await upload(files[0].file);
+    clearInterval(uploadTick);
+
+    if (!draft) return; // error handled by the error useEffect below
+
+    const caseId = draft.created?.case_id;
+    const token  = document.cookie.match(/cbam_token=([^;]+)/)?.[1] ?? "";
+
+    if (caseId) {
+      for (const { file } of files.slice(1)) {
+        const form = new FormData();
+        form.append("file", file);
+        fetch(`/api-proxy/ledger/api/cbam/cases/${caseId}/documents`, {
+          method:  "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body:    form,
+        }).catch(() => {});
       }
-    } catch (err) {
-      console.error("[upload] handleProcess error:", err);
+    }
+
+    if (!caseId) {
+      setProcessingPct(100);
+      setTimeout(() => router.push("/"), 600);
+      return;
+    }
+
+    // Phase 2: jump to 50%, then poll until extraction completes
+    setProcessingPct(50);
+    setProcessingLabel("Extracting fields...");
+
+    while (true) {
+      await new Promise<void>(r => setTimeout(r, 1_500));
+
+      // Slowly advance toward 99% while waiting
+      setProcessingPct(prev => Math.round(Math.min(99, prev + Math.max(0.5, (99 - prev) * 0.06))));
+
+      try {
+        const res = await fetch(`/api-proxy/ledger/api/cbam/cases/${caseId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const caseData = await res.json() as { status: string };
+          if (caseData.status !== "processing") {
+            setProcessingPct(100);
+            setTimeout(() => router.push(`/cases/${caseId}`), 600);
+            return;
+          }
+        }
+      } catch {
+        // transient network error — keep polling
+      }
     }
   }
 
@@ -518,8 +510,6 @@ export default function UploadPage() {
     setIsProcessing(false);
     setProcessingPct(0);
     setProcessError(null);
-    setFetching3(false);
-    caseIdRef.current = "";
     setFiles([]);
     setFadeIn(true);
   }
@@ -643,7 +633,7 @@ export default function UploadPage() {
 
             {/* Processing bar — shown while processing */}
             {isProcessing && (
-              <ProcessingBar pct={processingPct} />
+              <ProcessingBar pct={processingPct} label={processingLabel} />
             )}
 
             {/* Error message */}
