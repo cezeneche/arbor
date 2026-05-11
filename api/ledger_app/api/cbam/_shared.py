@@ -462,6 +462,7 @@ def _write_audit_event(
     event_type: str,
     event_data: dict[str, object],
     actor_sub: str = "system",
+    tenant_id: str = "",
 ) -> None:
     """
     Write a signed audit_log event for CBAM pipeline stages.
@@ -470,22 +471,26 @@ def _write_audit_event(
     """
     try:
         from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
+        from ledger_app.db.rls import set_tenant_context
 
+        effective_tenant = tenant_id or "shared"
         event_json = json.dumps(event_data, sort_keys=True, default=str)
         with engine.begin() as conn:
+            set_tenant_context(conn, effective_tenant)
             prev_hmac = get_prev_chain_hmac(case_id, conn)
             sig = sign_event(case_id, event_type, actor_sub, event_json,
                              prev_hmac=prev_hmac)
             conn.execute(
                 text("""
                     INSERT INTO cbam.audit_log
-                        (case_id, event_type, actor,
+                        (tenant_id, case_id, event_type, actor,
                          payload, signature, chain_hash)
                     VALUES
-                        (:case_id, :event_type, :actor,
+                        (:tenant_id, :case_id, :event_type, :actor,
                          CAST(:event_json AS jsonb), :sig, :prev_hmac)
                 """),
                 {
+                    "tenant_id": effective_tenant,
                     "case_id": case_id,
                     "event_type": event_type,
                     "actor": actor_sub,

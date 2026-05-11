@@ -256,6 +256,7 @@ def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
             "reporting_quarter": payload.reporting_quarter,
         },
         actor_sub=actor_sub,
+        tenant_id=tenant_id,
     )
     return created
 
@@ -386,6 +387,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
                 case_id, "case_fields_updated",
                 {"actor_name": payload.actor_name or actor_sub, "field_changes": payload.field_changes or {}},
                 actor_sub=actor_sub,
+                tenant_id=tenant_id,
             )
             return {"status": "ok", "case_id": case_id}
 
@@ -463,6 +465,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
         "case_fields_updated",
         {"actor_name": actor_display, "field_changes": payload.field_changes or {}},
         actor_sub=actor_sub,
+        tenant_id=tenant_id,
     )
     return {"status": "ok", "case_id": case_id}
 
