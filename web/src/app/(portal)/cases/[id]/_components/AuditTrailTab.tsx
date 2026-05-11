@@ -1,21 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAuditLog } from "@/lib/api/audit";
 import { MONO, fmtTime, isChainValid, actorLabel } from "./shared";
 import type { AuditEvent } from "@/lib/types";
 
 const AUDIT_EVENT_LABELS: Record<string, string> = {
-  case_created:            "Case created",
-  case_fields_updated:     "Fields updated",
-  document_uploaded:       "Document uploaded",
-  extraction_complete:     "Extraction complete",
-  cbam_calculation_completed: "Calculation completed",
-  human_review_required:   "Human review required",
-  review_approved:         "Case approved",
-  review_rejected:         "Case flagged",
-  report_package_generated:"Report package generated",
+  case_created:                  "Case created",
+  case_fields_updated:           "Fields updated",
+  document_uploaded:             "Document uploaded",
+  extraction_complete:           "Extraction complete",
+  cbam_calculation_completed:    "Calculation completed",
+  human_review_required:         "Human review required",
+  review_approved:               "Case approved",
+  review_rejected:               "Case flagged",
+  report_package_generated:      "Report package generated",
+  supplier_emissions_submitted:  "Supplier data received",
 };
 
 function eventLabel(type: string): string {
@@ -37,13 +38,29 @@ function eventActor(ev: AuditEvent): string {
   return actorLabel(ev);
 }
 
-export function AuditTrailTab({ caseId }: { caseId: string }) {
+export function AuditTrailTab({ caseId, onNewSupplierEvent }: { caseId: string; onNewSupplierEvent?: () => void }) {
   const { data: raw = [] } = useQuery<AuditEvent[]>({
-    queryKey:  ["audit-log", caseId],
-    queryFn:   () => getAuditLog(caseId),
-    staleTime: 0,
-    enabled:   Boolean(caseId),
+    queryKey:       ["audit-log", caseId],
+    queryFn:        () => getAuditLog(caseId),
+    staleTime:      0,
+    enabled:        Boolean(caseId),
+    refetchInterval: 30_000,
   });
+
+  // Track supplier submission events seen so far; fire callback for new ones.
+  const seenSupplierEventIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const events: AuditEvent[] = Array.isArray(raw) ? raw : ((raw as { events?: AuditEvent[] }).events ?? []);
+    events
+      .filter(ev => ev.event_type === "supplier_emissions_submitted")
+      .forEach(ev => {
+        if (!seenSupplierEventIds.current.has(ev.id)) {
+          seenSupplierEventIds.current.add(ev.id);
+          onNewSupplierEvent?.();
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raw]);
 
   const auditEvents: AuditEvent[] = Array.isArray(raw)
     ? raw

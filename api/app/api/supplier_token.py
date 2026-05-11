@@ -25,10 +25,11 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
+from app.services.notifications import notify_importer_supplier_submitted, notify_supplier_form
 from ledger_app.api.cbam import _shared
 from ledger_app.api.cbam.audit_helpers import _write_audit_event
 from ledger_app.api.cbam.db_helpers import _pick_existing, _table_columns
@@ -83,7 +84,6 @@ _TOKEN_CONTEXT_QUERY = text("""
         t.used_at,
         gl.cn_code,
         gl.sector,
-        gl.description,
         gl.installation_name,
         sh.origin_country,
         cc.importer_name,
@@ -120,10 +120,15 @@ def _validate_token(row: object | None) -> None:
 
 # ── Protected: generate token ──────────────────────────────────────────────────
 
+class TokenRequest(BaseModel):
+    supplier_email: str | None = None
+
+
 class TokenResponse(BaseModel):
-    token:      str
-    form_url:   str
-    expires_at: datetime
+    token:          str
+    form_url:       str
+    expires_at:     datetime
+    email_sent:     bool
 
 
 @protected_router.post(
@@ -134,6 +139,8 @@ class TokenResponse(BaseModel):
 def generate_supplier_token(
     goods_line_id: UUID,
     request: Request,
+    background: BackgroundTasks,
+    body: TokenRequest = TokenRequest(),
     _auth: AuthContext = Depends(require_scopes(["cbam:write"])),
 ):
     auth      = getattr(request.state, "auth_context", None)
@@ -143,7 +150,7 @@ def generate_supplier_token(
     with _shared.engine.begin() as conn:
         row = conn.execute(
             text("""
-                SELECT gl.id, sh.case_id
+                SELECT gl.id, gl.cn_code, sh.case_id, cc.importer_name
                 FROM   cbam.cbam_goods_lines gl
                 JOIN   cbam.cbam_shipments   sh ON sh.id = gl.shipment_id
                 JOIN   cbam.cbam_cases       cc ON cc.id = sh.case_id
@@ -155,32 +162,54 @@ def generate_supplier_token(
         if not row:
             raise HTTPException(status_code=404, detail="Goods line not found.")
 
-        case_id    = str(row[1])
-        token      = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(days=_TOKEN_TTL_DAYS)
+        case_id       = str(row[2])
+        cn_code       = row[1] or ""
+        importer_name = row[3] or "Your customer"
+        token         = secrets.token_urlsafe(32)
+        expires_at    = datetime.now(timezone.utc) + timedelta(days=_TOKEN_TTL_DAYS)
+        form_url      = f"{_web_base_url(request)}/supplier/{token}"
 
         conn.execute(
             text("""
                 INSERT INTO cbam.cbam_supplier_tokens
-                    (token, tenant_id, case_id, goods_line_id, created_by, expires_at)
+                    (token, tenant_id, case_id, goods_line_id, created_by, expires_at,
+                     recipient_email, email_sent_at)
                 VALUES
-                    (:token, :tenant_id, :case_id, :goods_line_id, :created_by, :expires_at)
+                    (:token, :tenant_id, :case_id, :goods_line_id, :created_by, :expires_at,
+                     :recipient_email, :email_sent_at)
             """),
             {
-                "token":         token,
-                "tenant_id":     tenant_id,
-                "case_id":       case_id,
-                "goods_line_id": str(goods_line_id),
-                "created_by":    actor_sub,
-                "expires_at":    expires_at,
+                "token":           token,
+                "tenant_id":       tenant_id,
+                "case_id":         case_id,
+                "goods_line_id":   str(goods_line_id),
+                "created_by":      actor_sub,
+                "expires_at":      expires_at,
+                "recipient_email": body.supplier_email,
+                "email_sent_at":   datetime.now(timezone.utc) if body.supplier_email else None,
             },
         )
 
-    _log.info("supplier_token_generated: tenant=%s goods_line=%s", tenant_id, goods_line_id)
+    _log.info(
+        "supplier_token_generated: tenant=%s goods_line=%s email=%s",
+        tenant_id, goods_line_id, body.supplier_email or "none",
+    )
+
+    if body.supplier_email:
+        background.add_task(
+            notify_supplier_form,
+            supplier_email=body.supplier_email,
+            form_url=form_url,
+            cn_code=cn_code,
+            importer_name=importer_name,
+            expires_days=_TOKEN_TTL_DAYS,
+        )
+
     return TokenResponse(
         token=token,
-        form_url=f"{_web_base_url(request)}/supplier/{token}",
+        form_url=form_url,
         expires_at=expires_at,
+        email_sent=bool(body.supplier_email),
     )
 
 
@@ -214,7 +243,7 @@ def get_supplier_form(token: str):
     return FormContext(
         cn_code=row["cn_code"],
         sector=sector,
-        description=row["description"],
+        description=None,
         installation_name=row["installation_name"],
         origin_country=row["origin_country"],
         importer_name=row["importer_name"],
@@ -233,7 +262,7 @@ class FormSubmission(BaseModel):
 
 
 @public_router.post("/supplier-form/{token}", status_code=status.HTTP_200_OK)
-def submit_supplier_form(token: str, body: FormSubmission):
+def submit_supplier_form(token: str, body: FormSubmission, request: Request, background: BackgroundTasks):
     with _shared.engine.begin() as conn:
         row = conn.execute(_TOKEN_CONTEXT_QUERY, {"token": token}).mappings().first()
         _validate_token(row)
@@ -275,14 +304,15 @@ def submit_supplier_form(token: str, body: FormSubmission):
         conn.execute(
             text(f"""
                 INSERT INTO cbam.cbam_emissions
-                    (id, goods_line_id, method, {direct_col}, production_route, version)
+                    (id, goods_line_id, tenant_id, method, {direct_col}, production_route, version)
                 VALUES
-                    (gen_random_uuid(), :gl, 'actual', :direct, :route, :ver)
+                    (gen_random_uuid(), :gl, :tenant_id, 'actual', :direct, :route, :ver)
             """),
             {
-                "gl":     goods_line_id,
-                "direct": float(direct_kgco2e),
-                "route":  body.production_route,
+                "gl":        goods_line_id,
+                "tenant_id": tenant_id,
+                "direct":    float(direct_kgco2e),
+                "route":     body.production_route,
                 "ver":    current_version + 1,
             },
         )
@@ -310,6 +340,36 @@ def submit_supplier_form(token: str, body: FormSubmission):
             },
             actor_sub="supplier_form",
             tenant_id=tenant_id,
+        )
+
+    # Look up the importer's contact email from their registration record.
+    importer_email: str | None = None
+    try:
+        with _shared.engine.connect() as conn:
+            email_row = conn.execute(
+                text("""
+                    SELECT (business_address::jsonb)->>'email' AS email
+                    FROM   cbam.cbam_registration
+                    WHERE  tenant_id = :tenant_id
+                    LIMIT  1
+                """),
+                {"tenant_id": tenant_id},
+            ).fetchone()
+            if email_row:
+                importer_email = email_row[0]
+    except Exception as exc:
+        _log.warning("supplier_form_submitted: could not resolve importer email: %s", exc)
+
+    if importer_email:
+        background.add_task(
+            notify_importer_supplier_submitted,
+            recipient_email=importer_email,
+            case_id=case_id,
+            cn_code=row["cn_code"],
+            see_tco2e_per_t=body.see_tco2e_per_t,
+            production_route=body.production_route,
+            installation_name=body.installation_name,
+            base_url=_web_base_url(request),
         )
 
     _log.info(

@@ -17,9 +17,8 @@ import { DocumentFieldsForm } from "./_components/DocumentFieldsForm";
 import { EmissionsTab }      from "./_components/EmissionsTab";
 import { AuditTrailTab }     from "./_components/AuditTrailTab";
 import { SettingsTab }       from "./_components/SettingsTab";
-import { UK_CBAM_RATES, ROUGH_SEE, MONO, SectionLabel, Divider, fmtDate } from "./_components/shared";
+import { UK_CBAM_RATES, ROUGH_SEE, SectionLabel, Divider, fmtDate } from "./_components/shared";
 import type { RichGoodsLine } from "@/lib/api/types";
-import type { CBAMShipment } from "@/lib/types";
 
 type ActiveTab = "details" | "emissions" | "audit" | "settings";
 
@@ -237,7 +236,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
             >
               {tab.label}
               {tab.key === "audit" && unseenAuditCount > 0 && activeTab !== "audit" && (
-                <span style={{ position: "absolute", top: "2px", right: "-10px", width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--color-amber)" }} />
+                <span style={{ position: "absolute", top: "2px", right: "-10px", width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--color-red)" }} />
               )}
             </button>
           ))}
@@ -325,7 +324,12 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         {activeTab === "emissions" && <EmissionsTab case_={case_} onProvideData={() => setActiveTab("details")} />}
 
         {/* ══ AUDIT CHAIN TAB ══ */}
-        {activeTab === "audit" && <AuditTrailTab caseId={id} />}
+        {activeTab === "audit" && (
+          <AuditTrailTab
+            caseId={id}
+            onNewSupplierEvent={() => setUnseenAuditCount(c => c + 1)}
+          />
+        )}
 
         {/* ══ SETTINGS TAB ══ */}
         {activeTab === "settings" && <SettingsTab case_={case_} />}

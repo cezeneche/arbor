@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCases, useCase } from "@/lib/hooks/useCases";
@@ -42,7 +42,7 @@ function PathCard({
   onClick:      () => void;
   title:        string;
   body:         string;
-  currentState: string;
+  currentState?: string;
 }) {
   return (
     <button
@@ -78,15 +78,17 @@ function PathCard({
       }}>
         {body}
       </p>
-      <p style={{
-        fontSize:   "var(--text-xs)",
-        fontWeight: 300,
-        color:      "var(--color-text-tertiary)",
-        lineHeight: 1.5,
-        margin:     0,
-      }}>
-        {currentState}
-      </p>
+      {currentState && (
+        <p style={{
+          fontSize:   "var(--text-xs)",
+          fontWeight: 300,
+          color:      "var(--color-text-tertiary)",
+          lineHeight: 1.5,
+          margin:     0,
+        }}>
+          {currentState}
+        </p>
+      )}
     </button>
   );
 }
@@ -100,10 +102,12 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
   const [lookupResult,  setLookupResult]  = useState<ScopeResult | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
 
-  const [formUrl,      setFormUrl]      = useState<string | null>(null);
-  const [tokenLoading, setTokenLoading] = useState(false);
-  const [tokenError,   setTokenError]   = useState<string | null>(null);
-  const [copied,       setCopied]       = useState(false);
+  const [supplierEmail, setSupplierEmail] = useState("");
+  const [formUrl,       setFormUrl]       = useState<string | null>(null);
+  const [emailSent,     setEmailSent]     = useState(false);
+  const [tokenLoading,  setTokenLoading]  = useState(false);
+  const [tokenError,    setTokenError]    = useState<string | null>(null);
+  const [copied,        setCopied]        = useState(false);
 
   const firstLine = case_?.goods_lines?.[0];
 
@@ -127,13 +131,34 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
     setTokenLoading(true);
     setTokenError(null);
     try {
-      const data = await ledgerFetch<{ form_url: string }>(
+      const data = await ledgerFetch<{ form_url: string; email_sent: boolean }>(
         `/api/cbam/goods-lines/${firstLine.id}/supplier-token`,
-        { method: "POST" },
+        { method: "POST", body: JSON.stringify({}) },
       );
       setFormUrl(data.form_url);
     } catch (e) {
       setTokenError((e as Error).message ?? "Failed to generate link.");
+    } finally {
+      setTokenLoading(false);
+    }
+  }
+
+  async function handleSendToSupplier() {
+    if (!firstLine?.id || !supplierEmail.trim()) return;
+    setTokenLoading(true);
+    setTokenError(null);
+    try {
+      const data = await ledgerFetch<{ form_url: string; email_sent: boolean }>(
+        `/api/cbam/goods-lines/${firstLine.id}/supplier-token`,
+        {
+          method:  "POST",
+          body:    JSON.stringify({ supplier_email: supplierEmail.trim() }),
+        },
+      );
+      setFormUrl(data.form_url);
+      setEmailSent(data.email_sent);
+    } catch (e) {
+      setTokenError((e as Error).message ?? "Failed to send — please try again.");
     } finally {
       setTokenLoading(false);
     }
@@ -172,14 +197,12 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
           onClick={() => setPath(path === "lookup" ? null : "lookup")}
           title="Known installation database"
           body="Check Annex VI reference values for this CN code. Shows the default that applies if supplier data is unavailable."
-          currentState="Annex VI regulatory defaults. Per-installation EPD data coming later."
         />
         <PathCard
           selected={path === "supplier"}
           onClick={() => setPath(path === "supplier" ? null : "supplier")}
           title="Supplier form"
-          body="Generate a secure one-time link. Your supplier opens it, fills in their emissions data, and it lands directly in this case — no login required."
-          currentState="Supplier submits SEE, production route, and facility name. Data writes to the case as Tier 1 actual."
+          body="Generate a secure one-time link. Your supplier opens it, fills in their emissions data, and it lands directly in this case, no login required."
         />
       </div>
 
@@ -229,26 +252,57 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
 
       {path === "supplier" && (
         <div style={{ marginTop: "var(--space-8)" }}>
-          {!formUrl ? (
+          {emailSent ? (
+            <p style={{ fontSize: "var(--text-sm)", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-16)", lineHeight: 1.6 }}>
+              Link sent to <strong style={{ fontWeight: 500 }}>{supplierEmail}</strong>. When they submit, the data will appear in this case automatically.
+            </p>
+          ) : (
             <>
               <p style={{ fontSize: "var(--text-sm)", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-16)", lineHeight: 1.6 }}>
-                The link expires in 30 days and can only be used once. Share it with
-                whoever handles CBAM or emissions reporting at the installation.
+                Enter the email address of whoever handles CBAM or emissions reporting at the installation. They will receive a secure link, no account required.
               </p>
+              <div style={{ display: "flex", gap: "var(--space-8)", marginBottom: tokenError ? "var(--space-8)" : "var(--space-16)", alignItems: "stretch" }}>
+                <input
+                  type="email"
+                  placeholder="supplier@installation.com"
+                  value={supplierEmail}
+                  onChange={(e) => setSupplierEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendToSupplier()}
+                  style={{
+                    flex:            1,
+                    height:          "40px",
+                    padding:         "0 var(--space-16)",
+                    fontSize:        "var(--text-sm)",
+                    fontWeight:      300,
+                    fontFamily:      "inherit",
+                    color:           "var(--color-text-primary)",
+                    backgroundColor: "var(--color-bg)",
+                    border:          "var(--border-width) solid var(--color-border)",
+                    borderRadius:    "6px",
+                    outline:         "none",
+                  }}
+                />
+                <Button
+                  variant="primary"
+                  loading={tokenLoading}
+                  onClick={handleSendToSupplier}
+                  disabled={!supplierEmail.trim()}
+                >
+                  Send to supplier
+                </Button>
+              </div>
               {tokenError && (
                 <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginBottom: "var(--space-16)" }}>
                   {tokenError}
                 </p>
               )}
-              <Button variant="primary" loading={tokenLoading} onClick={handleGenerateLink}>
-                Generate secure link
-              </Button>
             </>
-          ) : (
-            <>
-              <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "var(--space-8)" }}>
-                Supplier link — share this with your supplier
-              </p>
+          )}
+          <p style={{ fontSize: "var(--text-sm)", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
+            {emailSent ? "Or copy the link to share another way" : "Prefer to share the link yourself?"}
+          </p>
+          {formUrl ? (
+            <div>
               <div style={{
                 display:         "flex",
                 alignItems:      "center",
@@ -258,7 +312,6 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
                 backgroundColor: "var(--color-surface)",
                 border:          "var(--border-width) solid var(--color-border)",
                 borderRadius:    "6px",
-                marginBottom:    "var(--space-16)",
               }}>
                 <span style={{
                   flex:         1,
@@ -275,25 +328,46 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
                 <button
                   onClick={handleCopyLink}
                   style={{
-                    background:  "none",
-                    border:      "none",
-                    padding:     0,
-                    cursor:      "pointer",
-                    fontSize:    "var(--text-sm)",
-                    fontWeight:  300,
-                    fontFamily:  "inherit",
-                    color:       copied ? "var(--color-green)" : "var(--color-navy)",
-                    whiteSpace:  "nowrap",
-                    flexShrink:  0,
+                    background: "none", border: "none", padding: 0, cursor: "pointer",
+                    fontSize: "var(--text-sm)", fontWeight: 300, fontFamily: "inherit",
+                    color: copied ? "var(--color-green)" : "var(--color-navy)",
+                    whiteSpace: "nowrap", flexShrink: 0,
                   }}
                 >
                   {copied ? "Copied" : "Copy"}
                 </button>
               </div>
-              <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-tertiary)", lineHeight: 1.5 }}>
-                When your supplier submits, the data will appear in the case automatically.
-              </p>
-            </>
+              <button
+                onClick={() => { setFormUrl(null); setEmailSent(false); setSupplierEmail(""); }}
+                style={{
+                  background: "none", border: "none", padding: 0, cursor: "pointer",
+                  fontSize: "var(--text-xs)", fontFamily: "inherit",
+                  color: "var(--color-text-tertiary)", marginTop: "var(--space-8)",
+                  textDecoration: "underline",
+                }}
+              >
+                Generate new link
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerateLink}
+              disabled={tokenLoading}
+              style={{
+                background:  "none",
+                border:      "none",
+                padding:     0,
+                cursor:      tokenLoading ? "not-allowed" : "pointer",
+                fontSize:    "var(--text-sm)",
+                fontWeight:  300,
+                fontFamily:  "inherit",
+                color:       "var(--color-navy)",
+                opacity:     tokenLoading ? 0.5 : 1,
+                textDecoration: "underline",
+              }}
+            >
+              Generate link
+            </button>
           )}
         </div>
       )}
@@ -303,7 +377,7 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function RequestDataPage() {
+function RequestDataPageInner() {
   const { cases: raw, isLoading } = useCases();
   const cases = raw as CaseRow[];
   const searchParams = useSearchParams();
@@ -436,5 +510,13 @@ export default function RequestDataPage() {
         })
       )}
     </div>
+  );
+}
+
+export default function RequestDataPage() {
+  return (
+    <Suspense>
+      <RequestDataPageInner />
+    </Suspense>
   );
 }
