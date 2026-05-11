@@ -18,6 +18,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Code quality — required at all times
+
+These are not preferences. Apply them to every file touched, without being asked.
+
+- **No placeholder stubs.** Never leave a file with `return null` and a "rebuild with design system" comment. Either implement it or delete it.
+- **No manifesto comments.** Do not write block comments that describe design philosophy, list constraints, or explain what the product does. That belongs in documentation, not in code.
+- **No decorative dividers.** `// ── Section name ──────────` lines that carry no information must not be written. A blank line is sufficient separation.
+- **No stale comments.** If a comment describes something that no longer exists or was changed, remove it. Stale comments are worse than no comments.
+- **No TODO comments in committed code.** A TODO is an unfinished implementation. Finish it or track it externally — do not commit it.
+- **Comments explain why, never what.** The code already says what it does. A comment is only justified when the reason would surprise a reader: a regulatory constraint, a non-obvious invariant, a workaround for a specific bug.
+- **One source of truth.** If the same constraint is stated in two places (e.g. globals.css and design-system.ts), one is wrong. Consolidate.
+- **Dead code is deleted.** Unused imports, unused functions, unused files — remove them. Do not comment them out.
+
+---
+
 ## Commands
 
 ### Setup
