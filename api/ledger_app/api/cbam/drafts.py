@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import datetime
 import logging
+import threading
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -487,6 +488,12 @@ def _create_stub_processing_case(tenant_id: str) -> str:
         return str(row["id"])
 
 
+# Safety net: if the pipeline hangs (e.g. OCR model stall, network hang), this
+# timer marks the case as error so the frontend poll resolves. Set generously
+# above the realistic pipeline ceiling — not an artificial speed cap.
+_PIPELINE_TIMEOUT_SECONDS = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "180"))
+
+
 def _run_document_pipeline(
     case_id:               str,
     file_bytes:            bytes,
@@ -518,6 +525,14 @@ def _run_document_pipeline(
             pass
         _log.error("[pipeline] case %s failed: %s", case_id, msg)
 
+    _deadline = threading.Timer(
+        _PIPELINE_TIMEOUT_SECONDS,
+        _mark_error,
+        args=(f"pipeline_timeout_after_{_PIPELINE_TIMEOUT_SECONDS}s",),
+    )
+    _deadline.daemon = True
+    _deadline.start()
+
     try:
         _run_document_pipeline_inner(
             case_id=case_id,
@@ -540,6 +555,8 @@ def _run_document_pipeline(
         )
     except Exception as exc:
         _mark_error(str(exc))
+    finally:
+        _deadline.cancel()
 
 
 def _run_document_pipeline_inner(

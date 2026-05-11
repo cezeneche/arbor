@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from collections import defaultdict
 from io import BytesIO
 from typing import TYPE_CHECKING
@@ -9,6 +10,28 @@ from fastapi import HTTPException
 
 if TYPE_CHECKING:
     from PIL import Image
+
+# PaddleOCR model init takes 30-60s on first load. Keep a single instance for
+# the lifetime of the process so subsequent calls pay no init cost.
+_paddle_ocr_instance: object = None
+_paddle_ocr_lock = threading.Lock()
+
+
+def _get_paddle_ocr() -> object:
+    global _paddle_ocr_instance
+    if _paddle_ocr_instance is not None:
+        return _paddle_ocr_instance
+    with _paddle_ocr_lock:
+        if _paddle_ocr_instance is None:
+            try:
+                from paddleocr import PaddleOCR  # type: ignore
+                try:
+                    _paddle_ocr_instance = PaddleOCR(use_textline_orientation=True, lang="en")
+                except TypeError:
+                    _paddle_ocr_instance = PaddleOCR(use_angle_cls=True, lang="en")
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail="paddleocr not installed") from exc
+    return _paddle_ocr_instance
 
 
 def _is_text(filename: str, content_type: str | None) -> bool:
@@ -225,7 +248,6 @@ def _extract_image_document_with_paddleocr(data: bytes) -> dict[str, object]:
     try:
         import cv2  # type: ignore
         import numpy as np  # type: ignore
-        from paddleocr import PaddleOCR  # type: ignore
     except Exception as exc:
         raise HTTPException(status_code=500, detail="paddleocr not installed") from exc
 
@@ -235,11 +257,7 @@ def _extract_image_document_with_paddleocr(data: bytes) -> dict[str, object]:
         raise HTTPException(status_code=422, detail="Unable to decode image data")
     image_height = int(image.shape[0]) if getattr(image, "shape", None) is not None else 1
 
-    try:
-        ocr = PaddleOCR(use_textline_orientation=True, lang="en")
-    except TypeError:
-        # older PaddleOCR constructors
-        ocr = PaddleOCR(use_angle_cls=True, lang="en")
+    ocr = _get_paddle_ocr()
 
     try:
         result = ocr.predict(image)
@@ -264,7 +282,6 @@ def _extract_text_with_paddleocr_image(image: "Image.Image") -> str:
     try:
         import cv2  # type: ignore
         import numpy as np  # type: ignore
-        from paddleocr import PaddleOCR  # type: ignore
     except Exception as exc:
         raise HTTPException(status_code=500, detail="paddleocr not installed") from exc
 
@@ -272,11 +289,7 @@ def _extract_text_with_paddleocr_image(image: "Image.Image") -> str:
     image_np = np.array(image_rgb)
     image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
 
-    try:
-        ocr = PaddleOCR(use_textline_orientation=True, lang="en")
-    except TypeError:
-        # older PaddleOCR constructors
-        ocr = PaddleOCR(use_angle_cls=True, lang="en")
+    ocr = _get_paddle_ocr()
 
     try:
         result = ocr.predict(image_bgr)
