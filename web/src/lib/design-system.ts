@@ -1,53 +1,6 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * NUCLEOS DESIGN SYSTEM — Authoritative Token Export
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * PHILOSOPHY
- * The product does one thing: turn supplier documents into a compliant HMRC
- * return. Every design decision must serve that transformation. If a UI
- * element does not help the user understand their exposure or take the next
- * required action, it does not exist.
- *
- * ── CONSTRAINTS (non-negotiable) ───────────────────────────────────────────
- *
- * TYPOGRAPHY
- *   Weights: 300 (body) and 500 (focal) only. No 400, 600, 700.
- *   Scale:   11 / 13 / 15 / 24 / 52 px — no other sizes.
- *   Rule:    One weight-500 element per screen. The number that matters most.
- *
- * COLOUR
- *   Source:  This file. No hex codes in components.
- *   No gradients. No shadows except ds.component.cardShadow on elevated cards.
- *
- * SPACING
- *   Grid:    8px base. Multiples: 8 / 16 / 24 / 32 / 40 / 48 / 64 / 80.
- *   Never:   10px, 12px, 20px, or any other arbitrary value.
- *   Rhythm:  Sections separated by 40px. Never 30 or 50.
- *
- * COMPONENTS
- *   Buttons: One primary per screen. Never two.
- *   Borders: 0.5px only. Never 1px.
- *
- * COMPONENT CONSTRAINTS
- *   Loading states:  use <Skeleton />, not spinners.
- *   Empty states:    use typography only, no illustrations.
- *   Navigation:      sidebar component exists; no hamburger or tab bar on desktop.
- *   Overlays:        dialog and tooltip components exist; use sparingly — prefer
- *                    inline state changes where the workflow allows it.
- *   Notifications:   toast component exists for transient feedback; use inline
- *                    confirmation for permanent state changes.
- *   Charts:          use numbers and progress bars, not chart libraries.
- * ═══════════════════════════════════════════════════════════════════════════
- */
+// Nucleos design system — authoritative token export.
+// All components import from here; never hardcode hex values, px numbers, or arbitrary strings.
 
-// ── Token object ─────────────────────────────────────────────────────────────
-// All values are CSS custom property references. Components import from here;
-// they never hardcode hex values, pixel numbers, or arbitrary strings.
-
-// ── Brand identity constants ──────────────────────────────────────────────────
-// Single source of truth for all identity strings and mark constraints.
-// Import from here — never hardcode in components.
 
 export const brand = {
   /** The wordmark is the name "nucleos" — Inter 300, letter-spacing -0.03em.
@@ -178,8 +131,6 @@ export const ds = {
 } as const;
 
 export type DesignSystem = typeof ds;
-
-// ── Status helpers ────────────────────────────────────────────────────────────
 
 export type StatusVariant = 'approved' | 'pending' | 'error' | 'draft';
 

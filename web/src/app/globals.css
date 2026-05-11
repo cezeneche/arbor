@@ -1,22 +1,6 @@
-/* ═══════════════════════════════════════════════════════════════════════════ *
- * Nucleos — Global Styles                                                     *
- *                                                                             *
- * PHILOSOPHY                                                                  *
- * The product does one thing: turn supplier documents into a compliant HMRC  *
- * return. Every style decision must serve that transformation. If a style    *
- * element does not help the user understand their exposure or take the next  *
- * required action, it does not exist.                                        *
- *                                                                             *
- * WHAT DOES NOT EXIST IN THIS PRODUCT                                        *
- *   No sidebar. No hamburger menu. No top-level tab bar.                    *
- *   No modal dialogs — inline state changes only.                            *
- *   No toast notifications — inline confirmation only.                       *
- *   No loading spinners — skeleton screens only.                             *
- *   No data visualisation charts — numbers and progress bars only.           *
- *   No empty state illustrations — typography only.                          *
- *   No help tooltips or onboarding overlays.                                 *
- *   No notifications bell.                       *
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* Nucleos — Global Styles
+ * Every style decision serves one transformation: supplier documents → HMRC return.
+ * Component constraints and token rules live in lib/design-system.ts. */
 
 @import "../styles/tokens.css";
 /* Inter: weights 300 and 500 only — no other weights are loaded or permitted */
