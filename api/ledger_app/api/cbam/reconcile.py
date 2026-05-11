@@ -274,7 +274,7 @@ async def reconcile_quarterly(
         cases=cases,
         importer_eori=importer_eori,
         reporting_year=year,
-        reporting_quarter=reporting_quarter if False else quarter,  # keep name consistent
+        reporting_quarter=quarter,
         eu_ets_price_eur=ets_price,
         supplier_see_history=history if history else None,
     )

@@ -74,6 +74,10 @@ export interface CasePatch {
   net_mass_kg?:      number;
   installation_id?:  string;
   sector?:           string;   // DB key e.g. "iron_steel"
+  // cbam_cases — reporting period / jurisdiction
+  reporting_year?:    number;
+  reporting_quarter?: number;
+  jurisdiction?:      "UK" | "EU";
   // cbam_emissions
   emissions_method?: string;   // "actual" | "estimated" | "default"
   direct_kgco2e?:    number;   // kgCO2e

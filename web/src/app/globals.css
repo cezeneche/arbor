@@ -8,14 +8,14 @@
  * required action, it does not exist.                                        *
  *                                                                             *
  * WHAT DOES NOT EXIST IN THIS PRODUCT                                        *
- *   No sidebar. No hamburger menu. No tab bar on desktop.                    *
+ *   No sidebar. No hamburger menu. No top-level tab bar.                    *
  *   No modal dialogs — inline state changes only.                            *
  *   No toast notifications — inline confirmation only.                       *
  *   No loading spinners — skeleton screens only.                             *
  *   No data visualisation charts — numbers and progress bars only.           *
  *   No empty state illustrations — typography only.                          *
  *   No help tooltips or onboarding overlays.                                 *
- *   No settings page (v1). No notifications bell (v1).                       *
+ *   No notifications bell.                       *
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 @import "../styles/tokens.css";

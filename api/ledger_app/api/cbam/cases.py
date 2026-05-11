@@ -27,6 +27,10 @@ class CBAMCasePatch(BaseModel):
     net_mass_kg:      float | None = None
     installation_id:  str | None = None
     sector:           str | None = None   # DB key e.g. "iron_steel"
+    # cbam_cases — reporting period / jurisdiction
+    reporting_year:    int | None = None
+    reporting_quarter: int | None = None
+    jurisdiction:      str | None = None   # "UK" | "EU"
     # cbam_emissions (latest record for first goods line)
     emissions_method: str | None = None   # "actual" | "estimated" | "default"
     direct_kgco2e:    float | None = None  # in kgCO2e
@@ -393,6 +397,15 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
         if payload.importer_name is not None and "importer_name" in columns:
             case_set.append("importer_name = :importer_name")
             case_p["importer_name"] = payload.importer_name
+        if payload.reporting_year is not None and "reporting_year" in columns:
+            case_set.append("reporting_year = :reporting_year")
+            case_p["reporting_year"] = payload.reporting_year
+        if payload.reporting_quarter is not None and "reporting_quarter" in columns:
+            case_set.append("reporting_quarter = :reporting_quarter")
+            case_p["reporting_quarter"] = payload.reporting_quarter
+        if payload.jurisdiction is not None and "jurisdiction" in columns:
+            case_set.append("jurisdiction = :jurisdiction")
+            case_p["jurisdiction"] = payload.jurisdiction
         if "updated_at" in columns:
             case_set.append("updated_at = NOW()")
 

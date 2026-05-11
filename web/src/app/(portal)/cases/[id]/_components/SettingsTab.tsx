@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { deleteCase } from "@/lib/api/cases";
+import { deleteCase, patchCase } from "@/lib/api/cases";
 import { SectionLabel, Divider, MONO, fmtDate } from "./shared";
 import type { CaseDetail } from "@/lib/api/types";
 
@@ -43,10 +43,17 @@ export function SettingsTab({ case_ }: { case_: CaseDetail }) {
 
   async function handleSavePeriod() {
     setSavingP(true);
-    await new Promise(r => setTimeout(r, 350));
-    // TODO: PATCH /api/cbam/cases/{case_.id} with { reporting_year, reporting_quarter, jurisdiction }
-    setSavingP(false);
-    setSavedP(true);
+    try {
+      await patchCase(case_.id, {
+        reporting_year:    Number(year),
+        reporting_quarter: Number(quarter),
+        jurisdiction:      regime,
+      });
+      queryClient.invalidateQueries({ queryKey: ["case", case_.id] });
+      setSavedP(true);
+    } finally {
+      setSavingP(false);
+    }
   }
 
   return (
