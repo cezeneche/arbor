@@ -29,12 +29,13 @@
 
   --color-bg:             #F8F8F6;  /* Page background — warm off-white, never pure white */
   --color-surface:        #FFFFFF;  /* Cards and input fields only                        */
+  --color-footer-bg:      #EEECEA;  /* Footer — slightly distinct from page background    */
   --color-navy:           #1B2F4A;  /* Primary actions, key data, authority               */
   --color-navy-hover:     #243A5C;  /* Hover state on navy — slightly lighter             */
   --color-text-primary:   #141414;  /* All primary text                                   */
-  --color-text-secondary: #636363;  /* Labels, metadata, supporting text                  */
-  --color-text-tertiary:  #A0A09A;  /* Timestamps, placeholders, hints                    */
-  --color-border:         #E6E6E2;  /* All borders — 0.5px only, never 1px                */
+  --color-text-secondary: #505050;  /* Labels, metadata, supporting text — 7.1:1 contrast */
+  --color-text-tertiary:  #6E6E6A;  /* Timestamps, placeholders, hints — 4.5:1 contrast   */
+  --color-border:         #C4C4C0;  /* All borders — 0.5px only, never 1px                */
 
   /* Status: text colours */
   --color-green:          #2A6048;  /* Approved, verified, resolved                       */

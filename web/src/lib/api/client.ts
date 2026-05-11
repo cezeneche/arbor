@@ -142,7 +142,8 @@ export async function multipartFetch<T>(url: string, body: FormData): Promise<T>
 export function xhrUpload<T>(
   url:        string,
   body:       FormData,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number) => void,
+  timeoutMs = 120_000
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const token = getToken();
@@ -150,6 +151,7 @@ export function xhrUpload<T>(
 
     xhr.open("POST", url);
     if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.timeout = timeoutMs;
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
@@ -168,6 +170,9 @@ export function xhrUpload<T>(
 
     xhr.onerror = () =>
       reject(new ApiError(0, "Upload failed. Please check your connection.", "NETWORK_ERROR"));
+
+    xhr.ontimeout = () =>
+      reject(new ApiError(408, "Processing timed out. Please try again.", "TIMEOUT"));
 
     xhr.send(body);
   });

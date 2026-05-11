@@ -38,7 +38,15 @@
       "mcp__figma__generate_figma_design",
       "mcp__figma__use_figma",
       "mcp__figma__get_design_context",
-      "mcp__figma__get_screenshot"
+      "mcp__figma__get_screenshot",
+      "Bash(curl -s -X POST http://localhost:8000/api/public/cbam-scope-check -H 'Content-Type: application/json' -d '{\"cn8_code\": \"72082700\", \"annual_import_value_gbp\": 50000, \"regime\": \"UK\"}')",
+      "Bash(open http://localhost:3000/upload)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/token -H 'Content-Type: application/json' -d '{\"sub\":\"test\",\"tenant_id\":\"test\",\"scopes\":[\"cbam:read\",\"cbam:write\"]}')",
+      "Bash(python3 -c \"import sys; data=sys.stdin.read\\(\\); print\\(data[-200:]\\)\")",
+      "Bash(python3 -c \"import sys,json; data=sys.stdin.read\\(\\); lines=data.split\\('\\\\n'\\); print\\(lines[-1]\\); body='\\\\n'.join\\(lines[:-1]\\); d=json.loads\\(body\\); print\\('warnings:', d.get\\('warnings',[]\\)\\); print\\('case_id:', d.get\\('created',{}\\).get\\('case_id'\\)\\)\")",
+      "Bash(pkill -f \"uvicorn main:app\")",
+      "Read(//opt/homebrew/Cellar/python@3.11/3.11.14_3/Frameworks/Python.framework/Versions/3.11/bin/**)",
+      "Bash(\"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform/.venv/bin/python\" --version)"
     ],
     "additionalDirectories": [
       "/Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/(portal)/supplier-request",

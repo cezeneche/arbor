@@ -7,15 +7,8 @@ import { ledgerFetch } from "@/lib/api/client";
 import { formatCurrency } from "@/lib/design-system";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import type { Case } from "@/lib/api/types";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
 
-type CaseRow = Case & {
-  sector?:                  string | null;
-  origin_country?:          string | null;
-  estimated_liability_gbp?: number | null;
-};
 
 interface CPRCalcResult {
   cpr_amount_gbp:             string;
@@ -266,7 +259,7 @@ function CaseCPRForm({
         <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
           Verification document
         </p>
-        <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-tertiary)", marginBottom: "var(--space-16)", lineHeight: 1.6 }}>
+        <p style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-secondary)", marginBottom: "var(--space-16)", lineHeight: 1.6 }}>
           Upload the GACI-accredited verifier&apos;s report confirming the carbon price paid. Required before your return is submitted.
         </p>
 
@@ -420,7 +413,7 @@ function CaseCPRForm({
             padding:         "var(--space-24)",
             marginBottom:    "var(--space-24)",
           }}>
-            <p style={{ fontSize: "var(--text-xs)", fontWeight: 500, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "var(--space-16)" }}>
+            <p style={{ fontSize: "var(--text-xs)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "var(--space-16)" }}>
               Calculation preview
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)", marginBottom: "var(--space-16)" }}>
@@ -508,8 +501,7 @@ function CaseCPRForm({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CarbonReliefPage() {
-  const { cases: raw, isLoading } = useCases();
-  const cases     = raw as CaseRow[];
+  const { cases, isLoading } = useCases();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const qualifying = cases.filter(

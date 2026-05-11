@@ -1,21 +1,14 @@
 import Link from "next/link";
 import { brand } from "@/lib/design-system";
 
-/**
- * Footer — brand spec:
- *   Left: "nucleos" wordmark — Inter 300, 13px, --color-text-tertiary.
- *         One-line product description beneath it (from brand spec voice rules).
- *   Right: Privacy · Terms. Copyright line.
- *   No tagline. No icon. No marketing copy.
- */
 export function Footer() {
   return (
     <footer
       style={{
-        borderTop:       "var(--border-width) solid var(--color-border)",
+        borderTop:       "0.5px solid var(--color-border)",
         paddingTop:      "var(--space-32)",
         paddingBottom:   "var(--space-32)",
-        backgroundColor: "var(--color-bg)",
+        backgroundColor: "var(--color-footer-bg)",
       }}
     >
       <div
@@ -34,8 +27,8 @@ export function Footer() {
         <div>
           <span style={{
             fontSize:      "var(--text-sm)",
-            fontWeight:    300,
-            color:         "var(--color-text-tertiary)",
+            fontWeight:    500,
+            color:         "var(--color-text-primary)",
             letterSpacing: "-0.03em",
             lineHeight:    1,
             fontFamily:    "inherit",
@@ -45,7 +38,7 @@ export function Footer() {
           <p
             style={{
               fontSize:   "var(--text-xs)",
-              color:      "var(--color-text-tertiary)",
+              color:      "var(--color-text-secondary)",
               fontWeight: "var(--font-body)",
               marginTop:  "var(--space-8)",
             }}
@@ -68,7 +61,7 @@ export function Footer() {
               href="/privacy"
               style={{
                 fontSize:       "var(--text-xs)",
-                color:          "var(--color-text-tertiary)",
+                color:          "var(--color-text-secondary)",
                 fontWeight:     "var(--font-body)",
                 textDecoration: "none",
               }}
@@ -79,7 +72,7 @@ export function Footer() {
               href="/terms"
               style={{
                 fontSize:       "var(--text-xs)",
-                color:          "var(--color-text-tertiary)",
+                color:          "var(--color-text-secondary)",
                 fontWeight:     "var(--font-body)",
                 textDecoration: "none",
               }}
@@ -90,7 +83,7 @@ export function Footer() {
           <p
             style={{
               fontSize:   "var(--text-xs)",
-              color:      "var(--color-text-tertiary)",
+              color:      "var(--color-text-secondary)",
               fontWeight: "var(--font-body)",
             }}
           >

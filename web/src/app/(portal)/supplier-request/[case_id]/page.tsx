@@ -8,7 +8,6 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCNCode } from "@/lib/design-system";
-import type { CBAMGoodsLine } from "@/lib/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -88,7 +87,7 @@ export default function SupplierRequestPage({
   const { case_, isLoading } = useCase(case_id);
 
   // Resolve the matching goods line (or first line as fallback)
-  const line: CBAMGoodsLine | undefined =
+  const line =
     case_?.goods_lines?.find((l) => l.cn_code === cnCodeParam) ??
     case_?.goods_lines?.[0];
 
@@ -120,7 +119,7 @@ export default function SupplierRequestPage({
       buildEmailBody({
         supplierName: name,
         cnCode:       line.cn_code,
-        description:  line.description,
+        description:  line.description ?? "",
         userName:     user?.name ?? user?.sub ?? "",
         companyName,
       })

@@ -52,6 +52,7 @@ type CaseListItem = Case & {
   origin_country?:          string | null;
   predominant_method?:      string | null;
   estimated_liability_gbp?: number | null;
+  total_net_mass_kg?:       number | null;
 };
 
 function Dashboard() {
@@ -134,7 +135,7 @@ function Dashboard() {
             </p>
           )}
 
-          <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-tertiary)", marginTop: "var(--space-8)" }}>
+          <p style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginTop: "var(--space-8)" }}>
             {isLoading
               ? "—"
               : `across ${cases.length} case${cases.length !== 1 ? "s" : ""}${lastUpdated ? ` · updated ${relativeTime(lastUpdated)}` : ""}`
@@ -265,6 +266,12 @@ function CaseRow({ c, isLast }: CaseRowProps) {
     : `Q${c.reporting_quarter} ${c.reporting_year}`;
   const leftLabel = `${sector} · ${country}`;
 
+  const massLabel = c.total_net_mass_kg != null
+    ? c.total_net_mass_kg >= 1000
+      ? `${(c.total_net_mass_kg / 1000).toFixed(1)} t`
+      : `${c.total_net_mass_kg.toFixed(0)} kg`
+    : null;
+
   return (
     <Link
       href={`/cases/${c.id}`}
@@ -284,7 +291,7 @@ function CaseRow({ c, isLast }: CaseRowProps) {
           transition:      "background-color 100ms",
         }}
       >
-        {/* LEFT — what it is: flex:1 so it absorbs all remaining space */}
+        {/* LEFT — sector + country */}
         <p
           style={{
             flex:         1,
@@ -300,27 +307,29 @@ function CaseRow({ c, isLast }: CaseRowProps) {
           {leftLabel}
         </p>
 
-        {/* CENTRE — how it was calculated: method badge + case ID */}
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", flexShrink: 0 }}>
+        {/* CENTRE — net mass + method badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-16)", flexShrink: 0 }}>
+          {massLabel && (
+            <span
+              style={{
+                fontSize:           "var(--text-sm)",
+                fontWeight:         "var(--font-body)",
+                color:              "var(--color-text-secondary)",
+                whiteSpace:         "nowrap",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {massLabel}
+            </span>
+          )}
           {c.predominant_method && (
             <Badge variant={methodBadgeVariant(c.predominant_method)}>
               {methodLabel(c.predominant_method)}
             </Badge>
           )}
-          <span
-            style={{
-              fontSize:           "var(--text-xs)",
-              fontWeight:         "var(--font-body)",
-              color:              "var(--color-text-tertiary)",
-              whiteSpace:         "nowrap",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {c.id.slice(0, 8)}
-          </span>
         </div>
 
-        {/* RIGHT — what it costs and where it stands */}
+        {/* RIGHT — liability + status */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", flexShrink: 0 }}>
           {c.estimated_liability_gbp != null && (
             <span

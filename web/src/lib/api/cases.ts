@@ -56,3 +56,38 @@ export function rejectCase(caseId: string, reason: ReviewDecision): Promise<void
     body:   JSON.stringify(reason),
   });
 }
+
+/* ── Patch ────────────────────────────────────────────────────────────────────── */
+
+export interface CasePatch {
+  actor_name?:       string;
+  field_changes?:    Record<string, { from: string; to: string }>;
+  // cbam_cases
+  importer_eori?:    string;
+  importer_name?:    string;
+  // cbam_shipments
+  origin_country?:   string;
+  entry_reference?:  string;
+  incoterm?:         string;
+  // cbam_goods_lines
+  cn_code?:          string;
+  net_mass_kg?:      number;
+  installation_id?:  string;
+  sector?:           string;   // DB key e.g. "iron_steel"
+  // cbam_emissions
+  emissions_method?: string;   // "actual" | "estimated" | "default"
+  direct_kgco2e?:    number;   // kgCO2e
+}
+
+export function patchCase(caseId: string, patch: CasePatch): Promise<{ status: string }> {
+  return ledgerFetch<{ status: string }>(`/api/cbam/cases/${caseId}`, {
+    method: "PATCH",
+    body:   JSON.stringify(patch),
+  });
+}
+
+/* ── Delete ───────────────────────────────────────────────────────────────────── */
+
+export function deleteCase(caseId: string): Promise<void> {
+  return ledgerFetch<void>(`/api/cbam/cases/${caseId}`, { method: "DELETE" });
+}

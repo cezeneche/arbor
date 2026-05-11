@@ -2,6 +2,7 @@
 
 export type CaseStatus =
   | "draft"
+  | "processing"
   | "submitted"
   | "extracted"
   | "calculated"
@@ -144,11 +145,19 @@ export interface AuditEvent {
   id: string;
   case_id: string;
   event_type: string;
-  actor_type: "human" | "system";
-  actor_sub: string;
-  event_json: Record<string, unknown>;
-  hmac_sha256: string;
+  actor_type?: "human" | "system";
+  actor_sub?: string;
+  /** actor field as returned by the CBAM audit_log endpoint */
+  actor?: string;
+  event_json?: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+  hmac_sha256?: string;
+  /** signature field as returned by the CBAM audit_log endpoint */
+  signature?: string;
   prev_hmac?: string;
+  /** chain_hash field as returned by the CBAM audit_log endpoint */
+  chain_hash?: string;
+  verified?: boolean;
   created_at: string;
 }
 

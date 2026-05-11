@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCases, useCase } from "@/lib/hooks/useCases";
 import { ledgerFetch } from "@/lib/api/client";
 import { formatCurrency } from "@/lib/design-system";
@@ -380,7 +381,8 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
 export default function RequestDataPage() {
   const { cases: raw, isLoading } = useCases();
   const cases = raw as CaseRow[];
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [expanded, setExpanded] = useState<string | null>(searchParams.get("case") ?? null);
 
   return (
     <div className="page-content" style={{ paddingTop: "var(--space-48)", paddingBottom: "var(--space-80)" }}>

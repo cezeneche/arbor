@@ -49,11 +49,14 @@ export interface UseCaseReturn {
 
 export function useCase(caseId: string | undefined): UseCaseReturn {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["case", caseId],
-    queryFn:  () => getCase(caseId!),
-    enabled:  Boolean(caseId),
+    queryKey:  ["case", caseId],
+    queryFn:   () => getCase(caseId!),
+    enabled:   Boolean(caseId),
     staleTime: 10_000,
-    retry:    2,
+    retry:     2,
+    // Poll every 3 s while extraction is running in the background
+    refetchInterval: (query) =>
+      query.state.data?.status === "processing" ? 3_000 : false,
   });
 
   return { case_: data, isLoading, error: error as Error | null, refetch };

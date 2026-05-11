@@ -51,22 +51,58 @@ export interface ApiErrorShape {
 
 /** Summary row returned from GET /api/cbam/cases */
 export interface Case {
-  id:                 string;
-  importer_name:      string;
-  importer_eori:      string;
-  reporting_year:     number;
-  reporting_quarter:  1 | 2 | 3 | 4;
-  status:             import("@/lib/types").CaseStatus;
-  review_status:      import("@/lib/types").ReviewStatus;
-  tenant_id:          string;
-  created_at:         string;
-  updated_at:         string;
+  id:                       string;
+  importer_name:            string;
+  importer_eori:            string;
+  reporting_year:           number;
+  reporting_quarter:        1 | 2 | 3 | 4;
+  status:                   import("@/lib/types").CaseStatus;
+  review_status:            import("@/lib/types").ReviewStatus;
+  tenant_id:                string;
+  created_at:               string;
+  updated_at:               string;
+  /** ISO 3166-1 alpha-2 origin country from the case's first shipment. Null when no shipments yet. */
+  origin_country:           string | null;
+  /** Primary CBAM sector code (highest direct emissions). Null when no goods lines yet. */
+  sector:                   string | null;
+  /** Estimated UK CBAM liability (£) derived from latest direct emissions × HMRC rate. Null when no emissions data. */
+  estimated_liability_gbp:  number | null;
+  /** Total net mass (kg) of all goods lines across the case. Null when no goods lines yet. */
+  total_net_mass_kg:        number | null;
+}
+
+/** Enriched goods line as returned by the case detail endpoint */
+export interface RichGoodsLine {
+  id:              string;
+  shipment_id:     string;
+  cn_code:         string;
+  sector:          string | null;
+  description?:    string | null;
+  net_mass_kg:     number | null;
+  quantity?:       number | null;
+  quantity_unit?:  string;
+  installation_name?: string;
+  installation_id?:   string;
+  direct_kgco2e?:  number | null;
+  indirect_kgco2e?: number | null;
+  method?:         string | null;
+  origin_country?: string | null;
+  import_date?:    string | null;
+}
+
+export interface OpenGaps {
+  missing:   string[];   // blocking — submission cannot proceed
+  warnings:  string[];   // non-blocking — accuracy concerns
+  score:     number;     // 0–100, higher is better
+  blocking:  boolean;
+  risk_tier: "blocking" | "high" | "medium" | "low";
 }
 
 /** Full case including shipments and goods lines */
 export interface CaseDetail extends Case {
-  shipments: import("@/lib/types").CBAMShipment[];
-  goods_lines: import("@/lib/types").CBAMGoodsLine[];
+  shipments:   import("@/lib/types").CBAMShipment[];
+  goods_lines: RichGoodsLine[];
+  open_gaps:   OpenGaps | null;
 }
 
 // ── Documents ─────────────────────────────────────────────────────────────────

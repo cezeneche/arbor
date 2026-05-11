@@ -32,6 +32,22 @@ class CBAMCasePatch(BaseModel):
     direct_kgco2e:    float | None = None  # in kgCO2e
 
 
+# Rough Annex VI SEE defaults (tCO2e/t) — same constants used by the case detail page.
+# Used as fallback when no actual emissions record exists for a goods line.
+_ROUGH_SEE_TCO2_PER_T: dict[str, Decimal] = {
+    "iron_steel":  Decimal("1.8"),
+    "aluminium":   Decimal("2.0"),
+    "cement":      Decimal("0.9"),
+    "fertilisers": Decimal("2.5"),
+    "hydrogen":    Decimal("9.5"),
+    "electricity": Decimal("0.4"),
+}
+
+# UK ETS Q1 2027 quarterly average — mirrors public_tools.py constant.
+# Used as the rate for rough estimates so the home page matches the case detail page.
+_UK_ETS_RATE_PLACEHOLDER = Decimal("52.40")
+
+
 def _enrich_cases_with_liability(
     conn: Any,
     items: list[dict],
@@ -39,8 +55,10 @@ def _enrich_cases_with_liability(
     """Augment case dicts in-place with origin_country, sector, estimated_liability_gbp, total_net_mass_kg.
 
     Runs two batch queries (not N per case). Safe to call with an empty list.
-    estimated_liability_gbp uses UK CBAM placeholder rates from cbam_uk_rates;
-    returns None for cases with no emissions data or no matching rate.
+    When actual emissions exist in cbam_emissions, uses the CBAM-adjusted rate from
+    cbam_uk_rates. When no emissions record exists but goods lines with mass are present,
+    falls back to rough SEE × UK ETS rate so the home page always shows a non-null
+    planning estimate consistent with the case detail page.
     """
     if not items:
         return
@@ -105,15 +123,16 @@ def _enrich_cases_with_liability(
     ).mappings().all()
 
     # ── Aggregate in Python ───────────────────────────────────────────────────
-    # (sector, kgco2e, net_mass_kg) keyed by case_id
-    emissions_by_case: dict[str, list[tuple[str, Decimal]]] = {}
+    # Each entry: (sector, kgco2e, mass_kg) — mass_kg used for rough-estimate fallback
+    emissions_by_case: dict[str, list[tuple[str, Decimal, Decimal]]] = {}
     mass_by_case: dict[str, Decimal] = {}
     for row in emission_rows:
         cid = str(row["case_id"])
+        mass_kg = Decimal(str(row["sector_net_mass_kg"] or 0))
         emissions_by_case.setdefault(cid, []).append(
-            (str(row["sector"]), Decimal(str(row["sector_kgco2e"])))
+            (str(row["sector"]), Decimal(str(row["sector_kgco2e"])), mass_kg)
         )
-        mass_by_case[cid] = mass_by_case.get(cid, Decimal("0")) + Decimal(str(row["sector_net_mass_kg"] or 0))
+        mass_by_case[cid] = mass_by_case.get(cid, Decimal("0")) + mass_kg
 
     origin_by_case: dict[str, str] = {
         str(r["case_id"]): str(r["origin_country"]) for r in origin_rows
@@ -133,20 +152,31 @@ def _enrich_cases_with_liability(
             item["estimated_liability_gbp"] = None
             continue
 
-        # Primary sector: the one with the most emissions
-        primary_sector = max(sector_rows, key=lambda t: t[1])[0]
+        # Primary sector: the one with the most kgco2e (or most mass if all zero)
+        primary_sector = max(sector_rows, key=lambda t: (t[1], t[2]))[0]
         item["sector"] = primary_sector
 
         year = int(item.get("reporting_year") or 0)
         quarter = int(item.get("reporting_quarter") or 1) if year > 2027 else None
 
         total_liability = Decimal("0")
-        for sector, kgco2e in sector_rows:
-            rate = get_uk_cbam_rate(sector, year, quarter)
-            if rate is not None and kgco2e > 0:
-                total_liability += (kgco2e / Decimal("1000") * rate).quantize(
-                    Decimal("0.01")
-                )
+        for sector, kgco2e, mass_kg in sector_rows:
+            effective_kgco2e = kgco2e
+            if effective_kgco2e == 0 and mass_kg > 0 and sector in _ROUGH_SEE_TCO2_PER_T:
+                # No actual emissions recorded — use rough Annex VI default × mass
+                see = _ROUGH_SEE_TCO2_PER_T[sector]
+                effective_kgco2e = (mass_kg / Decimal("1000")) * see * Decimal("1000")
+
+            if effective_kgco2e <= 0:
+                continue
+
+            cbam_rate = get_uk_cbam_rate(sector, year, quarter)
+            # Fall back to raw ETS rate when no CBAM-adjusted rate is published yet,
+            # matching the planning estimate shown on the case detail page.
+            rate = cbam_rate if cbam_rate is not None else _UK_ETS_RATE_PLACEHOLDER
+            total_liability += (effective_kgco2e / Decimal("1000") * rate).quantize(
+                Decimal("0.01")
+            )
 
         item["estimated_liability_gbp"] = float(total_liability) if total_liability > 0 else None
 

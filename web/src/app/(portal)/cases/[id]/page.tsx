@@ -969,6 +969,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
   const handleSaved = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["audit-log", id] });
     queryClient.invalidateQueries({ queryKey: ["case", id] });
+    queryClient.invalidateQueries({ queryKey: ["cases"] });
     setUnseenAuditCount(c => c + 1);
   }, [queryClient, id]);
 

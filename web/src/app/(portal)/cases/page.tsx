@@ -33,7 +33,7 @@ export default function CasesPage() {
         >
           Cases
         </h1>
-        <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-tertiary)" }}>
+        <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
           {!isLoading && `${cases.length} total`}
         </span>
       </div>
@@ -64,7 +64,7 @@ export default function CasesPage() {
           <p
             style={{
               fontSize:   "var(--text-sm)",
-              color:      "var(--color-text-tertiary)",
+              color:      "var(--color-text-secondary)",
               marginTop:  "var(--space-8)",
             }}
           >

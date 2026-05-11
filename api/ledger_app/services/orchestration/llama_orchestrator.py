@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import concurrent.futures
 import os
 import re
 import tempfile
 from pathlib import Path
 from typing import Any
+
+_LLAMA_TIMEOUT_SECONDS = int(os.getenv("LLAMA_TIMEOUT_SECONDS", "90"))
 
 from fastapi import HTTPException
 
@@ -258,28 +261,43 @@ def run_document_ingest_plan(filename: str, content_type: str | None, data: byte
             if not os.getenv("OPENAI_API_KEY"):
                 routing_trace["llama_skipped_reason"] = "missing_openai_api_key"
             else:
-                llama_output, llama_nodes = LlamaOrchestrator().extract_structured(
-                    raw_text,
-                    metadata={"filename": filename, "content_type": content_type},
-                    pages=pages_payload if isinstance(pages_payload, list) else None,
-                )
-                routing_trace["llama_invoked"] = True
-                routing_trace["llama_nodes_count"] = len(llama_nodes)
-                if hasattr(llama_output, "model_dump"):
-                    routing_trace["llama_output"] = llama_output.model_dump()
-                elif isinstance(llama_output, dict):
-                    routing_trace["llama_output"] = llama_output
-                else:
-                    routing_trace["llama_output"] = None
+                _orchestrator = LlamaOrchestrator()
+                _pages_arg = pages_payload if isinstance(pages_payload, list) else None
+                _meta = {"filename": filename, "content_type": content_type}
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
+                    _future = _ex.submit(
+                        _orchestrator.extract_structured,
+                        raw_text,
+                        metadata=_meta,
+                        pages=_pages_arg,
+                    )
+                    try:
+                        llama_output, llama_nodes = _future.result(timeout=_LLAMA_TIMEOUT_SECONDS)
+                    except concurrent.futures.TimeoutError:
+                        routing_trace["llama_skipped_reason"] = "llm_timeout"
+                        llama_output, llama_nodes = None, []
+                    except Exception as _exc:
+                        routing_trace["llama_skipped_reason"] = f"llm_error:{_exc}"
+                        llama_output, llama_nodes = None, []
 
-                llama_candidate = _llama_candidate_from_structured(
-                    rule_candidate=rule_candidate,
-                    llama_output=llama_output,
-                    raw_text=raw_text,
-                    layout_payload=layout_payload,
-                )
-                if llama_candidate is not None:
-                    candidates.append(llama_candidate)
+                if llama_output is not None:
+                    routing_trace["llama_invoked"] = True
+                    routing_trace["llama_nodes_count"] = len(llama_nodes)
+                    if hasattr(llama_output, "model_dump"):
+                        routing_trace["llama_output"] = llama_output.model_dump()
+                    elif isinstance(llama_output, dict):
+                        routing_trace["llama_output"] = llama_output
+                    else:
+                        routing_trace["llama_output"] = None
+
+                    llama_candidate = _llama_candidate_from_structured(
+                        rule_candidate=rule_candidate,
+                        llama_output=llama_output,
+                        raw_text=raw_text,
+                        layout_payload=layout_payload,
+                    )
+                    if llama_candidate is not None:
+                        candidates.append(llama_candidate)
         else:
             routing_trace["llama_skipped_reason"] = "rule_candidate_sufficient"
 

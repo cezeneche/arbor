@@ -177,14 +177,14 @@ export function TopBar() {
                 <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--color-text-primary)", display: "block", marginBottom: "var(--space-8)" }}>
                   {fullName}
                 </span>
-                <span style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-tertiary)", display: "block" }}>
+                <span style={{ fontSize: "var(--text-xs)", fontWeight: 300, color: "var(--color-text-secondary)", display: "block" }}>
                   {email}
                 </span>
               </div>
 
               {/* Preferences */}
               <div style={{ padding: "var(--space-8) var(--space-24)" }}>
-                <span style={{ fontSize: "var(--text-xs)", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--color-text-tertiary)" }}>
+                <span style={{ fontSize: "var(--text-xs)", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--color-text-secondary)" }}>
                   Preferences
                 </span>
               </div>

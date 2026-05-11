@@ -157,17 +157,9 @@ export function PublicScopeChecker() {
           nucleos
         </span>
 
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "var(--space-24)" }}>
-          <h1 style={{ fontSize: "var(--text-lg)", fontWeight: 500, color: "var(--color-text-primary)", margin: 0 }}>
-            Find out if your imports are subject to UK CBAM
-          </h1>
-          <Link
-            href="/login"
-            style={{ fontSize: "13px", fontWeight: 300, color: "var(--color-text-secondary)", textDecoration: "none", whiteSpace: "nowrap", marginLeft: "24px", flexShrink: 0 }}
-          >
-            Sign in →
-          </Link>
-        </div>
+        <h1 style={{ fontSize: "var(--text-lg)", fontWeight: 500, color: "var(--color-text-primary)", margin: 0, marginBottom: "var(--space-24)" }}>
+          Find out if your imports are subject to UK CBAM
+        </h1>
 
         <form onSubmit={handleCheck} noValidate>
           <div className="sc-row">
@@ -417,6 +409,22 @@ export function PublicScopeChecker() {
             )}
           </div>
         )}
+
+        {/* Sign in — always visible below all content */}
+        <div style={{ marginTop: "var(--space-48)", textAlign: "center" }}>
+          <Link
+            href="/login"
+            style={{
+              fontSize:       "var(--text-base)",
+              fontWeight:     500,
+              color:          "var(--color-navy)",
+              textDecoration: "none",
+            }}
+          >
+            Sign in instead →
+          </Link>
+        </div>
+
       </div>
     </div>
   );
