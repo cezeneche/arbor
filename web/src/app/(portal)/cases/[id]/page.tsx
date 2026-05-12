@@ -112,8 +112,22 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
   const netLiability = cbamCharge;
 
   const isProcessing = case_.status === "processing";
+  const isError      = case_.status === "error";
   const isPending    = case_.review_status === "pending_review";
   const isApproved   = case_.review_status === "approved" || case_.status === "signed_off";
+
+  const STAGE_LABELS: Record<string, string> = {
+    uploading:         "Uploading document...",
+    reading_document:  "Reading document — OCR in progress...",
+    extracting_fields: "Extracting CBAM fields...",
+    refining:          "Refining extraction...",
+    saving:            "Creating case records...",
+  };
+  const processingStage = (case_ as { processing_stage?: string | null }).processing_stage;
+  const processingError = (case_ as { processing_error?: string | null }).processing_error;
+  const processingMessage = processingStage && STAGE_LABELS[processingStage]
+    ? STAGE_LABELS[processingStage]
+    : "Extracting fields from your document — this page will update automatically when complete.";
 
   function refreshAll() {
     setTimeout(() => {
@@ -254,9 +268,18 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
 
             <Divider />
 
-            {isProcessing ? (
+            {isError ? (
+              <div style={{ paddingBottom: "var(--space-40)" }}>
+                <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-focal)", color: "var(--color-red)", marginBottom: "var(--space-8)" }}>
+                  Processing failed
+                </p>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", margin: 0 }}>
+                  {processingError ?? "The document could not be processed. Please upload it again — if it is a scanned image, it may take longer on first attempt."}
+                </p>
+              </div>
+            ) : isProcessing ? (
               <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", paddingBottom: "var(--space-40)" }}>
-                Extracting fields from your document — this page will update automatically when complete.
+                {processingMessage}
               </p>
             ) : (
               <DocumentFieldsForm case_={case_} actorName={actorName} onSaved={handleSaved} />

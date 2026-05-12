@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS cbam.cbam_cases (
   reporting_year          INTEGER NOT NULL,
   reporting_quarter       INTEGER NOT NULL CHECK (reporting_quarter BETWEEN 1 AND 4),
   status                  TEXT NOT NULL DEFAULT 'draft'
-                            CHECK (status IN ('draft','submitted','processing','approved','rejected')),
+                            CHECK (status IN ('draft','submitted','processing','approved','rejected','error')),
   review_status           TEXT
                             CHECK (review_status IN ('pending_review','approved','rejected','signed_off','flagged')),
 

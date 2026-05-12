@@ -476,7 +476,15 @@ export default function UploadPage() {
 
     // Phase 2: jump to 50%, then poll until extraction completes
     setProcessingPct(50);
-    setProcessingLabel("Extracting fields...");
+    setProcessingLabel(`Reading ${files[0].file.name}…`);
+
+    const STAGE_LABELS: Record<string, string> = {
+      uploading:         "Uploading...",
+      reading_document:  "Reading document...",
+      extracting_fields: "Extracting fields...",
+      refining:          "Refining extraction...",
+      saving:            "Creating case...",
+    };
 
     while (true) {
       await new Promise<void>(r => setTimeout(r, 1_500));
@@ -489,7 +497,26 @@ export default function UploadPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
-          const caseData = await res.json() as { status: string };
+          const caseData = await res.json() as {
+            status: string;
+            processing_stage?: string | null;
+            processing_error?: string | null;
+          };
+
+          if (caseData.processing_stage && STAGE_LABELS[caseData.processing_stage]) {
+            setProcessingLabel(STAGE_LABELS[caseData.processing_stage]);
+          }
+
+          if (caseData.status === "error") {
+            setIsProcessing(false);
+            setProcessingPct(0);
+            setProcessError(
+              caseData.processing_error
+                ?? "Processing failed. Please try again — if the document is a scanned image it may take longer."
+            );
+            return;
+          }
+
           if (caseData.status !== "processing") {
             setProcessingPct(100);
             setTimeout(() => router.push(`/cases/${caseId}`), 600);
@@ -613,6 +640,11 @@ export default function UploadPage() {
                     <p style={{ flex: 1, fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-primary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {truncate(entry.file.name)}
                     </p>
+                    {files.length > 1 && (
+                      <span style={{ fontSize: "var(--text-xs)", color: i === 0 ? "var(--color-navy)" : "var(--color-text-tertiary)", marginLeft: "var(--space-8)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {i === 0 ? "Extracted" : "Attached"}
+                      </span>
+                    )}
                     <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", marginLeft: "var(--space-16)", whiteSpace: "nowrap" }}>
                       {formatBytes(entry.file.size)}
                     </span>
@@ -628,6 +660,11 @@ export default function UploadPage() {
                     )}
                   </div>
                 ))}
+                {files.length > 1 && !isProcessing && (
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", marginTop: "var(--space-8)", margin: "var(--space-8) 0 0" }}>
+                    CBAM fields are extracted from the first document. Additional files are attached to the case.
+                  </p>
+                )}
               </div>
             )}
 

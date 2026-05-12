@@ -17,6 +17,7 @@ Startup sequence (lifespan):
   2. Annex VI emission factors seeded into DB (idempotent)
 """
 import logging
+import os
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
@@ -53,6 +54,52 @@ async def lifespan(app: FastAPI):
             _log.info("Supabase clients initialised")
         except Exception as exc:
             _log.warning("Supabase client init failed (non-fatal): %s", exc)
+
+    # Recover cases stuck in "processing" from a previous server run.
+    # If the server restarted mid-pipeline the background task is gone but the
+    # case row stays "processing" and will never resolve on its own.
+    try:
+        from ledger_app.api.cbam._shared import engine as _cbam_engine
+        from sqlalchemy import text as _text
+        _timeout = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "180"))
+        with _cbam_engine.begin() as _conn:
+            cols_row = _conn.execute(_text(
+                "SELECT column_name FROM information_schema.columns"
+                " WHERE table_schema='cbam' AND table_name='cbam_cases'"
+            )).mappings().all()
+            cols = {r["column_name"] for r in cols_row}
+            extra = ""
+            if "processing_stage" in cols:
+                extra += ", processing_stage = 'failed'"
+            if "processing_error" in cols:
+                extra += ", processing_error = 'Server restarted before extraction completed'"
+            result = _conn.execute(
+                _text(
+                    f"UPDATE cbam.cbam_cases"
+                    f" SET status = 'error'{extra}"
+                    f" WHERE status = 'processing'"
+                    f" AND created_at < NOW() - INTERVAL '1 second' * :timeout"
+                ),
+                {"timeout": _timeout},
+            )
+        if result.rowcount:
+            _log.warning("startup_recovery: marked %d stuck processing case(s) as error", result.rowcount)
+    except Exception as exc:
+        _log.warning("startup_recovery: failed (non-fatal): %s", exc)
+
+    # Warm up PaddleOCR so the first document upload doesn't pay the 30-60s init cost.
+    try:
+        import threading
+        def _warmup_ocr() -> None:
+            try:
+                from ledger_app.services.document_text_extractor import _get_paddle_ocr
+                _get_paddle_ocr()
+                _log.info("paddleocr: model warmed up")
+            except Exception as exc:
+                _log.warning("paddleocr: warmup failed (non-fatal): %s", exc)
+        threading.Thread(target=_warmup_ocr, daemon=True).start()
+    except Exception as exc:
+        _log.warning("paddleocr: warmup thread failed to start: %s", exc)
 
     # Seed Annex VI emission factors (idempotent — skips if tables not ready yet)
     try:

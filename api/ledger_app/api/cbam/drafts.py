@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
@@ -17,9 +18,64 @@ from sqlalchemy import text
 
 from ledger_app.services.cbam_arbiter import validate_consignment_consistency
 from ledger_app.services.cbam_emissions_selector import select_and_calculate
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from . import _shared
+
+
+def _friendly_error(msg: str) -> str:
+    if "cbam_cases_unique_period" in msg or (
+        "UniqueViolation" in msg and "importer_eori" in msg
+    ):
+        m = re.search(
+            r"reporting_year, reporting_quarter\)=\([^,]+,\s*([^,]+),\s*(\d+),\s*(\d+)\)",
+            msg,
+        )
+        if m:
+            eori, year, quarter = m.group(1).strip(), m.group(2), m.group(3)
+            return f"A case for importer {eori} already exists for Q{quarter} {year}."
+        return "A case for this importer already exists for this reporting period."
+    if "UniqueViolation" in msg or "duplicate key" in msg:
+        return "This record already exists. Please check for duplicates before submitting."
+    if "No invoice lines" in msg or "No goods lines" in msg:
+        return "No goods lines were found in this document. Check that the invoice includes line items with CN codes."
+    if "Extractor returned no" in msg or "Extractor returned an invalid" in msg:
+        return "Nothing could be extracted from this document. Check the file contains invoice data."
+    if "reporting_quarter must be between" in msg:
+        return "The reporting quarter could not be determined from the document. Check the invoice date."
+    if "pipeline_timeout" in msg:
+        return "Processing timed out. The document may be too large. Try a shorter document or contact support."
+    return msg
+
+
+_VALIDATION_FIELD_LABELS: dict[str, str] = {
+    "importer.eori": "EORI number",
+    "invoice.invoice_date": "invoice date",
+    "lines": "goods lines",
+    "lines.cn_code": "CN code",
+}
+
+_VALIDATION_TYPE_LABELS: dict[str, str] = {
+    "string_too_short": "is missing",
+    "missing": "is missing",
+    "too_short": "is missing",
+    "date_from_datetime_parsing": "is not a valid date",
+    "value_error": "is invalid",
+}
+
+
+def _humanize_validation_error(exc: ValidationError) -> str:
+    messages: list[str] = []
+    for err in exc.errors():
+        loc = ".".join(str(p) for p in err.get("loc", []) if not isinstance(p, int))
+        label = _VALIDATION_FIELD_LABELS.get(loc) or loc.replace("_", " ").replace(".", " ")
+        if label == "goods lines":
+            messages.append("No goods lines were found.")
+        else:
+            type_label = _VALIDATION_TYPE_LABELS.get(err.get("type", ""), "is invalid")
+            messages.append(f"The {label} {type_label}.")
+    return " ".join(messages) if messages else "The document is missing required fields."
 
 router = APIRouter()
 
@@ -59,7 +115,44 @@ def _create_cbam_draft_from_parsed_invoice_payload(
 
         if existing_case_id:
             # Async upload path — stub case already created with status="processing".
-            # Update it with the real extracted fields and mark as draft.
+            # Before updating, check whether another case already owns this period.
+            tenant_filter = (
+                "AND tenant_id = :tenant_id" if (tenant_id and "tenant_id" in case_columns) else ""
+            )
+            conflict_params: dict[str, object] = {
+                "importer_eori": payload.importer.eori,
+                "reporting_year": reporting_year,
+                "reporting_quarter": reporting_quarter,
+                "stub_id": existing_case_id,
+            }
+            if tenant_id and "tenant_id" in case_columns:
+                conflict_params["tenant_id"] = tenant_id
+            conflict_row = conn.execute(
+                text(
+                    f"""
+                    SELECT id FROM cbam.cbam_cases
+                    WHERE importer_eori = :importer_eori
+                      AND reporting_year = :reporting_year
+                      AND reporting_quarter = :reporting_quarter
+                      AND id != :stub_id
+                      {tenant_filter}
+                    LIMIT 1
+                    """
+                ),
+                conflict_params,
+            ).mappings().one_or_none()
+            if conflict_row:
+                # Delete the stub and surface a clear error — do not leave orphaned processing cases.
+                conn.execute(
+                    text("DELETE FROM cbam.cbam_cases WHERE id = :id"),
+                    {"id": existing_case_id},
+                )
+                raise IntegrityError(
+                    statement=None,
+                    params=None,
+                    orig=Exception("cbam_cases_unique_period"),
+                )
+
             case_id = existing_case_id
             update_fields: dict[str, object] = {
                 "id": case_id,
@@ -416,11 +509,15 @@ def create_cbam_draft_from_parsed_invoice(
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     try:
         return _create_cbam_draft_from_parsed_invoice_payload(payload, tenant_id=tenant_id)
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=_humanize_validation_error(exc))
     except IntegrityError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "cbam_draft_create_failed", "message": str(exc.orig) if exc.orig else str(exc)},
-        )
+        orig = str(exc.orig) if exc.orig else str(exc)
+        if "cbam_cases_unique_period" in orig:
+            detail = "A case for this EORI, year, and quarter already exists. Open the existing case to continue."
+        else:
+            detail = "This record already exists. Please check for duplicates before submitting."
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
 
 def _extract_consignment_ref_from_xml(data: bytes, content_type: str | None) -> str | None:
@@ -476,16 +573,39 @@ def _create_stub_processing_case(tenant_id: str) -> str:
     with _shared.engine.begin() as conn:
         case_columns = _shared._table_columns(conn, "cbam_cases")
         _shared.set_tenant_context(conn, tenant_id)
+        # Use a UUID-based placeholder so the unique (tenant, eori, year, quarter)
+        # constraint never blocks a second upload attempt while the first is processing.
         stub: dict[str, object] = {
             "id":                str(uuid4()),
-            "importer_eori":     "",
+            "importer_eori":     f"__stub_{uuid4().hex[:12]}",
             "reporting_year":    now.year,
             "reporting_quarter": quarter,
         }
-        if "status"    in case_columns: stub["status"]    = "processing"
-        if "tenant_id" in case_columns: stub["tenant_id"] = tenant_id
+        if "status"           in case_columns: stub["status"]           = "processing"
+        if "processing_stage" in case_columns: stub["processing_stage"] = "uploading"
+        if "tenant_id"        in case_columns: stub["tenant_id"]        = tenant_id
         row = _shared._insert_returning(conn, "cbam_cases", stub)
         return str(row["id"])
+
+
+def _set_stage(case_id: str, tenant_id: str, stage: str) -> None:
+    """Update processing_stage on the case row so the frontend can show real progress."""
+    try:
+        with _shared.engine.begin() as conn:
+            cols = _shared._table_columns(conn, "cbam_cases")
+            if "processing_stage" not in cols:
+                return
+            _shared.set_tenant_context(conn, tenant_id)
+            tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in cols else ""
+            conn.execute(
+                text(
+                    f"UPDATE cbam.cbam_cases SET processing_stage = :stage"
+                    f" WHERE id = :id {tenant_filter}"
+                ),
+                {"stage": stage, "id": case_id, "tenant_id": tenant_id},
+            )
+    except Exception:
+        pass
 
 
 # Safety net: if the pipeline hangs (e.g. OCR model stall, network hang), this
@@ -514,15 +634,25 @@ def _run_document_pipeline(
     from ledger_app.core.version import APP_GIT_SHA, APP_VERSION
 
     def _mark_error(msg: str) -> None:
+        clean = _friendly_error(msg)
         try:
             with _shared.engine.begin() as conn:
+                cols = _shared._table_columns(conn, "cbam_cases")
                 _shared.set_tenant_context(conn, tenant_id)
+                extra = ""
+                params: dict = {"id": case_id}
+                if "processing_error" in cols:
+                    extra += ", processing_error = :err"
+                    params["err"] = clean[:2000]
+                if "processing_stage" in cols:
+                    extra += ", processing_stage = :stage"
+                    params["stage"] = "failed"
                 conn.execute(
-                    text("UPDATE cbam.cbam_cases SET status = 'error' WHERE id = :id"),
-                    {"id": case_id},
+                    text(f"UPDATE cbam.cbam_cases SET status = 'error'{extra} WHERE id = :id"),
+                    params,
                 )
-        except Exception:
-            pass
+        except Exception as db_exc:
+            _log.error("[pipeline] _mark_error DB write failed for case %s: %s", case_id, db_exc)
         _log.error("[pipeline] case %s failed: %s", case_id, msg)
 
     _deadline = threading.Timer(
@@ -586,6 +716,7 @@ def _run_document_pipeline_inner(
         consignment_reference = _extract_consignment_ref_from_xml(file_bytes, content_type)
 
     # ── AI extraction ─────────────────────────────────────────────────────────
+    _set_stage(case_id, tenant_id, "reading_document")
     try:
         _shared.ingest_orchestrator.extract_document_from_upload = _shared.extract_document_from_upload
         _shared.ingest_orchestrator.extract_cbam_document        = _shared.extract_cbam_document
@@ -604,14 +735,15 @@ def _run_document_pipeline_inner(
     raw_candidates  = ingest_plan.get("candidates")
 
     if not isinstance(raw_candidates, list) or not raw_candidates:
-        _mark_error("Extractor returned no candidates.")
+        _mark_error("Nothing could be extracted from this document. Check the file contains invoice data.")
         return
     candidates = [c for c in raw_candidates if isinstance(c, dict)]
     if not candidates:
-        _mark_error("Extractor returned no valid candidates.")
+        _mark_error("Nothing could be extracted from this document. Check the file contains invoice data.")
         return
 
     # ── Arbitration + repair ──────────────────────────────────────────────────
+    _set_stage(case_id, tenant_id, "extracting_fields")
     try:
         arbiter_warnings: list[str] = []
         repair_warnings:  list[str] = []
@@ -646,6 +778,7 @@ def _run_document_pipeline_inner(
         arbitrated_candidate = candidates[0]
 
     # ── Build parsed invoice payload ──────────────────────────────────────────
+    _set_stage(case_id, tenant_id, "refining")
     try:
         parsed_payload, resolved_year, resolved_quarter, parse_warnings = (
             _shared._build_parsed_invoice_request_from_extraction(
@@ -659,6 +792,9 @@ def _run_document_pipeline_inner(
                 is_temporary_admission=is_temporary_admission,
             )
         )
+    except ValidationError as exc:
+        _mark_error(_humanize_validation_error(exc))
+        return
     except Exception as exc:
         _mark_error(str(exc))
         return
@@ -723,6 +859,7 @@ def _run_document_pipeline_inner(
                     pass
 
     # ── Persist: create/update case, shipments, goods lines, emissions ────────
+    _set_stage(case_id, tenant_id, "saving")
     try:
         created = _create_cbam_draft_from_parsed_invoice_payload(
             parsed_payload,
@@ -732,6 +869,9 @@ def _run_document_pipeline_inner(
             tenant_id=tenant_id,
             existing_case_id=case_id,
         )
+    except IntegrityError as exc:
+        _mark_error(_friendly_error(str(exc)))
+        return
     except Exception as exc:
         _mark_error(str(exc))
         return

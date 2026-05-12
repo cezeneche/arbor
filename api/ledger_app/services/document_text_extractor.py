@@ -11,6 +11,20 @@ from fastapi import HTTPException
 if TYPE_CHECKING:
     from PIL import Image
 
+
+def _tables_to_text(tables: list) -> str:
+    lines = []
+    for table in tables:
+        if not isinstance(table, list):
+            continue
+        for row in table:
+            if not isinstance(row, list):
+                continue
+            cells = [str(cell).strip() if cell is not None else "" for cell in row]
+            if any(cells):
+                lines.append(" | ".join(cells))
+    return "\n".join(lines)
+
 # PaddleOCR model init takes 30-60s on first load. Keep a single instance for
 # the lifetime of the process so subsequent calls pay no init cost.
 _paddle_ocr_instance: object = None
@@ -49,6 +63,32 @@ def _is_image(filename: str, content_type: str | None) -> bool:
 def _is_pdf(filename: str, content_type: str | None) -> bool:
     lower_name = filename.lower()
     return lower_name.endswith(".pdf") or content_type == "application/pdf"
+
+
+def _is_docx(filename: str, content_type: str | None) -> bool:
+    lower_name = filename.lower()
+    return lower_name.endswith(".docx") or content_type in (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+    )
+
+
+def _extract_docx(data: bytes) -> dict[str, object]:
+    try:
+        from docx import Document as DocxDocument  # type: ignore
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="python-docx not installed") from exc
+    try:
+        doc = DocxDocument(BytesIO(data))
+        parts: list[str] = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        for table in doc.tables:
+            for row in table.rows:
+                cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                if cells:
+                    parts.append(" | ".join(cells))
+        return {"raw_text": "\n".join(parts), "pages": [], "layout": None}
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="The Word document could not be opened. Try saving it as a PDF and upload again.") from exc
 
 
 def _decode_text_bytes(data: bytes) -> str:
@@ -254,7 +294,7 @@ def _extract_image_document_with_paddleocr(data: bytes) -> dict[str, object]:
     arr = np.frombuffer(data, dtype=np.uint8)
     image = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if image is None:
-        raise HTTPException(status_code=422, detail="Unable to decode image data")
+        raise HTTPException(status_code=422, detail="The image could not be opened. Check the file is a valid PNG or JPG.")
     image_height = int(image.shape[0]) if getattr(image, "shape", None) is not None else 1
 
     ocr = _get_paddle_ocr()
@@ -312,6 +352,13 @@ def _extract_pdf_document_hybrid(data: bytes) -> dict[str, object]:
         with pdfplumber.open(BytesIO(data)) as pdf:
             for page_idx, page in enumerate(pdf.pages, start=1):
                 text = (page.extract_text() or "").strip()
+                table_text = ""
+                try:
+                    tables = page.extract_tables() or []
+                    table_text = _tables_to_text(tables)
+                except Exception:
+                    table_text = ""
+                combined_page_text = "\n".join(filter(None, [text, table_text]))
                 words_payload: list[dict[str, object]] = []
                 try:
                     words = page.extract_words() or []
@@ -333,13 +380,13 @@ def _extract_pdf_document_hybrid(data: bytes) -> dict[str, object]:
                 pages_text.append(
                     {
                         "page_number": page_idx,
-                        "text": text,
+                        "text": combined_page_text,
                         "source": "pdf_text",
                         "words": words_payload,
                     }
                 )
     except Exception as exc:
-        raise HTTPException(status_code=422, detail="Unable to read PDF file") from exc
+        raise HTTPException(status_code=422, detail="The PDF could not be opened. Try re-saving or re-exporting it and upload again.") from exc
 
     combined_text = "\n\n".join(str(page["text"]) for page in pages_text if str(page["text"]).strip()).strip()
     if len(combined_text) >= 100:
@@ -357,10 +404,10 @@ def _extract_pdf_document_hybrid(data: bytes) -> dict[str, object]:
     try:
         images = convert_from_bytes(data)
     except Exception as exc:
-        raise HTTPException(status_code=422, detail="Unable to rasterize PDF for OCR") from exc
+        raise HTTPException(status_code=422, detail="The scanned PDF could not be processed. Try converting it to a standard PDF and upload again.") from exc
 
     pages_ocr: list[dict[str, object]] = []
-    for page_idx, image in enumerate(images[:1], start=1):  # cap at 1 page — OCR is the slow path
+    for page_idx, image in enumerate(images[:3], start=1):  # cap at 3 pages — goods lines can be on page 2
         page_text = _extract_text_with_paddleocr_image(image).strip()
         pages_ocr.append(
             {
@@ -372,7 +419,7 @@ def _extract_pdf_document_hybrid(data: bytes) -> dict[str, object]:
 
     combined_ocr_text = "\n\n".join(str(page["text"]) for page in pages_ocr if str(page["text"]).strip()).strip()
     if not combined_ocr_text:
-        raise HTTPException(status_code=422, detail="No extractable text found in PDF.")
+        raise HTTPException(status_code=422, detail="No text could be read from this PDF. If it is a scanned document, ensure the scan is clear and try again.")
 
     return {
         "raw_text": combined_ocr_text,
@@ -393,12 +440,15 @@ def extract_document_from_upload(filename: str, content_type: str | None, data: 
     if _is_pdf(filename, content_type):
         return _extract_pdf_document_hybrid(data)
 
+    if _is_docx(filename, content_type):
+        return _extract_docx(data)
+
     if _is_image(filename, content_type):
         if os.getenv("OCR_DISABLED") == "1":
             return {"raw_text": "", "ocr_lines": [], "layout": {"blocks": []}}
         return _extract_image_document_with_paddleocr(data)
 
-    raise HTTPException(status_code=415, detail="Unsupported file type")
+    raise HTTPException(status_code=415, detail="This file type is not supported. Upload a PDF, Word document, PNG, or JPG.")
 
 
 def extract_text_from_upload(filename: str, content_type: str | None, data: bytes) -> str:

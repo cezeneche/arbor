@@ -130,16 +130,22 @@ def _validate_deterministic_fields(
 
 
 def _value_in_text(value: Any, text: str) -> bool:
-    """Return True if *value* appears literally in *text* (case-insensitive).
+    """Return True if *value* appears in *text* (case-insensitive).
 
-    For numeric values both the exact float string and the integer
-    representation (for whole numbers) are checked, to handle documents
-    that write ``1500`` where the parsed value is ``1500.0``.
+    Also checks a whitespace-collapsed form of both needle and haystack so
+    that OCR-injected spaces (e.g. "720 612" for CN code "720612") do not
+    cause valid Claude values to be rejected.
     """
     if value is None:
         return False
     s = str(value).strip()
+    if not s:
+        return False
     if re.search(re.escape(s), text, flags=re.IGNORECASE):
+        return True
+    norm_s = re.sub(r"\s+", "", s)
+    norm_text = re.sub(r"\s+", "", text)
+    if norm_s and re.search(re.escape(norm_s), norm_text, flags=re.IGNORECASE):
         return True
     try:
         f = float(value)

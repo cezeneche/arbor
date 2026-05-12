@@ -248,12 +248,12 @@ class ClaudeCBAMExtractor:
         client = anthropic.Anthropic(timeout=25.0)
         message = client.messages.create(
             model=self.model,
-            max_tokens=800,
+            max_tokens=1500,
             messages=[
                 {
                     "role": "user",
                     "content": self._PROMPT.replace(
-                        "{document_text}", document_text[:4000]
+                        "{document_text}", document_text[:6000]
                     ),
                 }
             ],
@@ -394,7 +394,11 @@ class ClaudeCBAMExtractor:
         except Exception:
             pass
         if not raw_text:
-            raw_text = _read_raw_text(path)
+            candidate = _read_raw_text(path)
+            # Reject binary content — a PDF read as plain text is not usable.
+            printable = sum(1 for c in candidate[:200] if c.isprintable())
+            if len(candidate) > 0 and printable / max(len(candidate[:200]), 1) > 0.8:
+                raw_text = candidate
 
         # ── 2. Deterministic (regex-first) extraction — always the primary source
         det_structured = _parse_structured_response(

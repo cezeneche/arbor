@@ -3,6 +3,7 @@
 export type CaseStatus =
   | "draft"
   | "processing"
+  | "error"
   | "submitted"
   | "extracted"
   | "calculated"
