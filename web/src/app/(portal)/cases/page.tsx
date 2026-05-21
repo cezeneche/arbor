@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { SlidersHorizontal, ArrowUpDown, Search } from "lucide-react";
 import { IconDropdown } from "@/components/ui/icon-dropdown";
 import { useCases } from "@/lib/hooks/useCases";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,8 @@ export default function CasesPage() {
   const { cases, isLoading, error } = useCases();
 
   const [sort,   setSort]   = useState<SortOrder>("newest");
-  const [filter, setFilter] = useState<FilterMode>("all");
+  const [filter, setFilter] = useState<FilterMode>("processed");
+  const [search, setSearch] = useState("");
   const [page,   setPage]   = useState(1);
 
   const filtered = useMemo(() => {
@@ -36,13 +37,21 @@ export default function CasesPage() {
     if (filter === "processed") list = list.filter(c => isProcessed(c.status));
     if (filter === "error")     list = list.filter(c => c.status === "error");
 
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(c =>
+        c.importer_name?.toLowerCase().includes(q) ||
+        c.id.toLowerCase().includes(q),
+      );
+    }
+
     list.sort((a, b) => {
       const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       return sort === "newest" ? diff : -diff;
     });
 
     return list;
-  }, [cases, filter, sort]);
+  }, [cases, filter, search, sort]);
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -55,6 +64,11 @@ export default function CasesPage() {
 
   function handleSort(s: SortOrder) {
     setSort(s);
+    setPage(1);
+  }
+
+  function handleSearch(q: string) {
+    setSearch(q);
     setPage(1);
   }
 
@@ -117,6 +131,39 @@ export default function CasesPage() {
             onChange={handleSort}
             title="Sort"
           />
+          <div style={{ position: "relative", marginLeft: "var(--space-4)" }}>
+            <Search
+              size={14}
+              style={{
+                position:  "absolute",
+                left:      "10px",
+                top:       "50%",
+                transform: "translateY(-50%)",
+                color:     "var(--color-text-tertiary)",
+                pointerEvents: "none",
+              }}
+            />
+            <input
+              type="search"
+              placeholder="Search cases…"
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+              style={{
+                height:          "32px",
+                width:           "220px",
+                paddingLeft:     "30px",
+                paddingRight:    "var(--space-12)",
+                fontSize:        "var(--text-sm)",
+                fontWeight:      300,
+                fontFamily:      "inherit",
+                color:           "var(--color-text-primary)",
+                backgroundColor: "var(--color-surface)",
+                border:          "var(--border-width) solid var(--color-border)",
+                borderRadius:    "6px",
+                outline:         "none",
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -144,7 +191,7 @@ export default function CasesPage() {
       {!isLoading && !error && cases.length > 0 && filtered.length === 0 && (
         <div style={{ paddingTop: "var(--space-48)", textAlign: "center" }}>
           <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-            No {filter} cases.
+            {search.trim() ? `No cases matching "${search.trim()}".` : `No ${filter} cases.`}
           </p>
         </div>
       )}

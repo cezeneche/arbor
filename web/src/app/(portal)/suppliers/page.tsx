@@ -379,7 +379,9 @@ function CaseRequestForm({ caseId }: { caseId: string }) {
 
 function RequestDataPageInner() {
   const { cases: raw, isLoading } = useCases();
-  const cases = raw as CaseRow[];
+  const cases = (raw as CaseRow[]).filter(
+    c => c.status !== "error" && c.status !== "processing",
+  );
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState<string | null>(searchParams.get("case") ?? null);
 
