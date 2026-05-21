@@ -18,10 +18,10 @@ ARG APP_GIT_SHA=unknown
 ENV APP_GIT_SHA=$APP_GIT_SHA
 
 # Shared JWT library
-COPY shared_auth ./shared_auth
+COPY api/shared_auth ./shared_auth
 
 # Ledger application package (17 routers + all services)
-COPY nucleo-ledger/ledger_app ./ledger_app
+COPY api/ledger_app ./ledger_app
 
 # Consolidated app package (narrative pipeline router + service layer)
 COPY api/app ./app
