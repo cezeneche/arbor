@@ -207,7 +207,7 @@ function InlineScopeChecker() {
               </div>
 
               <div style={{ flex: isMobile ? "none" : 1, width: isMobile ? "100%" : undefined, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "4px", display: "block" }}>Annual ton (optional)</span>
+                <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "4px", display: "block" }}>Annual ton</span>
                 <div style={{ display: "flex", alignItems: "stretch", height: "40px", border: `0.5px solid ${qtyErr ? "var(--color-red)" : qtyFocus ? "var(--color-navy)" : "var(--color-border)"}`, borderRadius: "6px", backgroundColor: "var(--color-surface)", overflow: "hidden" }}>
                   <input
                     type="number"

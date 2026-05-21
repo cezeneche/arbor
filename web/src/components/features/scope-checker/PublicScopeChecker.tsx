@@ -174,7 +174,7 @@ export function PublicScopeChecker() {
 
             {/* Field 2 — Annual quantity + Check button */}
             <div className="sc-f2">
-              <span style={LABEL}>Annual ton (optional)</span>
+              <span style={LABEL}>Annual ton</span>
               <div className="sc-f2-box">
                 <input
                   type="number"
