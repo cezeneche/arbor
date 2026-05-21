@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { SlidersHorizontal, ArrowUpDown, Search } from "lucide-react";
 import { IconDropdown } from "@/components/ui/icon-dropdown";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useCases } from "@/lib/hooks/useCases";
@@ -57,6 +57,7 @@ function Dashboard() {
 
   const [sort,   setSort]   = useState<SortOrder>("newest");
   const [filter, setFilter] = useState<FilterMode>("all");
+  const [search, setSearch] = useState("");
   const [page,   setPage]   = useState(1);
 
   // Total estimated liability — summed from per-case estimated_liability_gbp when available
@@ -78,12 +79,20 @@ function Dashboard() {
     let list = [...cases];
     if (filter === "processed") list = list.filter(c => isProcessed(c.status));
     if (filter === "error")     list = list.filter(c => c.status === "error");
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(c =>
+        c.importer_name?.toLowerCase().includes(q) ||
+        c.sector?.toLowerCase().includes(q) ||
+        c.id.toLowerCase().includes(q),
+      );
+    }
     list.sort((a, b) => {
       const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       return sort === "newest" ? diff : -diff;
     });
     return list;
-  }, [cases, filter, sort]);
+  }, [cases, filter, search, sort]);
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -91,6 +100,7 @@ function Dashboard() {
 
   function handleFilter(f: FilterMode) { setFilter(f); setPage(1); }
   function handleSort(s: SortOrder)    { setSort(s);   setPage(1); }
+  function handleSearch(q: string)     { setSearch(q); setPage(1); }
 
 
   return (
@@ -198,6 +208,40 @@ function Dashboard() {
               title="Sort"
             />
 
+            <div style={{ position: "relative" }}>
+              <Search
+                size={14}
+                style={{
+                  position:      "absolute",
+                  left:          "10px",
+                  top:           "50%",
+                  transform:     "translateY(-50%)",
+                  color:         "var(--color-text-tertiary)",
+                  pointerEvents: "none",
+                }}
+              />
+              <input
+                type="search"
+                placeholder="Search cases…"
+                value={search}
+                onChange={e => handleSearch(e.target.value)}
+                style={{
+                  height:          "32px",
+                  width:           "220px",
+                  paddingLeft:     "30px",
+                  paddingRight:    "var(--space-12)",
+                  fontSize:        "var(--text-sm)",
+                  fontWeight:      300,
+                  fontFamily:      "inherit",
+                  color:           "var(--color-text-primary)",
+                  backgroundColor: "var(--color-surface)",
+                  border:          "var(--border-width) solid var(--color-border)",
+                  borderRadius:    "6px",
+                  outline:         "none",
+                }}
+              />
+            </div>
+
             <div style={{ flex: 1 }} />
 
             <Link
@@ -258,7 +302,7 @@ function Dashboard() {
         ) : filtered.length === 0 ? (
           <div style={{ paddingTop: "var(--space-48)", textAlign: "center" }}>
             <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-              No {filter} cases.
+              {search.trim() ? `No cases matching "${search.trim()}".` : `No ${filter} cases.`}
             </p>
           </div>
         ) : (

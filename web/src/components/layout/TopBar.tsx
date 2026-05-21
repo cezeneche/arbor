@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuthContext } from "@/lib/auth/AuthProvider";
 
 function getInitials(name?: string | null, sub?: string | null): string {
@@ -14,8 +15,30 @@ function getInitials(name?: string | null, sub?: string | null): string {
   return "?";
 }
 
+function NavLink({ href, label, isActive }: { href: string; label: string; isActive: boolean }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Link
+      href={href}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        fontSize:       "13px",
+        fontWeight:     isActive || hovered ? 500 : 300,
+        color:          "var(--color-navy)",
+        textDecoration: "none",
+        fontFamily:     "inherit",
+        transition:     "font-weight 100ms",
+      }}
+    >
+      {label}
+    </Link>
+  );
+}
+
 export function TopBar() {
   const { user, signOut } = useAuthContext();
+  const pathname = usePathname();
 
   const [avatarOpen,    setAvatarOpen]    = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -89,31 +112,15 @@ export function TopBar() {
         {/* RIGHT: Upload documents + avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-24)", flexShrink: 0 }}>
 
-          <Link
-            href="/suppliers"
-            style={{
-              fontSize:       "13px",
-              fontWeight:     300,
-              color:          "var(--color-navy)",
-              textDecoration: "none",
-              fontFamily:     "inherit",
-            }}
-          >
-            Emissions data
-          </Link>
-
-          <Link
-            href="/carbon-relief"
-            style={{
-              fontSize:       "13px",
-              fontWeight:     300,
-              color:          "var(--color-navy)",
-              textDecoration: "none",
-              fontFamily:     "inherit",
-            }}
-          >
-            Carbon relief
-          </Link>
+          {[
+            { href: "/suppliers",     label: "Emissions data" },
+            { href: "/carbon-relief", label: "Carbon relief"  },
+          ].map(({ href, label }) => {
+            const isActive = pathname === href;
+            return (
+              <NavLink key={href} href={href} label={label} isActive={isActive} />
+            );
+          })}
 
           {/* Avatar + dropdown */}
           <div ref={avatarWrapRef} style={{ position: "relative" }}>
