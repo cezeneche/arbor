@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LEDGER_URL="${LEDGER_URL:-http://127.0.0.1:8000}"
-NARRATIVE_URL="${NARRATIVE_URL:-http://127.0.0.1:8001}"
 EORI="${EORI:-GBDEMO$RANDOM$RANDOM}"
 INVOICE="${INVOICE:-INV-DEMO-$RANDOM}"
 YEAR="${YEAR:-2026}"
@@ -19,9 +18,23 @@ mkdir -p "$(dirname "$REPORT_OUT")" "$(dirname "$NARRATIVE_OUT")" "$(dirname "$C
 TMP_CREATE="$(mktemp)"
 TMP_PIPELINE="$(mktemp)"
 TMP_PAYLOAD="$(mktemp)"
-trap 'rm -f "$TMP_CREATE" "$TMP_PIPELINE" "$TMP_PAYLOAD"' EXIT
+TMP_TOKEN="$(mktemp)"
+trap 'rm -f "$TMP_CREATE" "$TMP_PIPELINE" "$TMP_PAYLOAD" "$TMP_TOKEN"' EXIT
 
 TODAY="$(date +%F)"
+
+echo "0) Minting dev JWT token..."
+TOKEN_CODE="$(curl -sS -o "$TMP_TOKEN" -w "%{http_code}" \
+  -X POST "$LEDGER_URL/api/auth/token" \
+  -H "Content-Type: application/json" \
+  -d '{"sub":"demo-user","tenant_id":"demo-tenant","scopes":["narrative:run","cbam:read","cbam:write","review:write"]}')"
+if [[ "$TOKEN_CODE" != "200" ]]; then
+  echo "Token mint failed (HTTP $TOKEN_CODE). Set AUTH_DEV_TOKEN_ENDPOINT=true on services." >&2
+  cat "$TMP_TOKEN" >&2
+  exit 1
+fi
+TOKEN="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["access_token"])' "$TMP_TOKEN")"
+AUTH_HEADER="Authorization: Bearer $TOKEN"
 
 cat > "$TMP_PAYLOAD" <<JSON
 {
@@ -62,6 +75,7 @@ JSON
 echo "1) Creating CBAM draft from parsed invoice..."
 CREATE_CODE="$(curl -sS -o "$TMP_CREATE" -w "%{http_code}" \
   -X POST "$LEDGER_URL/api/cbam/drafts/from-parsed-invoice" \
+  -H "$AUTH_HEADER" \
   -H "Content-Type: application/json" \
   --data-binary "@$TMP_PAYLOAD")"
 if [[ "$CREATE_CODE" != "201" ]]; then
@@ -99,6 +113,7 @@ fi
 
 echo "2) Fetching CBAM report-package..."
 REPORT_CODE="$(curl -sS -o "$REPORT_OUT" -w "%{http_code}" \
+  -H "$AUTH_HEADER" \
   "$LEDGER_URL/api/cbam/cases/$CASE_ID/report-package")"
 if [[ "$REPORT_CODE" != "200" ]]; then
   echo "Report-package fetch failed (HTTP $REPORT_CODE)" >&2
@@ -108,27 +123,121 @@ fi
 
 echo "3) Running narrative pipeline..."
 PIPELINE_CODE="$(curl -sS -o "$TMP_PIPELINE" -w "%{http_code}" \
-  -X POST "$NARRATIVE_URL/api/cases/$CASE_ID/narrative/pipeline?packet_kind=cbam")"
+  -X POST "$LEDGER_URL/api/cases/$CASE_ID/narrative/pipeline?packet_kind=cbam" \
+  -H "$AUTH_HEADER")"
 if [[ "$PIPELINE_CODE" != "200" ]]; then
   echo "Narrative pipeline failed (HTTP $PIPELINE_CODE)" >&2
   cat "$TMP_PIPELINE" >&2
   exit 1
 fi
 
-python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); fn=d.get("final_narrative_json"); \
-  (fn is not None) or (_ for _ in ()).throw(SystemExit("final_narrative_json missing in pipeline response")); \
-  json.dump(fn, open(sys.argv[2], "w"), indent=2)' "$TMP_PIPELINE" "$NARRATIVE_OUT"
+# Extract narrative and surface key fields
+python3 - "$TMP_PIPELINE" "$NARRATIVE_OUT" <<'PYEOF'
+import json, sys, textwrap
+
+d = json.load(open(sys.argv[1]))
+fn = d.get("final_narrative_json")
+if fn is None:
+    sys.exit("final_narrative_json missing in pipeline response")
+
+# Save full narrative to file
+json.dump(fn, open(sys.argv[2], "w"), indent=2)
+
+# Print pipeline summary
+human_review = d.get("human_review_required", False)
+stage_errors = d.get("stage_errors") or []
+
+print()
+print("  ── Narrative pipeline result ─────────────────────────────────")
+print(f"  human_review_required : {human_review}")
+if stage_errors:
+    print(f"  stage_errors          : {len(stage_errors)}")
+    for e in stage_errors:
+        print(f"    [{e.get('stage')}] {e.get('error','')}")
+
+results = fn.get("results") or {}
+if results:
+    print()
+    print("  ── Results (authoritative from ledger) ───────────────────────")
+    for k, v in results.items():
+        if v is not None:
+            print(f"  {k}: {v}")
+
+summary = (fn.get("executive_summary") or "")[:300]
+print()
+print("  ── Executive summary (truncated) ─────────────────────────────")
+for line in textwrap.wrap(summary, width=70):
+    print(f"  {line}")
+
+gaps = fn.get("open_gaps") or []
+if gaps:
+    print()
+    print(f"  ── Open gaps ({len(gaps)}) ───────────────────────────────────────────")
+    for g in gaps:
+        print(f"  • {g.get('field')}")
+
+if human_review and not stage_errors:
+    print()
+    if "@" not in "SLACK_WEBHOOK_URL":  # placeholder check handled in bash below
+        pass  # notification status printed by bash
+print("  ──────────────────────────────────────────────────────────────")
+print()
+PYEOF
+
+# Notification status
+HUMAN_REVIEW="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("human_review_required", False))' "$TMP_PIPELINE")"
+if [[ "$HUMAN_REVIEW" == "True" ]]; then
+  if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+    echo "  Slack notification    : fired (human review flagged, SLACK_WEBHOOK_URL set)"
+  else
+    echo "  Slack notification    : skipped — set SLACK_WEBHOOK_URL to enable"
+  fi
+fi
 
 echo "4) Generating compliance pack..."
 COMPLIANCE_CODE="$(curl -sS -o "$COMPLIANCE_OUT" -w "%{http_code}" \
-  -X POST "$NARRATIVE_URL/api/cbam/cases/$CASE_ID/compliance-pack")"
+  -X POST "$LEDGER_URL/api/cbam/cases/$CASE_ID/compliance-pack" \
+  -H "$AUTH_HEADER")"
 if [[ "$COMPLIANCE_CODE" != "200" ]]; then
   echo "Compliance pack generation failed (HTTP $COMPLIANCE_CODE)" >&2
   cat "$COMPLIANCE_OUT" >&2
   exit 1
 fi
 
+echo "5) Review workflow — flag then approve case..."
+TMP_FLAG="$(mktemp)"
+TMP_APPROVE="$(mktemp)"
+trap 'rm -f "$TMP_CREATE" "$TMP_PIPELINE" "$TMP_PAYLOAD" "$TMP_TOKEN" "$TMP_FLAG" "$TMP_APPROVE"' EXIT
+
+FLAG_CODE="$(curl -sS -o "$TMP_FLAG" -w "%{http_code}" \
+  -X POST "$LEDGER_URL/api/cases/$CASE_ID/review/flag" \
+  -H "$AUTH_HEADER")"
+if [[ "$FLAG_CODE" != "204" && "$FLAG_CODE" != "200" ]]; then
+  echo "  Flag for review failed (HTTP $FLAG_CODE)" >&2
+  cat "$TMP_FLAG" >&2
+  exit 1
+fi
+echo "  Case flagged for review (review_status → pending_review)"
+
+APPROVE_CODE="$(curl -sS -o "$TMP_APPROVE" -w "%{http_code}" \
+  -X POST "$LEDGER_URL/api/cases/$CASE_ID/review/approve" \
+  -H "$AUTH_HEADER" \
+  -H "Content-Type: application/json" \
+  -d '{"reviewer_name":"Demo Reviewer","reviewer_email":"reviewer@nucleos.io","comments":"Demo approval"}')"
+if [[ "$APPROVE_CODE" != "200" ]]; then
+  echo "  Approval failed (HTTP $APPROVE_CODE)" >&2
+  cat "$TMP_APPROVE" >&2
+  exit 1
+fi
+echo "  Case approved (review_status → approved, status → approved)"
+
+if [[ -n "${RESEND_API_KEY:-}" ]]; then
+  echo "  Email notification    : fired (RESEND_API_KEY set)"
+else
+  echo "  Email notification    : skipped — set RESEND_API_KEY + RESEND_FROM_EMAIL to enable"
+fi
+
 echo "Done."
-echo "Report package: $REPORT_OUT"
+echo "Report package : $REPORT_OUT"
 echo "Final narrative: $NARRATIVE_OUT"
 echo "Compliance pack: $COMPLIANCE_OUT"

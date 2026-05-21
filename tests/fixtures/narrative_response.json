@@ -1,0 +1,7 @@
+{
+  "executive_summary": "This CBAM compliance narrative covers the import of CBAM-regulated goods by the importer identified in this report package. Embedded emissions have been calculated using the methodology and tier selection described below. All emission values are sourced directly from the report package and have not been modified by this narrative.",
+  "methodology": "Tier 1 (actual) methodology applied where supplier-verified emissions data was provided with confidence >= 0.60, per EU 2023/1773 Article 4(1)(a). Direct embedded emissions were taken from supplier documentation. For UK jurisdiction cases, indirect embedded emissions (Scope 2 electricity) are not included in the CBAM charge calculation per Finance No.2 Bill 2025-26. Where no supplier data was present, Tier 3 (default) values from Annex VI of EU 2023/1773 were applied using the world-average production route. All method selections are recorded in the decision trace in accordance with EU 2023/1773 Article 4.",
+  "limitations": "No limitations identified for cases with complete supplier data. For cases using Tier 3 default values: emission factors are sourced from EU 2023/1773 Annex VI and represent world-average values which may differ significantly from the actual installation emissions. Importers using default values are encouraged to obtain supplier-verified data to avoid potential over-declaration.",
+  "open_gaps": [],
+  "results": {}
+}

@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**", "chore/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    env:
+      # Auth
+      JWT_SECRET: ci-test-jwt-secret-not-for-production
+      JWT_ISSUER: scope3-agentic
+      JWT_AUDIENCE: scope3-clients
+      JWT_EXPIRES_SECONDS: "3600"
+      AUTH_DEV_TOKEN_ENDPOINT: "true"
+      # Security — dummy values sufficient for unit tests
+      FIELD_ENCRYPTION_KEY: ${{ secrets.CI_FIELD_ENCRYPTION_KEY || 'dGVzdC10ZXN0LXRlc3QtdGVzdC10ZXN0LXRlc3QtdGVzdA==' }}
+      AUDIT_SIGNING_KEY: ci-test-audit-signing-key-not-for-production
+      # Database — SQLite in tests (conftest sets DATABASE_URL)
+      SNAPSHOT_STORE_BACKEND: filesystem
+      # Suppress optional integrations
+      SUPABASE_URL: ""
+      ANTHROPIC_API_KEY: ""
+      SLACK_WEBHOOK_URL: ""
+      RESEND_API_KEY: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          python -m pip install -r api/requirements.txt
+
+      - name: Run tests
+        run: |
+          python -m pytest \
+            --tb=short \
+            -q \
+            --import-mode=importlib

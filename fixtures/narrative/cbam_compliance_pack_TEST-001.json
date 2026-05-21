@@ -1,0 +1,231 @@
+{
+  "type": "cbam_compliance_pack_v1",
+  "case_id": "TEST-CBAM",
+  "generated_at": "2026-03-01T10:00:00+00:00",
+  "report_package": {
+    "type": "cbam_report_package_v1",
+    "generated_at": "2026-02-27T15:30:00+00:00",
+    "case": {
+      "id": "TEST-CBAM",
+      "importer_name": "Alpha Steel Ltd",
+      "importer_eori": "GB1709050000",
+      "reporting_year": 2025,
+      "reporting_quarter": 1,
+      "status": "draft",
+      "created_at": "2026-02-27T15:00:00+00:00",
+      "updated_at": "2026-02-27T15:00:00+00:00"
+    },
+    "shipments": [
+      {
+        "shipment": {
+          "id": "SHIP-TEST-CBAM-1",
+          "case_id": "TEST-CBAM",
+          "import_date": "2025-01-15",
+          "entry_reference": "24GB123456789000A1",
+          "incoterm": "DAP",
+          "origin_country": "TR",
+          "created_at": "2026-02-27T15:01:00+00:00"
+        },
+        "goods_lines": [
+          {
+            "goods_line": {
+              "id": "GL-TEST-CBAM-1",
+              "shipment_id": "SHIP-TEST-CBAM-1",
+              "cn_code": "720711",
+              "sector": "iron_steel",
+              "description": "Hot rolled steel coil",
+              "quantity": 10000,
+              "quantity_unit": "kg",
+              "installation_name": null,
+              "installation_id": null,
+              "created_at": "2026-02-27T15:02:00+00:00"
+            },
+            "latest_emissions": {
+              "id": "EM-TEST-CBAM-1",
+              "goods_line_id": "GL-TEST-CBAM-1",
+              "method": "actual",
+              "direct_embedded_kgco2e": 50000,
+              "indirect_embedded_kgco2e": 10000,
+              "data_quality_score": null,
+              "notes": "computed_total_kgco2e=60000",
+              "version": 1,
+              "created_at": "2026-02-27T15:03:00+00:00"
+            }
+          },
+          {
+            "goods_line": {
+              "id": "GL-TEST-CBAM-2",
+              "shipment_id": "SHIP-TEST-CBAM-1",
+              "cn_code": "720712",
+              "sector": "iron_steel",
+              "description": "Slab",
+              "quantity": 5000,
+              "quantity_unit": "kg",
+              "installation_name": null,
+              "installation_id": null,
+              "created_at": "2026-02-27T15:02:30+00:00"
+            },
+            "latest_emissions": null
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "case_id": "TEST-CBAM",
+      "total_goods_lines": 2,
+      "total_net_mass_kg": 15000,
+      "total_direct_emissions_kgco2e": 50000,
+      "total_indirect_emissions_kgco2e": 10000,
+      "total_embedded_emissions_kgco2e": 60000
+    },
+    "data_quality": {
+      "missing": [],
+      "warnings": [
+        "Missing emissions for goods_line_id=GL-TEST-CBAM-2"
+      ]
+    },
+    "audit": {
+      "document_sha256": null,
+      "payload_hash": "d3bbfb7d0e6e98d06d7d3910ded7152869669c51509b166f7e4d2d6a0351c667",
+      "snapshot_hash": "dbcbb9684ccac130551bc6357c3383fe39907015ad3a50b39a8d56c7f53cdea3",
+      "parent_hash": null,
+      "algo_versions": {
+        "report_package_builder": "v1"
+      },
+      "model_versions": {},
+      "generated_at": "2026-02-27T15:30:00+00:00"
+    }
+  },
+  "narrative": {
+    "executive_summary": "For importer EORI GB1709050000 (2025 Q1), the CBAM package reports total embedded emissions of 60000 kgCO2e across 2 goods lines and 15000 kg net mass. Direct embedded emissions are 50000 kgCO2e and indirect embedded emissions are 10000 kgCO2e. One goods line does not yet have an emissions record and is flagged in data quality warnings.",
+    "methodology": "This narrative uses the provided cbam_report_package_v1 structure. Totals are taken directly from summary totals, and goods line detail is based on shipments[].goods_lines[].goods_line with latest_emissions selected by highest available version. Calculations are not recomputed outside the packet.",
+    "results": {
+      "total_direct_embedded_kgco2e": 50000,
+      "total_indirect_embedded_kgco2e": 10000,
+      "total_embedded_kgco2e": 60000,
+      "total_net_mass_kg": 15000,
+      "goods_lines_count": 2
+    },
+    "limitations": "This output is limited to the packet content and available emissions records. One goods line is missing emissions, so totals reflect currently available records only. No assumptions are made for missing electricity, natural gas, or other data not present in the CBAM packet.",
+    "open_gaps": [
+      {
+        "field": "goods_lines.latest_emissions",
+        "issue": "missing_emissions_record",
+        "current_confidence": 0.0,
+        "target_confidence": 1.0
+      }
+    ]
+  },
+  "data_quality_flags": [
+    "shipment:SHIP-TEST-CBAM-1:invoice_number_missing",
+    "goods_line:GL-TEST-CBAM-1:installation_id_missing",
+    "goods_line:GL-TEST-CBAM-2:installation_id_missing",
+    "goods_line:GL-TEST-CBAM-2:emissions_missing"
+  ],
+  "tables": {
+    "goods_lines": [
+      {
+        "shipment": "24GB123456789000A1",
+        "goods_line_id": "GL-TEST-CBAM-1",
+        "cn_code": "720711",
+        "mass_kg": 10000.0,
+        "direct_embedded_kgco2e": 50000.0,
+        "indirect_embedded_kgco2e": 10000.0,
+        "method": "actual"
+      },
+      {
+        "shipment": "24GB123456789000A1",
+        "goods_line_id": "GL-TEST-CBAM-2",
+        "cn_code": "720712",
+        "mass_kg": 5000.0,
+        "direct_embedded_kgco2e": 0.0,
+        "indirect_embedded_kgco2e": 0.0,
+        "method": null
+      }
+    ],
+    "totals": {
+      "total_goods_lines": 2,
+      "total_net_mass_kg": 15000.0,
+      "total_direct_emissions_kgco2e": 50000.0,
+      "total_indirect_emissions_kgco2e": 10000.0,
+      "total_embedded_emissions_kgco2e": 60000.0,
+      "shipments_count": 1
+    }
+  },
+  "registry_submission": {
+    "schemaVersion": "1.0",
+    "schemaRef": "EU Commission Implementing Regulation 2023/1773, Annex I — CBAM Transitional Registry quarterly report structure",
+    "reportingPeriod": {
+      "year": 2025,
+      "quarter": "Q1"
+    },
+    "declarant": {
+      "eori": "GB1709050000",
+      "name": "Alpha Steel Ltd"
+    },
+    "importEntries": [
+      {
+        "entryReference": "24GB123456789000A1",
+        "importDate": "2025-01-15",
+        "countryOfOrigin": "TR",
+        "incoterm": "DAP",
+        "goods": [
+          {
+            "cnCode": "720711",
+            "sector": "iron_steel",
+            "netMassKg": 10000.0,
+            "installationId": null,
+            "installationName": null,
+            "productionRoute": null,
+            "emissionsDetermination": {
+              "method": "ACTUAL_MONITORING",
+              "directEmbeddedEmissionsTco2e": 50.0,
+              "indirectEmbeddedEmissionsTco2e": 10.0,
+              "totalEmbeddedEmissionsTco2e": 60.0,
+              "carbonPricePaidEurPerTco2e": null
+            }
+          },
+          {
+            "cnCode": "720712",
+            "sector": "iron_steel",
+            "netMassKg": 5000.0,
+            "installationId": null,
+            "installationName": null,
+            "productionRoute": null,
+            "emissionsDetermination": {
+              "method": null,
+              "directEmbeddedEmissionsTco2e": 0.0,
+              "indirectEmbeddedEmissionsTco2e": 0.0,
+              "totalEmbeddedEmissionsTco2e": 0.0,
+              "carbonPricePaidEurPerTco2e": null
+            }
+          }
+        ]
+      }
+    ],
+    "reportTotals": {
+      "totalDirectEmbeddedEmissionsTco2e": 50.0,
+      "totalIndirectEmbeddedEmissionsTco2e": 10.0,
+      "totalEmbeddedEmissionsTco2e": 60.0,
+      "totalNetMassKg": 15000.0,
+      "goodsLinesCount": 2,
+      "shipmentsCount": 1
+    }
+  },
+  "audit": {
+    "document_sha256": null,
+    "payload_hash": "bc6b2e00803ff97c7536377809f819a13b884f95adfa08cc130cd917efa74e7b",
+    "snapshot_hash": "dbcbb9684ccac130551bc6357c3383fe39907015ad3a50b39a8d56c7f53cdea3",
+    "parent_hash": null,
+    "algo_versions": {
+      "compliance_pack_builder": "v1",
+      "report_package": {
+        "report_package_builder": "v1"
+      }
+    },
+    "model_versions": {
+      "report_package": {}
+    },
+    "generated_at": "2026-03-01T10:00:00+00:00"
+  }
+}

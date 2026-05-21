@@ -1,0 +1,14 @@
+from fastapi import APIRouter, Request
+from ledger_app.services.storage import s3_healthcheck, upload_text
+
+router = APIRouter(tags=["infrastructure"])
+
+@router.get("/storage-check")
+def storage_check():
+    return s3_healthcheck()
+
+@router.post("/storage-test-upload")
+def storage_test_upload(request: Request):
+    key = "healthcheck/nucleo_test.txt"
+    uri = upload_text(key, "hello from nucleo")
+    return {"uploaded": True, "uri": uri}

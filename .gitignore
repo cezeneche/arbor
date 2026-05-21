@@ -16,6 +16,10 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Editable install build artifacts
+*.egg-info/
+**/*.egg-info/
+
 # Logs / outputs
 *.log
 narrative_output.json
@@ -31,9 +35,22 @@ narrative_output.json
 .mypy_cache/
 
 
-# Generated CBAM demo outputs
-fixtures/ledger/cbam_*_TEST-*.json
-fixtures/narrative/cbam_*_TEST-*.json
+# Runtime storage (uploaded files, processing artifacts)
+storage/
+
+# Generated CBAM demo/run outputs (timestamp-based and DEMO IDs only — golden fixtures are committed)
+fixtures/ledger/cbam_*_TEST-2*.json
+fixtures/ledger/cbam_*_TEST-DEMO*.json
+fixtures/narrative/cbam_*_TEST-2*.json
+fixtures/narrative/cbam_*_TEST-DEMO*.json
 
 # safety: never add outer workspace repo
 /../Agentic_CBAM/
+
+
+*.db
+cbam_test.db
+.env
+.venv
+__pycache__/
+*.db

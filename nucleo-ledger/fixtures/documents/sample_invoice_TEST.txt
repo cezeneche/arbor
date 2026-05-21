@@ -1,7 +1,0 @@
-Invoice Number: INV-TEST-001
-Invoice Date: 2025-01-15
-Importer: Alpha Steel Ltd
-EORI: GB123456789
-Origin Country: CN
-CN Code: 720711
-Net Mass KG: 10000

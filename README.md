@@ -1,178 +1,108 @@
-# Scope 3 Agentic Platform
+# Nucleos — CBAM Compliance Platform
 
-A lightweight monorepo for an **audit-ready** Scope 3 workflow:
-
-- **nucleo-ledger**: stores cases, builds report packages (audit packs), runs calculations, and records conflict resolution.
-- **nucleo-narrative**: generates an audit-grade narrative using a multi-LLM pipeline: **OpenAI draft → Claude review → Gemini gate**.
+A CBAM (Carbon Border Adjustment Mechanism) compliance platform for UK and EU carbon border tax returns. Processes supplier documents into legally defensible audit-ready outputs.
 
 ## Repository layout
 
-- `nucleo-ledger/` — Ledger service (cases, calculations, audit pack)
-- `nucleo-narrative/` — Narrative service (multi-LLM pipeline)
-- `db/` — Postgres schema + migrations
-- `infra/` — Docker / deployment config
-- `orchestration-n8n/` — n8n workflows + notes (planned/optional)
-- `docs/` — PRD, prompts, runbooks, audit approach
-
-## Services
-
-### nucleo-ledger (port 8000)
-
-What it does:
-- **Audit pack / report-package** generation for a case
-- **Calculations** (e.g., scopes, totals, intensity)
-- **Conflict gating** and **resolution log** (who picked what value and why)
-- **Factor set** references (currently placeholder; planned: DEFRA)
-
-Key endpoints:
-- `GET /api/health`
-- `GET /api/cases/{case_id}/report-package`
-
-### nucleo-narrative (port 8001)
-
-What it does:
-- Pulls the **report-package** from `nucleo-ledger`
-- Generates:
-  1) **OpenAI** drafts the narrative
-  2) **Claude** reviews and improves writing/clarity without changing facts
-  3) **Gemini** acts as a final gate (approve / flag issues)
-- Returns `final_narrative_md` when approved; otherwise sets `human_review_required`
-
-Key endpoints:
-- `GET /api/health`
-- `POST /api/cases/{case_id}/narrative/pipeline`
-
-## Ports
-
-- `nucleo-ledger`: `http://127.0.0.1:8000`
-- `nucleo-narrative`: `http://127.0.0.1:8001`
-
-## Environment variables
-
-Use the root `.env` for local + docker-compose:
-
-```bash
-cp .env.example .env
+```
+api/                  — consolidated FastAPI service (port 8000)
+  app/api/            — narrative pipeline, CPR, registration, verification, compliance routers
+  app/services/       — narrative, compliance pack, HMRC return builder, CPR, report validator
+nucleo-ledger/        — ledger package (imported in-process by api/)
+  ledger_app/api/     — 17 FastAPI routers: cases, documents, extract, calculate, bundle, etc.
+  ledger_app/services/— CBAM extractor, arbiter, repair, snapshot store, emission factors
+  ledger_app/db/      — SQLAlchemy models and migrations
+shared_auth/          — HS256 JWT library used across all code
+scripts/              — e2e demo scripts
+fixtures/             — golden test data (ledger + narrative)
 ```
 
-### nucleo-ledger (.env)
+## Architecture
 
-Required (typical):
-- `DATABASE_URL` (Postgres connection string)
+Single FastAPI process — no microservices, no inter-service HTTP.
 
-### nucleo-narrative (.env)
-
-Required:
-- `LEDGER_URL` or `LEDGER_BASE_URL` (e.g., `http://127.0.0.1:8000`)
-
-Optional:
-- `OPENAI_API_KEY` (needed only for OpenAI draft stage)
-- `ANTHROPIC_API_KEY` (Claude review is skipped if missing)
-- `GEMINI_API_KEY` (Gemini gate is skipped if missing)
-- `OPENAI_MODEL`, `ANTHROPIC_MODEL`, `GEMINI_MODEL` (defaults in code)
-
-## Local run (venv)
-
-> Run each service in its own terminal.
-
-### Root `.venv` setup (recommended)
-
-1. Create virtual environment at repo root:
-
-```bash
-python3 -m venv .venv
+```
+api/ (port 8000)
+  └─ Supabase (PostgreSQL + RLS)
+  └─ Supabase Storage (evidence documents)
+  └─ Single Claude call (narrative pipeline)
 ```
 
-2. Install dependencies for both services:
+Primary workflow: upload invoice → LlamaIndex routing → structured extraction → arbiter resolves conflicts → repair fills gaps → bundle into report package → Claude generates narrative → deterministic validator → compliance pack.
+
+## Setup
 
 ```bash
+python3 -m venv .venv && source .venv/bin/activate
 ./scripts/install_all.sh
 ```
 
-3. Start `nucleo-ledger` on port `8000`:
+## Running locally
 
 ```bash
 source .venv/bin/activate
-cd nucleo-ledger
-python -m uvicorn ledger_app.main:app --host 127.0.0.1 --port 8000 --reload
+uvicorn main:app --reload --app-dir api
 ```
 
-4. Start `nucleo-narrative` on port `8001` (new terminal):
+Service available at `http://127.0.0.1:8000`. Swagger UI at `http://127.0.0.1:8000/docs`.
+
+## Running tests
+
+Run from the **repo root** (pytest.ini sets pythonpath):
 
 ```bash
-source .venv/bin/activate
-cd nucleo-narrative
-python -m uvicorn narrative_app.main:app --host 127.0.0.1 --port 8001 --reload
+pytest                              # all tests (895+)
+pytest nucleo-ledger/tests          # ledger tests only
+pytest api/tests                    # api/narrative tests only
+pytest -k "test_auth"               # filter by name
 ```
 
-### 1) nucleo-ledger
-
-```bash
-cd nucleo-ledger
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m uvicorn ledger_app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-Health check:
-
-```bash
-curl -s http://127.0.0.1:8000/api/health
-```
-
-### 2) nucleo-narrative
-
-```bash
-cd nucleo-narrative
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m uvicorn narrative_app.main:app --host 127.0.0.1 --port 8001 --reload
-```
-
-Health check:
-
-```bash
-curl -s http://127.0.0.1:8001/api/health
-```
-
-## Run the narrative pipeline
-
-Replace `{case_id}` with a real case UUID:
-
-```bash
-curl -s -X POST http://127.0.0.1:8001/api/cases/{case_id}/narrative/pipeline | python -m json.tool
-```
-
-## Docker Compose
-
-Run both APIs plus Postgres from the repo root:
+## Docker (full stack)
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-Services exposed:
-- `nucleo-ledger`: `http://127.0.0.1:8000`
-- `nucleo-narrative`: `http://127.0.0.1:8001`
+## Key environment variables
 
-Health checks:
-- Ledger readiness: `http://127.0.0.1:8000/ready`
-- Narrative health: `http://127.0.0.1:8001/health`
+| Variable | Notes |
+|---|---|
+| `DATABASE_URL` | PostgreSQL DSN; `sqlite:///./cbam_test.db` in tests |
+| `SUPABASE_URL` | Supabase project URL (enables client + Storage) |
+| `SUPABASE_SERVICE_KEY` | Supabase service role key |
+| `JWT_SECRET` | HS256 signing key; default `dev-jwt-secret-change-me` |
+| `JWT_ISSUER` | default `scope3-agentic` |
+| `JWT_AUDIENCE` | default `scope3-clients` |
+| `JWT_EXPIRES_SECONDS` | default `3600` |
+| `AUTH_DEV_TOKEN_ENDPOINT` | `true` to enable `POST /api/auth/token` locally |
+| `ANTHROPIC_API_KEY` | Required for narrative pipeline |
+| `ANTHROPIC_MODEL` | Claude model ID (defaults to latest Sonnet) |
+| `FIELD_ENCRYPTION_KEY` | AES field-level encryption key |
+| `AUDIT_SIGNING_KEY` | HMAC key for signed audit log |
+| `SLACK_WEBHOOK_URL` | Slack alerts for human review required |
 
-Notes:
-- `docker-compose.yml` uses `.env` for configuration.
-- Narrative waits on Ledger health before startup and also uses retry/backoff in its ledger HTTP client for transient startup/network issues.
+## Auth
 
-## Next milestones
+- `GET /health`, `GET /ready`, `GET /` — public
+- All `/api/*` routes require `Authorization: Bearer <JWT>`
+- Dev token (local only): `POST /api/auth/token` when `AUTH_DEV_TOKEN_ENDPOINT=true`
 
-Planned build sequence:
-1. Stabilise (README + golden fixture)
-2. Convert narrative to **structured JSON-first output**
-3. Replace emission factors with **DEFRA**
-4. Add **Slack hook** for `human_review_required`
-5. Add **auto-redraft loop** (bounded + safe)
-6. Add **n8n orchestration**
-7. Output polish: **Markdown + DOCX** (Claude for DOCX)
+```bash
+TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"sub":"dev-user","tenant_id":"dev-tenant","scopes":["cbam:write","narrative:run"]}' \
+  | python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
+```
+
+## End-to-end smoke test
+
+```bash
+./scripts/demo_cbam_e2e.sh
+```
+
+Or the live demo (requires real Supabase + Anthropic keys):
+
+```bash
+RECIPIENT_EMAIL=your@email.com python scripts/demo_live.py
+```

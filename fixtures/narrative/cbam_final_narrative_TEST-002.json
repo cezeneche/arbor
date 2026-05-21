@@ -1,0 +1,14 @@
+{
+  "type": "cbam_narrative_v1",
+  "case_id": "fb67d574-37ef-487f-ab98-c30d144d7b79",
+  "executive_summary": "CBAM report for Demo Importer Ltd (2026 Q1) includes 1 shipments and 2 goods lines. Total embedded emissions are 168000.00 kgCO2e (140000.00 direct, 28000.00 indirect).",
+  "totals": {
+    "total_direct_emissions_kgco2e": 140000.0,
+    "total_indirect_emissions_kgco2e": 28000.0,
+    "total_embedded_emissions_kgco2e": 168000.0,
+    "total_net_mass_kg": 15000.0,
+    "total_goods_lines": 2,
+    "shipments_count": 1
+  },
+  "risk_flags": []
+}
