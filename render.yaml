@@ -39,3 +39,5 @@ services:
     envVars:
       - key: NEXT_PUBLIC_API_URL
         sync: false
+      - key: NEXT_PUBLIC_ENVIRONMENT
+        value: production
