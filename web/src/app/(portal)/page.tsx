@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
+import { SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { IconDropdown } from "@/components/ui/icon-dropdown";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useCases } from "@/lib/hooks/useCases";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +19,14 @@ import {
 import { sectorLabel } from "@/lib/constants";
 import type { Case } from "@/lib/api/types";
 
-// UK ETS Q1 2027 quarterly-average (mirrors backend public_tools.py constant)
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
+
+type SortOrder  = "newest" | "oldest";
+type FilterMode = "all" | "processed" | "error";
+
+function isProcessed(status: string) {
+  return status !== "processing" && status !== "error";
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -46,20 +54,10 @@ type CaseListItem = Case & {
 function Dashboard() {
   const { cases: rawCases, isLoading } = useCases();
   const cases = rawCases as CaseListItem[];
-  const [visible, setVisible] = useState(PAGE_SIZE);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // Intersection observer — infinite scroll
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisible((v) => v + PAGE_SIZE); },
-      { rootMargin: "200px" }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [cases.length]);
+  const [sort,   setSort]   = useState<SortOrder>("newest");
+  const [filter, setFilter] = useState<FilterMode>("all");
+  const [page,   setPage]   = useState(1);
 
   // Total estimated liability — summed from per-case estimated_liability_gbp when available
   const totalLiability = cases.length > 0 && cases.some((c) => c.estimated_liability_gbp != null)
@@ -76,12 +74,24 @@ function Dashboard() {
   const pendingReview = cases.filter((c) => c.review_status === "pending_review");
   const hasPendingReview = pendingReview.length > 0;
 
-  // Sort by estimated liability descending — highest exposure at top; no-liability cases last
-  const sortedCases = [...cases].sort((a, b) => {
-    const aL = a.estimated_liability_gbp ?? -Infinity;
-    const bL = b.estimated_liability_gbp ?? -Infinity;
-    return bL - aL;
-  });
+  const filtered = useMemo(() => {
+    let list = [...cases];
+    if (filter === "processed") list = list.filter(c => isProcessed(c.status));
+    if (filter === "error")     list = list.filter(c => c.status === "error");
+    list.sort((a, b) => {
+      const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return sort === "newest" ? diff : -diff;
+    });
+    return list;
+  }, [cases, filter, sort]);
+
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems   = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function handleFilter(f: FilterMode) { setFilter(f); setPage(1); }
+  function handleSort(s: SortOrder)    { setSort(s);   setPage(1); }
+
 
   return (
     <div>
@@ -161,19 +171,42 @@ function Dashboard() {
         </div>
       )}
 
-      {/* ── Section 3: Upload button + case list ── */}
+      {/* ── Section 3: Controls + case list ── */}
       <div className="page-content" style={{ paddingTop: "var(--space-32)", paddingBottom: "var(--space-64)" }}>
 
-        {/* Upload document — always visible above the list */}
         {!isLoading && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-24)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-12)", marginBottom: "var(--space-24)", flexWrap: "wrap" }}>
+            <IconDropdown
+              icon={SlidersHorizontal}
+              value={filter}
+              options={[
+                { value: "all",       label: "All cases"  },
+                { value: "processed", label: "Processed"  },
+                { value: "error",     label: "Error"      },
+              ]}
+              onChange={handleFilter}
+              title="Filter"
+            />
+            <IconDropdown
+              icon={ArrowUpDown}
+              value={sort}
+              options={[
+                { value: "newest", label: "Newest first" },
+                { value: "oldest", label: "Oldest first" },
+              ]}
+              onChange={handleSort}
+              title="Sort"
+            />
+
+            <div style={{ flex: 1 }} />
+
             <Link
               href="/upload"
               style={{
                 display:         "inline-flex",
                 alignItems:      "center",
                 justifyContent:  "center",
-                height:          "36px",
+                height:          "32px",
                 padding:         "0 var(--space-24)",
                 backgroundColor: "var(--color-navy)",
                 color:           "#FFFFFF",
@@ -222,15 +255,48 @@ function Dashboard() {
               No cases yet. Upload a supplier document to get started.
             </p>
           </div>
-        ) : (
-          <div style={{ border: "var(--border-width) solid var(--color-border)", borderRadius: "8px", overflow: "hidden" }}>
-            {sortedCases.slice(0, visible).map((c, i) => (
-              <CaseRow key={c.id} c={c} isLast={i === sortedCases.slice(0, visible).length - 1} />
-            ))}
-            {visible < sortedCases.length && (
-              <div ref={sentinelRef} style={{ height: "1px" }} />
-            )}
+        ) : filtered.length === 0 ? (
+          <div style={{ paddingTop: "var(--space-48)", textAlign: "center" }}>
+            <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+              No {filter} cases.
+            </p>
           </div>
+        ) : (
+          <>
+            <div style={{ border: "var(--border-width) solid var(--color-border)", borderRadius: "8px", overflow: "hidden" }}>
+              {pageItems.map((c, i) => (
+                <CaseRow key={c.id} c={c} isLast={i === pageItems.length - 1} />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-8)", marginTop: "var(--space-24)" }}>
+                <button
+                  onClick={() => currentPage > 1 && setPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                  style={{ height: "32px", padding: "0 var(--space-12)", border: "var(--border-width) solid var(--color-border)", borderRadius: "6px", backgroundColor: "var(--color-surface)", color: "var(--color-text-secondary)", fontSize: "var(--text-sm)", fontFamily: "inherit", cursor: currentPage === 1 ? "default" : "pointer", opacity: currentPage === 1 ? 0.4 : 1 }}
+                >
+                  ←
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setPage(n)}
+                    style={{ width: "32px", height: "32px", border: "var(--border-width) solid var(--color-border)", borderRadius: "6px", backgroundColor: n === currentPage ? "var(--color-navy)" : "var(--color-surface)", color: n === currentPage ? "#fff" : "var(--color-text-secondary)", fontSize: "var(--text-sm)", fontFamily: "inherit", cursor: n === currentPage ? "default" : "pointer" }}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  onClick={() => currentPage < totalPages && setPage(p => p + 1)}
+                  disabled={currentPage === totalPages}
+                  style={{ height: "32px", padding: "0 var(--space-12)", border: "var(--border-width) solid var(--color-border)", borderRadius: "6px", backgroundColor: "var(--color-surface)", color: "var(--color-text-secondary)", fontSize: "var(--text-sm)", fontFamily: "inherit", cursor: currentPage === totalPages ? "default" : "pointer", opacity: currentPage === totalPages ? 0.4 : 1 }}
+                >
+                  →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

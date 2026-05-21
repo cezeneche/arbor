@@ -182,7 +182,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                 {sector !== "—" ? `${sector} · ${country}` : case_.importer_name || "Untitled case"}
               </p>
               <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
-                {case_.id}
+                <span style={{ color: "var(--color-text-tertiary)" }}>Case ID: </span>{case_.id}
               </p>
               <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-body)", color: "var(--color-text-secondary)" }}>
                 {fmtDate(importDate)}
