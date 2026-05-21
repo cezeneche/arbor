@@ -38,6 +38,6 @@ services:
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        sync: false
+        value: https://nucleos-api-vj36.onrender.com
       - key: NEXT_PUBLIC_ENVIRONMENT
         value: production
