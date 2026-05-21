@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: nucleos-api
+    runtime: docker
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /ready
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ISSUER
+        value: scope3-agentic
+      - key: JWT_AUDIENCE
+        value: scope3-clients
+      - key: JWT_EXPIRES_SECONDS
+        value: 3600
+      - key: FIELD_ENCRYPTION_KEY
+        generateValue: true
+      - key: AUDIT_SIGNING_KEY
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-6
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+  - type: web
+    name: nucleos-web
+    runtime: docker
+    dockerfilePath: ./web/Dockerfile
+    dockerContext: ./web
+    plan: free
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
