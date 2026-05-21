@@ -330,7 +330,7 @@ class TestCallClaude:
             messages = _FakeMessages()
 
         import anthropic as _real_anthropic
-        monkeypatch.setattr(_real_anthropic, "Anthropic", lambda: _FakeClient())
+        monkeypatch.setattr(_real_anthropic, "Anthropic", lambda **_: _FakeClient())
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
         extractor = ClaudeCBAMExtractor()
@@ -360,7 +360,7 @@ class TestCallClaude:
             messages = _FakeMessages()
 
         import anthropic as _real_anthropic
-        monkeypatch.setattr(_real_anthropic, "Anthropic", lambda: _FakeClient())
+        monkeypatch.setattr(_real_anthropic, "Anthropic", lambda **_: _FakeClient())
 
         extractor = ClaudeCBAMExtractor()
         long_text = "x" * 20_000

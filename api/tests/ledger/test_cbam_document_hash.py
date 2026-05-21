@@ -85,7 +85,7 @@ class TestDocumentSha256FromSnapshot:
         else:
             mock_store.latest_snapshot_by_stage.return_value = _make_mock_snapshot(snapshot_payload)
 
-        with patch.object(cbam_api, "get_snapshot_store", return_value=mock_store):
+        with patch("ledger_app.api.cbam.audit_helpers.get_snapshot_store", return_value=mock_store):
             return cbam_api._document_sha256_from_extraction_snapshot(case_id)
 
     def test_reads_document_sha256_field_when_present(self):
@@ -125,7 +125,7 @@ class TestDocumentSha256FromSnapshot:
         import ledger_app.api.cbam as cbam_api
         mock_store = MagicMock()
         mock_store.latest_snapshot_by_stage.side_effect = RuntimeError("store unavailable")
-        with patch.object(cbam_api, "get_snapshot_store", return_value=mock_store):
+        with patch("ledger_app.api.cbam.audit_helpers.get_snapshot_store", return_value=mock_store):
             result = cbam_api._document_sha256_from_extraction_snapshot("case-1")
         assert result is None
 

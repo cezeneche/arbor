@@ -10,6 +10,10 @@ from ledger_app.services.cbam_extraction import (  # noqa: F401
     CBAMExtractor,
     ClaudeCBAMExtractor,
 )
+from ledger_app.services.cbam_extraction._regex import (  # noqa: F401
+    _build_extraction_payload,
+    _parse_structured_response,
+)
 import ledger_app.services.cbam_extraction as _pkg
 
 # Re-exported so tests can monkeypatch cbam_extractor._EXTRACTOR.

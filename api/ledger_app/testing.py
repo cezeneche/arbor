@@ -284,6 +284,37 @@ class FakeConnection:
                 ]
             )
 
+        # Duplicate-case check: always report no conflict in tests.
+        if (
+            "SELECT id FROM cbam.cbam_cases" in sql
+            and "importer_eori = :importer_eori" in sql
+            and "id != :stub_id" in sql
+        ):
+            return _Result(rows=[])
+
+        # UPDATE cbam_cases (status, processing_stage, fields, etc.)
+        # Handles both parametrised values and SQL-literal values such as
+        # `SET status = 'error'` that _mark_error writes as a string literal.
+        if "UPDATE cbam.cbam_cases SET" in sql and "WHERE id = :id" in sql:
+            case_id = params.get("id")
+            if case_id and case_id in self.cases:
+                for k, v in params.items():
+                    if k != "id":
+                        self.cases[case_id][k] = v
+                # Extract SQL-literal assignments: col = 'value'
+                import re as _re
+                for m in _re.finditer(r"(\w+)\s*=\s*'([^']*)'", sql):
+                    col, val = m.group(1), m.group(2)
+                    if col not in ("WHERE", "id"):
+                        self.cases[case_id].setdefault(col, val)
+                        self.cases[case_id][col] = val
+            return _Result(rows=[])
+
+        # DELETE cbam_cases (conflict resolution path)
+        if "DELETE FROM cbam.cbam_cases WHERE id = :id" in sql:
+            self.cases.pop(params.get("id"), None)
+            return _Result(rows=[])
+
         raise AssertionError(f"Unexpected SQL in test: {sql}")
 
 

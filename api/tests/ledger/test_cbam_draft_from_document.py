@@ -1,3 +1,12 @@
+"""Tests for POST /api/cbam/drafts/from-document.
+
+The endpoint now returns immediately with a stub case (background-task pattern):
+    201  {created: {case_id, shipment_id: None, goods_line_ids: [], ...}, document_sha256}
+
+The real extraction + DB writes happen in the background task.  Starlette's
+TestClient runs background tasks synchronously before client.post() returns, so
+tests can inspect FakeConnection state after the request to verify the pipeline ran.
+"""
 from __future__ import annotations
 
 import os
@@ -6,581 +15,343 @@ from pathlib import Path
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
 import ledger_app.api.cbam as cbam_api
-import ledger_app.services.cbam_extractor as cbam_extractor
 from ledger_app.testing import _client_with_fake_engine
-from ledger_app.services.llama_structured_extractor import InvoiceSchema
-from ledger_app.services.llama_structured_extractor import LineItemSchema
 
 
-def test_cbam_draft_from_document_upload_returns_expected_keys(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST.txt"
-    )
+_FIXTURE_DIR = Path(__file__).resolve().parents[3] / "fixtures" / "documents"
 
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_cbam_document",
-        lambda _path: {
+
+def _upload_bytes() -> bytes:
+    return (_FIXTURE_DIR / "sample_invoice_TEST.txt").read_bytes()
+
+
+def _upload_multiline_bytes() -> bytes:
+    return (_FIXTURE_DIR / "sample_invoice_TEST_MULTILINE.txt").read_bytes()
+
+
+class _FakeOrchestrator:
+    """Minimal stand-in for llama_orchestrator that returns a fixed ingest_plan."""
+
+    def __init__(self, ingest_plan: dict) -> None:
+        self._plan = ingest_plan
+
+    def __setattr__(self, name: str, value: object) -> None:
+        object.__setattr__(self, name, value)
+
+    def run_document_ingest_plan(self, **_kwargs: object) -> dict:
+        return self._plan
+
+
+def _make_ingest_plan(
+    invoice_number: str = "INV-TEST-001",
+    cn_code: str = "720711",
+    mass: float | str = 10000,
+    direct: float | str | None = 50000.0,
+    indirect: float | str | None = 10000.0,
+    has_emissions: bool = True,
+    importer_name: str = "Alpha Steel Ltd",
+    importer_eori: str = "GB123456789",
+    origin_country: str = "CN",
+    extra_lines: list[dict] | None = None,
+) -> dict:
+    emissions = None
+    if has_emissions and direct is not None:
+        emissions = {
+            "method": "actual",
+            "direct_embedded_kgco2e": direct,
+            "indirect_embedded_kgco2e": indirect,
+        }
+    lines = [{
+        "cn_code": cn_code,
+        "description": "Hot rolled steel coil",
+        "quantity": mass,
+        "quantity_unit": "kg",
+        "net_mass_kg": mass,
+    }]
+    if extra_lines:
+        lines.extend(extra_lines)
+    return {
+        "raw_text": f"Invoice Number: {invoice_number}\nCN code: {cn_code}\n",
+        "layout": None,
+        "routing_trace": {},
+        "candidates": [{
             "status": "parsed",
-            "importer": {"name": "Alpha Steel Ltd", "eori": "GB123456789"},
+            "importer": {"name": importer_name, "eori": importer_eori},
             "invoice": {
-                "invoice_number": "INV-TEST-001",
+                "invoice_number": invoice_number,
                 "invoice_date": "2025-01-15",
-                "origin_country": "CN",
+                "origin_country": origin_country,
                 "incoterm": "FOB",
                 "entry_reference": "ER-001",
             },
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "description": "Hot rolled steel coil",
-                    "quantity": 10000,
-                    "quantity_unit": "kg",
-                    "net_mass_kg": 10000,
-                }
-            ],
-            "emissions": {
-                "method": "actual",
-                "direct_embedded_kgco2e": 50000,
-                "indirect_embedded_kgco2e": 10000,
-            },
-        },
-    )
-
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-
-    assert response.status_code == 201, response.text
-    body = response.json()
-    assert "parsed" in body
-    assert "created" in body
-    assert "warnings" in body
-    assert "case_id" in body["created"]
-    assert "shipment_id" in body["created"]
-    assert "goods_line_ids" in body["created"]
-    assert "emissions_ids" in body["created"]
-    assert "extraction_validation" in body
-    assert len(body["created"]["goods_line_ids"]) >= 1
-    assert len(body["created"]["emissions_ids"]) >= 1
+            "lines": lines,
+            "emissions": emissions,
+            "evidence": [],
+        }],
+    }
 
 
-def test_cbam_draft_from_document_without_emissions_keeps_emissions_ids_empty(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST.txt"
-    )
+class TestEndpointResponseShape:
+    """The 201 response is always the stub — background task state is in conn."""
 
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_cbam_document",
-        lambda _path: {
-            "status": "parsed",
-            "importer": {"name": "Alpha Steel Ltd", "eori": "GB123456789"},
-            "invoice": {
-                "invoice_number": "INV-TEST-NO-EM",
-                "invoice_date": "2025-01-15",
-                "origin_country": "CN",
-            },
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "description": "Hot rolled steel coil",
-                    "quantity": 10000,
-                    "quantity_unit": "kg",
-                    "net_mass_kg": 10000,
-                }
-            ],
-            "emissions": None,
-        },
-    )
+    def test_returns_201_with_case_id_and_sha256(self, monkeypatch):
+        client, _ = _client_with_fake_engine()
+        monkeypatch.setattr(
+            cbam_api, "ingest_orchestrator",
+            _FakeOrchestrator(_make_ingest_plan()),
+        )
 
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
 
-    assert response.status_code == 201, response.text
-    body = response.json()
-    assert len(body["created"]["goods_line_ids"]) >= 1
-    # Selector always creates an emission record (Annex VI default when no values supplied)
-    assert len(body["created"]["emissions_ids"]) >= 1
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["created"]["case_id"] is not None
+        assert body["document_sha256"] is not None
+        assert len(body["document_sha256"]) == 64  # SHA-256 hex
 
+    def test_stub_response_has_empty_arrays(self, monkeypatch):
+        client, _ = _client_with_fake_engine()
+        monkeypatch.setattr(
+            cbam_api, "ingest_orchestrator",
+            _FakeOrchestrator(_make_ingest_plan()),
+        )
 
-def test_numeric_string_coercion(monkeypatch):
-    client, conn = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST.txt"
-    )
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
 
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_cbam_document",
-        lambda _path: {
-            "status": "parsed",
-            "importer": {"name": "Alpha Steel Ltd", "eori": "GB123456789"},
-            "invoice": {"invoice_number": "INV-TEST-COERCE", "invoice_date": "2025-01-15"},
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "quantity": "10000.0",
-                    "quantity_unit": "kg",
-                    "net_mass_kg": "10000.0",
-                }
-            ],
-            "emissions": {
-                "method": "actual",
-                "direct_embedded_kgco2e": "50000.0",
-                "indirect_embedded_kgco2e": "10000.0",
-            },
-        },
-    )
+        assert resp.status_code == 201
+        created = resp.json()["created"]
+        # Stub always has empty arrays — real IDs are in the DB after background task
+        assert created["goods_line_ids"] == []
+        assert created["emissions_ids"] == []
+        assert created["shipment_id"] is None
 
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-    assert response.status_code == 201, response.text
-    body = response.json()
-    goods_line_id = body["created"]["goods_line_ids"][0]
-    emissions_id = body["created"]["emissions_ids"][0]
+    def test_no_parsed_or_extraction_validation_in_response(self, monkeypatch):
+        client, _ = _client_with_fake_engine()
+        monkeypatch.setattr(
+            cbam_api, "ingest_orchestrator",
+            _FakeOrchestrator(_make_ingest_plan()),
+        )
 
-    assert isinstance(conn.goods_lines[goods_line_id]["quantity"], float)
-    # Selector inserts Decimal; real Postgres handles both float and Decimal
-    from decimal import Decimal as _Dec
-    assert isinstance(conn.emissions[emissions_id]["direct_embedded_kgco2e"], (float, _Dec))
-    assert isinstance(conn.emissions[emissions_id]["indirect_embedded_kgco2e"], (float, _Dec))
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
+
+        body = resp.json()
+        assert "parsed" not in body
+        assert "extraction_validation" not in body
+
+    def test_document_sha256_matches_uploaded_bytes(self, monkeypatch):
+        import hashlib
+        client, _ = _client_with_fake_engine()
+        monkeypatch.setattr(
+            cbam_api, "ingest_orchestrator",
+            _FakeOrchestrator(_make_ingest_plan()),
+        )
+        file_bytes = _upload_bytes()
+        expected_sha256 = hashlib.sha256(file_bytes).hexdigest()
+
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", file_bytes, "text/plain")},
+        )
+
+        assert resp.json()["document_sha256"] == expected_sha256
 
 
-def test_invalid_numeric_raises_422(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST.txt"
-    )
+class TestPipelineHappyPath:
+    """After the request, the background task should have written to the fake DB."""
 
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_cbam_document",
-        lambda _path: {
-            "status": "parsed",
-            "importer": {"name": "Alpha Steel Ltd", "eori": "GB123456789"},
-            "invoice": {"invoice_number": "INV-TEST-BADNUM", "invoice_date": "2025-01-15"},
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "quantity": "ten thousand",
-                    "quantity_unit": "kg",
-                    "net_mass_kg": "10000.0",
-                }
-            ],
-        },
-    )
+    def test_goods_line_and_emissions_created(self, monkeypatch):
+        client, conn = _client_with_fake_engine()
+        monkeypatch.setattr(
+            cbam_api, "ingest_orchestrator",
+            _FakeOrchestrator(_make_ingest_plan()),
+        )
 
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-    assert response.status_code == 422
-    body = response.json()
-    assert body["stage"] == "extract"
-    assert body["detail"] == "Invalid numeric value for quantity"
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
 
+        assert resp.status_code == 201
+        assert len(conn.goods_lines) == 1
+        assert len(conn.emissions) == 1
 
-def test_multiline_document_creates_two_goods_lines_and_emissions(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST_MULTILINE.txt"
-    )
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_cbam_document",
-        lambda _path: {
-            "status": "parsed",
-            "importer": {"name": "Alpha Steel Ltd", "eori": "GB123456789"},
-            "invoice": {
-                "invoice_number": "INV-TEST-MULTI-001",
-                "invoice_date": "2025-01-15",
-                "origin_country": "TR",
-                "incoterm": "FOB",
-                "entry_reference": "ENTRY-MULTI-001",
-            },
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "description": "Hot rolled steel coil",
-                    "quantity": 10000,
-                    "quantity_unit": "kg",
-                    "net_mass_kg": 10000,
-                    "method": "actual",
-                    "direct_embedded_kgco2e": 50000,
-                    "indirect_embedded_kgco2e": 10000,
-                },
-                {
-                    "cn_code": "730890",
-                    "description": "Structural steel section",
-                    "quantity": 5000,
-                    "quantity_unit": "kg",
-                    "net_mass_kg": 5000,
-                    "method": "actual",
-                    "direct_embedded_kgco2e": 25000,
-                    "indirect_embedded_kgco2e": 5000,
-                },
-            ],
-            "emissions": None,
-        },
-    )
+    def test_goods_line_has_correct_cn_code(self, monkeypatch):
+        client, conn = _client_with_fake_engine()
+        monkeypatch.setattr(
+            cbam_api, "ingest_orchestrator",
+            _FakeOrchestrator(_make_ingest_plan(cn_code="720711")),
+        )
 
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-    assert response.status_code == 201, response.text
-    body = response.json()
+        client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
 
-    assert len(body["created"]["goods_line_ids"]) == 2
-    assert len(body["created"]["emissions_ids"]) == 2
+        goods_line = next(iter(conn.goods_lines.values()))
+        assert goods_line["cn_code"] == "720711"
 
-    case_id = body["created"]["case_id"]
-    report = client.get(f"/api/cbam/cases/{case_id}/report-package")
-    assert report.status_code == 200, report.text
-    report_body = report.json()
+    def test_case_created_with_importer_eori(self, monkeypatch):
+        client, conn = _client_with_fake_engine()
+        plan = _make_ingest_plan(importer_eori="GB999888777")
+        monkeypatch.setattr(cbam_api, "ingest_orchestrator", _FakeOrchestrator(plan))
 
-    assert len(report_body["shipments"]) == 1
-    goods_lines = report_body["shipments"][0]["goods_lines"]
-    assert len(goods_lines) == 2
-    assert all(gl["latest_emissions"] is not None for gl in goods_lines)
-    cn_codes = {gl["goods_line"]["cn_code"] for gl in goods_lines}
-    assert cn_codes == {"720711", "730890"}
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
 
-    second = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-    assert second.status_code == 201, second.text
-    second_body = second.json()
-    assert len(second_body["created"]["goods_line_ids"]) == 2
-    assert len(second_body["created"]["emissions_ids"]) == 2
-    assert sorted(second_body["created"]["goods_line_ids"]) == sorted(body["created"]["goods_line_ids"])
-    assert sorted(second_body["created"]["emissions_ids"]) == sorted(body["created"]["emissions_ids"])
-    assert any("Reused existing shipment" in w for w in second_body["warnings"])
+        case_id = resp.json()["created"]["case_id"]
+        # The stub case is created, then updated by the pipeline to the real eori
+        case = conn.cases.get(case_id)
+        assert case is not None
+        assert case["importer_eori"] == "GB999888777"
 
-    report_second = client.get(f"/api/cbam/cases/{case_id}/report-package")
-    assert report_second.status_code == 200, report_second.text
-    goods_lines_second = report_second.json()["shipments"][0]["goods_lines"]
-    assert len(goods_lines_second) == 2
+    def test_without_emissions_selector_still_creates_emission_record(self, monkeypatch):
+        """Annex VI default always fires when supplier provides no emissions data."""
+        client, conn = _client_with_fake_engine()
+        plan = _make_ingest_plan(has_emissions=False)
+        monkeypatch.setattr(cbam_api, "ingest_orchestrator", _FakeOrchestrator(plan))
+
+        client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
+
+        assert len(conn.emissions) >= 1
 
 
-def test_from_document_uses_layout_header_for_invoice_and_body_for_lines(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST_LAYOUT.txt"
-    )
+class TestPipelineEdgeCases:
 
-    def _fake_extract_document_from_upload(filename: str, content_type: str | None, data: bytes) -> dict:
-        raw_text = data.decode("utf-8")
-        return {
-            "raw_text": raw_text,
-            "ocr_lines": [],
-            "layout": {
-                "blocks": [
-                    {
-                        "type": "header",
-                        "text": "Invoice Number: INV-HDR-100\nInvoice Date: 2025-02-20",
-                        "lines_idx": [0, 1],
-                    },
-                    {
-                        "type": "body",
-                        "text": (
-                            "Line 1: 720711 | Hot rolled steel coil | 10000 kg | net mass kg 10000\n"
-                            "Line 2: 730890 | Structural steel section | 5000 kg | net mass kg 5000"
-                        ),
-                        "lines_idx": [2, 3],
-                    },
-                ]
-            },
-        }
+    def test_numeric_string_quantities_are_coerced(self, monkeypatch):
+        client, conn = _client_with_fake_engine()
+        plan = _make_ingest_plan(mass="10000.0", direct="50000.0", indirect="10000.0")
+        monkeypatch.setattr(cbam_api, "ingest_orchestrator", _FakeOrchestrator(plan))
 
-    class _RuleBasedExtractor:
-        def extract(self, file_path: str, layout: dict | None = None) -> dict:
-            raw_text = cbam_extractor._read_raw_text(Path(file_path))
-            structured = cbam_extractor._parse_structured_response("{}", raw_text, layout=layout)
-            payload = cbam_extractor._build_extraction_payload(raw_text, structured, layout=layout)
-            payload["status"] = "parsed"
-            return payload
+        client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
 
-    monkeypatch.setattr(cbam_api, "extract_document_from_upload", _fake_extract_document_from_upload)
-    monkeypatch.setattr(cbam_extractor, "_EXTRACTOR", _RuleBasedExtractor())
+        assert len(conn.goods_lines) == 1
+        gl = next(iter(conn.goods_lines.values()))
+        assert isinstance(gl.get("quantity"), float)
 
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-    assert response.status_code == 201, response.text
-    body = response.json()
+    def test_invalid_numeric_marks_case_as_error(self, monkeypatch):
+        client, conn = _client_with_fake_engine()
+        plan = _make_ingest_plan(mass="ten thousand")  # non-numeric → coerce fails
+        monkeypatch.setattr(cbam_api, "ingest_orchestrator", _FakeOrchestrator(plan))
 
-    assert body["parsed"]["invoice"]["invoice_number"] == "INV-HDR-100"
-    assert body["parsed"]["invoice"]["invoice_date"] == "2025-02-20"
-    assert len(body["created"]["goods_line_ids"]) == 2
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
+
+        assert resp.status_code == 201  # stub is always 201
+        case_id = resp.json()["created"]["case_id"]
+        case = conn.cases.get(case_id)
+        assert case is not None
+        assert case.get("status") == "error"
+        assert len(conn.goods_lines) == 0
+
+    def test_no_candidates_marks_case_as_error(self, monkeypatch):
+        client, conn = _client_with_fake_engine()
+        monkeypatch.setattr(
+            cbam_api, "ingest_orchestrator",
+            _FakeOrchestrator({"raw_text": "", "layout": None, "routing_trace": {}, "candidates": []}),
+        )
+
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+        )
+
+        assert resp.status_code == 201
+        case_id = resp.json()["created"]["case_id"]
+        assert conn.cases[case_id].get("status") == "error"
 
 
-def test_from_document_extraction_validation_uses_mocked_llama(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST.txt"
-    )
+class TestPipelineMultiline:
 
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_cbam_document",
-        lambda _path: {
-            "status": "parsed",
-            "importer": {"name": "Alpha Steel Ltd", "eori": "GB123456789"},
-            "invoice": {"invoice_number": "INV-VALID-001", "invoice_date": "2025-01-15"},
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "description": "Hot rolled steel coil",
-                    "quantity": 10000,
-                    "quantity_unit": "kg",
-                    "net_mass_kg": 10000,
-                }
-            ],
-            "emissions": None,
-        },
-    )
-    monkeypatch.setattr(
-        cbam_api,
-        "LlamaOrchestrator",
-        lambda: type(
-            "_StubOrchestrator",
-            (),
-            {
-                "extract_structured": staticmethod(
-                    lambda _text, metadata=None, pages=None: (
-                        InvoiceSchema(
-                            importer_name="Alpha Steel Ltd",
-                            invoice_number="INV-VALID-001",
-                            invoice_date="2025-01-15",
-                            line_items=[LineItemSchema(cn_code="720711", quantity=10000)],
-                        ),
-                        ["node-1"],
-                    )
-                )
-            },
-        )(),
-    )
+    def test_two_line_items_create_two_goods_lines_and_emissions(self, monkeypatch):
+        client, conn = _client_with_fake_engine()
+        plan = _make_ingest_plan(
+            invoice_number="INV-MULTI-001",
+            cn_code="720711",
+            mass=10000,
+            direct=50000,
+            indirect=10000,
+            extra_lines=[{
+                "cn_code": "730890",
+                "description": "Structural steel section",
+                "quantity": 5000,
+                "quantity_unit": "kg",
+                "net_mass_kg": 5000,
+                "direct_embedded_kgco2e": 25000,
+                "indirect_embedded_kgco2e": 5000,
+            }],
+        )
+        monkeypatch.setattr(cbam_api, "ingest_orchestrator", _FakeOrchestrator(plan))
 
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-    assert response.status_code == 201, response.text
-    validation = response.json()["extraction_validation"]
-    assert validation["match_score"] == 100.0
-    assert validation["differences"] == []
-    assert validation["gemini_fallback_used"] is False
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("multiline.txt", _upload_multiline_bytes(), "text/plain")},
+        )
+
+        assert resp.status_code == 201
+        assert len(conn.goods_lines) == 2
+        assert len(conn.emissions) == 2
+        cn_codes = {gl["cn_code"] for gl in conn.goods_lines.values()}
+        assert cn_codes == {"720711", "730890"}
 
 
-def test_from_document_data_quality_uses_final_payload_with_form_overrides(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_CONFLICT_TEST.txt"
-    )
+class TestPipelineDuplicateHandling:
 
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_cbam_document",
-        lambda _path: {
-            "status": "parsed",
-            "importer": {"name": "Unknown Importer", "eori": None},
-            "invoice": {
-                "invoice_number": "INV-CONFLICT-001",
-                "invoice_date": "2025-01-15",
-                "origin_country": None,
-                "incoterm": None,
-                "entry_reference": None,
-            },
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "description": "Conflicted steel line",
-                    "quantity": None,
-                    "quantity_unit": "kg",
-                    "net_mass_kg": None,
-                }
-            ],
-            "emissions": None,
-        },
-    )
-    monkeypatch.setattr(
-        cbam_api,
-        "LlamaOrchestrator",
-        lambda: type(
-            "_StubOrchestrator",
-            (),
-            {
-                "extract_structured": staticmethod(
-                    lambda _text, metadata=None, pages=None: (
-                        InvoiceSchema(
-                            importer_name="Unknown Importer",
-                            invoice_number="INV-CONFLICT-001",
-                            invoice_date="2025-01-15",
-                            origin_country=None,
-                            line_items=[LineItemSchema(cn_code="720711", quantity=None)],
-                        ),
-                        ["node-1"],
-                    )
-                )
-            },
-        )(),
-    )
+    def test_two_uploads_each_create_independent_case_and_shipment(self, monkeypatch):
+        """Each async upload creates its own stub case; shipment reuse is per-case."""
+        client, conn = _client_with_fake_engine()
+        plan_a = _make_ingest_plan(invoice_number="INV-A-001", importer_eori="GB111111111")
+        plan_b = _make_ingest_plan(invoice_number="INV-B-001", importer_eori="GB222222222")
 
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-        data={"importer_name": "Form Importer Ltd", "importer_eori": "GBFORM123456"},
-    )
-    assert response.status_code == 201, response.text
-    dq = response.json()["extraction_validation"]["data_quality"]
+        monkeypatch.setattr(cbam_api, "ingest_orchestrator", _FakeOrchestrator(plan_a))
+        resp_a = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("a.txt", _upload_bytes(), "text/plain")},
+        )
+        monkeypatch.setattr(cbam_api, "ingest_orchestrator", _FakeOrchestrator(plan_b))
+        resp_b = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("b.txt", _upload_bytes(), "text/plain")},
+        )
 
-    assert "case:importer_eori_missing" not in dq["missing"]
-    assert "shipment:draft_shipment:origin_country_missing" in dq["missing"]
-    assert "goods_line:draft_goods_0:mass_missing_or_non_positive" in dq["missing"]
-    assert "goods_line:draft_goods_0:missing_emissions" in dq["missing"]
+        assert resp_a.status_code == 201
+        assert resp_b.status_code == 201
+        assert resp_a.json()["created"]["case_id"] != resp_b.json()["created"]["case_id"]
+        assert len(conn.goods_lines) == 2
+        assert len(conn.emissions) == 2
 
 
-def test_from_document_uses_gemini_fallback_when_low_match_and_blocking(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_CONFLICT_TEST.txt"
-    )
+class TestFormOverrides:
 
-    monkeypatch.setattr(cbam_api, "ENABLE_GEMINI_FALLBACK", True)
-    monkeypatch.setattr(cbam_api, "GEMINI_MATCH_THRESHOLD", 0.4)
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(
-        cbam_api,
-        "compare_extractions",
-        lambda _rule, _llama: {"match_score": 0.0, "differences": ["forced_low_match"]},
-    )
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_cbam_document",
-        lambda _path: {
-            "status": "parsed",
-            "importer": {"name": "Unknown Importer", "eori": "GB123456789"},
-            "invoice": {
-                "invoice_number": "INV-CONFLICT-001",
-                "invoice_date": "2025-01-15",
-                "origin_country": None,
-                "incoterm": None,
-                "entry_reference": None,
-            },
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "description": "Conflicted steel line",
-                    "quantity": None,
-                    "quantity_unit": "kg",
-                    "net_mass_kg": None,
-                }
-            ],
-            "emissions": None,
-        },
-    )
-    monkeypatch.setattr(
-        cbam_api,
-        "LlamaOrchestrator",
-        lambda: type(
-            "_StubOrchestrator",
-            (),
-            {
-                "extract_structured": staticmethod(
-                    lambda _text, metadata=None, pages=None: (
-                        InvoiceSchema(
-                            importer_name="Unknown Importer",
-                            invoice_number="INV-CONFLICT-001",
-                            invoice_date="2025-01-15",
-                            origin_country=None,
-                            line_items=[LineItemSchema(cn_code="720711", quantity=None)],
-                        ),
-                        ["node-1"],
-                    )
-                )
-            },
-        )(),
-    )
-    monkeypatch.setattr(
-        cbam_api,
-        "extract_structured_with_gemini",
-        lambda _text: {
-            "importer_name": "Unknown Importer",
-            "invoice_number": "INV-CONFLICT-001",
-            "invoice_date": "2025-01-15",
-            "origin_country": "TR",
-            "line_items": [{"cn_code": "720711", "description": "Steel", "quantity": 1000}],
-        },
-    )
+    def test_form_importer_eori_overrides_extracted_eori(self, monkeypatch):
+        client, conn = _client_with_fake_engine()
+        plan = _make_ingest_plan(importer_eori="GB000000000")
+        monkeypatch.setattr(cbam_api, "ingest_orchestrator", _FakeOrchestrator(plan))
 
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-    assert response.status_code == 201, response.text
-    validation = response.json()["extraction_validation"]
-    assert validation["gemini_fallback_used"] is True
-    assert "gemini" in validation.get("fallback_sources", [])
+        resp = client.post(
+            "/api/cbam/drafts/from-document",
+            files={"file": ("invoice.txt", _upload_bytes(), "text/plain")},
+            data={"importer_eori": "GBFORM123456"},
+        )
 
-
-def test_from_document_includes_invoice_evidence_without_hallucinated_bbox(monkeypatch):
-    client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST.txt"
-    )
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-
-    response = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
-    )
-    assert response.status_code == 201, response.text
-    validation = response.json()["extraction_validation"]
-
-    evidence = validation.get("evidence")
-    assert isinstance(evidence, list)
-    invoice_atoms = [atom for atom in evidence if atom.get("field") == "invoice.invoice_number"]
-    assert invoice_atoms
-    assert invoice_atoms[0].get("value") == "INV-TEST-001"
-    assert invoice_atoms[0].get("bbox") is None
+        assert resp.status_code == 201
+        case_id = resp.json()["created"]["case_id"]
+        assert conn.cases[case_id]["importer_eori"] == "GBFORM123456"
