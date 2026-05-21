@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveToken } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 const schema = z.object({
   email:    z.string().min(1, "Email is required").refine((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s), "Enter a valid email"),
@@ -50,30 +51,30 @@ export default function LoginPage() {
     setAuthError(null);
 
     try {
-      // Reuse stored UUID tenant, or create one — consistent across sessions
-      const stored = localStorage.getItem("nucleos_tenant_id");
-      const tenantId = stored ?? crypto.randomUUID();
-      if (!stored) localStorage.setItem("nucleos_tenant_id", tenantId);
-
-      const res = await fetch("/api-proxy/ledger/api/auth/token", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          sub:       email.trim(),
-          tenant_id: tenantId,
-          scopes:    ["cbam:read", "cbam:write", "narrative:run", "review:write"],
-        }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email:    email.trim(),
+        password,
       });
 
-      if (!res.ok) {
+      if (error || !data.session) {
         setAuthError("Incorrect email or password");
         return;
       }
 
-      const data = await res.json();
-      saveToken(data.access_token);
-      document.cookie = `cbam_token=${encodeURIComponent(data.access_token)}; path=/; max-age=3600`;
-      // Full reload so AuthProvider re-initialises from the new token
+      const res = await fetch("/api-proxy/ledger/api/auth/supabase", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ access_token: data.session.access_token }),
+      });
+
+      if (!res.ok) {
+        setAuthError("Unable to sign in. Please try again.");
+        return;
+      }
+
+      const tokenData = await res.json();
+      saveToken(tokenData.access_token);
+      document.cookie = `cbam_token=${encodeURIComponent(tokenData.access_token)}; path=/; max-age=3600`;
       window.location.href = "/";
     } catch {
       setAuthError("Incorrect email or password");

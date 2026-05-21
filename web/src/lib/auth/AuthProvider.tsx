@@ -28,6 +28,7 @@ import {
 import { useRouter } from "next/navigation";
 import { decodeJwt }  from "jose";
 import type { User }   from "@/lib/api/types";
+import { supabase }    from "@/lib/supabase";
 
 /* ── Context shape ────────────────────────────────────────────────────────────── */
 
@@ -82,8 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user,  setUser]      = useState<User   | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  /* signOut: clear state + storage + cookie, then redirect */
+  /* signOut: clear Supabase session + local state + redirect */
   const signOut = useCallback(() => {
+    supabase.auth.signOut().catch(() => {});
     clearPersistedToken();
     setToken(null);
     setUser(null);

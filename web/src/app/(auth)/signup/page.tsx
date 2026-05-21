@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveToken } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 const schema = z.object({
   fullName:    z.string().min(1, "Full name is required"),
@@ -26,8 +27,9 @@ export default function SignupPage() {
   });
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [errors,   setErrors]  = useState<Errors>({});
-  const [loading,  setLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [loading,   setLoading]   = useState(false);
+  const [apiError,  setApiError]  = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
 
   function set(field: keyof FormValues) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,32 +62,39 @@ export default function SignupPage() {
     setApiError(null);
 
     try {
-      // Register — issue a dev token using the new user's email as subject.
-      // Swap for a real /api/auth/register endpoint when available.
-      // Generate or reuse a UUID tenant — stored so login can reuse it
-      const stored = localStorage.getItem("nucleos_tenant_id");
-      const tenantId = stored ?? crypto.randomUUID();
-      if (!stored) localStorage.setItem("nucleos_tenant_id", tenantId);
-
-      const res = await fetch("/api-proxy/ledger/api/auth/token", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          sub:       values.email.trim(),
-          tenant_id: tenantId,
-          scopes:    ["cbam:read", "cbam:write", "narrative:run", "review:write"],
-        }),
+      const { data, error } = await supabase.auth.signUp({
+        email:    values.email.trim(),
+        password: values.password,
+        options:  { data: { full_name: values.fullName, company_name: values.companyName } },
       });
 
-      if (!res.ok) {
-        setApiError("Unable to create account. Please try again.");
+      if (error) {
+        setApiError(error.message);
         return;
       }
 
-      const data = await res.json();
-      saveToken(data.access_token);
-      document.cookie = `cbam_token=${encodeURIComponent(data.access_token)}; path=/; max-age=3600`;
-      // Full reload so AuthProvider re-initialises from the new token
+      // If Supabase email confirmation is enabled, session will be null — show check-email screen
+      if (!data.session) {
+        setConfirmed(true);
+        return;
+      }
+
+      // Email confirmation disabled — exchange token and log straight in
+      const res = await fetch("/api-proxy/ledger/api/auth/supabase", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ access_token: data.session.access_token }),
+      });
+
+      if (!res.ok) {
+        setApiError("Account created — please sign in.");
+        window.location.href = "/login";
+        return;
+      }
+
+      const tokenData = await res.json();
+      saveToken(tokenData.access_token);
+      document.cookie = `cbam_token=${encodeURIComponent(tokenData.access_token)}; path=/; max-age=3600`;
       window.location.href = "/";
     } catch {
       setApiError("Unable to reach the server. Please try again.");
@@ -120,6 +129,20 @@ export default function SignupPage() {
           </span>
         </div>
 
+        {confirmed ? (
+          <div>
+            <h1 style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: "var(--color-text-primary)", marginBottom: "var(--space-16)" }}>
+              Check your email
+            </h1>
+            <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-24)" }}>
+              We sent a confirmation link to <strong>{values.email}</strong>. Click it to activate your account, then sign in.
+            </p>
+            <Link href="/login" style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", textDecoration: "underline" }}>
+              Back to sign in →
+            </Link>
+          </div>
+        ) : (
+        <>
         <h1
           style={{
             fontSize:     "var(--text-lg)",
@@ -223,6 +246,8 @@ export default function SignupPage() {
             Sign in →
           </Link>
         </p>
+        </>
+        )}
       </div>
     </div>
   );

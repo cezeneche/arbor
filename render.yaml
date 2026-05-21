@@ -41,3 +41,7 @@ services:
         value: https://nucleos-api-vj36.onrender.com
       - key: NEXT_PUBLIC_ENVIRONMENT
         value: production
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
