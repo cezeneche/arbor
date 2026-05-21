@@ -23,6 +23,7 @@ from uuid import uuid4
 
 from pathlib import Path
 
+import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -37,6 +38,15 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logging.root.setLevel(logging.INFO)
+
+_sentry_dsn = os.getenv("SENTRY_DSN_API")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        environment=os.getenv("ENVIRONMENT", "development"),
+        traces_sample_rate=0.2,
+        send_default_pii=False,
+    )
 
 validate_startup_config()
 

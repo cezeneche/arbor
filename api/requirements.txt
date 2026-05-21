@@ -113,6 +113,7 @@ opentelemetry-sdk
 opentelemetry-instrumentation-fastapi
 opentelemetry-exporter-otlp-proto-grpc
 opentelemetry-instrumentation-httpx
+sentry-sdk[fastapi]
 
 starlette==0.52.1
 striprtf==0.0.26
