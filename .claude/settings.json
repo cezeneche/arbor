@@ -66,7 +66,13 @@
       "Bash(xargs cat *)",
       "Bash(git -C \"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform\" status)",
       "Bash(git -C \"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform\" diff api/ledger_app/api/cbam/drafts.py web/src/app/\\\\\\(portal\\\\\\)/upload/page.tsx)",
-      "Bash(git -C \"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform\" log --oneline -5)"
+      "Bash(git -C \"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform\" log --oneline -5)",
+      "Bash(git -C '/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform' add api/ledger_app/api/cbam/drafts.py api/ledger_app/services/document_text_extractor.py)",
+      "Bash(git -C '/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform' commit -m ' *)",
+      "Bash(git -C \"/Users/chisom/Documents/Chisom/AI & Technology/Agentic_CBAM/scope3-agentic-platform\" push origin feat/cbam-auditability)",
+      "Bash(xargs kill -9)",
+      "Bash(python3 -c \"from sqlalchemy.exc import IntegrityError; e = IntegrityError\\(statement=None, params=None, orig=Exception\\('cbam_cases_unique_period'\\)\\); print\\(str\\(e.orig\\)\\)\")",
+      "Bash(python3 -c ' *)"
     ],
     "additionalDirectories": [
       "/Users/chisom/Documents/Chisom/Agentic_CBAM/scope3-agentic-platform/web/src/app/(portal)/supplier-request",
