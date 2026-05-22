@@ -54,3 +54,11 @@ cbam_test.db
 .venv
 __pycache__/
 *.db
+
+# Node / Next.js (marketing site and any future JS apps)
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+*.tsbuildinfo
+next-env.d.ts
