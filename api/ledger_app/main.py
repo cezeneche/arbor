@@ -32,6 +32,20 @@ async def lifespan(app: FastAPI):
             logging.getLogger("ledger.supabase").warning(
                 "Supabase client init failed (non-fatal): %s", exc
             )
+    try:
+        from ledger_app.api.cbam._shared import engine as _cbam_engine
+        result = seed_emission_factors(_cbam_engine)
+        if result.get("skipped"):
+            config_logger.info("cbam_factors_seeder: tables not present yet — seed skipped")
+        else:
+            config_logger.info(
+                "cbam_factors_seeder: annex_vi=%d electricity=%d version=%s",
+                result["annex_vi_inserted"],
+                result["electricity_inserted"],
+                result.get("table_version", "?"),
+            )
+    except Exception as exc:
+        config_logger.warning("cbam_factors_seeder: startup seed failed (non-fatal): %s", exc)
     yield
     if os.getenv("SUPABASE_URL"):
         try:
@@ -142,25 +156,6 @@ app.include_router(report_package_router, prefix="/api", dependencies=[Depends(g
 app.include_router(cbam_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(audit_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(review_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-
-@app.on_event("startup")
-def _seed_factors_on_startup():
-    """Seed Annex VI emission factors into the DB on startup (idempotent)."""
-    try:
-        from ledger_app.api.cbam._shared import engine as _cbam_engine
-        result = seed_emission_factors(_cbam_engine)
-        if result.get("skipped"):
-            config_logger.info("cbam_factors_seeder: tables not present yet — seed skipped")
-        else:
-            config_logger.info(
-                "cbam_factors_seeder: annex_vi=%d electricity=%d version=%s",
-                result["annex_vi_inserted"],
-                result["electricity_inserted"],
-                result.get("table_version", "?"),
-            )
-    except Exception as exc:
-        config_logger.warning("cbam_factors_seeder: startup seed failed (non-fatal): %s", exc)
-
 
 @app.get("/")
 def root():
