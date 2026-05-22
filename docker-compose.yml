@@ -2,7 +2,7 @@
 #   - Set strong secrets via .env (never commit .env):
 #       JWT_SECRET=<random 64-char hex>
 #       POSTGRES_PASSWORD=<strong password>
-#       SUPABASE_SERVICE_KEY=<service role key>
+#       SUPABASE_SERVICE_ROLE_KEY=<service role key>
 #   - Remove host port mappings below and front with a TLS-terminating
 #     reverse proxy (nginx/Caddy) in production.
 
@@ -64,7 +64,7 @@ services:
       AUDIT_SIGNING_KEY: ${AUDIT_SIGNING_KEY}
       # Storage (Supabase Storage)
       SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
       # LLM (narrative pipeline — single Claude call)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}

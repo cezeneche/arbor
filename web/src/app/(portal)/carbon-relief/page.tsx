@@ -133,7 +133,7 @@ function CaseCPRForm({
     if ((currency as string) === "GBP") { setRate("1"); setRateLoading(false); return; }
     setRateLoading(true);
     ledgerFetch<{ rates: Array<{ rate: string }> }>(
-      `/api-proxy/ledger/api/cbam/cpr/exchange-rates?currency=${currency}`
+      `/api/cbam/cpr/exchange-rates?currency=${currency}`
     )
       .then((d) => { if (d.rates?.[0]?.rate) setRate(String(d.rates[0].rate)); })
       .catch(() => {})
@@ -145,7 +145,7 @@ function CaseCPRForm({
     setErrMsg("");
     try {
       const r = await ledgerFetch<CPRCalcResult>(
-        "/api-proxy/ledger/api/cbam/cpr/calculate",
+        "/api/cbam/cpr/calculate",
         {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
@@ -174,7 +174,7 @@ function CaseCPRForm({
     setErrMsg("");
     try {
       await ledgerFetch(
-        "/api-proxy/ledger/api/cbam/cpr/claims",
+        "/api/cbam/cpr/claims",
         {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
