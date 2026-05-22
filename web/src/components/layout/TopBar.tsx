@@ -15,7 +15,7 @@ function getInitials(name?: string | null, sub?: string | null): string {
   return "?";
 }
 
-function NavLink({ href, label, isActive }: { href: string; label: string; isActive: boolean }) {
+const NavLink = ({ href, label, isActive }: { href: string; label: string; isActive: boolean }) => {
   const [hovered, setHovered] = useState(false);
   return (
     <Link
@@ -34,7 +34,7 @@ function NavLink({ href, label, isActive }: { href: string; label: string; isAct
       {label}
     </Link>
   );
-}
+};
 
 export function TopBar() {
   const { user, signOut } = useAuthContext();

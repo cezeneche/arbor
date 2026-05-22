@@ -75,7 +75,7 @@ def test_dev_token_endpoint_returns_token_when_enabled(monkeypatch):
     payload = json.loads(base64.urlsafe_b64decode(payload_raw).decode("utf-8"))
     assert payload["sub"] == "dev-user"
     assert payload["org_id"] == "dev-org"
-    assert payload["scopes"] == ["cbam:read", "cbam:write"]
+    assert payload["scopes"] == ["cbam:read", "cbam:write", "narrative:run", "review:write"]
     assert "iss" in payload and "aud" in payload and "iat" in payload and "exp" in payload
 
 

@@ -117,9 +117,8 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
 
 async def _set_pg_tenant(tenant_id: str) -> None:
     """Set app.current_tenant_id for the current PostgreSQL session."""
-    from ledger_app.db.supabase_client import get_admin_client  # local import avoids circular deps
-
     try:
+        from ledger_app.db.supabase_client import get_admin_client  # local import avoids circular deps
         client = get_admin_client()
         await client.rpc(
             "set_config",
@@ -137,9 +136,8 @@ async def _set_pg_tenant(tenant_id: str) -> None:
 
 async def _clear_pg_tenant() -> None:
     """Clear app.current_tenant_id. Belt-and-suspenders alongside is_local."""
-    from ledger_app.db.supabase_client import get_admin_client
-
     try:
+        from ledger_app.db.supabase_client import get_admin_client
         client = get_admin_client()
         await client.rpc(
             "set_config",

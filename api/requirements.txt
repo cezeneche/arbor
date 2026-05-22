@@ -108,6 +108,7 @@ apscheduler>=3.10,<4.0
 cryptography>=42.0.0
 reportlab>=4.0.0
 respx>=0.20.0
+pytest
 
 # Observability
 opentelemetry-sdk

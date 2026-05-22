@@ -171,7 +171,9 @@ def _enrich_cases_with_liability(
 
             rate = get_uk_cbam_rate(sector, year, quarter)
             if rate is None:
-                continue  # No published CBAM rate for this sector/period — skip
+                rate = get_uk_cbam_rate(sector, 2027, None)
+            if rate is None:
+                continue
 
             total_liability += (effective_kgco2e / Decimal("1000") * rate).quantize(
                 Decimal("0.01")

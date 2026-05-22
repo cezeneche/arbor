@@ -123,7 +123,7 @@ function Dashboard() {
               marginBottom: "var(--space-8)",
             }}
           >
-            Estimated 2027 CBAM liability
+            Estimated CBAM liability
           </p>
 
           {isLoading ? (
