@@ -1,0 +1,85 @@
+/* Nucleos Marketing — Design Tokens
+ * Identical to the engine's token file. Single source of truth for
+ * all colour, type, spacing, and component values.
+ * Do not add values here without a corresponding design decision. */
+
+:root {
+
+  /* COLOURS */
+  --color-bg:             #F8F8F6;
+  --color-surface:        #FFFFFF;
+  --color-footer-bg:      #EEECEA;
+  --color-navy:           #1B2F4A;
+  --color-navy-hover:     #243A5C;
+  --color-text-primary:   #141414;
+  --color-text-secondary: #505050;
+  --color-text-tertiary:  #6E6E6A;
+  --color-border:         #C4C4C0;
+
+  --color-green:          #2A6048;
+  --color-amber:          #8A3C0A;
+  --color-red:            #8F1A1A;
+
+  --color-green-bg:       #EFF9F4;
+  --color-amber-bg:       #FDF8EE;
+  --color-red-bg:         #FDF1F1;
+
+  /* TYPOGRAPHY */
+  --font-inter:  'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body:   300;
+  --font-focal:  500;
+
+  --text-xs:   11px;
+  --text-sm:   13px;
+  --text-base: 15px;
+  --text-lg:   24px;
+  --text-hero: 52px;
+
+  --leading-body:    1.6;
+  --leading-display: 1.1;
+
+  --tracking-hero:    -0.03em;
+  --tracking-heading: -0.01em;
+  --tracking-body:     0;
+
+  /* SPACING — 8px grid */
+  --space-8:   8px;
+  --space-16:  16px;
+  --space-24:  24px;
+  --space-32:  32px;
+  --space-40:  40px;
+  --space-48:  48px;
+  --space-64:  64px;
+  --space-80:  80px;
+
+  /* LAYOUT */
+  --max-width:     960px;
+  --topbar-height:  64px;
+
+  /* COMPONENTS */
+  --btn-height: 40px;
+  --btn-px:     24px;
+  --btn-radius:  6px;
+
+  --input-height:      40px;
+  --input-radius:       6px;
+  --input-font-size:   var(--text-base);
+  --input-font-weight: var(--font-body);
+
+  --card-radius:  8px;
+  --card-padding: 32px;
+  --card-shadow:  0 1px 3px rgba(0, 0, 0, 0.06);
+
+  --badge-radius:      4px;
+  --badge-py:          3px;
+  --badge-px:          8px;
+  --badge-font-size:   var(--text-xs);
+  --badge-font-weight: var(--font-focal);
+
+  --border-width: 0.5px;
+
+  /* TRANSITIONS */
+  --transition-fast:   120ms ease;
+  --transition-normal: 200ms ease;
+
+}
