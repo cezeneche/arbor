@@ -602,16 +602,6 @@ export default function CarbonReliefPage() {
                 </p>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "var(--space-16)", flexShrink: 0 }}>
-                  {c.estimated_liability_gbp != null && (
-                    <span style={{
-                      fontSize:           "var(--text-base)",
-                      fontWeight:         500,
-                      color:              "var(--color-navy)",
-                      fontVariantNumeric: "tabular-nums",
-                    }}>
-                      {formatCurrency(c.estimated_liability_gbp)}
-                    </span>
-                  )}
                   <button
                     onClick={() => setExpanded(isOpen ? null : c.id)}
                     style={{

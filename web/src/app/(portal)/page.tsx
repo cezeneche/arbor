@@ -427,21 +427,8 @@ function CaseRow({ c, isLast }: CaseRowProps) {
           )}
         </div>
 
-        {/* RIGHT — liability + status */}
+        {/* RIGHT — status */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)", flexShrink: 0 }}>
-          {c.estimated_liability_gbp != null && (
-            <span
-              style={{
-                fontSize:           "var(--text-base)",
-                fontWeight:         "var(--font-focal)",
-                color:              "var(--color-navy)",
-                whiteSpace:         "nowrap",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {formatCurrency(c.estimated_liability_gbp)}
-            </span>
-          )}
           <Badge variant={toStatusVariant(c.status)}>
             {statusLabel(c.status)}
           </Badge>
