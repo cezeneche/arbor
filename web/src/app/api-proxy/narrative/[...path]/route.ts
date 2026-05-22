@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const NARRATIVE_URL = process.env.NARRATIVE_URL ?? "http://localhost:8001";
+const NARRATIVE_URL = process.env.NARRATIVE_URL ?? process.env.LEDGER_URL ?? "http://localhost:8000";
 
 async function proxy(req: NextRequest, path: string[]) {
   const upstream = `${NARRATIVE_URL}/api/${path.join("/")}${req.nextUrl.search}`;

@@ -96,7 +96,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://api:8000
+      LEDGER_URL: http://api:8000
     depends_on:
       api:
         condition: service_healthy

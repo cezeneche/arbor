@@ -37,7 +37,7 @@ services:
     dockerContext: ./web
     plan: free
     envVars:
-      - key: NEXT_PUBLIC_API_URL
+      - key: LEDGER_URL
         value: https://nucleos-api-vj36.onrender.com
       - key: NEXT_PUBLIC_ENVIRONMENT
         value: production
