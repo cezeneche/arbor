@@ -23,7 +23,7 @@ export function Nav({ dark = false }: NavProps) {
   const [open, setOpen] = useState(false);
 
   const textCls = dark
-    ? "text-surface/80 hover:text-surface"
+    ? "text-surface hover:opacity-70"
     : "text-text-secondary hover:text-text-primary";
 
   const wordmarkCls = dark ? "text-surface" : "text-text-primary";
