@@ -1,0 +1,70 @@
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
+import { requireAuth } from '@/lib/auth-helpers'
+import { ok, err } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+import { storeDocument } from '@/lib/storage'
+import { inngest } from '@/inngest/client'
+
+const bodySchema = z.object({
+  documentType: z.string().min(1),
+  reportingPeriodEnd: z.string().datetime().optional(),
+})
+
+export async function POST(req: NextRequest) {
+  const { session, response } = await requireAuth()
+  if (!session) return response!
+
+  const entityId = (session.user as Record<string, unknown>).entityId as string
+  if (!entityId) return err('Entity not found for session user', 'NO_ENTITY', 403)
+
+  let file: File | null = null
+  let documentType = ''
+  let reportingPeriodEnd: string | undefined
+
+  try {
+    const formData = await req.formData()
+    file = formData.get('file') as File | null
+    const meta = bodySchema.safeParse({
+      documentType: formData.get('documentType'),
+      reportingPeriodEnd: formData.get('reportingPeriodEnd') ?? undefined,
+    })
+    if (!meta.success) return err('Invalid metadata', 'VALIDATION_ERROR', 400)
+    documentType = meta.data.documentType
+    reportingPeriodEnd = meta.data.reportingPeriodEnd
+  } catch {
+    return err('Invalid request body', 'PARSE_ERROR', 400)
+  }
+
+  if (!file) return err('No file provided', 'NO_FILE', 400)
+
+  const { url } = await storeDocument(file, entityId)
+
+  const entity = await prisma.entity.findUnique({ where: { id: entityId } })
+  if (!entity) return err('Entity not found', 'ENTITY_NOT_FOUND', 404)
+
+  const document = await prisma.document.create({
+    data: {
+      entityId,
+      fileName: file.name,
+      fileType: file.type,
+      documentType: documentType as never,
+      blobUrl: url,
+      submittedById: session.user!.id!,
+      status: 'PENDING',
+    },
+  })
+
+  await inngest.send({
+    name: 'document/uploaded',
+    data: {
+      documentId: document.id,
+      entityId,
+      entityName: entity.legalName,
+      documentType,
+      reportingPeriodEnd,
+    },
+  })
+
+  return ok({ documentId: document.id, status: 'PENDING' }, 201)
+}

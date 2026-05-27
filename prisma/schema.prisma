@@ -1,0 +1,420 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── NEXTAUTH TABLES ───────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── ENTITY ────────────────────────────────────────────────────────────────────
+
+model Entity {
+  id                 String   @id @default(cuid())
+  legalName          String
+  registrationNumber String?
+  country            String
+  sector             String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  users            User[]
+  documents        Document[]
+  dataRecords      DataRecord[]
+  auditChain       AuditEntry[]
+  outgoingRequests DataRequest[]     @relation("BuyerRequests")
+  incomingRequests DataRequest[]     @relation("SupplierRequests")
+  emissionFactors  EmissionFactor[]
+  notifications    Notification[]
+  dataAccess       DataAccessGrant[] @relation("GrantorEntity")
+  receivedAccess   DataAccessGrant[] @relation("GranteeEntity")
+  apiKeys          ApiKey[]
+}
+
+// ── USER ──────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String?
+  role         UserRole @default(CONTRIBUTOR)
+  entityId     String
+  entity       Entity   @relation(fields: [entityId], references: [id])
+  createdAt    DateTime @default(now())
+
+  accounts    Account[]
+  sessions    Session[]
+  submissions DataRecord[]
+  requests    DataRequest[]
+}
+
+enum UserRole {
+  ADMIN
+  CONTRIBUTOR
+  VIEWER
+}
+
+// ── DOCUMENT ──────────────────────────────────────────────────────────────────
+
+model Document {
+  id            String         @id @default(cuid())
+  entityId      String
+  entity        Entity         @relation(fields: [entityId], references: [id])
+  fileName      String
+  fileType      String
+  documentType  DocumentType
+  blobUrl       String
+  submittedAt   DateTime       @default(now())
+  submittedById String
+  status        DocumentStatus @default(PENDING)
+
+  dataRecords    DataRecord[]
+  extractionJobs ExtractionJob[]
+}
+
+enum DocumentType {
+  ELECTRICITY_BILL
+  GAS_BILL
+  FUEL_RECEIPT
+  RENEWABLE_CERTIFICATE
+  PRODUCTION_LOG
+  MATERIAL_INTAKE
+  BILL_OF_MATERIALS
+  PROCESS_DATA_SHEET
+  FREIGHT_INVOICE
+  DELIVERY_NOTE
+  CUSTOMS_DECLARATION
+  BILL_OF_LADING
+  SUPPLIER_INVOICE
+  PURCHASE_ORDER
+  SUPPLIER_QUESTIONNAIRE
+  EMISSIONS_FACTOR_DOC
+  ENVIRONMENTAL_CERTIFICATE
+  CARBON_FOOTPRINT_REPORT
+  WATER_RECORD
+  WASTE_RECORD
+  CROP_YIELD_RECORD
+  FERTILISER_RECORD
+  LIVESTOCK_RECORD
+  LAND_USE_CERTIFICATE
+  CBAM_DECLARATION
+  ESG_REPORT
+  AUDIT_REPORT
+  PRODUCT_CERTIFICATE
+  CHAIN_OF_CUSTODY
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  EXTRACTING
+  REVIEW_REQUIRED
+  ACCEPTED
+  REJECTED
+}
+
+// ── EXTRACTION JOB ────────────────────────────────────────────────────────────
+
+model ExtractionJob {
+  id           String           @id @default(cuid())
+  documentId   String
+  document     Document         @relation(fields: [documentId], references: [id])
+  status       ExtractionStatus @default(QUEUED)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorMessage String?          @db.Text
+  rawOutput    Json?
+
+  extractedFields ExtractedField[]
+}
+
+enum ExtractionStatus {
+  QUEUED
+  RUNNING
+  COMPLETE
+  FAILED
+}
+
+// ── EXTRACTED FIELD ───────────────────────────────────────────────────────────
+
+model ExtractedField {
+  id              String             @id @default(cuid())
+  extractionJobId String
+  extractionJob   ExtractionJob      @relation(fields: [extractionJobId], references: [id])
+  fieldName       String
+  admissibility   FieldAdmissibility
+  rawValue        String?
+  rawUnit         String?
+  normalisedValue Float?
+  normalisedUnit  String?
+  sourceText      String             @db.Text
+  confidenceScore Float
+  flagged         Boolean            @default(false)
+  flagReason      String?
+  confirmedBy     String?
+  confirmedAt     DateTime?
+}
+
+enum FieldAdmissibility {
+  COMPULSORY
+  CONDITIONAL
+  OPTIONAL
+}
+
+// ── DATA RECORD ───────────────────────────────────────────────────────────────
+
+model DataRecord {
+  id               String           @id @default(cuid())
+  entityId         String
+  entity           Entity           @relation(fields: [entityId], references: [id])
+  documentId       String?
+  document         Document?        @relation(fields: [documentId], references: [id])
+  domain           DataDomain
+  scope3Category   Int?
+  fieldName        String
+  value            Float
+  unit             String
+  originalValue    Float?
+  originalUnit     String?
+  periodStart      DateTime
+  periodEnd        DateTime
+  sourceText       String?          @db.Text
+  confidenceScore  Float            @default(1.0)
+  trustTier        TrustTier
+  extractionMethod ExtractionMethod
+  submittedAt      DateTime         @default(now())
+  submittedById    String
+  submittedBy      User             @relation(fields: [submittedById], references: [id])
+  supersededById   String?
+  isActive         Boolean          @default(true)
+  auditHash        String
+
+  validationFlags ValidationFlag[]
+}
+
+enum DataDomain {
+  ENERGY
+  MATERIALS
+  PRODUCTION
+  LOGISTICS
+  EMISSIONS
+  AGRICULTURE
+  WASTE_AND_WATER
+  COMPLIANCE
+}
+
+enum TrustTier {
+  A
+  B
+  C
+}
+
+enum ExtractionMethod {
+  DOCUMENT_AI
+  MANUAL_ENTRY
+  SYSTEM_INTEGRATION
+  DEFAULT_FACTOR
+}
+
+// ── VALIDATION FLAG ───────────────────────────────────────────────────────────
+
+model ValidationFlag {
+  id           String     @id @default(cuid())
+  dataRecordId String
+  dataRecord   DataRecord @relation(fields: [dataRecordId], references: [id])
+  flagType     FlagType
+  message      String     @db.Text
+  severity     Severity
+  resolvedAt   DateTime?
+  resolvedNote String?
+}
+
+enum FlagType {
+  ENTITY_MISMATCH
+  DATE_INVALID
+  UNIT_INCONSISTENCY
+  COMPLETENESS_GAP
+  INTERNAL_INCONSISTENCY
+  LOW_CONFIDENCE
+  DUPLICATE
+  CROSS_DOC_DISCREPANCY
+  GENERIC_VALUE
+  CODE_INSUFFICIENT
+  EXPIRED_CERTIFICATE
+  DOUBLE_COUNTING
+  MISSING_CONDITIONAL_FIELD
+}
+
+enum Severity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+// ── AUDIT ENTRY ───────────────────────────────────────────────────────────────
+
+model AuditEntry {
+  id           String   @id @default(cuid())
+  entityId     String
+  entity       Entity   @relation(fields: [entityId], references: [id])
+  recordId     String
+  eventType    String
+  payload      Json
+  hash         String
+  previousHash String?
+  createdAt    DateTime @default(now())
+}
+
+// ── DATA REQUEST ──────────────────────────────────────────────────────────────
+
+model DataRequest {
+  id               String        @id @default(cuid())
+  buyerEntityId    String
+  buyerEntity      Entity        @relation("BuyerRequests", fields: [buyerEntityId], references: [id])
+  supplierEntityId String
+  supplierEntity   Entity        @relation("SupplierRequests", fields: [supplierEntityId], references: [id])
+  requestedById    String
+  requestedBy      User          @relation(fields: [requestedById], references: [id])
+  domain           DataDomain
+  periodStart      DateTime
+  periodEnd        DateTime
+  requiredFields   Json
+  deadline         DateTime?
+  status           RequestStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  respondedAt      DateTime?
+  notes            String?       @db.Text
+}
+
+enum RequestStatus {
+  PENDING
+  SUBMITTED
+  ACCEPTED
+  QUERY_RAISED
+  CLOSED
+}
+
+// ── DATA ACCESS GRANT ─────────────────────────────────────────────────────────
+
+model DataAccessGrant {
+  id              String      @id @default(cuid())
+  grantorEntityId String
+  grantorEntity   Entity      @relation("GrantorEntity", fields: [grantorEntityId], references: [id])
+  granteeEntityId String
+  granteeEntity   Entity      @relation("GranteeEntity", fields: [granteeEntityId], references: [id])
+  domain          DataDomain?
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  grantedAt       DateTime    @default(now())
+  revokedAt       DateTime?
+  isActive        Boolean     @default(true)
+}
+
+// ── NOTIFICATION ──────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  entityId  String
+  entity    Entity           @relation(fields: [entityId], references: [id])
+  type      NotificationType
+  payload   Json
+  sentAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+}
+
+enum NotificationType {
+  DATA_REQUEST_RECEIVED
+  DATA_REQUEST_RESPONDED
+  EXTRACTION_COMPLETE
+  FLAG_RAISED
+  TIER_UPGRADED
+  ACCESS_GRANTED
+  ACCESS_REVOKED
+}
+
+// ── EMISSION FACTOR ───────────────────────────────────────────────────────────
+
+model EmissionFactor {
+  id           String   @id @default(cuid())
+  entityId     String?
+  entity       Entity?  @relation(fields: [entityId], references: [id])
+  activityType String
+  source       String
+  version      String
+  year         Int
+  factor       Float
+  unit         String
+  citation     String   @db.Text
+  isDerived    Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+// ── CROSS-VALIDATION RESULT ───────────────────────────────────────────────────
+
+model CrossValidationResult {
+  id                 String    @id @default(cuid())
+  entityId           String
+  documentAId        String
+  documentBId        String
+  fieldName          String
+  valueA             Float
+  valueB             Float
+  tolerancePercent   Float
+  discrepancyPercent Float
+  passed             Boolean
+  resolvedAt         DateTime?
+  resolvedNote       String?
+  createdAt          DateTime  @default(now())
+}
+
+// ── API KEY ───────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  entityId  String
+  entity    Entity    @relation(fields: [entityId], references: [id])
+  keyHash   String    @unique
+  label     String
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+  isActive  Boolean   @default(true)
+}

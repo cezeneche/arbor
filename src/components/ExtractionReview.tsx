@@ -1,0 +1,484 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { colours, typography, spacing, confidenceThreshold } from '@/lib/design-system'
+import { TierBadge } from './TierBadge'
+
+const DOMAIN_BY_DOC_TYPE: Record<string, string> = {
+  ELECTRICITY_BILL: 'ENERGY',
+  GAS_BILL: 'ENERGY',
+  FUEL_RECEIPT: 'ENERGY',
+  RENEWABLE_CERTIFICATE: 'ENERGY',
+  PRODUCTION_LOG: 'PRODUCTION',
+  MATERIAL_INTAKE: 'MATERIALS',
+  BILL_OF_MATERIALS: 'MATERIALS',
+  PROCESS_DATA_SHEET: 'PRODUCTION',
+  FREIGHT_INVOICE: 'LOGISTICS',
+  DELIVERY_NOTE: 'LOGISTICS',
+  CUSTOMS_DECLARATION: 'LOGISTICS',
+  BILL_OF_LADING: 'LOGISTICS',
+  SUPPLIER_INVOICE: 'MATERIALS',
+  PURCHASE_ORDER: 'MATERIALS',
+  CBAM_DECLARATION: 'COMPLIANCE',
+  ENVIRONMENTAL_CERTIFICATE: 'EMISSIONS',
+  CARBON_FOOTPRINT_REPORT: 'EMISSIONS',
+  WASTE_RECORD: 'WASTE_AND_WATER',
+  WATER_RECORD: 'WASTE_AND_WATER',
+  CROP_YIELD_RECORD: 'AGRICULTURE',
+  FERTILISER_RECORD: 'AGRICULTURE',
+  LIVESTOCK_RECORD: 'AGRICULTURE',
+  PRODUCT_CERTIFICATE: 'COMPLIANCE',
+  CHAIN_OF_CUSTODY: 'COMPLIANCE',
+  ESG_REPORT: 'COMPLIANCE',
+  AUDIT_REPORT: 'COMPLIANCE',
+  OTHER: 'COMPLIANCE',
+}
+
+interface ExtractedField {
+  id: string
+  fieldName: string
+  admissibility: 'COMPULSORY' | 'CONDITIONAL' | 'OPTIONAL'
+  rawValue: string | null
+  rawUnit: string | null
+  sourceText: string
+  confidenceScore: number
+  flagged: boolean
+  flagReason: string | null
+}
+
+interface ExtractionJob {
+  id: string
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETE' | 'FAILED'
+  errorMessage: string | null
+  extractedFields: ExtractedField[]
+}
+
+interface Document {
+  id: string
+  documentType: string
+  status: string
+  extractionJobs: ExtractionJob[]
+}
+
+interface Props {
+  document: Document
+}
+
+const NUMERIC_FIELDS = new Set([
+  'total_consumption_kwh', 'total_consumption_m3', 'calorific_value',
+  'quantity', 'quantity_produced', 'area_hectares', 'yield_quantity',
+  'quantity_mwh', 'shipment_weight', 'declared_weight', 'gross_weight',
+  'embedded_emissions_tco2e', 'embedded_emissions_per_tonne', 'quantity_tonnes',
+  'total_value', 'factor_value', 'total_co2e', 'quantity_m3', 'nitrogen_content_percent',
+  'energy_consumption', 'energy_consumption_total', 'average_herd_size',
+])
+
+export function ExtractionReview({ document }: Props) {
+  const router = useRouter()
+  const job = document.extractionJobs[0]
+  const fields = job?.extractedFields ?? []
+
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(fields.map(f => [f.fieldName, f.rawValue ?? '']))
+  )
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+
+  const domain = DOMAIN_BY_DOC_TYPE[document.documentType] ?? 'COMPLIANCE'
+  const periodStartField = fields.find(
+    f => f.fieldName === 'period_start' || f.fieldName === 'production_period_start'
+  )
+  const periodEndField = fields.find(
+    f => f.fieldName === 'period_end' || f.fieldName === 'production_period_end'
+  )
+
+  const criticalFlags = fields.filter(
+    f => f.admissibility === 'COMPULSORY' && (f.rawValue === null || f.rawValue === '')
+  )
+  const trustTier = criticalFlags.length > 0 ? 'B' : 'A'
+
+  const compulsoryFields = fields.filter(f => f.admissibility === 'COMPULSORY')
+  const conditionalFields = fields.filter(f => f.admissibility === 'CONDITIONAL')
+  const optionalFields = fields.filter(f => f.admissibility === 'OPTIONAL')
+
+  async function handleConfirm() {
+    setError(null)
+
+    const periodStart = periodStartField
+      ? new Date(values[periodStartField.fieldName] || new Date().toISOString()).toISOString()
+      : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+    const periodEnd = periodEndField
+      ? new Date(values[periodEndField.fieldName] || new Date().toISOString()).toISOString()
+      : new Date().toISOString()
+
+    const numericFieldEntries = fields
+      .filter(f => NUMERIC_FIELDS.has(f.fieldName) && values[f.fieldName])
+      .map(f => ({
+        fieldName: f.fieldName,
+        confirmedValue: values[f.fieldName],
+        confirmedUnit: f.rawUnit ?? undefined,
+        domain,
+        normalisedValue: parseFloat(values[f.fieldName]) || 0,
+        normalisedUnit: f.rawUnit ?? 'unknown',
+        periodStart,
+        periodEnd,
+      }))
+
+    if (numericFieldEntries.length === 0) {
+      setError('No numeric fields with values to confirm. At least one numeric field is required.')
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      const res = await fetch(`/api/documents/${document.id}/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: numericFieldEntries, trustTier }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error ?? 'Confirmation failed.')
+        setSubmitting(false)
+        return
+      }
+
+      setConfirmed(true)
+      setTimeout(() => router.push('/records'), 1500)
+    } catch {
+      setError('Confirmation failed. Check your connection.')
+      setSubmitting(false)
+    }
+  }
+
+  if (confirmed) {
+    return (
+      <div
+        style={{
+          textAlign: 'center',
+          padding: spacing[8],
+          color: colours.green,
+          fontSize: typography.sizes.base,
+          fontWeight: typography.weights.medium,
+        }}
+      >
+        Records saved. Redirecting to records…
+      </div>
+    )
+  }
+
+  if (!job || job.status === 'QUEUED' || job.status === 'RUNNING') {
+    return (
+      <div style={{ padding: spacing[4] }}>
+        <p
+          style={{
+            fontSize: typography.sizes.base,
+            fontWeight: typography.weights.light,
+            color: colours.textSecondary,
+          }}
+        >
+          Extraction in progress — this page will update when complete.
+        </p>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.textTertiary,
+            marginTop: spacing[1],
+          }}
+        >
+          You can leave and return to this page at any time.
+        </p>
+      </div>
+    )
+  }
+
+  if (job.status === 'FAILED') {
+    return (
+      <div
+        style={{
+          padding: spacing[3],
+          backgroundColor: colours.redBg,
+          borderRadius: '6px',
+          color: colours.red,
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.light,
+        }}
+      >
+        Extraction failed: {job.errorMessage ?? 'Unknown error'}
+      </div>
+    )
+  }
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colours.textSecondary,
+    letterSpacing: typography.tracking.wider,
+    textTransform: 'uppercase' as const,
+    marginBottom: '4px',
+  }
+
+  const inputStyle = (flagged: boolean) => ({
+    width: '100%',
+    padding: '8px 10px',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.light,
+    color: colours.textPrimary,
+    backgroundColor: flagged ? colours.amberBg : colours.surface,
+    border: `1px solid ${flagged ? colours.amber : colours.border}`,
+    borderRadius: '4px',
+    outline: 'none',
+  })
+
+  function renderFieldGroup(title: string, groupFields: ExtractedField[], badge?: string) {
+    if (groupFields.length === 0) return null
+    return (
+      <section style={{ marginBottom: spacing[4] }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], marginBottom: spacing[2] }}>
+          <h3
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.medium,
+              color: colours.textPrimary,
+              margin: 0,
+              textTransform: 'uppercase',
+              letterSpacing: typography.tracking.wide,
+            }}
+          >
+            {title}
+          </h3>
+          {badge && (
+            <span
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                fontStyle: 'italic',
+              }}
+            >
+              {badge}
+            </span>
+          )}
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: spacing[2],
+          }}
+        >
+          {groupFields.map(field => {
+            const isLowConfidence = field.confidenceScore < confidenceThreshold
+            const isMissing = field.rawValue === null || field.rawValue === ''
+            const showWarning = field.flagged || isLowConfidence || isMissing
+
+            return (
+              <div
+                key={field.id}
+                style={{
+                  backgroundColor: colours.surface,
+                  border: `1px solid ${showWarning ? colours.amber : colours.border}`,
+                  borderRadius: '6px',
+                  padding: spacing[2],
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <label htmlFor={field.id} style={labelStyle}>
+                    {field.fieldName.replace(/_/g, ' ')}
+                  </label>
+                  <span
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.light,
+                      color: isLowConfidence ? colours.amber : colours.green,
+                    }}
+                  >
+                    {Math.round(field.confidenceScore * 100)}%
+                  </span>
+                </div>
+
+                <input
+                  id={field.id}
+                  type="text"
+                  value={values[field.fieldName] ?? ''}
+                  onChange={e => setValues(prev => ({ ...prev, [field.fieldName]: e.target.value }))}
+                  placeholder={isMissing ? 'Not found in document' : undefined}
+                  style={inputStyle(showWarning)}
+                />
+
+                {field.rawUnit && (
+                  <span
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.light,
+                      color: colours.textTertiary,
+                      marginTop: '4px',
+                      display: 'block',
+                    }}
+                  >
+                    Unit: {field.rawUnit}
+                  </span>
+                )}
+
+                {field.flagReason && (
+                  <p
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.light,
+                      color: colours.amber,
+                      margin: '6px 0 0',
+                    }}
+                  >
+                    {field.flagReason}
+                  </p>
+                )}
+
+                {field.sourceText && (
+                  <details style={{ marginTop: '8px' }}>
+                    <summary
+                      style={{
+                        fontSize: typography.sizes.xs,
+                        fontWeight: typography.weights.light,
+                        color: colours.textTertiary,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Source text
+                    </summary>
+                    <blockquote
+                      style={{
+                        fontSize: typography.sizes.xs,
+                        fontWeight: typography.weights.light,
+                        color: colours.textSecondary,
+                        borderLeft: `2px solid ${colours.border}`,
+                        margin: '6px 0 0',
+                        paddingLeft: '10px',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {field.sourceText}
+                    </blockquote>
+                  </details>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: spacing[3],
+          padding: `${spacing[2]} ${spacing[3]}`,
+          backgroundColor: colours.surface,
+          border: `1px solid ${colours.border}`,
+          borderRadius: '6px',
+        }}
+      >
+        <div>
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: 0,
+            }}
+          >
+            Document type: <strong style={{ fontWeight: typography.weights.medium }}>{document.documentType.replace(/_/g, ' ')}</strong>
+          </p>
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: `4px 0 0`,
+            }}
+          >
+            {fields.length} fields extracted · {criticalFlags.length} critical missing
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+          <span
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+            }}
+          >
+            Trust tier on submit:
+          </span>
+          <TierBadge tier={trustTier as 'A' | 'B'} />
+        </div>
+      </div>
+
+      {renderFieldGroup('Compulsory fields', compulsoryFields)}
+      {renderFieldGroup('Conditional fields', conditionalFields, '(required when conditions apply)')}
+      {renderFieldGroup('Optional fields', optionalFields)}
+
+      {error && (
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.red,
+            backgroundColor: colours.redBg,
+            padding: '10px 12px',
+            borderRadius: '4px',
+            marginBottom: spacing[2],
+          }}
+        >
+          {error}
+        </p>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing[2], marginTop: spacing[3] }}>
+        <button
+          onClick={() => router.push('/records')}
+          style={{
+            padding: '12px 20px',
+            backgroundColor: 'transparent',
+            color: colours.textSecondary,
+            fontSize: typography.sizes.base,
+            fontWeight: typography.weights.light,
+            border: `1px solid ${colours.border}`,
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          Save for later
+        </button>
+        <button
+          onClick={handleConfirm}
+          disabled={submitting}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: submitting ? colours.navyHover : colours.navy,
+            color: colours.surface,
+            fontSize: typography.sizes.base,
+            fontWeight: typography.weights.medium,
+            border: 'none',
+            borderRadius: '4px',
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            letterSpacing: typography.tracking.wide,
+          }}
+        >
+          {submitting ? 'Confirming…' : 'Confirm and save records'}
+        </button>
+      </div>
+    </div>
+  )
+}

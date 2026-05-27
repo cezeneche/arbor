@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F8F8F6;
+  --foreground: #141414;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), -apple-system, sans-serif;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}

@@ -1,0 +1,43 @@
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
+import { requireAuth } from '@/lib/auth-helpers'
+import { ok, err } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+
+const patchSchema = z.object({
+  status: z.enum(['SUBMITTED', 'ACCEPTED', 'QUERY_RAISED', 'CLOSED']),
+  notes: z.string().optional(),
+})
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { session, response } = await requireAuth()
+  if (!session) return response!
+
+  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const { id } = await params
+
+  const body = await req.json().catch(() => null)
+  const parsed = patchSchema.safeParse(body)
+  if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
+
+  const dataRequest = await prisma.dataRequest.findUnique({ where: { id } })
+  if (!dataRequest) return err('Request not found', 'NOT_FOUND', 404)
+
+  const isParty =
+    dataRequest.buyerEntityId === entityId || dataRequest.supplierEntityId === entityId
+  if (!isParty) return err('Access denied', 'FORBIDDEN', 403)
+
+  const updated = await prisma.dataRequest.update({
+    where: { id },
+    data: {
+      status: parsed.data.status,
+      notes: parsed.data.notes,
+      ...(parsed.data.status === 'SUBMITTED' ? { respondedAt: new Date() } : {}),
+    },
+  })
+
+  return ok(updated)
+}

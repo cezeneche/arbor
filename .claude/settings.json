@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
+      "Bash(mkdir -p /tmp/arbor-docs)",
+      "Bash(mv CLAUDE.md IMPLEMENTATION_PLAN.md README.md /tmp/arbor-docs/)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npx jest *)",
+      "Bash(mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/api/auth/[...nextauth]\")",
+      "Bash(mkdir -p \\\\ *)",
+      "Bash(mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/dashboard\" && mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/upload/[id]/review\" && mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/records\" && mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/requests\")",
+      "Bash(npx tsc *)",
+      "Bash(grep -rn \"#[0-9A-Fa-f]\\\\{3,6\\\\}\" \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/components/\" \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(auth\\)/\" \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/\")",
+      "Bash(mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/supply-chain/request\" && mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/supply-chain/[supplierId]/records\")",
+      "Bash(git add *)"
+    ],
+    "additionalDirectories": [
+      "/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/api/auth",
+      "/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/api/documents/[id]",
+      "/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/(portal)/upload/[id]",
+      "/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/(portal)/supply-chain/[supplierId]"
+    ]
+  }
+}
