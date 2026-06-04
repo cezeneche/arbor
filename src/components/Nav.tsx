@@ -11,6 +11,10 @@ const links = [
   { href: '/records', label: 'Records' },
   { href: '/requests', label: 'Requests' },
   { href: '/supply-chain', label: 'Supply chain' },
+  { href: '/reports', label: 'Reports' },
+  { href: '/benchmarks', label: 'Benchmarks' },
+  { href: '/access', label: 'Access' },
+  { href: '/settings/api-keys', label: 'Settings' },
 ]
 
 export function Nav({ entityName }: { entityName: string }) {

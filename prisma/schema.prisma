@@ -45,13 +45,14 @@ model VerificationToken {
 // ── ENTITY ────────────────────────────────────────────────────────────────────
 
 model Entity {
-  id                 String   @id @default(cuid())
-  legalName          String
-  registrationNumber String?
-  country            String
-  sector             String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                         String   @id @default(cuid())
+  legalName                  String
+  registrationNumber         String?
+  country                    String
+  sector                     String
+  allowBenchmarkAggregation  Boolean  @default(false)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
   users            User[]
   documents        Document[]
@@ -372,19 +373,43 @@ enum NotificationType {
 // ── EMISSION FACTOR ───────────────────────────────────────────────────────────
 
 model EmissionFactor {
-  id           String   @id @default(cuid())
-  entityId     String?
-  entity       Entity?  @relation(fields: [entityId], references: [id])
-  activityType String
-  source       String
-  version      String
-  year         Int
-  factor       Float
+  id                      String   @id @default(cuid())
+  entityId                String?
+  entity                  Entity?  @relation(fields: [entityId], references: [id])
+  activityType            String
+  source                  String
+  version                 String
+  year                    Int
+  factor                  Float
+  unit                    String
+  citation                String   @db.Text
+  isDerived               Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  confidenceIntervalLower Float?
+  confidenceIntervalUpper Float?
+  sampleSize              Int?
+  createdAt               DateTime @default(now())
+}
+
+// ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────
+
+model SectorBenchmark {
+  id           String     @id @default(cuid())
+  sector       String
+  domain       DataDomain
+  fieldName    String
   unit         String
-  citation     String   @db.Text
-  isDerived    Boolean  @default(false)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  year         Int
+  minValue     Float
+  maxValue     Float
+  meanValue    Float
+  medianValue  Float
+  stddevValue  Float
+  entityCount  Int
+  tierAPercent Float
+  computedAt   DateTime   @default(now())
+
+  @@unique([sector, domain, fieldName, year])
 }
 
 // ── CROSS-VALIDATION RESULT ───────────────────────────────────────────────────

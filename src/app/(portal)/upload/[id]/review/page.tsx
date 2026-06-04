@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { ExtractionReview } from '@/components/ExtractionReview'
+import { ExtractionPoller } from '@/components/ExtractionPoller'
 
 export default async function ReviewPage({
   params,
@@ -65,36 +66,7 @@ export default async function ReviewPage({
       </div>
 
       {job?.status === 'QUEUED' || job?.status === 'RUNNING' || !job ? (
-        <div
-          style={{
-            backgroundColor: colours.surface,
-            border: `1px solid ${colours.border}`,
-            borderRadius: '8px',
-            padding: spacing[6],
-            textAlign: 'center',
-          }}
-        >
-          <p
-            style={{
-              fontSize: typography.sizes.base,
-              fontWeight: typography.weights.medium,
-              color: colours.textSecondary,
-              margin: 0,
-            }}
-          >
-            Extracting data from document…
-          </p>
-          <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textTertiary,
-              margin: `${spacing[1]} 0 0`,
-            }}
-          >
-            This typically takes 10–30 seconds. Refresh this page to check progress.
-          </p>
-        </div>
+        <ExtractionPoller documentId={document.id} />
       ) : (
         <div
           style={{

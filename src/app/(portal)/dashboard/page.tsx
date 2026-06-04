@@ -3,8 +3,46 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
-import { DomainGrid } from '@/components/DomainGrid'
-import type { DomainStat } from '@/components/DomainGrid'
+import { computeReadinessScore } from '@/lib/readiness-score'
+
+const DOMAIN_LABELS: Record<string, string> = {
+  ENERGY: 'Energy',
+  MATERIALS: 'Materials',
+  PRODUCTION: 'Production',
+  LOGISTICS: 'Logistics',
+  EMISSIONS: 'Emissions',
+  AGRICULTURE: 'Agriculture',
+  WASTE_AND_WATER: 'Waste & Water',
+  COMPLIANCE: 'Compliance',
+}
+
+const TIER_LABELS: Record<string, string> = {
+  A: 'Verified',
+  B: 'Declared',
+  C: 'Estimated',
+}
+
+const TIER_COLOURS: Record<string, string> = {
+  A: colours.green,
+  B: colours.amber,
+  C: colours.textTertiary,
+}
+
+const DOC_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Reading',
+  EXTRACTING: 'Reading',
+  REVIEW_REQUIRED: 'Needs your attention',
+  ACCEPTED: 'Ready',
+  REJECTED: 'Could not read',
+}
+
+const DOC_STATUS_COLOURS: Record<string, string> = {
+  PENDING: colours.textTertiary,
+  EXTRACTING: colours.textTertiary,
+  REVIEW_REQUIRED: colours.amber,
+  ACCEPTED: colours.green,
+  REJECTED: colours.red,
+}
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -12,68 +50,32 @@ export default async function DashboardPage() {
 
   const entityId = (session.user as Record<string, unknown>).entityId as string
 
-  const [domainGroups, totalRecords, tierACount, pendingRequests, recentDocuments] =
-    await Promise.all([
-      prisma.dataRecord.groupBy({
-        by: ['domain', 'trustTier'],
-        where: { entityId, isActive: true },
-        _count: { id: true },
-      }),
-      prisma.dataRecord.count({ where: { entityId, isActive: true } }),
-      prisma.dataRecord.count({ where: { entityId, isActive: true, trustTier: 'A' } }),
-      prisma.dataRequest.findMany({
-        where: { supplierEntityId: entityId, status: 'PENDING' },
-        include: { buyerEntity: { select: { legalName: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      }),
-      prisma.document.findMany({
-        where: { entityId },
-        orderBy: { submittedAt: 'desc' },
-        take: 5,
-        include: {
-          extractionJobs: {
-            orderBy: { startedAt: 'desc' },
-            take: 1,
-          },
-        },
-      }),
-    ])
+  const [recentDocuments, pendingRequests, recentRecordGroups, allRecords] = await Promise.all([
+    prisma.document.findMany({
+      where: { entityId },
+      orderBy: { submittedAt: 'desc' },
+      take: 10,
+    }),
+    prisma.dataRequest.findMany({
+      where: { supplierEntityId: entityId, status: 'PENDING' },
+      include: { buyerEntity: { select: { legalName: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.dataRecord.groupBy({
+      by: ['domain', 'trustTier', 'periodStart', 'periodEnd'],
+      where: { entityId, isActive: true },
+      _count: { id: true },
+      orderBy: [{ periodEnd: 'desc' }],
+      take: 20,
+    }),
+    prisma.dataRecord.findMany({
+      where: { entityId, isActive: true },
+      select: { id: true, domain: true, trustTier: true },
+    }),
+  ])
 
-  const readinessScore = totalRecords > 0 ? Math.round((tierACount / totalRecords) * 100) : 0
-  const readinessLevel =
-    readinessScore >= 75 ? 'HIGH' : readinessScore >= 40 ? 'MEDIUM' : 'LOW'
-
-  const readinessColour =
-    readinessLevel === 'HIGH'
-      ? colours.green
-      : readinessLevel === 'MEDIUM'
-        ? colours.amber
-        : colours.red
-
-  const periodStats = await prisma.dataRecord.groupBy({
-    by: ['domain'],
-    where: { entityId, isActive: true },
-    _min: { periodStart: true },
-    _max: { periodEnd: true },
-  })
-
-  const domainStats: DomainStat[] = [
-    'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
-    'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
-  ].map(domain => {
-    const tierGroups = domainGroups.filter(g => g.domain === domain)
-    const periodGroup = periodStats.find(p => p.domain === domain)
-    return {
-      domain,
-      totalRecords: tierGroups.reduce((s, g) => s + g._count.id, 0),
-      tierA: tierGroups.find(g => g.trustTier === 'A')?._count.id ?? 0,
-      tierB: tierGroups.find(g => g.trustTier === 'B')?._count.id ?? 0,
-      tierC: tierGroups.find(g => g.trustTier === 'C')?._count.id ?? 0,
-      periodStart: periodGroup?._min.periodStart?.toISOString() ?? null,
-      periodEnd: periodGroup?._max.periodEnd?.toISOString() ?? null,
-    }
-  })
+  const readiness = computeReadinessScore({ records: allRecords.map(r => ({ id: r.id, domain: r.domain, trustTier: r.trustTier as 'A' | 'B' | 'C' })) })
+  const readinessColour = readiness.interpretation === 'HIGH' ? colours.green : readiness.interpretation === 'MEDIUM' ? colours.amber : colours.red
 
   const sectionLabel = {
     fontSize: typography.sizes.xs,
@@ -84,8 +86,24 @@ export default async function DashboardPage() {
     margin: `0 0 ${spacing[2]}`,
   }
 
+  // Collapse record groups into period buckets: { period -> { domain -> tier } }
+  type PeriodEntry = { domain: string; tier: string; count: number; periodStart: Date; periodEnd: Date }
+  const periodMap = new Map<string, PeriodEntry[]>()
+  for (const g of recentRecordGroups) {
+    const key = `${g.periodStart.toISOString()}__${g.periodEnd.toISOString()}`
+    const existing = periodMap.get(key) ?? []
+    existing.push({ domain: g.domain, tier: g.trustTier, count: g._count.id, periodStart: g.periodStart, periodEnd: g.periodEnd })
+    periodMap.set(key, existing)
+  }
+
+  const periodEntries = Array.from(periodMap.entries())
+    .map(([, entries]) => entries)
+    .sort((a, b) => b[0].periodEnd.getTime() - a[0].periodEnd.getTime())
+    .slice(0, 6)
+
   return (
     <div>
+      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -94,29 +112,17 @@ export default async function DashboardPage() {
           marginBottom: spacing[5],
         }}
       >
-        <div>
-          <h1
-            style={{
-              fontSize: typography.sizes.lg,
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
-              margin: 0,
-              letterSpacing: typography.tracking.tight,
-            }}
-          >
-            Dashboard
-          </h1>
-          <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `${spacing[1]} 0 0`,
-            }}
-          >
-            {totalRecords} active records across all domains
-          </p>
-        </div>
+        <h1
+          style={{
+            fontSize: typography.sizes.lg,
+            fontWeight: typography.weights.medium,
+            color: colours.textPrimary,
+            margin: 0,
+            letterSpacing: typography.tracking.tight,
+          }}
+        >
+          Your data
+        </h1>
         <Link
           href="/upload"
           style={{
@@ -135,126 +141,117 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[5] }}>
-        <div
-          style={{
-            backgroundColor: colours.surface,
-            border: `1px solid ${colours.border}`,
-            borderRadius: '6px',
-            padding: spacing[3],
-            flex: 1,
-          }}
-        >
-          <p style={sectionLabel}>Readiness score</p>
-          <p
-            style={{
-              fontSize: '36px',
-              fontWeight: typography.weights.medium,
-              color: readinessColour,
-              margin: 0,
-              letterSpacing: typography.tracking.tight,
-            }}
-          >
-            {readinessScore}%
-          </p>
-          <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `${spacing[1]} 0 0`,
-            }}
-          >
-            {readinessLevel} — {tierACount} of {totalRecords} records at Tier A
-          </p>
-        </div>
-        <div
-          style={{
-            backgroundColor: colours.surface,
-            border: `1px solid ${colours.border}`,
-            borderRadius: '6px',
-            padding: spacing[3],
-            flex: 1,
-          }}
-        >
-          <p style={sectionLabel}>Outstanding requests</p>
-          <p
-            style={{
-              fontSize: '36px',
-              fontWeight: typography.weights.medium,
-              color: pendingRequests.length > 0 ? colours.amber : colours.textPrimary,
-              margin: 0,
-              letterSpacing: typography.tracking.tight,
-            }}
-          >
-            {pendingRequests.length}
-          </p>
-          <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `${spacing[1]} 0 0`,
-            }}
-          >
-            {pendingRequests.length === 0 ? 'No pending data requests' : 'awaiting your response'}
-          </p>
-        </div>
-        <div
-          style={{
-            backgroundColor: colours.surface,
-            border: `1px solid ${colours.border}`,
-            borderRadius: '6px',
-            padding: spacing[3],
-            flex: 1,
-          }}
-        >
-          <p style={sectionLabel}>Total records</p>
-          <p
-            style={{
-              fontSize: '36px',
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
-              margin: 0,
-              letterSpacing: typography.tracking.tight,
-            }}
-          >
-            {totalRecords}
-          </p>
-          <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `${spacing[1]} 0 0`,
-            }}
-          >
-            across 8 operational domains
-          </p>
-        </div>
-      </div>
-
-      <section style={{ marginBottom: spacing[5] }}>
-        <p style={sectionLabel}>Domain coverage</p>
-        <DomainGrid stats={domainStats} />
-      </section>
-
-      {pendingRequests.length > 0 && (
+      {/* ── READINESS SCORE (Phase 2 — shown once records exist) ────────────── */}
+      {allRecords.length > 0 && (
         <section style={{ marginBottom: spacing[5] }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
-            <p style={{ ...sectionLabel, margin: 0 }}>Pending requests</p>
-            <Link
-              href="/requests"
+          <div
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '8px',
+              padding: spacing[3],
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: spacing[4],
+            }}
+          >
+            <div>
+              <p style={{ ...sectionLabel, margin: `0 0 ${spacing[1]}` }}>Data readiness</p>
+              <p
+                style={{
+                  fontSize: '36px',
+                  fontWeight: typography.weights.medium,
+                  color: readinessColour,
+                  margin: 0,
+                  letterSpacing: typography.tracking.tight,
+                  lineHeight: 1,
+                }}
+              >
+                {readiness.overallScore}%
+              </p>
+              <p
+                style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.light,
+                  color: colours.textSecondary,
+                  margin: `${spacing[1]} 0 0`,
+                }}
+              >
+                {readiness.interpretation} — {readiness.tierACount} of {readiness.totalRecords} records verified
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', maxWidth: '460px', justifyContent: 'flex-end' }}>
+              {readiness.byDomain.map(d => (
+                <span
+                  key={d.domain}
+                  style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.light,
+                    color: colours.textSecondary,
+                    backgroundColor: colours.background,
+                    border: `1px solid ${colours.border}`,
+                    borderRadius: '4px',
+                    padding: '4px 10px',
+                  }}
+                >
+                  {DOMAIN_LABELS[d.domain] ?? d.domain}
+                  {' '}
+                  <span style={{ fontWeight: typography.weights.medium, color: d.interpretation === 'HIGH' ? colours.green : d.interpretation === 'MEDIUM' ? colours.amber : colours.red }}>
+                    {d.score}%
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── SECTION 1: Requests ─────────────────────────────────────────────── */}
+      <section style={{ marginBottom: spacing[5] }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: spacing[2],
+          }}
+        >
+          <p style={{ ...sectionLabel, margin: 0 }}>Requests</p>
+          <Link
+            href="/requests"
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.navy,
+              textDecoration: 'none',
+            }}
+          >
+            View all
+          </Link>
+        </div>
+
+        {pendingRequests.length === 0 ? (
+          <div
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '6px',
+              padding: spacing[3],
+            }}
+          >
+            <p
               style={{
                 fontSize: typography.sizes.sm,
                 fontWeight: typography.weights.light,
-                color: colours.navy,
-                textDecoration: 'none',
+                color: colours.textTertiary,
+                margin: 0,
               }}
             >
-              View all
-            </Link>
+              No pending requests from customers.
+            </p>
           </div>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {pendingRequests.map(req => (
               <div
@@ -285,13 +282,16 @@ export default async function DashboardPage() {
                       fontSize: typography.sizes.sm,
                       fontWeight: typography.weights.light,
                       color: colours.textSecondary,
-                      margin: `2px 0 0`,
+                      margin: '2px 0 0',
                     }}
                   >
-                    {req.domain} · {new Date(req.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                    {DOMAIN_LABELS[req.domain] ?? req.domain}
+                    {' · '}
+                    {new Date(req.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
                     {' – '}
                     {new Date(req.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                    {req.deadline && ` · Due ${new Date(req.deadline).toLocaleDateString('en-GB')}`}
+                    {req.deadline &&
+                      ` · Due ${new Date(req.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
                   </p>
                 </div>
                 <Link
@@ -304,6 +304,7 @@ export default async function DashboardPage() {
                     fontWeight: typography.weights.medium,
                     borderRadius: '4px',
                     textDecoration: 'none',
+                    whiteSpace: 'nowrap' as const,
                   }}
                 >
                   Respond
@@ -311,41 +312,186 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
-      {recentDocuments.length > 0 && (
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
-            <p style={{ ...sectionLabel, margin: 0 }}>Recent documents</p>
-            <Link
-              href="/records"
+      {/* ── SECTION 2: Your data ─────────────────────────────────────────────── */}
+      <section style={{ marginBottom: spacing[5] }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: spacing[2],
+          }}
+        >
+          <p style={{ ...sectionLabel, margin: 0 }}>Your data</p>
+          <Link
+            href="/records"
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.navy,
+              textDecoration: 'none',
+            }}
+          >
+            View all
+          </Link>
+        </div>
+
+        {periodEntries.length === 0 ? (
+          <div
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '6px',
+              padding: spacing[3],
+            }}
+          >
+            <p
               style={{
                 fontSize: typography.sizes.sm,
                 fontWeight: typography.weights.light,
-                color: colours.navy,
-                textDecoration: 'none',
+                color: colours.textTertiary,
+                margin: 0,
               }}
             >
-              View records
-            </Link>
+              No data yet. Upload a document to get started.
+            </p>
           </div>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {recentDocuments.map(doc => {
-              const job = doc.extractionJobs[0]
-              const statusColour =
-                doc.status === 'ACCEPTED' ? colours.green :
-                doc.status === 'REVIEW_REQUIRED' ? colours.amber :
-                doc.status === 'REJECTED' ? colours.red :
-                colours.textTertiary
+            {periodEntries.map((entries, i) => {
+              const { periodStart, periodEnd } = entries[0]
+              const periodLabel = `${new Date(periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} – ${new Date(periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`
               return (
                 <div
-                  key={doc.id}
+                  key={i}
                   style={{
                     backgroundColor: colours.surface,
                     border: `1px solid ${colours.border}`,
                     borderRadius: '6px',
                     padding: spacing[2],
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.medium,
+                      color: colours.textTertiary,
+                      letterSpacing: typography.tracking.wide,
+                      textTransform: 'uppercase',
+                      margin: `0 0 ${spacing[1]}`,
+                    }}
+                  >
+                    {periodLabel}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
+                    {entries.map(entry => (
+                      <span
+                        key={`${entry.domain}-${entry.tier}`}
+                        style={{
+                          fontSize: typography.sizes.sm,
+                          fontWeight: typography.weights.light,
+                          color: colours.textPrimary,
+                          backgroundColor: colours.background,
+                          border: `1px solid ${colours.border}`,
+                          borderRadius: '4px',
+                          padding: '4px 10px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        {DOMAIN_LABELS[entry.domain] ?? entry.domain}
+                        <span
+                          style={{
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.medium,
+                            color: TIER_COLOURS[entry.tier],
+                          }}
+                        >
+                          {TIER_LABELS[entry.tier] ?? entry.tier}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── SECTION 3: Your documents ────────────────────────────────────────── */}
+      <section>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: spacing[2],
+          }}
+        >
+          <p style={{ ...sectionLabel, margin: 0 }}>Your documents</p>
+        </div>
+
+        {recentDocuments.length === 0 ? (
+          <div
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '6px',
+              padding: spacing[4],
+              textAlign: 'center',
+            }}
+          >
+            <p
+              style={{
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.light,
+                color: colours.textSecondary,
+                margin: `0 0 ${spacing[2]}`,
+              }}
+            >
+              You have not uploaded any documents yet.
+            </p>
+            <Link
+              href="/upload"
+              style={{
+                padding: '10px 20px',
+                backgroundColor: colours.navy,
+                color: colours.surface,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                borderRadius: '4px',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
+              Upload a document
+            </Link>
+          </div>
+        ) : (
+          <div
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '8px',
+              overflow: 'hidden',
+            }}
+          >
+            {recentDocuments.map((doc, i) => {
+              const statusLabel = DOC_STATUS_LABELS[doc.status] ?? doc.status.replace(/_/g, ' ')
+              const statusColour = DOC_STATUS_COLOURS[doc.status] ?? colours.textTertiary
+              const periodLabel = new Date(doc.submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+
+              return (
+                <div
+                  key={doc.id}
+                  style={{
+                    padding: spacing[2],
+                    borderBottom: i < recentDocuments.length - 1 ? `1px solid ${colours.border}` : 'none',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -370,20 +516,18 @@ export default async function DashboardPage() {
                         margin: '2px 0 0',
                       }}
                     >
-                      {doc.documentType.replace(/_/g, ' ')} · {new Date(doc.submittedAt).toLocaleDateString('en-GB')}
+                      {periodLabel}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
                     <span
                       style={{
-                        fontSize: typography.sizes.xs,
+                        fontSize: typography.sizes.sm,
                         fontWeight: typography.weights.medium,
                         color: statusColour,
-                        textTransform: 'uppercase',
-                        letterSpacing: typography.tracking.wide,
                       }}
                     >
-                      {doc.status.replace(/_/g, ' ')}
+                      {statusLabel}
                     </span>
                     {doc.status === 'REVIEW_REQUIRED' && (
                       <Link
@@ -406,8 +550,8 @@ export default async function DashboardPage() {
               )
             })}
           </div>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   )
 }

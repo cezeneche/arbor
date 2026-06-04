@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { sendNotification } from '@/lib/notifications'
 
 const patchSchema = z.object({
   status: z.enum(['SUBMITTED', 'ACCEPTED', 'QUERY_RAISED', 'CLOSED']),
@@ -38,6 +39,34 @@ export async function PATCH(
       ...(parsed.data.status === 'SUBMITTED' ? { respondedAt: new Date() } : {}),
     },
   })
+
+  if (parsed.data.status === 'SUBMITTED') {
+    // Create a DataAccessGrant so the buyer can see the supplier's data
+    const existing = await prisma.dataAccessGrant.findFirst({
+      where: {
+        grantorEntityId: dataRequest.supplierEntityId,
+        granteeEntityId: dataRequest.buyerEntityId,
+        domain: dataRequest.domain,
+        isActive: true,
+      },
+    })
+    if (!existing) {
+      await prisma.dataAccessGrant.create({
+        data: {
+          grantorEntityId: dataRequest.supplierEntityId,
+          granteeEntityId: dataRequest.buyerEntityId,
+          domain: dataRequest.domain,
+          periodStart: dataRequest.periodStart,
+          periodEnd: dataRequest.periodEnd,
+        },
+      })
+    }
+    await sendNotification({
+      entityId: dataRequest.buyerEntityId,
+      type: 'DATA_REQUEST_RESPONDED',
+      payload: { requestId: id, supplierEntityId: dataRequest.supplierEntityId },
+    }).catch(() => {})
+  }
 
   return ok(updated)
 }

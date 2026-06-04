@@ -48,19 +48,19 @@ export const spacing = {
 
 export const trustTierConfig = {
   A: {
-    label: 'Document-verified',
+    label: 'Verified',
     colour: colours.green,
     bg: colours.greenBg,
     description: 'Extracted from a source document. Source text recorded.',
   },
   B: {
-    label: 'Supplier-declared',
+    label: 'Declared',
     colour: colours.amber,
     bg: colours.amberBg,
-    description: 'Declared by the supplier. No document backing.',
+    description: 'Entered without a source document, or document failed a quality check.',
   },
   C: {
-    label: 'Default estimate',
+    label: 'Estimated',
     colour: colours.textTertiary,
     bg: colours.background,
     description: 'Published default factor applied. Not actual activity data.',

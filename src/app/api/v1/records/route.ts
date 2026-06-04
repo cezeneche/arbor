@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { authenticateApiKey } from '@/lib/api-key-auth'
 import { ok, err } from '@/lib/api-helpers'
 import { computeRecordHash } from '@/lib/calculation/audit-chain'
+import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
+import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
 import type { AuditPayload } from '@/lib/calculation/audit-chain'
 
 export async function GET(req: NextRequest) {
@@ -16,6 +18,7 @@ export async function GET(req: NextRequest) {
   const tier = searchParams.get('tier') as never | null
   const periodStart = searchParams.get('periodStart')
   const periodEnd = searchParams.get('periodEnd')
+  const format = searchParams.get('format') ?? 'json'
 
   const records = await prisma.dataRecord.findMany({
     where: {
@@ -38,9 +41,32 @@ export async function GET(req: NextRequest) {
       periodEnd: true,
       extractionMethod: true,
       submittedAt: true,
+      documentId: true,
     },
     orderBy: { submittedAt: 'desc' },
   })
+
+  if (format === 'csv') {
+    const csv = formatRecordsAsCSV(records)
+    return new NextResponse(csv, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="arbor-records.csv"',
+      },
+    })
+  }
+
+  if (format === 'xml') {
+    const xml = formatRecordsAsXML(records)
+    return new NextResponse(xml, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="arbor-records.xml"',
+      },
+    })
+  }
 
   return ok({ records, count: records.length })
 }

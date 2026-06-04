@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 export default function LoginPage() {
@@ -174,6 +175,24 @@ export default function LoginPage() {
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+
+      <p
+        style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.light,
+          color: colours.textSecondary,
+          textAlign: 'center',
+          margin: `${spacing[3]} 0 0`,
+        }}
+      >
+        No account?{' '}
+        <Link
+          href="/signup"
+          style={{ color: colours.navy, textDecoration: 'none', fontWeight: typography.weights.medium }}
+        >
+          Create one
+        </Link>
+      </p>
     </div>
   )
 }
