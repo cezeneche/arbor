@@ -53,9 +53,23 @@ export function RequestsList({ incoming, outgoing }: Props) {
   const [respondNote, setRespondNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [generatingLink, setGeneratingLink] = useState<string | null>(null)
+  const [generatedLinks, setGeneratedLinks] = useState<Record<string, string>>({})
 
   const currentIncoming = requests.filter(r => incoming.some(i => i.id === r.id))
   const currentOutgoing = requests.filter(r => outgoing.some(o => o.id === r.id))
+
+  async function handleGenerateLink(requestId: string) {
+    setGeneratingLink(requestId)
+    const res = await fetch(`/api/requests/${requestId}/token`, { method: 'POST' })
+    const data = await res.json()
+    setGeneratingLink(null)
+    if (res.ok && data.link) {
+      setGeneratedLinks(prev => ({ ...prev, [requestId]: data.link }))
+    } else {
+      setError(data.error ?? 'Failed to generate link.')
+    }
+  }
 
   async function handleRespond(requestId: string) {
     setError(null)
@@ -394,17 +408,79 @@ export function RequestsList({ incoming, outgoing }: Props) {
                     {new Date(req.createdAt).toLocaleDateString('en-GB')}
                   </p>
                 </div>
-                <span
-                  style={{
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.medium,
-                    color: STATUS_COLOURS[req.status] ?? colours.textTertiary,
-                    textTransform: 'uppercase',
-                    letterSpacing: typography.tracking.wide,
-                  }}
-                >
-                  {STATUS_LABELS[req.status] ?? req.status}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  {req.status === 'PENDING' && (
+                    generatedLinks[req.id] ? (
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, margin: '0 0 4px', letterSpacing: typography.tracking.wider, textTransform: 'uppercase' }}>
+                          Submission link
+                        </p>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <input
+                            readOnly
+                            value={generatedLinks[req.id]}
+                            style={{
+                              fontSize: typography.sizes.xs,
+                              fontWeight: typography.weights.light,
+                              color: colours.textSecondary,
+                              border: `1px solid ${colours.border}`,
+                              borderRadius: '3px',
+                              padding: '4px 8px',
+                              width: '220px',
+                              backgroundColor: colours.background,
+                            }}
+                          />
+                          <button
+                            onClick={() => navigator.clipboard.writeText(generatedLinks[req.id])}
+                            style={{
+                              fontSize: typography.sizes.xs,
+                              fontWeight: typography.weights.medium,
+                              color: colours.navy,
+                              backgroundColor: 'transparent',
+                              border: `1px solid ${colours.border}`,
+                              borderRadius: '3px',
+                              padding: '4px 8px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleGenerateLink(req.id)}
+                        disabled={generatingLink === req.id}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: 'transparent',
+                          color: colours.navy,
+                          fontSize: typography.sizes.xs,
+                          fontWeight: typography.weights.medium,
+                          border: `1px solid ${colours.border}`,
+                          borderRadius: '4px',
+                          cursor: generatingLink === req.id ? 'not-allowed' : 'pointer',
+                          letterSpacing: typography.tracking.wide,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {generatingLink === req.id ? 'Generating…' : 'Send link'}
+                      </button>
+                    )
+                  )}
+                  <span
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.medium,
+                      color: STATUS_COLOURS[req.status] ?? colours.textTertiary,
+                      textTransform: 'uppercase',
+                      letterSpacing: typography.tracking.wide,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {STATUS_LABELS[req.status] ?? req.status}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

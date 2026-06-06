@@ -3,9 +3,9 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
-import { computeRecordHash } from '@/lib/calculation/audit-chain'
+import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
-import type { AuditPayload } from '@/lib/calculation/audit-chain'
+import type { AuditPayload } from '@/lib/layer2/audit-chain'
 import type { Prisma } from '@prisma/client'
 
 const fieldSchema = z.object({
@@ -17,7 +17,6 @@ const fieldSchema = z.object({
   normalisedUnit: z.string(),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
-  scope3Category: z.number().int().min(1).max(15).optional(),
 })
 
 const bodySchema = z.object({
@@ -70,7 +69,6 @@ export async function POST(
         entityId,
         documentId,
         domain: field.domain,
-        scope3Category: field.scope3Category ?? null,
         fieldName: field.fieldName,
         value: field.normalisedValue,
         unit: field.normalisedUnit,

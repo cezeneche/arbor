@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server'
 import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
-import { verifyChain } from '@/lib/calculation/audit-chain'
-import type { AuditPayload } from '@/lib/calculation/audit-chain'
+import { verifyChain } from '@/lib/layer2/audit-chain'
+import type { AuditPayload } from '@/lib/layer2/audit-chain'
 
 export async function GET(
   req: NextRequest,

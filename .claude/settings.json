@@ -13,7 +13,9 @@
       "Bash(npx tsc *)",
       "Bash(grep -rn \"#[0-9A-Fa-f]\\\\{3,6\\\\}\" \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/components/\" \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(auth\\)/\" \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/\")",
       "Bash(mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/supply-chain/request\" && mkdir -p \"/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/\\(portal\\)/supply-chain/[supplierId]/records\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "/Users/chisom/Documents/Chisom/AI & Technology/arbor/arbor/src/app/api/auth",

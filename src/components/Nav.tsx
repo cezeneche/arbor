@@ -5,20 +5,31 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-const links = [
+// SME supplier view — plain English, minimal navigation (PRD Section 7 Simplicity Constraint)
+const SUPPLIER_LINKS = [
+  { href: '/dashboard', label: 'Your data' },
+  { href: '/upload', label: 'Upload' },
+  { href: '/requests', label: 'Requests' },
+  { href: '/analytics', label: 'Analytics' },
+  { href: '/activity', label: 'Activity' },
+]
+
+// Buyer view — full technical interface (PRD Section 18)
+const BUYER_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/upload', label: 'Upload' },
   { href: '/records', label: 'Records' },
   { href: '/requests', label: 'Requests' },
   { href: '/supply-chain', label: 'Supply chain' },
-  { href: '/reports', label: 'Reports' },
-  { href: '/benchmarks', label: 'Benchmarks' },
+  { href: '/analytics', label: 'Analytics' },
+  { href: '/activity', label: 'Activity' },
   { href: '/access', label: 'Access' },
   { href: '/settings/api-keys', label: 'Settings' },
 ]
 
-export function Nav({ entityName }: { entityName: string }) {
+export function Nav({ entityName, entityType = 'SUPPLIER' }: { entityName: string; entityType?: 'SUPPLIER' | 'BUYER' }) {
   const pathname = usePathname()
+  const links = entityType === 'BUYER' ? BUYER_LINKS : SUPPLIER_LINKS
 
   return (
     <nav

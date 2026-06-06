@@ -271,6 +271,23 @@ export function evaluateAdmissibility(
     }
   }
 
+  // EMISSIONS_FACTOR_DOC: source=OTHER requires full citation (spec §5.1)
+  if (documentType === 'EMISSIONS_FACTOR_DOC') {
+    if (fieldValues['source'] === 'OTHER') {
+      const missingCitation = ['citation_author', 'citation_publisher', 'citation_url_or_doi'].filter(
+        f => !fieldValues[f] || fieldValues[f] === ''
+      )
+      for (const f of missingCitation) {
+        flags.push({
+          fieldName: f,
+          flagType: 'COMPLETENESS_GAP',
+          message: `source is OTHER — full citation required. '${f}' is absent. Factor is unverifiable without it.`,
+          severity: 'CRITICAL',
+        })
+      }
+    }
+  }
+
   // CBAM Tier 1/2 must have supporting_data_reference
   if (documentType === 'CBAM_DECLARATION') {
     const tier = fieldValues['calculation_tier']

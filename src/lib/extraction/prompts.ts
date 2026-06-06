@@ -104,6 +104,68 @@ Key extraction rules for land use certificates:
 - expiry_date is critical for validity checks — extract it even if labelled "valid until" or "renewal date".
 - geographic_coordinates if present should be captured in WGS84 decimal degrees format.
 `,
+
+  BILL_OF_LADING: `
+Key extraction rules for bills of lading:
+- bill_of_lading_number is compulsory. Extract exactly as printed. Do not confuse with container numbers, booking references, or vessel voyage numbers.
+- shipper_name is the party who ships the goods (exporter). consignee_name is the recipient. Do not confuse with carrier or freight forwarder.
+- port_of_loading and port_of_discharge should be captured as city/port name, not country. Include country in parentheses if it helps disambiguation (e.g. "Hamburg (DE)").
+- gross_weight and gross_weight_unit must be captured together exactly as stated. Weight is typically in kg or metric tonnes — do not convert.
+- date_of_issue is the bill of lading date, not the sailing date, arrival date, or document date.
+- vessel_name and container_numbers are optional but extract if present — they support cross-document validation against freight invoices.
+- commodity_description should be specific — include HS code if stated in the document.
+`,
+
+  WASTE_RECORD: `
+Key extraction rules for waste disposal records and waste transfer notes:
+- record_reference is the waste transfer note (WTN) number or consignment note number. This is a legal document reference. Extract exactly as printed.
+- contractor_licence is the waste carrier licence number issued by the Environment Agency (EA), SEPA, or equivalent body. Format varies — extract exactly. Do not confuse with company registration number.
+- waste_classification must resolve to HAZARDOUS or NON_HAZARDOUS. If the document uses "special waste" or EWC codes beginning with asterisk (*), classify as HAZARDOUS.
+- disposal_method must resolve to one of: LANDFILL, INCINERATION_WITH_RECOVERY, INCINERATION_WITHOUT_RECOVERY, RECYCLING, COMPOSTING, TREATMENT, OTHER. "Energy from waste" maps to INCINERATION_WITH_RECOVERY.
+- period_start and period_end are the collection/disposal period dates, not the document date.
+- waste_type should be specific — include EWC (European Waste Catalogue) code if present.
+`,
+
+  WATER_RECORD: `
+Key extraction rules for water use records:
+- water_source_type must resolve to one of: MAINS, GROUNDWATER, SURFACE_WATER, RECYCLED, RAINWATER. "Municipal supply" maps to MAINS. "Borehole" maps to GROUNDWATER. "River abstraction" maps to SURFACE_WATER.
+- quantity_m3 is the total volume consumed. Extract the numeric value; note original unit (may be in litres or gallons) in rawUnit. The normalisation to m³ happens downstream.
+- meter_reference is optional but extract if present — it enables cross-validation across periods. Format is typically an alphanumeric serial number.
+- period_start and period_end should be the metering period or billing period, not document date.
+- If the document shows both abstracted and returned volumes, extract the net consumed volume as quantity_m3 and note gross values in extractionNotes.
+`,
+
+  ENVIRONMENTAL_CERTIFICATE: `
+Key extraction rules for environmental management certificates (ISO 14001, EMAS):
+- standard must resolve to ISO_14001, EMAS, or OTHER. "ISO 14001:2015" maps to ISO_14001.
+- issuing_body is the certification body that issued the certificate (e.g. BSI, Bureau Veritas, SGS, TÜV). This is distinct from the accreditation_body.
+- accreditation_body is the national accreditation body that accredits the certification body (e.g. UKAS in UK, DAkkS in Germany, COFRAC in France). This is usually a smaller printed element — look for "Accredited by..." text.
+- scope describes what activities are covered by the certificate. Extract in full — do not summarise.
+- certificate_number must be extracted exactly as printed. Some bodies prefix with country codes or their own identifiers.
+- expiry_date triggers a critical flag if expired during the reporting period. Extract precisely.
+`,
+
+  CARBON_FOOTPRINT_REPORT: `
+Key extraction rules for carbon footprint reports and LCA documents:
+- methodology must resolve to GHG_PROTOCOL, ISO_14064, EN_15804, PAS_2050, or OTHER. If the document names "GHG Protocol Corporate Standard" or "Scope 1/2/3", map to GHG_PROTOCOL.
+- system_boundary describes the organisational and operational scope (e.g. "Operated assets, UK only", "Cradle-to-gate"). Extract the stated boundary verbatim — do not interpret.
+- total_co2e is the headline emissions figure. Extract with units — may be stated as "tCO2e", "kg CO2 equivalent", "tonnes CO2e". Record the unit separately in rawUnit.
+- assurance_level must resolve to NONE, LIMITED, or REASONABLE. Look for third-party assurance or verification statements. "Reasonable assurance" = REASONABLE; "Limited assurance" = LIMITED; absence of a verification statement = NONE.
+- assurance_body is the verifying organisation. Only required if assurance_level is not NONE.
+- scope_1_total, scope_2_total, scope_3_total are optional breakdowns. Extract if explicitly labelled — do not calculate from sub-categories.
+- data_year is the reporting year (e.g. 2024 for FY2024 data), not the publication year.
+`,
+
+  RENEWABLE_CERTIFICATE: `
+Key extraction rules for renewable energy certificates (REGO, REC, Guarantee of Origin):
+- certificate_type must resolve to REGO, REC, GO, or OTHER. UK certificates are REGOs; US are RECs; European are Guarantees of Origin (GO).
+- certificate_number is unique and compulsory. It enables duplicate detection. Extract exactly — do not truncate serial numbers.
+- quantity_mwh is the energy quantity in MWh the certificate represents. Often 1 MWh per certificate but can vary for bundle documents.
+- vintage_year is the year of generation. Distinct from the issue date or expiry date.
+- technology_type describes the generation technology (e.g. "Onshore wind", "Solar PV", "Hydro"). Extract as stated.
+- generation_country is the country where the electricity was generated, not where the certificate was issued.
+- expiry_date is critical — certificates cannot be applied to periods after expiry. Extract exactly.
+`,
 }
 
 export function buildExtractionPrompt(documentType: string, requiredFields: string[]): string {

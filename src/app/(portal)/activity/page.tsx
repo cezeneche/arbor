@@ -1,0 +1,203 @@
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { colours, typography, spacing } from '@/lib/design-system'
+
+const DOMAIN_LABELS: Record<string, string> = {
+  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
+  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
+  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
+}
+
+const EVENT_LABELS: Record<string, string> = {
+  CREATED: 'Record created',
+  CREATED_VIA_SUBMISSION_LINK: 'Record created via submission link',
+  SUPERSEDED: 'Record superseded',
+  CORRECTED: 'Record corrected',
+  TIER_UPGRADED: 'Trust tier upgraded',
+  CHAIN_VERIFIED: 'Audit chain verified',
+}
+
+function eventColour(eventType: string): string {
+  if (eventType.startsWith('CREATED')) return colours.green
+  if (eventType === 'SUPERSEDED' || eventType === 'CORRECTED') return colours.amber
+  if (eventType === 'TIER_UPGRADED') return colours.navy
+  return colours.textTertiary
+}
+
+function relativeTime(date: Date): string {
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function groupByDate(entries: Array<{ createdAt: Date }>): string[] {
+  const keys = new Set<string>()
+  for (const e of entries) {
+    keys.add(e.createdAt.toDateString())
+  }
+  return [...keys]
+}
+
+export default async function ActivityPage() {
+  const session = await auth()
+  if (!session?.user) redirect('/login')
+
+  const entityId = (session.user as Record<string, unknown>).entityId as string
+
+  const auditEntries = await prisma.auditEntry.findMany({
+    where: { entityId },
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+  })
+
+  // Enrich with record info where possible
+  const recordIds = [...new Set(auditEntries.map(e => e.recordId))]
+  const records = await prisma.dataRecord.findMany({
+    where: { id: { in: recordIds } },
+    select: {
+      id: true,
+      domain: true,
+      fieldName: true,
+      trustTier: true,
+      isActive: true,
+      periodStart: true,
+      periodEnd: true,
+    },
+  })
+  const recordMap = new Map(records.map(r => [r.id, r]))
+
+  const dateGroups = groupByDate(auditEntries.map(e => ({ createdAt: new Date(e.createdAt) })))
+
+  const sectionLabel = {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colours.textSecondary,
+    letterSpacing: typography.tracking.wider,
+    textTransform: 'uppercase' as const,
+    margin: `0 0 ${spacing[2]}`,
+  }
+
+  return (
+    <div style={{ maxWidth: '720px' }}>
+      <div style={{ marginBottom: spacing[5] }}>
+        <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
+          Activity
+        </h1>
+        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+          Full history of document submissions, extractions, and data record changes.
+        </p>
+      </div>
+
+      {auditEntries.length === 0 ? (
+        <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[5], textAlign: 'center' }}>
+          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+            No activity yet. Upload your first document to get started.
+          </p>
+        </div>
+      ) : (
+        <div>
+          {dateGroups.map(dateKey => {
+            const dayEntries = auditEntries.filter(
+              e => new Date(e.createdAt).toDateString() === dateKey
+            )
+            const label = relativeTime(new Date(dateKey))
+
+            return (
+              <div key={dateKey} style={{ marginBottom: spacing[4] }}>
+                <p style={sectionLabel}>{label}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: colours.border, borderRadius: '8px', overflow: 'hidden' }}>
+                  {dayEntries.map(entry => {
+                    const record = recordMap.get(entry.recordId)
+                    const payload = entry.payload as Record<string, unknown>
+                    const eventLabel = EVENT_LABELS[entry.eventType] ?? entry.eventType.replace(/_/g, ' ').toLowerCase()
+                    const colour = eventColour(entry.eventType)
+
+                    const domainLabel = record ? (DOMAIN_LABELS[record.domain] ?? record.domain) : null
+                    const fieldLabel = record ? record.fieldName.replace(/_/g, ' ') : null
+                    const periodLabel = record
+                      ? [
+                          new Date(record.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+                          new Date(record.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+                        ].join(' – ')
+                      : null
+
+                    return (
+                      <div
+                        key={entry.id}
+                        style={{
+                          backgroundColor: colours.surface,
+                          padding: `12px ${spacing[2]}`,
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: spacing[2],
+                        }}
+                      >
+                        {/* Colour dot */}
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: colour,
+                            marginTop: '6px',
+                          }}
+                        />
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[2] }}>
+                            <div>
+                              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+                                {eventLabel}
+                              </p>
+                              {record && (
+                                <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>
+                                  {domainLabel}
+                                  {fieldLabel ? ` · ${fieldLabel}` : ''}
+                                  {periodLabel ? ` · ${periodLabel}` : ''}
+                                  {!record.isActive && (
+                                    <span style={{ color: colours.amber, marginLeft: '6px' }}>
+                                      (superseded)
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                              {!record && (payload.domain as string | undefined) && (
+                                <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>
+                                  {DOMAIN_LABELS[payload.domain as string] ?? String(payload.domain as string)}
+                                  {(payload.fieldName as string | undefined) ? ` · ${String(payload.fieldName as string).replace(/_/g, ' ')}` : ''}
+                                </p>
+                              )}
+                            </div>
+                            <p style={{ flexShrink: 0, fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0, whiteSpace: 'nowrap' }}>
+                              {new Date(entry.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+
+                          {/* Audit hash snippet */}
+                          <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0', fontFamily: 'monospace' }}>
+                            {entry.hash.substring(0, 16)}…
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+
+          <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, textAlign: 'center', marginTop: spacing[3] }}>
+            Showing the most recent 200 events · Every event is part of an unbroken cryptographic audit chain
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}

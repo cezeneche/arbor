@@ -11,17 +11,21 @@ export default async function PortalLayout({ children }: { children: React.React
   const entityId = (session.user as Record<string, unknown>).entityId as string | undefined
 
   let entityName = 'Your organisation'
+  let entityType: 'SUPPLIER' | 'BUYER' = 'SUPPLIER'
   if (entityId) {
     const entity = await prisma.entity.findUnique({
       where: { id: entityId },
-      select: { legalName: true },
+      select: { legalName: true, entityType: true },
     })
-    if (entity) entityName = entity.legalName
+    if (entity) {
+      entityName = entity.legalName
+      entityType = entity.entityType as 'SUPPLIER' | 'BUYER'
+    }
   }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: colours.background }}>
-      <Nav entityName={entityName} />
+      <Nav entityName={entityName} entityType={entityType} />
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 32px' }}>
         {children}
       </main>

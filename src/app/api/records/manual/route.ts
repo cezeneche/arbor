@@ -3,8 +3,8 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
-import { computeRecordHash } from '@/lib/calculation/audit-chain'
-import type { AuditPayload } from '@/lib/calculation/audit-chain'
+import { computeRecordHash } from '@/lib/layer2/audit-chain'
+import type { AuditPayload } from '@/lib/layer2/audit-chain'
 import type { Prisma } from '@prisma/client'
 
 const bodySchema = z.object({
@@ -14,7 +14,6 @@ const bodySchema = z.object({
   unit: z.string().min(1),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
-  scope3Category: z.number().int().min(1).max(15).optional(),
   sourceText: z.string().optional(),
 })
 
@@ -51,7 +50,6 @@ export async function POST(req: NextRequest) {
     data: {
       entityId,
       domain: parsed.data.domain,
-      scope3Category: parsed.data.scope3Category ?? null,
       fieldName: parsed.data.fieldName,
       value: parsed.data.value,
       unit: parsed.data.unit,

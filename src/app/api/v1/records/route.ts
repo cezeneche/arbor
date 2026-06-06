@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { authenticateApiKey } from '@/lib/api-key-auth'
 import { ok, err } from '@/lib/api-helpers'
-import { computeRecordHash } from '@/lib/calculation/audit-chain'
+import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
 import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
-import type { AuditPayload } from '@/lib/calculation/audit-chain'
+import type { AuditPayload } from '@/lib/layer2/audit-chain'
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateApiKey(req.headers.get('authorization'))
@@ -91,7 +91,6 @@ export async function POST(req: NextRequest) {
     unit: string
     periodStart: string
     periodEnd: string
-    scope3Category?: number
   }>
 
   if (!Array.isArray(records) || records.length === 0) {
@@ -129,9 +128,8 @@ export async function POST(req: NextRequest) {
         unit: r.unit,
         periodStart: new Date(r.periodStart),
         periodEnd: new Date(r.periodEnd),
-        scope3Category: r.scope3Category ?? null,
         trustTier: 'A' as never,
-        extractionMethod: 'ERP_DIRECT' as never,
+        extractionMethod: 'SYSTEM_INTEGRATION' as never,
         submittedById: entity.id,
         confidenceScore: 1.0,
         isActive: true,

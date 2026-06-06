@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { verifyChain } from '@/lib/calculation/audit-chain'
-import type { AuditPayload } from '@/lib/calculation/audit-chain'
+import { verifyChain } from '@/lib/layer2/audit-chain'
+import type { AuditPayload } from '@/lib/layer2/audit-chain'
 
 export async function GET(req: NextRequest) {
   const session = await auth()

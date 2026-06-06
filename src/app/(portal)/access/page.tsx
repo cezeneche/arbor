@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { RevokeGrant } from './RevokeGrant'
+import { GrantAccessForm } from './GrantAccessForm'
 
 const DOMAIN_LABELS: Record<string, string> = {
   ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
@@ -15,11 +16,23 @@ export default async function AccessPage() {
   if (!session?.user) redirect('/login')
   const entityId = (session.user as Record<string, unknown>).entityId as string
 
-  const grants = await prisma.dataAccessGrant.findMany({
-    where: { grantorEntityId: entityId, isActive: true },
-    include: { granteeEntity: { select: { legalName: true } } },
-    orderBy: { grantedAt: 'desc' },
-  })
+  const [grants, incomingRequests] = await Promise.all([
+    prisma.dataAccessGrant.findMany({
+      where: { grantorEntityId: entityId, isActive: true },
+      include: { granteeEntity: { select: { legalName: true } } },
+      orderBy: { grantedAt: 'desc' },
+    }),
+    prisma.dataRequest.findMany({
+      where: { supplierEntityId: entityId },
+      select: { buyerEntityId: true, buyerEntity: { select: { legalName: true } } },
+      distinct: ['buyerEntityId'],
+    }),
+  ])
+
+  const knownBuyers = incomingRequests.map(r => ({
+    id: r.buyerEntityId,
+    legalName: r.buyerEntity.legalName,
+  }))
 
   const sectionLabel = {
     fontSize: typography.sizes.xs,
@@ -57,6 +70,8 @@ export default async function AccessPage() {
             : `You are sharing your data with ${grants.length} buyer${grants.length !== 1 ? 's' : ''}.`}
         </p>
       </div>
+
+      <GrantAccessForm knownBuyers={knownBuyers} />
 
       <section>
         <p style={sectionLabel}>Active data shares</p>

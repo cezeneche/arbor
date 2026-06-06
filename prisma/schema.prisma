@@ -44,15 +44,21 @@ model VerificationToken {
 
 // ── ENTITY ────────────────────────────────────────────────────────────────────
 
+enum EntityType {
+  SUPPLIER
+  BUYER
+}
+
 model Entity {
-  id                         String   @id @default(cuid())
+  id                         String     @id @default(cuid())
   legalName                  String
   registrationNumber         String?
   country                    String
   sector                     String
-  allowBenchmarkAggregation  Boolean  @default(false)
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  entityType                 EntityType @default(SUPPLIER)
+  allowBenchmarkAggregation  Boolean    @default(false)
+  createdAt                  DateTime   @default(now())
+  updatedAt                  DateTime   @updatedAt
 
   users            User[]
   documents        Document[]
@@ -60,7 +66,6 @@ model Entity {
   auditChain       AuditEntry[]
   outgoingRequests DataRequest[]     @relation("BuyerRequests")
   incomingRequests DataRequest[]     @relation("SupplierRequests")
-  emissionFactors  EmissionFactor[]
   notifications    Notification[]
   dataAccess       DataAccessGrant[] @relation("GrantorEntity")
   receivedAccess   DataAccessGrant[] @relation("GranteeEntity")
@@ -207,7 +212,6 @@ model DataRecord {
   documentId       String?
   document         Document?        @relation(fields: [documentId], references: [id])
   domain           DataDomain
-  scope3Category   Int?
   fieldName        String
   value            Float
   unit             String
@@ -223,6 +227,8 @@ model DataRecord {
   submittedById    String
   submittedBy      User             @relation(fields: [submittedById], references: [id])
   supersededById   String?
+  supersededBy     DataRecord?      @relation("Supersession", fields: [supersededById], references: [id])
+  supersededByThis DataRecord[]     @relation("Supersession")
   isActive         Boolean          @default(true)
   auditHash        String
 
@@ -250,7 +256,6 @@ enum ExtractionMethod {
   DOCUMENT_AI
   MANUAL_ENTRY
   SYSTEM_INTEGRATION
-  DEFAULT_FACTOR
 }
 
 // ── VALIDATION FLAG ───────────────────────────────────────────────────────────
@@ -316,11 +321,13 @@ model DataRequest {
   periodStart      DateTime
   periodEnd        DateTime
   requiredFields   Json
-  deadline         DateTime?
-  status           RequestStatus @default(PENDING)
-  createdAt        DateTime      @default(now())
-  respondedAt      DateTime?
-  notes            String?       @db.Text
+  deadline              DateTime?
+  status                RequestStatus @default(PENDING)
+  createdAt             DateTime      @default(now())
+  respondedAt           DateTime?
+  notes                 String?       @db.Text
+  submissionToken       String?       @unique
+  submissionTokenExpiry DateTime?
 }
 
 enum RequestStatus {
@@ -368,27 +375,6 @@ enum NotificationType {
   TIER_UPGRADED
   ACCESS_GRANTED
   ACCESS_REVOKED
-}
-
-// ── EMISSION FACTOR ───────────────────────────────────────────────────────────
-
-model EmissionFactor {
-  id                      String   @id @default(cuid())
-  entityId                String?
-  entity                  Entity?  @relation(fields: [entityId], references: [id])
-  activityType            String
-  source                  String
-  version                 String
-  year                    Int
-  factor                  Float
-  unit                    String
-  citation                String   @db.Text
-  isDerived               Boolean  @default(false)
-  isActive                Boolean  @default(true)
-  confidenceIntervalLower Float?
-  confidenceIntervalUpper Float?
-  sampleSize              Int?
-  createdAt               DateTime @default(now())
 }
 
 // ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────

@@ -427,4 +427,34 @@ export const DOCUMENT_FIELD_DEFINITIONS: Record<string, FieldDefinition[]> = {
     { name: 'scope_2_total', admissibility: 'optional' },
     { name: 'scope_3_total', admissibility: 'optional' },
   ],
+
+  // Admissibility spec §5.1
+  EMISSIONS_FACTOR_DOC: [
+    { name: 'source', admissibility: 'compulsory' },
+    { name: 'source_document_title', admissibility: 'compulsory' },
+    { name: 'publication_year', admissibility: 'compulsory' },
+    { name: 'reporting_year', admissibility: 'compulsory' },
+    { name: 'activity_type', admissibility: 'compulsory' },
+    { name: 'factor_value', admissibility: 'compulsory' },
+    { name: 'factor_unit', admissibility: 'compulsory' },
+    { name: 'ghg_included', admissibility: 'compulsory' },
+    {
+      name: 'citation_author',
+      admissibility: 'conditional',
+      condition: 'source is OTHER',
+      conditionFn: (f) => f['source'] === 'OTHER',
+    },
+    {
+      name: 'citation_publisher',
+      admissibility: 'conditional',
+      condition: 'source is OTHER',
+      conditionFn: (f) => f['source'] === 'OTHER',
+    },
+    {
+      name: 'citation_url_or_doi',
+      admissibility: 'conditional',
+      condition: 'source is OTHER',
+      conditionFn: (f) => f['source'] === 'OTHER',
+    },
+  ],
 }

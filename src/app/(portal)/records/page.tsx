@@ -63,30 +63,48 @@ export default async function RecordsPage({
 
   return (
     <div>
-      <div style={{ marginBottom: spacing[4] }}>
-        <h1
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[4] }}>
+        <div>
+          <h1
+            style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.medium,
+              color: colours.textPrimary,
+              margin: 0,
+              letterSpacing: typography.tracking.tight,
+            }}
+          >
+            Records
+          </h1>
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: `${spacing[1]} 0 0`,
+            }}
+          >
+            {records.length} active records
+            {domainFilter ? ` · ${DOMAIN_LABELS[domainFilter] ?? domainFilter}` : ''}
+            {tierFilter ? ` · Tier ${tierFilter}` : ''}
+          </p>
+        </div>
+        <Link
+          href="/api/audit-package/me"
           style={{
-            fontSize: typography.sizes.lg,
+            padding: '10px 20px',
+            fontSize: typography.sizes.sm,
             fontWeight: typography.weights.medium,
             color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
+            backgroundColor: colours.surface,
+            border: `1px solid ${colours.border}`,
+            borderRadius: '4px',
+            textDecoration: 'none',
+            display: 'inline-block',
           }}
         >
-          Records
-        </h1>
-        <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
-        >
-          {records.length} active records
-          {domainFilter ? ` · ${DOMAIN_LABELS[domainFilter] ?? domainFilter}` : ''}
-          {tierFilter ? ` · Tier ${tierFilter}` : ''}
-        </p>
+          Download audit package
+        </Link>
       </div>
 
       <div style={{ display: 'flex', gap: spacing[3], marginBottom: spacing[4] }}>
