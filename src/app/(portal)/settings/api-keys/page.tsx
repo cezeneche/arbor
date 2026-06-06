@@ -3,11 +3,17 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { ApiKeyManager } from './ApiKeyManager'
+import { BenchmarkConsentToggle } from './BenchmarkConsentToggle'
 
 export default async function ApiKeysPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
   const entityId = (session.user as Record<string, unknown>).entityId as string
+
+  const entity = await prisma.entity.findUnique({
+    where: { id: entityId },
+    select: { allowBenchmarkAggregation: true },
+  })
 
   const keys = await prisma.apiKey.findMany({
     where: { entityId, isActive: true },
@@ -179,6 +185,11 @@ export default async function ApiKeysPage() {
       </div>
 
       <ApiKeyManager initialKeys={serialised} />
+
+      {/* Data sharing / sector benchmarks consent */}
+      <div style={{ marginTop: spacing[4] }}>
+        <BenchmarkConsentToggle initialValue={entity?.allowBenchmarkAggregation ?? false} />
+      </div>
     </div>
   )
 }

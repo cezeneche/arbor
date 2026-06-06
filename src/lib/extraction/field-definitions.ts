@@ -457,4 +457,40 @@ export const DOCUMENT_FIELD_DEFINITIONS: Record<string, FieldDefinition[]> = {
       conditionFn: (f) => f['source'] === 'OTHER',
     },
   ],
+
+  // Phase 3 — §11.3
+  ESG_DISCLOSURE: [
+    { name: 'entity_name', admissibility: 'compulsory' },
+    { name: 'report_title', admissibility: 'compulsory' },
+    { name: 'reporting_year', admissibility: 'compulsory' },
+    { name: 'reporting_framework', admissibility: 'compulsory' },
+    { name: 'publication_date', admissibility: 'compulsory' },
+    { name: 'assurance_level', admissibility: 'compulsory' },
+    {
+      name: 'assurance_body',
+      admissibility: 'conditional',
+      condition: 'assurance_level is not NONE',
+      conditionFn: (f) => f['assurance_level'] !== null && f['assurance_level'] !== 'NONE',
+    },
+    { name: 'scope_1_co2e', admissibility: 'optional' },
+    { name: 'scope_2_co2e', admissibility: 'optional' },
+    { name: 'scope_3_co2e', admissibility: 'optional' },
+    { name: 'total_energy_gwh', admissibility: 'optional' },
+    { name: 'water_withdrawal_m3', admissibility: 'optional' },
+    { name: 'waste_generated_tonnes', admissibility: 'optional' },
+  ],
+
+  THIRD_PARTY_AUDIT_REPORT: [
+    { name: 'auditor_name', admissibility: 'compulsory' },
+    { name: 'auditee_name', admissibility: 'compulsory' },
+    { name: 'audit_scope', admissibility: 'compulsory' },
+    { name: 'audit_date', admissibility: 'compulsory' },
+    { name: 'reporting_period_start', admissibility: 'compulsory' },
+    { name: 'reporting_period_end', admissibility: 'compulsory' },
+    { name: 'audit_conclusion', admissibility: 'compulsory' },
+    { name: 'standard_applied', admissibility: 'compulsory' },
+    { name: 'report_reference', admissibility: 'compulsory' },
+    { name: 'material_misstatements', admissibility: 'optional' },
+    { name: 'limitations_noted', admissibility: 'optional' },
+  ],
 }

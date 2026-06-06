@@ -12,6 +12,7 @@ const SUPPLIER_LINKS = [
   { href: '/requests', label: 'Requests' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/activity', label: 'Activity' },
+  { href: '/benchmarks', label: 'Benchmarks' },
 ]
 
 // Buyer view — full technical interface (PRD Section 18)
@@ -23,6 +24,7 @@ const BUYER_LINKS = [
   { href: '/supply-chain', label: 'Supply chain' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/activity', label: 'Activity' },
+  { href: '/benchmarks', label: 'Benchmarks' },
   { href: '/access', label: 'Access' },
   { href: '/settings/api-keys', label: 'Settings' },
 ]

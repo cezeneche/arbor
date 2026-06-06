@@ -288,6 +288,43 @@ export function evaluateAdmissibility(
     }
   }
 
+  // ESG_DISCLOSURE: assurance_level != NONE requires assurance_body (spec Phase 3)
+  if (documentType === 'ESG_DISCLOSURE') {
+    const level = fieldValues['assurance_level']
+    if (level !== null && level !== 'NONE' && (!fieldValues['assurance_body'] || fieldValues['assurance_body'] === '')) {
+      flags.push({
+        fieldName: 'assurance_body',
+        flagType: 'MISSING_CONDITIONAL_FIELD',
+        message: `assurance_level is ${level} — assurance_body is required. The verifying organisation must be named for the assurance claim to be admissible.`,
+        severity: 'WARNING',
+      })
+    }
+    // At least one emissions or resource figure is expected (not CRITICAL — report may exist without quantitative data)
+    const quantFields = ['scope_1_co2e', 'scope_2_co2e', 'scope_3_co2e', 'total_energy_gwh', 'water_withdrawal_m3', 'waste_generated_tonnes']
+    const hasAny = quantFields.some(f => fieldValues[f] && fieldValues[f] !== '')
+    if (!hasAny) {
+      flags.push({
+        fieldName: 'scope_1_co2e',
+        flagType: 'COMPLETENESS_GAP',
+        message: 'No quantitative data fields (emissions, energy, water, waste) extracted from this ESG disclosure. The record adds no operational data to the database.',
+        severity: 'WARNING',
+      })
+    }
+  }
+
+  // THIRD_PARTY_AUDIT_REPORT: QUALIFIED or ADVERSE conclusion is noted as a warning
+  if (documentType === 'THIRD_PARTY_AUDIT_REPORT') {
+    const conclusion = fieldValues['audit_conclusion']
+    if (conclusion === 'QUALIFIED' || conclusion === 'ADVERSE' || conclusion === 'DISCLAIMER') {
+      flags.push({
+        fieldName: 'audit_conclusion',
+        flagType: 'COMPLETENESS_GAP',
+        message: `Audit conclusion is ${conclusion}. Records from this period may not represent the entity's actual operations without qualification. Review limitations_noted field.`,
+        severity: 'WARNING',
+      })
+    }
+  }
+
   // CBAM Tier 1/2 must have supporting_data_reference
   if (documentType === 'CBAM_DECLARATION') {
     const tier = fieldValues['calculation_tier']

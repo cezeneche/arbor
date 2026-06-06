@@ -166,6 +166,52 @@ Key extraction rules for renewable energy certificates (REGO, REC, Guarantee of 
 - generation_country is the country where the electricity was generated, not where the certificate was issued.
 - expiry_date is critical — certificates cannot be applied to periods after expiry. Extract exactly.
 `,
+
+  PRODUCT_CERTIFICATE: `
+Key extraction rules for product certifications (ISCC, RSPO, FSC, organic, CE, and similar):
+- certificate_type is the standard name. Map: ISCC → ISCC, RSPO → RSPO, FSC → FSC, Organic (Soil Association, USDA) → ORGANIC, CE → CE, REACH → REACH. Use the most specific name.
+- certificate_holder_name is the company or entity to whom the certificate was issued. Extract exactly — do not use the certification body name.
+- issuing_body is the certification or notified body that issued the certificate (e.g. "Soil Association", "SGS", "Bureau Veritas", "Control Union"). Not the accreditation body.
+- certificate_number is compulsory and unique per certificate. Extract exactly as printed including any prefixes.
+- scope_of_certification describes what products, activities, or sites are covered. Extract verbatim — this is what makes the certificate meaningful.
+- issue_date is when the certificate was granted, not the audit date. expiry_date is when it ceases to be valid.
+- audit_or_verification_date is optional. Extract if present — it is distinct from issue date.
+`,
+
+  CHAIN_OF_CUSTODY: `
+Key extraction rules for chain of custody documents (CoC, custody transfer records):
+- custody_stages is the core compulsory field. Extract as a JSON array of stage objects, each with: entity (name of custodian), role (e.g. "producer", "processor", "trader", "retailer"), and optionally date and location. At least 2 stages are required.
+- origin_entity is the first party in the chain — the producer, grower, or manufacturer at source.
+- final_entity is the last party — the retailer, brand owner, or end buyer.
+- certification_standard is the standard governing the chain of custody (e.g. FSC, RSPO, ISCC, ASC, MSC). Extract exactly.
+- product_type describes the commodity tracked through the chain (e.g. "palm oil", "timber", "certified soy").
+- document_reference is the CoC document number or transfer certificate number — extract exactly.
+`,
+
+  ESG_DISCLOSURE: `
+Key extraction rules for ESG and sustainability disclosure reports:
+- reporting_framework must resolve to one of: GRI, SASB, TCFD, ESRS, CSRD, INTEGRATED, CDP, OTHER. If multiple frameworks apply, use the primary one or INTEGRATED.
+- reporting_year is the year of the data reported (e.g. 2024 for a FY2024 report), not the publication year.
+- assurance_level must resolve to NONE, LIMITED, or REASONABLE. Look for independent assurance or verification statements. Absence of a third-party verifier = NONE.
+- scope_1_co2e, scope_2_co2e, scope_3_co2e are optional. Extract only if explicitly labelled as Scope 1/2/3 figures. Do not calculate from sub-categories.
+- total_energy_gwh: extract total energy consumption if stated. Note the original unit — may be in GWh, MWh, TJ, or toe.
+- water_withdrawal_m3: extract total water withdrawal if stated. Note original unit.
+- waste_generated_tonnes: extract total waste generated if stated. Note original unit.
+- Do not fabricate figures. If the report does not state a specific figure, set rawValue to null.
+`,
+
+  THIRD_PARTY_AUDIT_REPORT: `
+Key extraction rules for third-party audit and assurance reports:
+- auditor_name is the firm that performed the audit (e.g. "PricewaterhouseCoopers", "Bureau Veritas", "Lloyd's Register"). Not the auditee.
+- auditee_name is the entity whose data or processes were audited. Extract exactly — this will be matched against the registered entity.
+- audit_conclusion must resolve to UNQUALIFIED, QUALIFIED, ADVERSE, or DISCLAIMER. Map: "unqualified opinion" = UNQUALIFIED; "qualified opinion" = QUALIFIED; "adverse opinion" = ADVERSE; "disclaimer of opinion" = DISCLAIMER.
+- standard_applied is the assurance or audit standard used. Map: ISAE 3000 → ISAE3000; AA1000 → AA1000; ISO 14064 → ISO14064; ISO 14001 → ISO14001; GHG Protocol → GHG_PROTOCOL. Use OTHER if unlisted.
+- audit_scope: extract verbatim — what data, systems, or activities were within scope. This determines the usefulness of the report.
+- audit_date is the date of the audit or the date the report was signed, not the reporting period end.
+- reporting_period_start and reporting_period_end are the period covered by the audited data — often distinct from the audit date.
+- report_reference is the unique report or engagement reference. Extract exactly.
+- material_misstatements: extract if present — note any material misstatements or exceptions identified.
+`,
 }
 
 export function buildExtractionPrompt(documentType: string, requiredFields: string[]): string {
