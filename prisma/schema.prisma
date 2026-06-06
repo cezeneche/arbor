@@ -429,3 +429,16 @@ model ApiKey {
   revokedAt DateTime?
   isActive  Boolean   @default(true)
 }
+
+// ── INSTITUTIONAL ENQUIRY ────────────────────────────────────────────────────
+
+model InstitutionalEnquiry {
+  id           String   @id @default(cuid())
+  orgName      String
+  contactName  String
+  email        String
+  role         String?
+  interestArea String   // BENCHMARKS | DATA_PARTNERSHIP | POLICY | OTHER
+  message      String?
+  createdAt    DateTime @default(now())
+}

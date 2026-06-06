@@ -304,6 +304,22 @@ export default async function RecordsPage({
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <TierBadge tier={record.trustTier} />
+                      {record.trustTier === 'B' && (
+                        <Link
+                          href="/upload"
+                          style={{
+                            display: 'block',
+                            marginTop: '4px',
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.light,
+                            color: colours.navy,
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Upload to verify ↑
+                        </Link>
+                      )}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       {openFlags.length > 0 ? (

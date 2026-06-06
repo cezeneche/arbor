@@ -64,7 +64,7 @@ export default async function AnalyticsPage() {
     where: { entityId, isActive: true },
     select: {
       domain: true, fieldName: true, trustTier: true,
-      periodStart: true, periodEnd: true,
+      periodStart: true, periodEnd: true, value: true, unit: true,
     },
     orderBy: { periodStart: 'asc' },
   })
@@ -99,6 +99,30 @@ export default async function AnalyticsPage() {
   const allQuarters = Object.keys(quarterFieldMap).sort()
   const lastFourQuarters = allQuarters.slice(-4)
   const domainsWithData = Object.keys(byDomain)
+
+  // — Period-over-period value map: domain → fieldName → [{quarter, value, unit, tier}]
+  // Only numeric values; keeps latest record per field per quarter.
+  type ValuePoint = { quarter: string; value: number; unit: string; tier: string }
+  const valueByField: Record<string, Record<string, ValuePoint[]>> = {}
+  for (const r of records) {
+    if (typeof r.value !== 'number') continue
+    const qk = quarterKey(new Date(r.periodStart))
+    if (!valueByField[r.domain]) valueByField[r.domain] = {}
+    if (!valueByField[r.domain][r.fieldName]) valueByField[r.domain][r.fieldName] = []
+    if (!valueByField[r.domain][r.fieldName].find(e => e.quarter === qk)) {
+      valueByField[r.domain][r.fieldName].push({ quarter: qk, value: r.value, unit: r.unit, tier: r.trustTier })
+    }
+  }
+  // Keep only fields that span ≥2 quarters (otherwise no comparison to show)
+  const multiPeriodDomains: Record<string, Record<string, ValuePoint[]>> = {}
+  for (const [dom, fields] of Object.entries(valueByField)) {
+    for (const [field, points] of Object.entries(fields)) {
+      if (points.length >= 2) {
+        if (!multiPeriodDomains[dom]) multiPeriodDomains[dom] = {}
+        multiPeriodDomains[dom][field] = points.sort((a, b) => a.quarter.localeCompare(b.quarter))
+      }
+    }
+  }
 
   // — Buyer supply chain coverage —
   let supplierCoverage: Array<{
@@ -303,6 +327,78 @@ export default async function AnalyticsPage() {
               )
             })}
           </div>
+        </section>
+      )}
+
+      {/* ── Period-over-period value comparison ── */}
+      {Object.keys(multiPeriodDomains).length > 0 && (
+        <section style={{ marginBottom: spacing[5] }}>
+          <p style={sectionLabel}>Period-over-period comparison</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {Object.entries(multiPeriodDomains).map(([dom, fields]) => (
+              <div key={dom} style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+                <div style={{ padding: `10px ${spacing[2]}`, borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
+                  <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textSecondary, letterSpacing: typography.tracking.wider, textTransform: 'uppercase', margin: 0 }}>
+                    {DOMAIN_LABELS[dom] ?? dom}
+                  </p>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${colours.border}` }}>
+                        <th style={{ padding: '8px 16px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textSecondary, textAlign: 'left', whiteSpace: 'nowrap' }}>
+                          Field
+                        </th>
+                        {/* Collect all quarters that appear in this domain */}
+                        {[...new Set(Object.values(fields).flatMap(pts => pts.map(p => p.quarter)))].sort().map(q => (
+                          <th key={q} style={{ padding: '8px 16px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textSecondary, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {q}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(fields).map(([fieldName, points], fi) => {
+                        const quarters = [...new Set(Object.values(fields).flatMap(pts => pts.map(p => p.quarter)))].sort()
+                        const pointMap = new Map(points.map(p => [p.quarter, p]))
+                        const tierColour = (t: string) => t === 'A' ? colours.green : t === 'B' ? colours.amber : colours.textTertiary
+                        return (
+                          <tr key={fieldName} style={{ borderBottom: fi < Object.keys(fields).length - 1 ? `1px solid ${colours.border}` : 'none' }}>
+                            <td style={{ padding: '10px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, whiteSpace: 'nowrap' }}>
+                              {fieldName.replace(/_/g, ' ')}
+                            </td>
+                            {quarters.map(q => {
+                              const pt = pointMap.get(q)
+                              return (
+                                <td key={q} style={{ padding: '10px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                                  {pt ? (
+                                    <span>
+                                      {pt.value.toLocaleString('en-GB', { maximumFractionDigits: 3 })}
+                                      {' '}
+                                      <span style={{ fontSize: typography.sizes.xs, color: colours.textTertiary }}>{pt.unit}</span>
+                                      {' '}
+                                      <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: tierColour(pt.tier) }}>
+                                        {pt.tier === 'A' ? '✓' : pt.tier === 'B' ? '~' : '?'}
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: colours.textTertiary }}>—</span>
+                                  )}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: `${spacing[2]} 0 0` }}>
+            ✓ Verified · ~ Declared · ? Estimated. Figures are stored values — no calculations applied.
+          </p>
         </section>
       )}
 

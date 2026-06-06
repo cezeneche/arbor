@@ -40,7 +40,7 @@ export async function sendNotification(input: NotificationInput): Promise<void> 
   await Promise.allSettled(
     users.map((u) =>
       resend.emails.send({
-        from: 'Arbor <no-reply@arbor.io>',
+        from: 'Arbor <onboarding@resend.dev>',
         to: u.email,
         subject,
         html,

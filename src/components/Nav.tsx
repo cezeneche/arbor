@@ -25,6 +25,7 @@ const BUYER_LINKS = [
   { href: '/analytics', label: 'Analytics' },
   { href: '/activity', label: 'Activity' },
   { href: '/benchmarks', label: 'Benchmarks' },
+  { href: '/export', label: 'Export' },
   { href: '/access', label: 'Access' },
   { href: '/settings/api-keys', label: 'Settings' },
 ]

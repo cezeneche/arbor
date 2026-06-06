@@ -61,8 +61,18 @@ interface Document {
   extractionJobs: ExtractionJob[]
 }
 
+interface ConflictRecord {
+  fieldName: string
+  value: number
+  unit: string
+  trustTier: string
+  periodStart: string
+  periodEnd: string
+}
+
 interface Props {
   document: Document
+  existingConflicts?: ConflictRecord[]
 }
 
 const NUMERIC_FIELDS = new Set([
@@ -74,7 +84,7 @@ const NUMERIC_FIELDS = new Set([
   'energy_consumption', 'energy_consumption_total', 'average_herd_size',
 ])
 
-export function ExtractionReview({ document }: Props) {
+export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const router = useRouter()
   const job = document.extractionJobs[0]
   const fields = job?.extractedFields ?? []
@@ -428,6 +438,76 @@ export function ExtractionReview({ document }: Props) {
       {renderFieldGroup('Compulsory fields', compulsoryFields)}
       {renderFieldGroup('Conditional fields', conditionalFields, '(required when conditions apply)')}
       {renderFieldGroup('Optional fields', optionalFields)}
+
+      {/* Cross-document conflict warning (PRD §12.3) */}
+      {existingConflicts.length > 0 && (
+        <div
+          style={{
+            backgroundColor: colours.amberBg,
+            border: `1px solid ${colours.amber}`,
+            borderRadius: '6px',
+            padding: spacing[2],
+            marginBottom: spacing[2],
+          }}
+        >
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.medium,
+              color: colours.amber,
+              margin: `0 0 ${spacing[1]}`,
+            }}
+          >
+            Existing records found for the same period
+          </p>
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: `0 0 ${spacing[1]}`,
+              lineHeight: '1.5',
+            }}
+          >
+            The following records already exist for this domain and period. Review for consistency before confirming.
+            Both will be stored — the newer record will be marked as the current version.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {existingConflicts.map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: typography.sizes.xs,
+                  fontWeight: typography.weights.light,
+                  color: colours.textPrimary,
+                  backgroundColor: colours.surface,
+                  border: `1px solid ${colours.border}`,
+                  borderRadius: '4px',
+                  padding: '6px 10px',
+                }}
+              >
+                <span style={{ fontWeight: typography.weights.medium }}>
+                  {c.fieldName.replace(/_/g, ' ')}
+                </span>
+                <span style={{ color: colours.textSecondary }}>
+                  {c.value.toLocaleString('en-GB', { maximumFractionDigits: 3 })} {c.unit}
+                  {' · '}
+                  <span style={{ color: c.trustTier === 'A' ? colours.green : colours.amber }}>
+                    {c.trustTier === 'A' ? 'Verified' : c.trustTier === 'B' ? 'Declared' : 'Estimated'}
+                  </span>
+                  {' · '}
+                  {new Date(c.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                  {' – '}
+                  {new Date(c.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <p
