@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 interface RequestDetails {
@@ -29,8 +29,6 @@ function plainFieldLabel(field: string): string {
 
 export default function SubmitPage() {
   const { token } = useParams<{ token: string }>()
-  const router = useRouter()
-
   const [request, setRequest] = useState<RequestDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

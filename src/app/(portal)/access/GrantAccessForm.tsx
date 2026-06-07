@@ -162,7 +162,7 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
               />
             )}
             <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0' }}>
-              The buyer's system ID. They can find it in their account settings.
+              The buyer&apos;s system ID. They can find it in their account settings.
             </p>
           </div>
 

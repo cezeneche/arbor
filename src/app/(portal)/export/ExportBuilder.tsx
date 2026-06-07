@@ -35,10 +35,9 @@ interface ExportRecord {
 
 export function ExportBuilder({
   suppliers,
-  buyerEntityId,
 }: {
   suppliers: Supplier[]
-  buyerEntityId: string
+  buyerEntityId?: string
 }) {
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([])
   const [domain, setDomain] = useState('')

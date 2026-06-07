@@ -1,5 +1,4 @@
 import { colours, typography, spacing, trustTierConfig } from '@/lib/design-system'
-import { TierBadge } from './TierBadge'
 
 const DOMAIN_LABELS: Record<string, string> = {
   ENERGY: 'Energy',

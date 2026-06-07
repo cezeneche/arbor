@@ -30,11 +30,13 @@ export async function POST(req: NextRequest) {
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
 
-  const plaintext = `arb_${randomBytes(24).toString('hex')}`
+  const prefix = randomBytes(4).toString('hex')       // 8 hex chars — stored for O(1) lookup
+  const secret = randomBytes(24).toString('hex')       // 48 hex chars — never stored
+  const plaintext = `arb_${prefix}_${secret}`
   const keyHash = await hash(plaintext, 12)
 
   const key = await prisma.apiKey.create({
-    data: { entityId, label: parsed.data.label, keyHash },
+    data: { entityId, label: parsed.data.label, keyPrefix: prefix, keyHash },
     select: { id: true, label: true, createdAt: true },
   })
 

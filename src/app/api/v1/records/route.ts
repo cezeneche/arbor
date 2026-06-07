@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { authenticateApiKey } from '@/lib/api-key-auth'
 import { ok, err } from '@/lib/api-helpers'
@@ -6,6 +7,22 @@ import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
 import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
+
+const VALID_DOMAINS = [
+  'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
+  'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
+] as const
+
+const recordSchema = z.object({
+  domain: z.enum(VALID_DOMAINS),
+  fieldName: z.string().min(1).max(120),
+  value: z.number().finite(),
+  unit: z.string().min(1).max(60),
+  periodStart: z.string().datetime(),
+  periodEnd: z.string().datetime(),
+})
+
+const bodySchema = z.array(recordSchema).min(1).max(500)
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateApiKey(req.headers.get('authorization'))
@@ -84,18 +101,15 @@ export async function POST(req: NextRequest) {
     return err('Invalid JSON body', 'INVALID_BODY', 400)
   }
 
-  const records = body as Array<{
-    domain: string
-    fieldName: string
-    value: number
-    unit: string
-    periodStart: string
-    periodEnd: string
-  }>
-
-  if (!Array.isArray(records) || records.length === 0) {
-    return err('Body must be a non-empty array of records', 'INVALID_BODY', 400)
+  const parsed = bodySchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({
+      error: 'Request body failed validation',
+      code: 'VALIDATION_ERROR',
+      issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })),
+    }, { status: 400 })
   }
+  const records = parsed.data
 
   const entity = await prisma.entity.findUnique({ where: { id: auth.entityId! } })
   if (!entity) return err('Entity not found', 'NOT_FOUND', 404)
@@ -118,49 +132,53 @@ export async function POST(req: NextRequest) {
   for (const r of records) {
     const submittedAt = new Date().toISOString()
 
-    const record = await prisma.dataRecord.create({
-      data: {
+    const { hash } = await prisma.$transaction(async (tx) => {
+      const record = await tx.dataRecord.create({
+        data: {
+          entityId: auth.entityId!,
+          domain: r.domain as never,
+          fieldName: r.fieldName,
+          value: r.value,
+          unit: r.unit,
+          periodStart: new Date(r.periodStart),
+          periodEnd: new Date(r.periodEnd),
+          trustTier: 'A' as never,
+          extractionMethod: 'SYSTEM_INTEGRATION' as never,
+          submittedById: adminUser.id,
+          confidenceScore: 1.0,
+          isActive: true,
+          auditHash: '',
+        },
+      })
+
+      const auditPayload: AuditPayload = {
+        recordId: record.id,
         entityId: auth.entityId!,
-        domain: r.domain as never,
+        domain: r.domain,
         fieldName: r.fieldName,
         value: r.value,
         unit: r.unit,
-        periodStart: new Date(r.periodStart),
-        periodEnd: new Date(r.periodEnd),
-        trustTier: 'A' as never,
-        extractionMethod: 'SYSTEM_INTEGRATION' as never,
+        trustTier: 'A',
         submittedById: adminUser.id,
-        confidenceScore: 1.0,
-        isActive: true,
-        auditHash: '',
-      },
-    })
+        submittedAt,
+      }
 
-    const auditPayload: AuditPayload = {
-      recordId: record.id,
-      entityId: auth.entityId!,
-      domain: r.domain,
-      fieldName: r.fieldName,
-      value: r.value,
-      unit: r.unit,
-      trustTier: 'A',
-      submittedById: adminUser.id,
-      submittedAt,
-    }
+      const hash = computeRecordHash(auditPayload, previousHash)
 
-    const hash = computeRecordHash(auditPayload, previousHash)
+      await tx.dataRecord.update({ where: { id: record.id }, data: { auditHash: hash } })
 
-    await prisma.dataRecord.update({ where: { id: record.id }, data: { auditHash: hash } })
+      await tx.auditEntry.create({
+        data: {
+          entityId: auth.entityId!,
+          recordId: record.id,
+          eventType: 'CREATED',
+          payload: auditPayload as unknown as import('@prisma/client').Prisma.InputJsonValue,
+          hash,
+          previousHash,
+        },
+      })
 
-    await prisma.auditEntry.create({
-      data: {
-        entityId: auth.entityId!,
-        recordId: record.id,
-        eventType: 'CREATED',
-        payload: auditPayload as unknown as import('@prisma/client').Prisma.InputJsonValue,
-        hash,
-        previousHash,
-      },
+      return { hash }
     })
 
     previousHash = hash

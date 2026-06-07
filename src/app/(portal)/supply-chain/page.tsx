@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
-import { TierBadge } from '@/components/TierBadge'
 
 export default async function SupplyChainPage() {
   const session = await auth()

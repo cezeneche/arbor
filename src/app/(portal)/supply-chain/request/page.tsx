@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { colours, typography, spacing } from '@/lib/design-system'
 
@@ -36,9 +36,6 @@ function RequestForm() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    setSelectedFields([])
-  }, [domain])
 
   const toggleField = (field: string) => {
     setSelectedFields(prev =>
@@ -143,7 +140,7 @@ function RequestForm() {
             <label style={labelStyle}>Domain</label>
             <select
               value={domain}
-              onChange={e => setDomain(e.target.value as Domain)}
+              onChange={e => { setDomain(e.target.value as Domain); setSelectedFields([]) }}
               style={inputStyle}
               required
             >

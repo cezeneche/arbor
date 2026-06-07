@@ -8,11 +8,18 @@ export function ExtractionPoller({ documentId }: { documentId: string }) {
   const router = useRouter()
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh()
+    const interval = setInterval(async () => {
+      const res = await fetch(`/api/documents/${documentId}`, { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.status !== 'EXTRACTING' && data.status !== 'PENDING') {
+          clearInterval(interval)
+          router.refresh()
+        }
+      }
     }, 3000)
     return () => clearInterval(interval)
-  }, [router])
+  }, [documentId, router])
 
   return (
     <div

@@ -441,6 +441,7 @@ model ApiKey {
   id        String    @id @default(cuid())
   entityId  String
   entity    Entity    @relation(fields: [entityId], references: [id])
+  keyPrefix String    @unique
   keyHash   String    @unique
   label     String
   lastUsed  DateTime?

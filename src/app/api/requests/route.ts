@@ -15,7 +15,7 @@ const createSchema = z.object({
   notes: z.string().optional(),
 })
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const { session, response } = await requireAuth()
   if (!session) return response!
 

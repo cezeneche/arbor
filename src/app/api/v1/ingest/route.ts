@@ -60,13 +60,14 @@ export async function POST(req: NextRequest) {
 
   const { records, idempotencyKey } = parsed.data
 
-  // Idempotency: if this key was already processed, return the previous result
+  // Idempotency: if this key was already processed, return the previous result.
+  // Look up by recordId pattern (batch_<key>) — avoids searching inside JSON payload.
   if (idempotencyKey) {
     const previous = await prisma.auditEntry.findFirst({
       where: {
         entityId,
         eventType: 'INGEST_BATCH',
-        payload: { path: ['idempotencyKey'], equals: idempotencyKey },
+        recordId: `batch_${idempotencyKey}`,
       },
     })
     if (previous) {
@@ -122,62 +123,59 @@ export async function POST(req: NextRequest) {
     try {
       const submittedAt = new Date().toISOString()
 
-      // Create the record first so we have its real ID before hashing.
-      const record = await prisma.dataRecord.create({
-        data: {
+      // Transaction: record create + hash update + audit entry are atomic.
+      // A failure mid-way cannot leave a record with auditHash='' or without an entry.
+      const { finalHash } = await prisma.$transaction(async (tx) => {
+        const record = await tx.dataRecord.create({
+          data: {
+            entityId,
+            domain: r.domain,
+            fieldName: r.fieldName,
+            value: r.value,
+            unit: r.unit,
+            periodStart: new Date(r.periodStart),
+            periodEnd: new Date(r.periodEnd),
+            trustTier: 'B',
+            extractionMethod: 'SYSTEM_INTEGRATION',
+            submittedById,
+            confidenceScore: 1.0,
+            isActive: true,
+            auditHash: '',
+          },
+        })
+
+        const auditPayload: AuditPayload = {
+          recordId: record.id,
           entityId,
           domain: r.domain,
           fieldName: r.fieldName,
           value: r.value,
           unit: r.unit,
-          periodStart: new Date(r.periodStart),
-          periodEnd: new Date(r.periodEnd),
           trustTier: 'B',
-          extractionMethod: 'SYSTEM_INTEGRATION',
+          submittedAt,
           submittedById,
-          confidenceScore: 1.0,
-          isActive: true,
-          auditHash: '', // placeholder; updated below after hash is computed
-        },
-      })
+        }
 
-      const auditPayload: AuditPayload = {
-        recordId: record.id,
-        entityId,
-        domain: r.domain,
-        fieldName: r.fieldName,
-        value: r.value,
-        unit: r.unit,
-        trustTier: 'B',
-        submittedAt,
-        submittedById,
-      }
+        const hash = computeRecordHash(auditPayload, previousHash)
 
-      const finalHash = computeRecordHash(auditPayload, previousHash)
+        await tx.dataRecord.update({ where: { id: record.id }, data: { auditHash: hash } })
 
-      await prisma.dataRecord.update({
-        where: { id: record.id },
-        data: { auditHash: finalHash },
-      })
+        await tx.auditEntry.create({
+          data: {
+            entityId,
+            recordId: record.id,
+            eventType: 'CREATED',
+            payload: auditPayload as unknown as Prisma.InputJsonValue,
+            hash,
+            previousHash,
+          },
+        })
 
-      await prisma.auditEntry.create({
-        data: {
-          entityId,
-          recordId: record.id,
-          eventType: 'CREATED',
-          payload: {
-            ...auditPayload,
-            sourceSystem: r.sourceSystem ?? null,
-            ingestBatchIdempotencyKey: idempotencyKey ?? null,
-          } as unknown as Prisma.InputJsonValue,
-          hash: finalHash,
-          previousHash,
-        },
+        results.push({ index: i, status: 'created', recordId: record.id, domain: r.domain, fieldName: r.fieldName })
+        return { finalHash: hash }
       })
 
       previousHash = finalHash
-
-      results.push({ index: i, status: 'created', recordId: record.id, domain: r.domain, fieldName: r.fieldName })
     } catch {
       results.push({
         index: i,
@@ -192,18 +190,27 @@ export async function POST(req: NextRequest) {
   const created = results.filter(r => r.status === 'created').length
   const rejected = results.filter(r => r.status === 'rejected').length
 
-  // Write a batch audit entry for idempotency lookups
+  // Write a batch audit entry for idempotency lookups.
+  // Payload must exactly match what was passed to computeRecordHash so verifyChain() passes.
   if (idempotencyKey) {
-    const batchHash = computeRecordHash(
-      { recordId: `batch_${idempotencyKey}`, entityId, domain: 'COMPLIANCE', fieldName: 'ingest_batch', value: created, unit: 'records', trustTier: 'B', submittedAt: new Date().toISOString(), submittedById },
-      previousHash
-    )
+    const batchPayload: AuditPayload = {
+      recordId: `batch_${idempotencyKey}`,
+      entityId,
+      domain: 'COMPLIANCE',
+      fieldName: 'ingest_batch',
+      value: created,
+      unit: 'records',
+      trustTier: 'B',
+      submittedAt: new Date().toISOString(),
+      submittedById,
+    }
+    const batchHash = computeRecordHash(batchPayload, previousHash)
     await prisma.auditEntry.create({
       data: {
         entityId,
-        recordId: `batch_${idempotencyKey}`,
+        recordId: batchPayload.recordId,
         eventType: 'INGEST_BATCH',
-        payload: { idempotencyKey, created, rejected, total: records.length } as unknown as Prisma.InputJsonValue,
+        payload: batchPayload as unknown as Prisma.InputJsonValue,
         hash: batchHash,
         previousHash,
       },

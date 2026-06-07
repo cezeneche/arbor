@@ -58,20 +58,31 @@ function formatNum(v: number): string {
 
 export default function BenchmarksPage() {
   const [data, setData] = useState<BenchmarkResponse | null>(null)
-  const [loading, setLoading] = useState(true)
   const [sector, setSector] = useState('')
   const [domain, setDomain] = useState('')
+
+  const loading = data === null
 
   useEffect(() => {
     const params = new URLSearchParams()
     if (sector) params.set('sector', sector)
     if (domain) params.set('domain', domain)
-    setLoading(true)
+    let cancelled = false
     fetch(`/api/benchmarks?${params.toString()}`)
       .then(r => r.json())
-      .then((d: BenchmarkResponse) => setData(d))
-      .finally(() => setLoading(false))
+      .then((d: BenchmarkResponse) => { if (!cancelled) setData(d) })
+    return () => { cancelled = true }
   }, [sector, domain])
+
+  const handleSectorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSector(e.target.value)
+    setData(null)
+  }
+
+  const handleDomainChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setDomain(e.target.value)
+    setData(null)
+  }
 
   const sectionLabel = {
     fontSize: typography.sizes.xs,
@@ -115,13 +126,13 @@ export default function BenchmarksPage() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[4], flexWrap: 'wrap' }}>
-        <select value={sector} onChange={e => setSector(e.target.value)} style={selectStyle}>
+        <select value={sector} onChange={handleSectorChange} style={selectStyle}>
           <option value="">All sectors</option>
           {(data?.availableSectors ?? []).map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
-        <select value={domain} onChange={e => setDomain(e.target.value)} style={selectStyle}>
+        <select value={domain} onChange={handleDomainChange} style={selectStyle}>
           <option value="">All data types</option>
           {(data?.availableDomains ?? []).map(d => (
             <option key={d} value={d}>{DOMAIN_LABELS[d] ?? d}</option>
