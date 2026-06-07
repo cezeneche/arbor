@@ -10,6 +10,9 @@ const patchSchema = z.object({
   notes: z.string().optional(),
 })
 
+const SUPPLIER_ALLOWED_STATUSES = new Set(['SUBMITTED', 'QUERY_RAISED'])
+const BUYER_ALLOWED_STATUSES = new Set(['ACCEPTED', 'CLOSED', 'QUERY_RAISED'])
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -27,9 +30,14 @@ export async function PATCH(
   const dataRequest = await prisma.dataRequest.findUnique({ where: { id } })
   if (!dataRequest) return err('Request not found', 'NOT_FOUND', 404)
 
-  const isParty =
-    dataRequest.buyerEntityId === entityId || dataRequest.supplierEntityId === entityId
-  if (!isParty) return err('Access denied', 'FORBIDDEN', 403)
+  const isBuyer = dataRequest.buyerEntityId === entityId
+  const isSupplier = dataRequest.supplierEntityId === entityId
+  if (!isBuyer && !isSupplier) return err('Access denied', 'FORBIDDEN', 403)
+
+  const allowedStatuses = isSupplier ? SUPPLIER_ALLOWED_STATUSES : BUYER_ALLOWED_STATUSES
+  if (!allowedStatuses.has(parsed.data.status)) {
+    return err(`Your role on this request cannot set status '${parsed.data.status}'`, 'FORBIDDEN', 403)
+  }
 
   const updated = await prisma.dataRequest.update({
     where: { id },

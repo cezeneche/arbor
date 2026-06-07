@@ -100,27 +100,26 @@ export async function POST(req: NextRequest) {
   const entity = await prisma.entity.findUnique({ where: { id: auth.entityId! } })
   if (!entity) return err('Entity not found', 'NOT_FOUND', 404)
 
+  const adminUser = await prisma.user.findFirst({
+    where: { entityId: auth.entityId!, role: 'ADMIN' },
+    select: { id: true },
+  })
+  if (!adminUser) return err('No admin user found for entity', 'INTERNAL_ERROR', 500)
+
   const lastAuditEntry = await prisma.auditEntry.findFirst({
     where: { entityId: auth.entityId! },
     orderBy: { createdAt: 'desc' },
     select: { hash: true },
   })
 
-  const created = await prisma.dataRecord.createMany({
-    data: records.map((r) => {
-      const auditPayload: AuditPayload = {
-        recordId: '',
-        entityId: auth.entityId!,
-        domain: r.domain,
-        fieldName: r.fieldName,
-        value: r.value,
-        unit: r.unit,
-        trustTier: 'A',
-        submittedById: entity.id,
-        submittedAt: new Date().toISOString(),
-      }
-      const auditHash = computeRecordHash(auditPayload, lastAuditEntry?.hash ?? null)
-      return {
+  let previousHash = lastAuditEntry?.hash ?? null
+  let createdCount = 0
+
+  for (const r of records) {
+    const submittedAt = new Date().toISOString()
+
+    const record = await prisma.dataRecord.create({
+      data: {
         entityId: auth.entityId!,
         domain: r.domain as never,
         fieldName: r.fieldName,
@@ -130,13 +129,43 @@ export async function POST(req: NextRequest) {
         periodEnd: new Date(r.periodEnd),
         trustTier: 'A' as never,
         extractionMethod: 'SYSTEM_INTEGRATION' as never,
-        submittedById: entity.id,
+        submittedById: adminUser.id,
         confidenceScore: 1.0,
         isActive: true,
-        auditHash,
-      }
-    }),
-  })
+        auditHash: '',
+      },
+    })
 
-  return NextResponse.json({ created: created.count }, { status: 201 })
+    const auditPayload: AuditPayload = {
+      recordId: record.id,
+      entityId: auth.entityId!,
+      domain: r.domain,
+      fieldName: r.fieldName,
+      value: r.value,
+      unit: r.unit,
+      trustTier: 'A',
+      submittedById: adminUser.id,
+      submittedAt,
+    }
+
+    const hash = computeRecordHash(auditPayload, previousHash)
+
+    await prisma.dataRecord.update({ where: { id: record.id }, data: { auditHash: hash } })
+
+    await prisma.auditEntry.create({
+      data: {
+        entityId: auth.entityId!,
+        recordId: record.id,
+        eventType: 'CREATED',
+        payload: auditPayload as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        hash,
+        previousHash,
+      },
+    })
+
+    previousHash = hash
+    createdCount++
+  }
+
+  return NextResponse.json({ created: createdCount }, { status: 201 })
 }

@@ -7,11 +7,17 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { computeSectorBenchmarks } from '@/lib/aggregation/sector-benchmark'
 
-export async function POST() {
+export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  const role = (session.user as Record<string, unknown>).role as string
-  if (role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 })
+
+  // Platform-level operation: requires PLATFORM_ADMIN_SECRET header, not just entity ADMIN role.
+  // Entity admins must not be able to trigger global benchmark recomputation.
+  const platformSecret = process.env.PLATFORM_ADMIN_SECRET
+  if (!platformSecret) return NextResponse.json({ error: 'Platform admin secret not configured' }, { status: 500 })
+  if (req.headers.get('x-platform-admin-secret') !== platformSecret) {
+    return NextResponse.json({ error: 'Forbidden — platform admin only' }, { status: 403 })
+  }
 
   const year = new Date().getFullYear()
 

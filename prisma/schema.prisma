@@ -112,6 +112,9 @@ model Document {
 
   dataRecords    DataRecord[]
   extractionJobs ExtractionJob[]
+
+  @@index([entityId, status])
+  @@index([entityId, submittedAt])
 }
 
 enum DocumentType {
@@ -233,6 +236,12 @@ model DataRecord {
   auditHash        String
 
   validationFlags ValidationFlag[]
+
+  @@index([entityId, isActive])
+  @@index([entityId, domain, isActive])
+  @@index([entityId, trustTier, isActive])
+  @@index([entityId, submittedAt])
+  @@index([documentId])
 }
 
 enum DataDomain {
@@ -305,6 +314,9 @@ model AuditEntry {
   hash         String
   previousHash String?
   createdAt    DateTime @default(now())
+
+  @@index([entityId, createdAt])
+  @@index([recordId])
 }
 
 // ── DATA REQUEST ──────────────────────────────────────────────────────────────
@@ -328,6 +340,10 @@ model DataRequest {
   notes                 String?       @db.Text
   submissionToken       String?       @unique
   submissionTokenExpiry DateTime?
+
+  @@index([buyerEntityId, status])
+  @@index([supplierEntityId, status])
+  @@index([createdAt])
 }
 
 enum RequestStatus {
@@ -352,6 +368,9 @@ model DataAccessGrant {
   grantedAt       DateTime    @default(now())
   revokedAt       DateTime?
   isActive        Boolean     @default(true)
+
+  @@index([granteeEntityId, isActive])
+  @@index([grantorEntityId, isActive])
 }
 
 // ── NOTIFICATION ──────────────────────────────────────────────────────────────
@@ -428,6 +447,8 @@ model ApiKey {
   createdAt DateTime  @default(now())
   revokedAt DateTime?
   isActive  Boolean   @default(true)
+
+  @@index([entityId, isActive])
 }
 
 // ── INSTITUTIONAL ENQUIRY ────────────────────────────────────────────────────

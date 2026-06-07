@@ -31,6 +31,12 @@ export async function POST(req: NextRequest) {
   const entity = await prisma.entity.findUnique({ where: { id: auth.entityId! } })
   if (!entity) return err('Entity not found', 'NOT_FOUND', 404)
 
+  const adminUser = await prisma.user.findFirst({
+    where: { entityId: auth.entityId!, role: 'ADMIN' },
+    select: { id: true },
+  })
+  if (!adminUser) return err('No admin user found for entity', 'INTERNAL_ERROR', 500)
+
   const document = await prisma.document.create({
     data: {
       entityId: auth.entityId!,
@@ -38,7 +44,7 @@ export async function POST(req: NextRequest) {
       blobUrl,
       fileName,
       fileType: fileName.split('.').pop() ?? 'pdf',
-      submittedById: entity.id,
+      submittedById: adminUser.id,
       status: 'PENDING',
     },
   })

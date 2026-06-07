@@ -86,6 +86,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Entity not found', code: 'NOT_FOUND' }, { status: 404 })
   }
 
+  const adminUser = await prisma.user.findFirst({
+    where: { entityId, role: 'ADMIN' },
+    select: { id: true },
+  })
+  if (!adminUser) {
+    return NextResponse.json({ error: 'No admin user found for entity', code: 'INTERNAL_ERROR' }, { status: 500 })
+  }
+  const submittedById = adminUser.id
+
   const lastAuditEntry = await prisma.auditEntry.findFirst({
     where: { entityId },
     orderBy: { createdAt: 'desc' },
@@ -111,20 +120,9 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const auditPayload: AuditPayload = {
-        recordId: `pending_ingest_${Date.now()}_${i}`,
-        entityId,
-        domain: r.domain,
-        fieldName: r.fieldName,
-        value: r.value,
-        unit: r.unit,
-        trustTier: 'B',
-        submittedAt: new Date().toISOString(),
-        submittedById: entityId, // API key auth — no user; attribute to entity
-      }
+      const submittedAt = new Date().toISOString()
 
-      const hash = computeRecordHash(auditPayload, previousHash)
-
+      // Create the record first so we have its real ID before hashing.
       const record = await prisma.dataRecord.create({
         data: {
           entityId,
@@ -136,15 +134,31 @@ export async function POST(req: NextRequest) {
           periodEnd: new Date(r.periodEnd),
           trustTier: 'B',
           extractionMethod: 'SYSTEM_INTEGRATION',
-          submittedById: entityId,
+          submittedById,
           confidenceScore: 1.0,
           isActive: true,
-          auditHash: hash,
+          auditHash: '', // placeholder; updated below after hash is computed
         },
       })
 
-      auditPayload.recordId = record.id
+      const auditPayload: AuditPayload = {
+        recordId: record.id,
+        entityId,
+        domain: r.domain,
+        fieldName: r.fieldName,
+        value: r.value,
+        unit: r.unit,
+        trustTier: 'B',
+        submittedAt,
+        submittedById,
+      }
+
       const finalHash = computeRecordHash(auditPayload, previousHash)
+
+      await prisma.dataRecord.update({
+        where: { id: record.id },
+        data: { auditHash: finalHash },
+      })
 
       await prisma.auditEntry.create({
         data: {
@@ -181,7 +195,7 @@ export async function POST(req: NextRequest) {
   // Write a batch audit entry for idempotency lookups
   if (idempotencyKey) {
     const batchHash = computeRecordHash(
-      { recordId: `batch_${idempotencyKey}`, entityId, domain: 'COMPLIANCE', fieldName: 'ingest_batch', value: created, unit: 'records', trustTier: 'B', submittedAt: new Date().toISOString(), submittedById: entityId },
+      { recordId: `batch_${idempotencyKey}`, entityId, domain: 'COMPLIANCE', fieldName: 'ingest_batch', value: created, unit: 'records', trustTier: 'B', submittedAt: new Date().toISOString(), submittedById },
       previousHash
     )
     await prisma.auditEntry.create({

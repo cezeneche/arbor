@@ -104,8 +104,14 @@ export async function GET(req: NextRequest) {
     const distinctEntities = new Set(group.values.map(v => v.entityId))
     if (distinctEntities.size < POPULATION_FLOOR) continue
 
-    const numericValues = group.values.map(v => v.value)
-    const stats = computeStats(numericValues)
+    // One value per entity (median of that entity's records) to prevent prolific
+    // entities from skewing the distribution.
+    const entityMedians = [...distinctEntities].map(eid => {
+      const entityVals = group.values.filter(v => v.entityId === eid).map(v => v.value).sort((a, b) => a - b)
+      const mid = Math.floor(entityVals.length / 2)
+      return entityVals.length % 2 === 0 ? (entityVals[mid - 1] + entityVals[mid]) / 2 : entityVals[mid]
+    })
+    const stats = computeStats(entityMedians)
 
     benchmarks.push({
       sector,

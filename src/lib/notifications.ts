@@ -70,6 +70,15 @@ function notificationSubject(type: NotificationType, payload: Record<string, unk
   }
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function notificationHtml(
   type: NotificationType,
   payload: Record<string, unknown>,
@@ -77,9 +86,9 @@ function notificationHtml(
 ): string {
   switch (type) {
     case 'DATA_REQUEST_RECEIVED':
-      return `<p>Data request from <strong>${payload.buyerName}</strong>.<br>Domain: ${payload.domain} | Period: ${payload.periodStart} – ${payload.periodEnd}<br><a href="${appUrl}/requests/${payload.requestId}">View request</a></p>`
+      return `<p>Data request from <strong>${escapeHtml(payload.buyerName)}</strong>.<br>Domain: ${escapeHtml(payload.domain)} | Period: ${escapeHtml(payload.periodStart)} – ${escapeHtml(payload.periodEnd)}<br><a href="${appUrl}/requests/${escapeHtml(payload.requestId)}">View request</a></p>`
     case 'EXTRACTION_COMPLETE':
-      return `<p>Extraction complete for <strong>${payload.documentType}</strong>.<br>Trust tier: <strong>${payload.tier}</strong> | Flags: ${payload.flagCount} (${payload.criticalCount} critical)<br><a href="${appUrl}/upload/${payload.documentId}/review">Review extracted data</a></p>`
+      return `<p>Extraction complete for <strong>${escapeHtml(payload.documentType)}</strong>.<br>Trust tier: <strong>${escapeHtml(payload.tier)}</strong> | Flags: ${escapeHtml(payload.flagCount)} (${escapeHtml(payload.criticalCount)} critical)<br><a href="${appUrl}/upload/${escapeHtml(payload.documentId)}/review">Review extracted data</a></p>`
     case 'TIER_UPGRADED':
       return `<p>A data record has been upgraded to <strong>Tier A</strong>.<br><a href="${appUrl}/records">View records</a></p>`
     case 'FLAG_RAISED':

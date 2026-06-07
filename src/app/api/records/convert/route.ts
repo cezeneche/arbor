@@ -75,9 +75,16 @@ export async function POST(req: NextRequest) {
         granteeEntityId: entityId,
         isActive: true,
         revokedAt: null,
+        OR: [{ domain: null }, { domain: record.domain }],
       },
     })
     if (!grant) return err('Access denied', 'FORBIDDEN', 403)
+
+    // Verify record falls within the grant's period scope
+    const periodOk =
+      (!grant.periodStart || record.periodEnd >= grant.periodStart) &&
+      (!grant.periodEnd || record.periodStart <= grant.periodEnd)
+    if (!periodOk) return err('Access denied — record outside grant period', 'FORBIDDEN', 403)
   }
 
   let conversion
