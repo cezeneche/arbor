@@ -15,8 +15,8 @@ export async function GET(
 
   if (sessionEntityId !== entityId) return err('Access denied', 'FORBIDDEN', 403)
 
-  const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10)
-  const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '50', 10), 100)
+  const page = Math.max(1, parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10))
+  const limit = Math.min(Math.max(1, parseInt(req.nextUrl.searchParams.get('limit') ?? '50', 10)), 100)
   const skip = (page - 1) * limit
 
   const [entries, total] = await Promise.all([

@@ -1,6 +1,6 @@
-// Layer 2  -  ERP / accounting system ingest webhook.
+// Layer 2 — ERP / accounting system ingest webhook.
 // Accepts structured operational data pushed from third-party systems.
-// Records are written as Tier B / SYSTEM_INTEGRATION  -  no source document is attached.
+// Records are written as Tier B / SYSTEM_INTEGRATION — no source document is attached.
 // A source document must be submitted separately to upgrade to Tier A.
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -9,15 +9,13 @@ import { prisma } from '@/lib/prisma'
 import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
 import { getSystemUser } from '@/lib/layer2/system-actor'
+import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
+import { domainSchema } from '@/lib/constants'
+import { TrustTier, ExtractionMethod } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
 
-const VALID_DOMAINS = [
-  'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
-  'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
-] as const
-
 const recordSchema = z.object({
-  domain: z.enum(VALID_DOMAINS),
+  domain: domainSchema,
   fieldName: z.string().min(1).max(120),
   value: z.number().finite(),
   unit: z.string().min(1).max(60),
@@ -62,67 +60,37 @@ export async function POST(req: NextRequest) {
   const { records, idempotencyKey } = parsed.data
 
   // Idempotency: if this key was already processed, return the previous result.
-  // Look up by recordId pattern (batch_<key>)  -  avoids searching inside JSON payload.
   if (idempotencyKey) {
     const previous = await prisma.auditEntry.findFirst({
-      where: {
-        entityId,
-        eventType: 'INGEST_BATCH',
-        recordId: `batch_${idempotencyKey}`,
-      },
+      where: { entityId, eventType: 'INGEST_BATCH', recordId: `batch_${idempotencyKey}` },
     })
     if (previous) {
-      return NextResponse.json({
-        idempotent: true,
-        message: 'This batch was already processed.',
-        batchAuditHash: previous.hash,
-      }, { status: 200 })
+      return NextResponse.json({ idempotent: true, message: 'This batch was already processed.', batchAuditHash: previous.hash }, { status: 200 })
     }
   }
 
-  const entity = await prisma.entity.findUnique({
-    where: { id: entityId },
-    select: { id: true },
-  })
+  const entity = await prisma.entity.findUnique({ where: { id: entityId }, select: { id: true } })
   if (!entity) {
     return NextResponse.json({ error: 'Entity not found', code: 'NOT_FOUND' }, { status: 404 })
   }
 
   const systemUser = await getSystemUser(entityId)
-  const submittedById = systemUser.id
-
-  const lastAuditEntry = await prisma.auditEntry.findFirst({
-    where: { entityId },
-    orderBy: { createdAt: 'desc' },
-    select: { hash: true },
-  })
-
   const results: RecordResult[] = []
-  let previousHash = lastAuditEntry?.hash ?? null
 
   for (let i = 0; i < records.length; i++) {
     const r = records[i]
 
-    // Business rule: period end must be after period start
     if (new Date(r.periodEnd) <= new Date(r.periodStart)) {
-      results.push({
-        index: i,
-        status: 'rejected',
-        reason: 'periodEnd must be after periodStart',
-        domain: r.domain,
-        fieldName: r.fieldName,
-      })
+      results.push({ index: i, status: 'rejected', reason: 'periodEnd must be after periodStart', domain: r.domain, fieldName: r.fieldName })
       continue
     }
 
     try {
-      const submittedAt = new Date().toISOString()
-
-      // Transaction: record create + hash update + audit entry are atomic.
-      // A failure mid-way cannot leave a record with auditHash='' or without an entry.
-      const { finalHash } = await prisma.$transaction(async (tx) => {
-        const record = await tx.dataRecord.create({
-          data: {
+      // writeRecordWithAuditEntry fetches previousHash inside the Serializable transaction —
+      // safe under concurrent requests; second writer will retry on P2034.
+      const { recordId } = await prisma.$transaction(
+        (tx) =>
+          writeRecordWithAuditEntry(tx, {
             entityId,
             domain: r.domain,
             fieldName: r.fieldName,
@@ -130,64 +98,29 @@ export async function POST(req: NextRequest) {
             unit: r.unit,
             periodStart: new Date(r.periodStart),
             periodEnd: new Date(r.periodEnd),
-            trustTier: 'B',
-            extractionMethod: 'SYSTEM_INTEGRATION',
-            submittedById,
-            confidenceScore: 1.0,
-            isActive: true,
-            auditHash: '',
-          },
-        })
-
-        const auditPayload: AuditPayload = {
-          recordId: record.id,
-          entityId,
-          domain: r.domain,
-          fieldName: r.fieldName,
-          value: r.value,
-          unit: r.unit,
-          trustTier: 'B',
-          submittedAt,
-          submittedById,
-        }
-
-        const hash = computeRecordHash(auditPayload, previousHash)
-
-        await tx.dataRecord.update({ where: { id: record.id }, data: { auditHash: hash } })
-
-        await tx.auditEntry.create({
-          data: {
-            entityId,
-            recordId: record.id,
-            eventType: 'CREATED',
-            payload: auditPayload as unknown as Prisma.InputJsonValue,
-            hash,
-            previousHash,
-          },
-        })
-
-        results.push({ index: i, status: 'created', recordId: record.id, domain: r.domain, fieldName: r.fieldName })
-        return { finalHash: hash }
-      })
-
-      previousHash = finalHash
+            sourceText: r.sourceSystem,
+            trustTier: TrustTier.B,
+            extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
+            submittedById: systemUser.id,
+          }),
+        { isolationLevel: 'Serializable' },
+      )
+      results.push({ index: i, status: 'created', recordId, domain: r.domain, fieldName: r.fieldName })
     } catch {
-      results.push({
-        index: i,
-        status: 'rejected',
-        reason: 'Internal error writing record',
-        domain: r.domain,
-        fieldName: r.fieldName,
-      })
+      results.push({ index: i, status: 'rejected', reason: 'Internal error writing record', domain: r.domain, fieldName: r.fieldName })
     }
   }
 
   const created = results.filter(r => r.status === 'created').length
   const rejected = results.filter(r => r.status === 'rejected').length
 
-  // Write a batch audit entry for idempotency lookups.
-  // Payload must exactly match what was passed to computeRecordHash so verifyChain() passes.
-  if (idempotencyKey) {
+  // Batch audit tombstone for idempotency lookups — written after all records are committed.
+  if (idempotencyKey && created > 0) {
+    const lastEntry = await prisma.auditEntry.findFirst({
+      where: { entityId },
+      orderBy: { createdAt: 'desc' },
+      select: { hash: true },
+    })
     const batchPayload: AuditPayload = {
       recordId: `batch_${idempotencyKey}`,
       entityId,
@@ -197,9 +130,9 @@ export async function POST(req: NextRequest) {
       unit: 'records',
       trustTier: 'B',
       submittedAt: new Date().toISOString(),
-      submittedById,
+      submittedById: systemUser.id,
     }
-    const batchHash = computeRecordHash(batchPayload, previousHash)
+    const batchHash = computeRecordHash(batchPayload, lastEntry?.hash ?? null)
     await prisma.auditEntry.create({
       data: {
         entityId,
@@ -207,9 +140,9 @@ export async function POST(req: NextRequest) {
         eventType: 'INGEST_BATCH',
         payload: batchPayload as unknown as Prisma.InputJsonValue,
         hash: batchHash,
-        previousHash,
+        previousHash: lastEntry?.hash ?? null,
       },
-    }).catch(() => {}) // non-critical
+    }).catch(e => console.error('[ingest] batch audit tombstone failed:', e))
   }
 
   return NextResponse.json({

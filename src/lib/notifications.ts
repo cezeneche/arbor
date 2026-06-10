@@ -1,25 +1,59 @@
 import { Resend } from 'resend'
 import { prisma } from '@/lib/prisma'
-import type { Prisma } from '@prisma/client'
+import type { NotificationType, Prisma } from '@prisma/client'
 
-type NotificationType =
-  | 'DATA_REQUEST_RECEIVED'
-  | 'DATA_REQUEST_RESPONDED'
-  | 'EXTRACTION_COMPLETE'
-  | 'FLAG_RAISED'
-  | 'TIER_UPGRADED'
-  | 'ACCESS_GRANTED'
-  | 'ACCESS_REVOKED'
+export type { NotificationType }
+
+// Typed payload per notification event — callers get compile-time enforcement.
+export interface NotificationPayloads {
+  DATA_REQUEST_RECEIVED: {
+    requestId: string
+    buyerName: string
+    domain: string
+    periodStart: string
+    periodEnd: string
+  }
+  DATA_REQUEST_RESPONDED: {
+    requestId: string
+    supplierEntityId: string
+  }
+  EXTRACTION_COMPLETE: {
+    documentId: string
+    documentType: string
+    tier: string
+    flagCount: number
+    criticalCount: number
+  }
+  FLAG_RAISED: {
+    fieldName: string
+    message: string
+  }
+  TIER_UPGRADED: {
+    recordId: string
+    domain: string
+  }
+  ACCESS_GRANTED: {
+    grantId: string
+    grantorEntityId: string
+  }
+  ACCESS_REVOKED: {
+    grantId: string
+    grantorEntityId: string
+  }
+}
+
+export type NotificationInput<T extends NotificationType = NotificationType> = {
+  entityId: string
+  type: T
+  payload: NotificationPayloads[T]
+}
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-interface NotificationInput {
-  entityId: string
-  type: NotificationType
-  payload: Record<string, unknown>
-}
-
-export async function sendNotification(input: NotificationInput): Promise<void> {
+export async function sendNotification<T extends NotificationType>(
+  input: NotificationInput<T>,
+): Promise<void> {
+  // DB write is non-optional — a failure here is a real error, not swallowed.
   await prisma.notification.create({
     data: {
       entityId: input.entityId,
@@ -29,14 +63,17 @@ export async function sendNotification(input: NotificationInput): Promise<void> 
   })
 
   const users = await prisma.user.findMany({
-    where: { entityId: input.entityId },
+    where: { entityId: input.entityId, role: { not: 'SYSTEM' } },
     select: { email: true, name: true },
   })
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const subject = notificationSubject(input.type, input.payload)
-  const html = notificationHtml(input.type, input.payload, appUrl)
+  if (users.length === 0) return
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const subject = notificationSubject(input.type, input.payload as NotificationPayloads[NotificationType])
+  const html = notificationHtml(input.type, input.payload as NotificationPayloads[NotificationType], appUrl)
+
+  // Email delivery failures are non-fatal — logged but do not throw.
   await Promise.allSettled(
     users.map((u) =>
       resend.emails.send({
@@ -49,18 +86,18 @@ export async function sendNotification(input: NotificationInput): Promise<void> 
   )
 }
 
-function notificationSubject(type: NotificationType, payload: Record<string, unknown>): string {
+function notificationSubject(type: NotificationType, payload: NotificationPayloads[NotificationType]): string {
   switch (type) {
     case 'DATA_REQUEST_RECEIVED':
-      return `Data request from ${payload.buyerName}`
+      return `Data request from ${(payload as NotificationPayloads['DATA_REQUEST_RECEIVED']).buyerName}`
     case 'DATA_REQUEST_RESPONDED':
       return `Supplier responded to your data request`
     case 'EXTRACTION_COMPLETE':
-      return `Extraction complete  -  ${payload.documentType}`
+      return `Extraction complete — ${(payload as NotificationPayloads['EXTRACTION_COMPLETE']).documentType}`
     case 'FLAG_RAISED':
       return `Validation flag raised on your data`
     case 'TIER_UPGRADED':
-      return `Data record upgraded to Tier A`
+      return `Data record upgraded to Verified`
     case 'ACCESS_GRANTED':
       return `Data access granted`
     case 'ACCESS_REVOKED':
@@ -81,16 +118,24 @@ function escapeHtml(value: unknown): string {
 
 function notificationHtml(
   type: NotificationType,
-  payload: Record<string, unknown>,
+  payload: NotificationPayloads[NotificationType],
   appUrl: string,
 ): string {
   switch (type) {
-    case 'DATA_REQUEST_RECEIVED':
-      return `<p>Data request from <strong>${escapeHtml(payload.buyerName)}</strong>.<br>Domain: ${escapeHtml(payload.domain)} | Period: ${escapeHtml(payload.periodStart)} – ${escapeHtml(payload.periodEnd)}<br><a href="${appUrl}/requests/${escapeHtml(payload.requestId)}">View request</a></p>`
-    case 'EXTRACTION_COMPLETE':
-      return `<p>Extraction complete for <strong>${escapeHtml(payload.documentType)}</strong>.<br>Trust tier: <strong>${escapeHtml(payload.tier)}</strong> | Flags: ${escapeHtml(payload.flagCount)} (${escapeHtml(payload.criticalCount)} critical)<br><a href="${appUrl}/upload/${escapeHtml(payload.documentId)}/review">Review extracted data</a></p>`
+    case 'DATA_REQUEST_RECEIVED': {
+      const p = payload as NotificationPayloads['DATA_REQUEST_RECEIVED']
+      return `<p>Data request from <strong>${escapeHtml(p.buyerName)}</strong>.<br>Domain: ${escapeHtml(p.domain)} | Period: ${escapeHtml(p.periodStart)} – ${escapeHtml(p.periodEnd)}<br><a href="${appUrl}/requests/${escapeHtml(p.requestId)}">View request</a></p>`
+    }
+    case 'DATA_REQUEST_RESPONDED': {
+      const p = payload as NotificationPayloads['DATA_REQUEST_RESPONDED']
+      return `<p>Your supplier has responded to the data request.<br><a href="${appUrl}/requests/${escapeHtml(p.requestId)}">View response</a></p>`
+    }
+    case 'EXTRACTION_COMPLETE': {
+      const p = payload as NotificationPayloads['EXTRACTION_COMPLETE']
+      return `<p>Extraction complete for <strong>${escapeHtml(p.documentType)}</strong>.<br>Trust tier: <strong>${escapeHtml(p.tier)}</strong> | Flags: ${escapeHtml(p.flagCount)} (${escapeHtml(p.criticalCount)} critical)<br><a href="${appUrl}/upload/${escapeHtml(p.documentId)}/review">Review extracted data</a></p>`
+    }
     case 'TIER_UPGRADED':
-      return `<p>A data record has been upgraded to <strong>Tier A</strong>.<br><a href="${appUrl}/records">View records</a></p>`
+      return `<p>A data record has been upgraded to <strong>Verified</strong>.<br><a href="${appUrl}/records">View records</a></p>`
     case 'FLAG_RAISED':
       return `<p>A validation flag has been raised on your data.<br><a href="${appUrl}/records">Review records</a></p>`
     default:

@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     entityId: granteeEntityId,
     type: 'ACCESS_GRANTED',
     payload: { grantId: grant.id, grantorEntityId: entityId },
-  }).catch(() => {})
+  }).catch(e => console.error('[grants] sendNotification failed:', e))
 
   return NextResponse.json({ grant })
 }

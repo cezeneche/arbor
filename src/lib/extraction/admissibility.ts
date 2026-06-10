@@ -1,5 +1,6 @@
 import { DOCUMENT_FIELD_DEFINITIONS } from './field-definitions'
 import type { ExtractedFieldResult } from './types'
+import { confidenceThreshold } from '@/lib/design-system'
 
 export type TrustTierResult = 'A' | 'B' | 'C'
 export type FlagTypeResult =
@@ -73,11 +74,11 @@ export function evaluateAdmissibility(
 
   // Low confidence
   for (const f of extractedFields) {
-    if (f.confidenceScore < 0.85 && f.rawValue !== null) {
+    if (f.confidenceScore < confidenceThreshold && f.rawValue !== null) {
       flags.push({
         fieldName: f.fieldName,
         flagType: 'LOW_CONFIDENCE',
-        message: `Confidence ${f.confidenceScore.toFixed(2)} below 0.85 threshold for '${f.fieldName}'.`,
+        message: `Confidence ${f.confidenceScore.toFixed(2)} below ${confidenceThreshold} threshold for '${f.fieldName}'.`,
         severity: 'WARNING',
       })
     }

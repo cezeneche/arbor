@@ -1,13 +1,13 @@
-// Layer 3  -  read-only. Buyer-facing multi-supplier export endpoint.
+// Layer 3 — read-only. Buyer-facing multi-supplier export endpoint.
 // Auth: session only (buyers). Validates grants before returning any supplier data.
-// Trust tier and provenance travel with every record  -  cannot be removed (PRD §21.2).
+// Trust tier and provenance travel with every record — cannot be removed (PRD §21.2).
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
 import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
-
-const VALID_DOMAINS = ['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']
+import { domainSchema } from '@/lib/constants'
+import type { DataDomain } from '@prisma/client'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -17,21 +17,26 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams
   const format = sp.get('format') ?? 'csv'
-  const domain = sp.get('domain') ?? undefined
+  const domainParam = sp.get('domain')
   const periodStart = sp.get('periodStart') ?? undefined
   const periodEnd = sp.get('periodTo') ?? undefined
   const supplierIdsParam = sp.get('supplierEntityIds')
 
-  if (domain && !VALID_DOMAINS.includes(domain)) {
-    return NextResponse.json({ error: `Invalid domain '${domain}'` }, { status: 400 })
+  if (domainParam) {
+    const result = domainSchema.safeParse(domainParam)
+    if (!result.success) {
+      return NextResponse.json({ error: `Invalid domain '${domainParam}'` }, { status: 400 })
+    }
   }
+
+  const domain: DataDomain | undefined = domainParam ? domainSchema.parse(domainParam) : undefined
 
   // Resolve which suppliers this buyer is authorised to access
   const grants = await prisma.dataAccessGrant.findMany({
     where: {
       granteeEntityId: buyerEntityId,
       isActive: true,
-      ...(domain ? { domain: domain as never } : {}),
+      ...(domain ? { domain } : {}),
     },
     select: { grantorEntityId: true },
     distinct: ['grantorEntityId'],
@@ -39,16 +44,8 @@ export async function GET(req: NextRequest) {
   const authorisedSupplierIds = new Set(grants.map(g => g.grantorEntityId))
 
   if (authorisedSupplierIds.size === 0) {
-    if (format === 'csv') {
-      return new NextResponse('id,domain,fieldName,value,unit,trustTier,confidenceScore,periodStart,periodEnd,extractionMethod,documentId\n', {
-        status: 200,
-        headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-export.csv"' },
-      })
-    }
-    return new NextResponse('<records></records>', {
-      status: 200,
-      headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-export.xml"' },
-    })
+    // 204 No Content — authorised but nothing to export yet
+    return new NextResponse(null, { status: 204 })
   }
 
   // If specific suppliers requested, intersect with authorised set
@@ -65,7 +62,7 @@ export async function GET(req: NextRequest) {
     where: {
       entityId: { in: targetIds },
       isActive: true,
-      ...(domain ? { domain: domain as never } : {}),
+      ...(domain ? { domain } : {}),
       ...(periodStart ? { periodStart: { gte: new Date(periodStart) } } : {}),
       ...(periodEnd ? { periodEnd: { lte: new Date(periodEnd) } } : {}),
     },

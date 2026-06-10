@@ -4,19 +4,16 @@
 import { prisma } from '@/lib/prisma'
 
 export async function getSystemUser(entityId: string): Promise<{ id: string }> {
-  const existing = await prisma.user.findFirst({
-    where: { entityId, role: 'SYSTEM' },
-    select: { id: true },
-  })
-  if (existing) return existing
-
-  return prisma.user.create({
-    data: {
+  // upsert is atomic: no race condition between the existence check and creation.
+  return prisma.user.upsert({
+    where: { email: `system+${entityId}@arbor.internal` },
+    create: {
       entityId,
       name: 'System Integration',
       email: `system+${entityId}@arbor.internal`,
       role: 'SYSTEM',
     },
+    update: {},
     select: { id: true },
   })
 }

@@ -73,7 +73,7 @@ export async function PATCH(
       entityId: dataRequest.buyerEntityId,
       type: 'DATA_REQUEST_RESPONDED',
       payload: { requestId: id, supplierEntityId: dataRequest.supplierEntityId },
-    }).catch(() => {})
+    }).catch(e => console.error('[requests] sendNotification failed:', e))
   }
 
   return ok(updated)

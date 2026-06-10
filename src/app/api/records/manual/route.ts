@@ -3,14 +3,14 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
-import { computeRecordHash } from '@/lib/layer2/audit-chain'
-import type { AuditPayload } from '@/lib/layer2/audit-chain'
-import type { Prisma } from '@prisma/client'
+import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
+import { domainSchema } from '@/lib/constants'
+import { ExtractionMethod, TrustTier } from '@prisma/client'
 
 const bodySchema = z.object({
-  domain: z.enum(['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']),
+  domain: domainSchema,
   fieldName: z.string().min(1),
-  value: z.number(),
+  value: z.number().finite(),
   unit: z.string().min(1),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
@@ -22,61 +22,42 @@ export async function POST(req: NextRequest) {
   if (!session) return response!
 
   const entityId = (session.user as Record<string, unknown>).entityId as string
+  const userId = session.user!.id!
 
   const body = await req.json().catch(() => null)
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
 
-  const lastAuditEntry = await prisma.auditEntry.findFirst({
-    where: { entityId },
-    orderBy: { createdAt: 'desc' },
-  })
+  const periodStart = new Date(parsed.data.periodStart)
+  const periodEnd = new Date(parsed.data.periodEnd)
 
-  const auditPayload: AuditPayload = {
-    recordId: `pending_${Date.now()}`,
-    entityId,
-    domain: parsed.data.domain,
-    fieldName: parsed.data.fieldName,
-    value: parsed.data.value,
-    unit: parsed.data.unit,
-    trustTier: 'B',
-    submittedAt: new Date().toISOString(),
-    submittedById: session.user!.id!,
+  if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) {
+    return err('Invalid date values', 'VALIDATION_ERROR', 400)
+  }
+  if (periodEnd <= periodStart) {
+    return err('periodEnd must be after periodStart', 'VALIDATION_ERROR', 400)
   }
 
-  const hash = computeRecordHash(auditPayload, lastAuditEntry?.hash ?? null)
+  const { recordId } = await prisma.$transaction(
+    (tx) =>
+      writeRecordWithAuditEntry(
+        tx,
+        {
+          entityId,
+          domain: parsed.data.domain,
+          fieldName: parsed.data.fieldName,
+          value: parsed.data.value,
+          unit: parsed.data.unit,
+          periodStart,
+          periodEnd,
+          sourceText: parsed.data.sourceText,
+          trustTier: TrustTier.B,
+          extractionMethod: ExtractionMethod.MANUAL_ENTRY,
+          submittedById: userId,
+        },
+      ),
+    { isolationLevel: 'Serializable' },
+  )
 
-  const record = await prisma.dataRecord.create({
-    data: {
-      entityId,
-      domain: parsed.data.domain,
-      fieldName: parsed.data.fieldName,
-      value: parsed.data.value,
-      unit: parsed.data.unit,
-      periodStart: new Date(parsed.data.periodStart),
-      periodEnd: new Date(parsed.data.periodEnd),
-      sourceText: parsed.data.sourceText,
-      trustTier: 'B',
-      extractionMethod: 'MANUAL_ENTRY',
-      submittedById: session.user!.id!,
-      auditHash: hash,
-      isActive: true,
-    },
-  })
-
-  auditPayload.recordId = record.id
-  const finalHash = computeRecordHash(auditPayload, lastAuditEntry?.hash ?? null)
-
-  await prisma.auditEntry.create({
-    data: {
-      entityId,
-      recordId: record.id,
-      eventType: 'CREATED',
-      payload: auditPayload as unknown as Prisma.InputJsonValue,
-      hash: finalHash,
-      previousHash: lastAuditEntry?.hash ?? null,
-    },
-  })
-
-  return ok({ recordId: record.id, trustTier: 'B' }, 201)
+  return ok({ recordId, trustTier: 'B' }, 201)
 }

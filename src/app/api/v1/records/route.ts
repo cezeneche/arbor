@@ -3,19 +3,15 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { authenticateApiKey } from '@/lib/api-key-auth'
 import { ok, err } from '@/lib/api-helpers'
-import { computeRecordHash } from '@/lib/layer2/audit-chain'
+import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
 import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
-import type { AuditPayload } from '@/lib/layer2/audit-chain'
 import { getSystemUser } from '@/lib/layer2/system-actor'
-
-const VALID_DOMAINS = [
-  'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
-  'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
-] as const
+import { domainSchema, tierSchema } from '@/lib/constants'
+import { TrustTier, ExtractionMethod } from '@prisma/client'
 
 const recordSchema = z.object({
-  domain: z.enum(VALID_DOMAINS),
+  domain: domainSchema,
   fieldName: z.string().min(1).max(120),
   value: z.number().finite(),
   unit: z.string().min(1).max(60),
@@ -32,11 +28,23 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = req.nextUrl
-  const domain = searchParams.get('domain') as never | null
-  const tier = searchParams.get('tier') as never | null
+  const domainParam = searchParams.get('domain')
+  const tierParam = searchParams.get('tier')
   const periodStart = searchParams.get('periodStart')
   const periodEnd = searchParams.get('periodEnd')
   const format = searchParams.get('format') ?? 'json'
+
+  if (domainParam) {
+    const result = domainSchema.safeParse(domainParam)
+    if (!result.success) return err(`Invalid domain '${domainParam}'`, 'VALIDATION_ERROR', 400)
+  }
+  if (tierParam) {
+    const result = tierSchema.safeParse(tierParam)
+    if (!result.success) return err(`Invalid tier '${tierParam}'`, 'VALIDATION_ERROR', 400)
+  }
+
+  const domain = domainParam ? domainSchema.parse(domainParam) : undefined
+  const tier = tierParam ? tierSchema.parse(tierParam) : undefined
 
   const records = await prisma.dataRecord.findMany({
     where: {
@@ -68,10 +76,7 @@ export async function GET(req: NextRequest) {
     const csv = formatRecordsAsCSV(records)
     return new NextResponse(csv, {
       status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="arbor-records.csv"',
-      },
+      headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-records.csv"' },
     })
   }
 
@@ -79,10 +84,7 @@ export async function GET(req: NextRequest) {
     const xml = formatRecordsAsXML(records)
     return new NextResponse(xml, {
       status: 200,
-      headers: {
-        'Content-Type': 'application/xml; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="arbor-records.xml"',
-      },
+      headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-records.xml"' },
     })
   }
 
@@ -116,69 +118,28 @@ export async function POST(req: NextRequest) {
   if (!entity) return err('Entity not found', 'NOT_FOUND', 404)
 
   const systemUser = await getSystemUser(auth.entityId!)
-
-  const lastAuditEntry = await prisma.auditEntry.findFirst({
-    where: { entityId: auth.entityId! },
-    orderBy: { createdAt: 'desc' },
-    select: { hash: true },
-  })
-
-  let previousHash = lastAuditEntry?.hash ?? null
   let createdCount = 0
 
   for (const r of records) {
-    const submittedAt = new Date().toISOString()
+    if (new Date(r.periodEnd) <= new Date(r.periodStart)) continue
 
-    const { hash } = await prisma.$transaction(async (tx) => {
-      const record = await tx.dataRecord.create({
-        data: {
+    // API key writes have no supporting document — Tier B per PRD §12.
+    await prisma.$transaction(
+      (tx) =>
+        writeRecordWithAuditEntry(tx, {
           entityId: auth.entityId!,
-          domain: r.domain as never,
+          domain: r.domain,
           fieldName: r.fieldName,
           value: r.value,
           unit: r.unit,
           periodStart: new Date(r.periodStart),
           periodEnd: new Date(r.periodEnd),
-          trustTier: 'A' as never,
-          extractionMethod: 'SYSTEM_INTEGRATION' as never,
+          trustTier: TrustTier.B,
+          extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
           submittedById: systemUser.id,
-          confidenceScore: 1.0,
-          isActive: true,
-          auditHash: '',
-        },
-      })
-
-      const auditPayload: AuditPayload = {
-        recordId: record.id,
-        entityId: auth.entityId!,
-        domain: r.domain,
-        fieldName: r.fieldName,
-        value: r.value,
-        unit: r.unit,
-        trustTier: 'A',
-        submittedById: systemUser.id,
-        submittedAt,
-      }
-
-      const hash = computeRecordHash(auditPayload, previousHash)
-
-      await tx.dataRecord.update({ where: { id: record.id }, data: { auditHash: hash } })
-
-      await tx.auditEntry.create({
-        data: {
-          entityId: auth.entityId!,
-          recordId: record.id,
-          eventType: 'CREATED',
-          payload: auditPayload as unknown as import('@prisma/client').Prisma.InputJsonValue,
-          hash,
-          previousHash,
-        },
-      })
-
-      return { hash }
-    })
-
-    previousHash = hash
+        }),
+      { isolationLevel: 'Serializable' },
+    )
     createdCount++
   }
 

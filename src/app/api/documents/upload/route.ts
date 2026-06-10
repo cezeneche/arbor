@@ -55,16 +55,22 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  await inngest.send({
-    name: 'document/uploaded',
-    data: {
-      documentId: document.id,
-      entityId,
-      entityName: entity.legalName,
-      documentType,
-      reportingPeriodEnd,
-    },
-  })
+  try {
+    await inngest.send({
+      name: 'document/uploaded',
+      data: {
+        documentId: document.id,
+        entityId,
+        entityName: entity.legalName,
+        documentType,
+        reportingPeriodEnd,
+      },
+    })
+  } catch (e) {
+    // Document is safely stored — log the Inngest failure but don't surface it to the caller.
+    // Extraction can be re-triggered by re-sending the event once Inngest recovers.
+    console.error('[upload] inngest.send failed for document', document.id, e)
+  }
 
   return ok({ documentId: document.id, status: 'PENDING' }, 201)
 }

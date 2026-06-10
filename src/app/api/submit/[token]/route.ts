@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
-import { computeRecordHash } from '@/lib/layer2/audit-chain'
-import type { AuditPayload } from '@/lib/layer2/audit-chain'
-import type { Prisma } from '@prisma/client'
+import { getSystemUser } from '@/lib/layer2/system-actor'
+import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
+import { ExtractionMethod, TrustTier } from '@prisma/client'
 
 const entrySchema = z.object({
   fieldName: z.string().min(1),
-  value: z.number(),
+  value: z.number().finite(),
   unit: z.string().min(1),
   sourceText: z.string().optional(),
 })
@@ -16,9 +16,6 @@ const entrySchema = z.object({
 const bodySchema = z.object({
   entries: z.array(entrySchema).min(1),
 })
-
-// System user sentinel  -  records written via submission link are attributed to a system account
-const SYSTEM_USER_ID = 'system'
 
 export async function GET(
   _req: NextRequest,
@@ -65,7 +62,9 @@ export async function POST(
   if (request.status === 'SUBMITTED' || request.status === 'ACCEPTED') {
     return err('This request has already been responded to', 'ALREADY_RESPONDED', 409)
   }
-  if (request.submissionTokenExpiry && request.submissionTokenExpiry < new Date()) {
+
+  // Require an explicit expiry — tokens without one are no longer valid (legacy records).
+  if (!request.submissionTokenExpiry || request.submissionTokenExpiry < new Date()) {
     return err('This submission link has expired', 'TOKEN_EXPIRED', 410)
   }
 
@@ -75,77 +74,42 @@ export async function POST(
 
   const entityId = request.supplierEntityId
 
-  // Find a real user for this entity to attribute submissions  -  use first user or fall back to system
-  const entityUser = await prisma.user.findFirst({
-    where: { entityId },
-    select: { id: true },
-  })
-  const submittedById = entityUser?.id ?? SYSTEM_USER_ID
-
-  const lastAuditEntry = await prisma.auditEntry.findFirst({
-    where: { entityId },
-    orderBy: { createdAt: 'desc' },
-  })
+  // System user is the correct actor for token-based submissions (no authenticated session).
+  const systemUser = await getSystemUser(entityId)
 
   const createdRecordIds: string[] = []
 
   for (const entry of parsed.data.entries) {
-    const auditPayload: AuditPayload = {
-      recordId: `pending_${Date.now()}`,
-      entityId,
-      domain: request.domain,
-      fieldName: entry.fieldName,
-      value: entry.value,
-      unit: entry.unit,
-      trustTier: 'B',
-      submittedAt: new Date().toISOString(),
-      submittedById,
-    }
-
-    const hash = computeRecordHash(auditPayload, lastAuditEntry?.hash ?? null)
-
-    const record = await prisma.dataRecord.create({
-      data: {
-        entityId,
-        domain: request.domain,
-        fieldName: entry.fieldName,
-        value: entry.value,
-        unit: entry.unit,
-        periodStart: request.periodStart,
-        periodEnd: request.periodEnd,
-        sourceText: entry.sourceText,
-        trustTier: 'B',
-        extractionMethod: 'MANUAL_ENTRY',
-        submittedById,
-        auditHash: hash,
-        isActive: true,
-      },
-    })
-
-    auditPayload.recordId = record.id
-    const finalHash = computeRecordHash(auditPayload, lastAuditEntry?.hash ?? null)
-
-    await prisma.auditEntry.create({
-      data: {
-        entityId,
-        recordId: record.id,
-        eventType: 'CREATED_VIA_SUBMISSION_LINK',
-        payload: auditPayload as unknown as Prisma.InputJsonValue,
-        hash: finalHash,
-        previousHash: lastAuditEntry?.hash ?? null,
-      },
-    })
-
-    createdRecordIds.push(record.id)
+    const { recordId } = await prisma.$transaction(
+      (tx) =>
+        writeRecordWithAuditEntry(
+          tx,
+          {
+            entityId,
+            domain: request.domain,
+            fieldName: entry.fieldName,
+            value: entry.value,
+            unit: entry.unit,
+            periodStart: request.periodStart,
+            periodEnd: request.periodEnd,
+            sourceText: entry.sourceText,
+            trustTier: TrustTier.B,
+            extractionMethod: ExtractionMethod.MANUAL_ENTRY,
+            submittedById: systemUser.id,
+          },
+          'CREATED_VIA_SUBMISSION_LINK',
+        ),
+      { isolationLevel: 'Serializable' },
+    )
+    createdRecordIds.push(recordId)
   }
 
-  // Mark request as submitted
   await prisma.dataRequest.update({
     where: { id: request.id },
     data: { status: 'SUBMITTED', respondedAt: new Date() },
   })
 
-  // Grant buyer access to this domain + period so they can query the records
+  // Grant buyer access to this domain + period so they can query the records.
   const existingGrant = await prisma.dataAccessGrant.findFirst({
     where: {
       grantorEntityId: entityId,

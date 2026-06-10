@@ -27,7 +27,7 @@ export async function DELETE(
     entityId: grant.granteeEntityId,
     type: 'ACCESS_REVOKED',
     payload: { grantId: id, grantorEntityId: entityId },
-  }).catch(() => {})
+  }).catch(e => console.error('[grants] sendNotification failed:', e))
 
   return NextResponse.json({ ok: true })
 }

@@ -1,25 +1,86 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing } from '@/lib/design-system'
 
+const POLL_INTERVAL_MS = 3000
+const MAX_ATTEMPTS = 40 // ~2 minutes at 3s intervals
+
 export function ExtractionPoller({ documentId }: { documentId: string }) {
   const router = useRouter()
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
+    let attempts = 0
+
     const interval = setInterval(async () => {
-      const res = await fetch(`/api/documents/${documentId}`, { cache: 'no-store' })
-      if (res.ok) {
+      attempts++
+
+      if (attempts > MAX_ATTEMPTS) {
+        clearInterval(interval)
+        setFailed(true)
+        return
+      }
+
+      try {
+        const res = await fetch(`/api/documents/${documentId}`, { cache: 'no-store' })
+        if (!res.ok) return
+
         const data = await res.json()
+
+        if (data.status === 'FAILED') {
+          clearInterval(interval)
+          setFailed(true)
+          return
+        }
+
         if (data.status !== 'EXTRACTING' && data.status !== 'PENDING') {
           clearInterval(interval)
           router.refresh()
         }
+      } catch {
+        // Network error — keep polling; will surface as timeout after MAX_ATTEMPTS.
       }
-    }, 3000)
+    }, POLL_INTERVAL_MS)
+
     return () => clearInterval(interval)
   }, [documentId, router])
+
+  if (failed) {
+    return (
+      <div
+        style={{
+          backgroundColor: colours.surface,
+          border: `1px solid ${colours.border}`,
+          borderRadius: '8px',
+          padding: spacing[6],
+          textAlign: 'center',
+        }}
+      >
+        <p
+          style={{
+            fontSize: typography.sizes.base,
+            fontWeight: typography.weights.medium,
+            color: colours.textPrimary,
+            margin: 0,
+          }}
+        >
+          Extraction could not be completed
+        </p>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.textSecondary,
+            margin: `${spacing[1]} 0 0`,
+          }}
+        >
+          The document may be unsupported or unreadable. Try uploading it again.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div
