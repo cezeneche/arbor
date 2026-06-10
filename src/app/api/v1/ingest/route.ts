@@ -8,6 +8,7 @@ import { authenticateApiKey } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
 import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
+import { getSystemUser } from '@/lib/layer2/system-actor'
 import type { Prisma } from '@prisma/client'
 
 const VALID_DOMAINS = [
@@ -87,14 +88,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Entity not found', code: 'NOT_FOUND' }, { status: 404 })
   }
 
-  const adminUser = await prisma.user.findFirst({
-    where: { entityId, role: 'ADMIN' },
-    select: { id: true },
-  })
-  if (!adminUser) {
-    return NextResponse.json({ error: 'No admin user found for entity', code: 'INTERNAL_ERROR' }, { status: 500 })
-  }
-  const submittedById = adminUser.id
+  const systemUser = await getSystemUser(entityId)
+  const submittedById = systemUser.id
 
   const lastAuditEntry = await prisma.auditEntry.findFirst({
     where: { entityId },

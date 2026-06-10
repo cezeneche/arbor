@@ -13,6 +13,7 @@ const SUPPLIER_LINKS = [
   { href: '/analytics', label: 'Data quality' },
   { href: '/activity', label: 'Activity' },
   { href: '/benchmarks', label: 'Benchmarks' },
+  { href: '/settings', label: 'Settings' },
 ]
 
 const BUYER_LINKS = [
@@ -26,7 +27,7 @@ const BUYER_LINKS = [
   { href: '/benchmarks', label: 'Benchmarks' },
   { href: '/export', label: 'Export' },
   { href: '/access', label: 'Access control' },
-  { href: '/settings/api-keys', label: 'Settings' },
+  { href: '/settings', label: 'Settings' },
 ]
 
 export function Nav({

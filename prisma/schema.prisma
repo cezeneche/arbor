@@ -94,6 +94,7 @@ enum UserRole {
   ADMIN
   CONTRIBUTOR
   VIEWER
+  SYSTEM
 }
 
 // ── DOCUMENT ──────────────────────────────────────────────────────────────────

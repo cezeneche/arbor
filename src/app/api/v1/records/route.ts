@@ -7,6 +7,7 @@ import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
 import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
+import { getSystemUser } from '@/lib/layer2/system-actor'
 
 const VALID_DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
@@ -114,11 +115,7 @@ export async function POST(req: NextRequest) {
   const entity = await prisma.entity.findUnique({ where: { id: auth.entityId! } })
   if (!entity) return err('Entity not found', 'NOT_FOUND', 404)
 
-  const adminUser = await prisma.user.findFirst({
-    where: { entityId: auth.entityId!, role: 'ADMIN' },
-    select: { id: true },
-  })
-  if (!adminUser) return err('No admin user found for entity', 'INTERNAL_ERROR', 500)
+  const systemUser = await getSystemUser(auth.entityId!)
 
   const lastAuditEntry = await prisma.auditEntry.findFirst({
     where: { entityId: auth.entityId! },
@@ -144,7 +141,7 @@ export async function POST(req: NextRequest) {
           periodEnd: new Date(r.periodEnd),
           trustTier: 'A' as never,
           extractionMethod: 'SYSTEM_INTEGRATION' as never,
-          submittedById: adminUser.id,
+          submittedById: systemUser.id,
           confidenceScore: 1.0,
           isActive: true,
           auditHash: '',
@@ -159,7 +156,7 @@ export async function POST(req: NextRequest) {
         value: r.value,
         unit: r.unit,
         trustTier: 'A',
-        submittedById: adminUser.id,
+        submittedById: systemUser.id,
         submittedAt,
       }
 
