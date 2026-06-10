@@ -148,11 +148,17 @@ class TestIronSteelFactors:
         assert see.sector == "iron_steel"
         assert see.direct_tco2e_per_t == _D("2.460")
 
-    def test_ch73_stainless_screws_731815(self):
-        # 731815xx → stainless steel screws/bolts entry (6-digit prefix)
-        see = get_default_see("73181500")
+    def test_ch73_stainless_screws_731812(self):
+        # 7318 12 10 is the stainless screw sub-heading (8-digit prefix entry)
+        see = get_default_see("73181210")
         assert see is not None
         assert see.direct_tco2e_per_t == _D("2.100")
+
+    def test_ch73_non_stainless_screws_731815(self):
+        # 7318 15 is non-stainless bolts/screws — falls back to 4-digit 7318 entry
+        see = get_default_see("73181500")
+        assert see is not None
+        assert see.direct_tco2e_per_t == _D("1.890")
 
     def test_no_route_falls_back_to_none_entry(self):
         # When no route given, should return the None-route fallback for ferrous scrap

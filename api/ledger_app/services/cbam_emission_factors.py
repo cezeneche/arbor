@@ -191,6 +191,10 @@ _ANNEX_VI: list[DefaultSEE] = [
     # production_route=None: official world-average default per Art. 4(3) table.
     # Route-tagged entries: engineering estimates for actual-measurement use only.
     #
+    # CN 2601 12 00 — Sintered ore (agglomerated iron ore concentrates)
+    DefaultSEE("26011200", _S, None,                 _D("0.310"), _D("0.050"),
+               "Sintered ore / agglomerated iron ore concentrates — official default", _AVI),
+
     # Heading 7201 — Pig iron and spiegeleisen
     DefaultSEE("7201", _S, None,                     _D("1.900"), _D("0.170"),
                "Pig iron — world average (official default)", _AVI),
@@ -199,16 +203,29 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("7201", _S, PRODUCTION_ROUTE_EAF,     _D("0.600"), _D("0.450"),
                "Pig iron (EAF, engineering estimate)", _AVI),
 
-    # Heading 7202 — Ferro-alloys
-    DefaultSEE("7202", _S, None,                     _D("2.100"), _D("0.300"),
-               "Ferro-alloys — world average (official default)", _AVI),
-    DefaultSEE("7202", _S, PRODUCTION_ROUTE_BF_BOF,  _D("2.580"), _D("0.089"),
-               "Ferro-alloys (BF-BOF, engineering estimate)", _AVI),
-    DefaultSEE("7202", _S, PRODUCTION_ROUTE_EAF,     _D("1.200"), _D("0.700"),
-               "Ferro-alloys (EAF, engineering estimate)", _AVI),
+    # Heading 7202 — Ferro-alloys (official table gives three distinct sub-heading values)
+    # Lookup tries 8→6→4→2 digit prefixes; 6-digit entries cover each sub-group.
+    # FeMn (7202 1x): 7202 11 xx and 7202 19 xx
+    DefaultSEE("720211", _S, None,                   _D("1.440"), _D("2.080"),
+               "Ferro-manganese (FeMn, 7202 11) — official default", _AVI),
+    DefaultSEE("720219", _S, None,                   _D("1.440"), _D("2.080"),
+               "Ferro-manganese (FeMn, 7202 19) — official default", _AVI),
+    # FeCr (7202 4x): 7202 41 xx and 7202 49 xx
+    DefaultSEE("720241", _S, None,                   _D("2.076"), _D("3.380"),
+               "Ferro-chromium (FeCr, 7202 41) — official default", _AVI),
+    DefaultSEE("720249", _S, None,                   _D("2.076"), _D("3.380"),
+               "Ferro-chromium (FeCr, 7202 49) — official default", _AVI),
+    # FeNi (7202 6x): 7202 60 xx and 7202 69 xx
+    DefaultSEE("720260", _S, None,                   _D("3.486"), _D("2.810"),
+               "Ferro-nickel (FeNi, 7202 60) — official default", _AVI),
+    DefaultSEE("720269", _S, None,                   _D("3.486"), _D("2.810"),
+               "Ferro-nickel (FeNi, 7202 69) — official default", _AVI),
+    DefaultSEE("7202", _S, None,                     _D("2.076"), _D("3.380"),
+               "Ferro-alloys — fallback (uses FeCr as representative mid-range)", _AVI),
 
     # Heading 7203 — Direct-reduced iron / sponge iron
-    DefaultSEE("7203", _S, None,                        _D("1.200"), _D("0.200"),
+    # Official default is 4.81 tCO2e/t direct, 0.00 indirect (JRC 2023 DRI production mix)
+    DefaultSEE("7203", _S, None,                        _D("4.810"), _D("0.000"),
                "Sponge iron / DRI — world average (official default)", _AVI),
     DefaultSEE("7203", _S, PRODUCTION_ROUTE_DRI_EAF,   _D("0.900"), _D("0.200"),
                "Sponge iron / DRI — DRI-EAF route (engineering estimate)", _AVI),
@@ -312,40 +329,90 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("7218", _S, PRODUCTION_ROUTE_EAF,     _D("2.180"), _D("1.900"),
                "Stainless steel ingots/semi-finished, rolled (EAF, official route)", _AVI),
 
-    DefaultSEE("721911", _S, None,                   _D("2.210"), _D("1.990"),
-               "Flat-rolled stainless ≥600 mm, cold-rolled (7219 1x) — world average", _AVI),
+    # 7219 1x sub-headings (hot-rolled): 7219 11–14, 7219 21–24 → 2.18/1.90
+    # 7219 3x sub-headings (cold-rolled): 7219 31–35, 7219 90 → 2.21/1.99
+    DefaultSEE("721931", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless ≥600 mm, cold-rolled (7219 31) — official default", _AVI),
+    DefaultSEE("721932", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless ≥600 mm, cold-rolled (7219 32) — official default", _AVI),
+    DefaultSEE("721933", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless ≥600 mm, cold-rolled (7219 33) — official default", _AVI),
+    DefaultSEE("721934", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless ≥600 mm, cold-rolled (7219 34) — official default", _AVI),
+    DefaultSEE("721935", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless ≥600 mm, cold-rolled (7219 35) — official default", _AVI),
+    DefaultSEE("721990", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless ≥600 mm, other (7219 90) — official default", _AVI),
     DefaultSEE("7219", _S, None,                     _D("2.180"), _D("1.900"),
-               "Flat-rolled stainless ≥600 mm, hot-rolled — world average", _AVI),
+               "Flat-rolled stainless ≥600 mm, hot-rolled (7219 11-24) — official default", _AVI),
     DefaultSEE("7219", _S, PRODUCTION_ROUTE_EAF,     _D("2.180"), _D("1.900"),
                "Flat-rolled stainless ≥600 mm (EAF, official route)", _AVI),
 
-    DefaultSEE("7220", _S, None,                     _D("2.190"), _D("1.940"),
-               "Flat-rolled stainless <600 mm — world average", _AVI),
+    # 7220 11 00, 7220 12 00 (hot-rolled): 2.18/1.90; 7220 20, 7220 90 (cold-rolled): 2.21/1.99
+    DefaultSEE("722020", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless <600 mm, cold-rolled (7220 20) — official default", _AVI),
+    DefaultSEE("722090", _S, None,                   _D("2.210"), _D("1.990"),
+               "Flat-rolled stainless <600 mm, other (7220 90) — official default", _AVI),
+    DefaultSEE("7220", _S, None,                     _D("2.180"), _D("1.900"),
+               "Flat-rolled stainless <600 mm, hot-rolled (7220 11, 7220 12) — official default", _AVI),
 
     DefaultSEE("7221", _S, None,                     _D("2.140"), _D("2.170"),
                "Bars/rods stainless steel, hot-rolled coils — world average", _AVI),
     DefaultSEE("7221", _S, PRODUCTION_ROUTE_EAF,     _D("2.140"), _D("2.170"),
                "Bars/rods stainless (EAF, official route)", _AVI),
 
-    DefaultSEE("7222", _S, None,                     _D("2.510"), _D("2.100"),
-               "Other bars/rods of stainless steel — world average", _AVI),
+    # 7222 11/19/20/40: 2.14/2.17; 7222 30 "Other bars and rods": 2.51/2.10
+    DefaultSEE("722230", _S, None,                   _D("2.510"), _D("2.100"),
+               "Other bars and rods, stainless (7222 30) — official default", _AVI),
+    DefaultSEE("7222", _S, None,                     _D("2.140"), _D("2.170"),
+               "Other bars/rods of stainless steel (7222 11/19/20/40) — official default", _AVI),
 
     DefaultSEE("7223", _S, None,                     _D("2.130"), _D("2.360"),
                "Wire of stainless steel — world average", _AVI),
 
     # Headings 7224–7229 — Other alloy steel
-    DefaultSEE("7224", _S, None,                     _D("2.200"), _D("0.400"),
-               "Other alloy steel ingots/semi-finished — world average", _AVI),
-    DefaultSEE("7225", _S, None,                     _D("2.200"), _D("0.400"),
-               "Flat-rolled alloy steel ≥600 mm — world average", _AVI),
-    DefaultSEE("7226", _S, None,                     _D("2.200"), _D("0.400"),
-               "Flat-rolled alloy steel <600 mm — world average", _AVI),
-    DefaultSEE("7227", _S, None,                     _D("2.200"), _D("0.400"),
-               "Bars/rods of other alloy steel, in coils — world average", _AVI),
-    DefaultSEE("7228", _S, None,                     _D("2.200"), _D("0.400"),
-               "Other bars/rods of other alloy steel — world average", _AVI),
-    DefaultSEE("7229", _S, None,                     _D("2.200"), _D("0.400"),
-               "Wire of other alloy steel — world average", _AVI),
+    # 7224 10 (ingots) and 7224 90 18/90 (forged): 2.41/0.79
+    # 7224 90 02/03/05/07/14/31/38 (other): 1.95/0.40
+    DefaultSEE("722410", _S, None,                   _D("2.410"), _D("0.790"),
+               "Other alloy steel ingots (7224 10) — official default", _AVI),
+    DefaultSEE("7224", _S, None,                     _D("1.950"), _D("0.400"),
+               "Other alloy steel, other sub-headings — official default", _AVI),
+
+    # 7225: grain-oriented/hot-rolled = 1.95/0.40; cold-rolled = 1.98/0.49; coated = 1.92/0.51
+    DefaultSEE("722519", _S, None,                   _D("1.980"), _D("0.490"),
+               "Flat-rolled alloy ≥600 mm, cold-rolled (7225 19 90, 7225 50) — official default", _AVI),
+    DefaultSEE("722591", _S, None,                   _D("1.920"), _D("0.510"),
+               "Flat-rolled alloy ≥600 mm, coated with zinc (7225 91, 7225 92) — official default", _AVI),
+    DefaultSEE("722592", _S, None,                   _D("1.920"), _D("0.510"),
+               "Flat-rolled alloy ≥600 mm, otherwise coated with zinc (7225 92) — official default", _AVI),
+    DefaultSEE("722599", _S, None,                   _D("1.920"), _D("0.510"),
+               "Flat-rolled alloy ≥600 mm, other coated (7225 99) — official default", _AVI),
+    DefaultSEE("7225", _S, None,                     _D("1.950"), _D("0.400"),
+               "Flat-rolled alloy steel ≥600 mm, hot-rolled — official default", _AVI),
+
+    # 7226: same structure as 7225
+    DefaultSEE("722692", _S, None,                   _D("1.980"), _D("0.490"),
+               "Flat-rolled alloy <600 mm, cold-rolled (7226 92 00) — official default", _AVI),
+    DefaultSEE("722699", _S, None,                   _D("1.920"), _D("0.510"),
+               "Flat-rolled alloy <600 mm, other (7226 99) — official default", _AVI),
+    DefaultSEE("7226", _S, None,                     _D("1.950"), _D("0.400"),
+               "Flat-rolled alloy steel <600 mm, hot-rolled — official default", _AVI),
+
+    # 7227: single value — 1.86/0.57
+    DefaultSEE("7227", _S, None,                     _D("1.860"), _D("0.570"),
+               "Bars/rods of other alloy steel, in coils — official default", _AVI),
+
+    # 7228: forged (7228 10 50, 7228 40) = 2.41/0.79; all other = 1.86/0.57
+    DefaultSEE("7228105", _S, None,                  _D("2.410"), _D("0.790"),
+               "Other bars/rods alloy steel, forged (7228 10 50) — official default", _AVI),
+    DefaultSEE("722840", _S, None,                   _D("2.410"), _D("0.790"),
+               "Other bars/rods alloy steel, forged (7228 40) — official default", _AVI),
+    DefaultSEE("7228", _S, None,                     _D("1.860"), _D("0.570"),
+               "Other bars/rods of other alloy steel — official default", _AVI),
+
+    # 7229: single value — 1.84/0.75
+    DefaultSEE("7229", _S, None,                     _D("1.840"), _D("0.750"),
+               "Wire of other alloy steel — official default", _AVI),
 
     # ── CHAPTER 73 — Downstream articles of iron or steel ─────────────────────
     # Per-heading official default values from Art. 4(3) table.
@@ -356,8 +423,24 @@ _ANNEX_VI: list[DefaultSEE] = [
                "Railway or tramway track construction material", _AVI),
     DefaultSEE("7303", _S, None,                     _D("2.210"), _D("0.350"),
                "Tubes, pipes and hollow profiles of cast iron", _AVI),
-    DefaultSEE("7304", _S, None,                     _D("1.860"), _D("0.350"),
-               "Tubes, pipes and hollow profiles, seamless (iron or steel)", _AVI),
+    # Stainless sub-headings (7304 11/22/24/41/49/51/59): 1.86/0.35
+    # Non-stainless sub-headings (7304 19/23/29/31/39/90): 1.93/0.29
+    DefaultSEE("730411", _S, None,                   _D("1.860"), _D("0.350"),
+               "Seamless tubes/pipes, stainless (7304 11) — official default", _AVI),
+    DefaultSEE("730422", _S, None,                   _D("1.860"), _D("0.350"),
+               "Seamless tubes/pipes, stainless drill pipe (7304 22) — official default", _AVI),
+    DefaultSEE("730424", _S, None,                   _D("1.860"), _D("0.350"),
+               "Seamless tubes/pipes, other stainless (7304 24) — official default", _AVI),
+    DefaultSEE("730441", _S, None,                   _D("1.860"), _D("0.350"),
+               "Seamless tubes/pipes, stainless cold-drawn (7304 41) — official default", _AVI),
+    DefaultSEE("730449", _S, None,                   _D("1.860"), _D("0.350"),
+               "Seamless tubes/pipes, stainless other (7304 49) — official default", _AVI),
+    DefaultSEE("730451", _S, None,                   _D("1.860"), _D("0.350"),
+               "Seamless tubes/pipes, stainless cold-drawn (7304 51) — official default", _AVI),
+    DefaultSEE("730459", _S, None,                   _D("1.860"), _D("0.350"),
+               "Seamless tubes/pipes, stainless other (7304 59) — official default", _AVI),
+    DefaultSEE("7304", _S, None,                     _D("1.930"), _D("0.290"),
+               "Seamless tubes, pipes and hollow profiles (non-stainless) — official default", _AVI),
     DefaultSEE("7305", _S, None,                     _D("2.030"), _D("0.360"),
                "Other tubes and pipes, welded, OD >406.4 mm", _AVI),
     DefaultSEE("7306", _S, None,                     _D("1.990"), _D("0.370"),
@@ -382,8 +465,12 @@ _ANNEX_VI: list[DefaultSEE] = [
                "Anchors, grapnels and parts thereof, of iron or steel", _AVI),
     DefaultSEE("7317", _S, None,                     _D("1.890"), _D("0.320"),
                "Nails, tacks, drawing pins, corrugated nails, staples (iron/steel)", _AVI),
-    DefaultSEE("731815", _S, None,                   _D("2.100"), _D("1.990"),
-               "Screws, bolts, nuts, washers — stainless steel (7318 15, 16)", _AVI),
+    # Stainless: 7318 12 10 and 7318 14 10 → 2.10/1.99
+    # 7318 15 "Other screws and bolts" is non-stainless → 1.89/0.32 (falls through to 7318 fallback)
+    DefaultSEE("73181210", _S, None,                 _D("2.100"), _D("1.990"),
+               "Screws — stainless steel (7318 12 10) — official default", _AVI),
+    DefaultSEE("73181410", _S, None,                 _D("2.100"), _D("1.990"),
+               "Screws — stainless steel (7318 14 10) — official default", _AVI),
     DefaultSEE("7318", _S, None,                     _D("1.890"), _D("0.320"),
                "Screws, bolts, nuts, coach screws, washers — non-stainless", _AVI),
     DefaultSEE("7319", _S, None,                     _D("1.890"), _D("0.320"),
@@ -426,10 +513,21 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("7603", _A, PRODUCTION_ROUTE_SECONDARY, _D("0.420"), _D("0.265"),
                "Aluminium powders and flakes, secondary — engineering estimate", _AVI),
 
+    # 7604 sub-headings: bars/rods=2.31/7.49; profiles=2.73/9.30; hollow profiles=2.73/9.30
+    DefaultSEE("76041010", _A, None,                   _D("2.310"), _D("7.490"),
+               "Aluminium bars/rods, not alloyed (7604 10 10) — official default", _AVI),
+    DefaultSEE("76041090", _A, None,                   _D("2.730"), _D("9.300"),
+               "Aluminium profiles, not alloyed (7604 10 90) — official default", _AVI),
+    DefaultSEE("76042110", _A, None,                   _D("2.730"), _D("9.300"),
+               "Aluminium hollow profiles of alloys (7604 21 00) — official default", _AVI),
+    DefaultSEE("76042910", _A, None,                   _D("2.310"), _D("7.490"),
+               "Aluminium bars/rods of alloys (7604 29 10) — official default", _AVI),
+    DefaultSEE("76042990", _A, None,                   _D("2.730"), _D("9.300"),
+               "Aluminium profiles of alloys (7604 29 90) — official default", _AVI),
     DefaultSEE("760410", _A, None,                     _D("2.310"), _D("7.490"),
-               "Aluminium bars/rods, not alloyed (7604 10) — world average", _AVI),
+               "Aluminium bars/rods, not alloyed (7604 10) — fallback", _AVI),
     DefaultSEE("760429", _A, None,                     _D("2.730"), _D("9.300"),
-               "Aluminium profiles, not alloyed (7604 29) — world average", _AVI),
+               "Aluminium profiles of alloys (7604 29) — fallback", _AVI),
     DefaultSEE("7604", _A, None,                       _D("2.510"), _D("8.300"),
                "Aluminium bars, rods and profiles — world average (fallback)", _AVI),
     DefaultSEE("7604", _A, PRODUCTION_ROUTE_SECONDARY, _D("0.410"), _D("0.260"),
@@ -451,8 +549,36 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("7608", _A, None,                       _D("2.730"), _D("9.300"),
                "Aluminium tubes and pipes — world average", _AVI),
 
+    # Headings 7609–7616 — these were absent and incorrectly falling back to the
+    # chapter-76 world average (2.36/8.14) instead of their published specific values.
+    DefaultSEE("7609", _A, None,                       _D("2.730"), _D("9.300"),
+               "Aluminium tube or pipe fittings (7609 00 00) — official default", _AVI),
+    DefaultSEE("7610", _A, None,                       _D("2.730"), _D("9.300"),
+               "Aluminium structures and parts (7610) — official default", _AVI),
+    DefaultSEE("7611", _A, None,                       _D("2.860"), _D("9.250"),
+               "Aluminium reservoirs, tanks, vats >300 L (7611 00 00) — official default", _AVI),
+    DefaultSEE("7612", _A, None,                       _D("2.860"), _D("9.250"),
+               "Aluminium casks, drums, cans and similar containers (7612) — official default", _AVI),
+    DefaultSEE("7613", _A, None,                       _D("2.860"), _D("9.250"),
+               "Aluminium containers for compressed or liquefied gas (7613 00 00) — official default", _AVI),
+    DefaultSEE("7614", _A, None,                       _D("2.310"), _D("7.490"),
+               "Stranded wire, cables, plaited bands of aluminium (7614) — official default", _AVI),
+    # 7616 sub-headings: 7616 10 00 / 7616 91 00 / 7616 99 90 = 2.86/9.25;
+    #                    7616 99 10 (Cast) = 2.48/8.40
+    DefaultSEE("76169910", _A, None,                   _D("2.480"), _D("8.400"),
+               "Other aluminium articles — Cast (7616 99 10) — official default", _AVI),
+    DefaultSEE("761699", _A, None,                     _D("2.860"), _D("9.250"),
+               "Other aluminium articles (7616 99 90) — official default", _AVI),
+    DefaultSEE("761691", _A, None,                     _D("2.860"), _D("9.250"),
+               "Cloth, grill, netting and fencing of aluminium wire (7616 91 00) — official default", _AVI),
+    DefaultSEE("761610", _A, None,                     _D("2.860"), _D("9.250"),
+               "Aluminium nails, screws, bolts, nuts (7616 10 00) — official default", _AVI),
+    DefaultSEE("761610", _A, PRODUCTION_ROUTE_SECONDARY, _D("0.420"), _D("0.265"),
+               "Aluminium nails, screws, bolts, nuts (7616 10 00), secondary — engineering estimate", _AVI),
+    DefaultSEE("7616", _A, None,                       _D("2.860"), _D("9.250"),
+               "Other articles of aluminium (7616) — official default", _AVI),
     DefaultSEE("76", _A, None,                         _D("2.360"), _D("8.140"),
-               "Other aluminium articles Ch.76 — world average (fallback)", _AVI),
+               "Other aluminium articles Ch.76 — world average (fallback for unlisted headings)", _AVI),
     DefaultSEE("76", _A, PRODUCTION_ROUTE_SECONDARY,   _D("0.420"), _D("0.265"),
                "Other aluminium articles Ch.76, secondary — engineering estimate", _AVI),
 
@@ -475,24 +601,24 @@ _ANNEX_VI: list[DefaultSEE] = [
                "Urea (CO2 from process + upstream gas)", _AVI),
     DefaultSEE("31022100", _F, None, _D("0.860"), _D("0.090"),
                "Ammonium sulphate", _AVI),
-    DefaultSEE("31022900", _F, None, _D("0.860"), _D("0.090"),
-               "Double salts / mixtures of ammonium sulphate", _AVI),
+    DefaultSEE("31022900", _F, None, _D("1.540"), _D("0.100"),
+               "Double salts and mixtures of ammonium sulphate and ammonium nitrate", _AVI),
     DefaultSEE("31023010", _F, None, _D("2.320"), _D("0.070"),
                "Ammonium nitrate in aqueous solution (N2O included)", _AVI),
     DefaultSEE("31023090", _F, None, _D("2.320"), _D("0.070"),
                "Ammonium nitrate, other forms (N2O included)", _AVI),
-    DefaultSEE("31024010", _F, None, _D("1.444"), _D("0.060"),
+    DefaultSEE("31024010", _F, None, _D("1.770"), _D("0.060"),
                "Ammonium nitrate + calcium carbonate mix", _AVI),
-    DefaultSEE("31024090", _F, None, _D("1.444"), _D("0.060"),
+    DefaultSEE("31024090", _F, None, _D("1.770"), _D("0.060"),
                "Other ammonium nitrate mixtures", _AVI),
     DefaultSEE("31025000", _F, None, _D("3.990"), _D("0.070"),
                "Sodium nitrate", _AVI),
-    DefaultSEE("31026000", _F, None, _D("1.444"), _D("0.060"),
+    DefaultSEE("31026000", _F, None, _D("1.870"), _D("0.080"),
                "Double salts of calcium nitrate and ammonium nitrate", _AVI),
-    DefaultSEE("31028000", _F, None, _D("1.780"), _D("0.120"),
+    DefaultSEE("31028000", _F, None, _D("1.280"), _D("0.060"),
                "Urea + ammonium nitrate solution (UAN)", _AVI),
-    DefaultSEE("31029000", _F, None, _D("2.680"), _D("0.140"),
-               "Other nitrogenous fertilisers (default = ammonia equivalent)", _AVI),
+    DefaultSEE("31029000", _F, None, _D("1.650"), _D("0.100"),
+               "Other nitrogenous fertilisers — weighted average (2019 EU imports)", _AVI),
 
     # Heading 3105 — Compound / NPK fertilisers
     DefaultSEE("31051000", _F, None, _D("0.940"), _D("0.080"),
