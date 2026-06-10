@@ -1,4 +1,4 @@
-// Pure header validation — no DB access, no side effects.
+// Pure header validation  -  no DB access, no side effects.
 // Used by api-key-auth.ts and testable in isolation.
 
 export interface HeaderValidationResult {

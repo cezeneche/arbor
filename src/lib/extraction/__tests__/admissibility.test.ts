@@ -33,7 +33,7 @@ function fullElectricityBillFields(overrides: Record<string, string | null> = {}
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — electricity bill', () => {
+describe('evaluateAdmissibility  -  electricity bill', () => {
   it('ACTUAL read with all compulsory fields → Tier A', () => {
     const result = evaluateAdmissibility(
       'ELECTRICITY_BILL',
@@ -68,7 +68,7 @@ describe('evaluateAdmissibility — electricity bill', () => {
   })
 })
 
-describe('evaluateAdmissibility — customs declaration / CBAM', () => {
+describe('evaluateAdmissibility  -  customs declaration / CBAM', () => {
   it('6-digit commodity code → CRITICAL CODE_INSUFFICIENT flag', () => {
     const fields = [
       field('importer_name', 'Acme Ltd'),
@@ -104,7 +104,7 @@ describe('evaluateAdmissibility — customs declaration / CBAM', () => {
   })
 })
 
-describe('evaluateAdmissibility — CBAM declaration', () => {
+describe('evaluateAdmissibility  -  CBAM declaration', () => {
   it('TIER_1 without supporting_data_reference → CRITICAL flag', () => {
     const fields = [
       field('declarant_name', 'Acme Ltd'),
@@ -150,7 +150,7 @@ describe('evaluateAdmissibility — CBAM declaration', () => {
   })
 })
 
-describe('evaluateAdmissibility — certificates', () => {
+describe('evaluateAdmissibility  -  certificates', () => {
   it('expired certificate → CRITICAL EXPIRED_CERTIFICATE flag', () => {
     const fields = [
       field('certificate_holder_name', 'Acme Ltd'),
@@ -194,7 +194,7 @@ describe('evaluateAdmissibility — certificates', () => {
   })
 })
 
-describe('evaluateAdmissibility — supplier questionnaire', () => {
+describe('evaluateAdmissibility  -  supplier questionnaire', () => {
   it('always returns Tier B regardless of field completeness', () => {
     const fields = [
       field('supplier_name', 'Supplier Co'),
@@ -209,7 +209,7 @@ describe('evaluateAdmissibility — supplier questionnaire', () => {
   })
 })
 
-describe('evaluateAdmissibility — low confidence', () => {
+describe('evaluateAdmissibility  -  low confidence', () => {
   it('field with confidence below 0.85 → WARNING flag', () => {
     const fields = [
       ...fullElectricityBillFields(),
@@ -240,7 +240,7 @@ function fullDeliveryNoteFields(
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — delivery note (3.2)', () => {
+describe('evaluateAdmissibility  -  delivery note (3.2)', () => {
   it('all compulsory fields → Tier A', () => {
     // Admissibility spec §3.2: all compulsory fields with ≥1 line item → Tier A
     const result = evaluateAdmissibility('DELIVERY_NOTE', fullDeliveryNoteFields(), 'Acme Ltd')
@@ -260,7 +260,7 @@ describe('evaluateAdmissibility — delivery note (3.2)', () => {
   })
 
   it('empty line_items array → Tier B with CRITICAL flag', () => {
-    // Admissibility spec §3.2: "Compulsory — min 1 item"
+    // Admissibility spec §3.2: "Compulsory  -  min 1 item"
     const fields = fullDeliveryNoteFields({ line_items: '[]' })
     const result = evaluateAdmissibility('DELIVERY_NOTE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
@@ -288,7 +288,7 @@ function fullCustomsDeclarationFields(
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — customs declaration (3.3)', () => {
+describe('evaluateAdmissibility  -  customs declaration (3.3)', () => {
   it('all compulsory fields, 8-digit CN code → Tier A', () => {
     // Admissibility spec §3.3: all compulsory fields + valid 8-digit code → Tier A
     const result = evaluateAdmissibility(
@@ -364,7 +364,7 @@ function fullProcessDataSheetFields(
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — process data sheet (2.4)', () => {
+describe('evaluateAdmissibility  -  process data sheet (2.4)', () => {
   it('all compulsory fields with valid inputs and outputs → Tier A', () => {
     // Admissibility spec §2.4: all compulsory fields with ≥1 input and ≥1 output → Tier A
     const result = evaluateAdmissibility(
@@ -388,7 +388,7 @@ describe('evaluateAdmissibility — process data sheet (2.4)', () => {
   })
 
   it('empty inputs array → Tier B with CRITICAL flag', () => {
-    // Admissibility spec §2.4: "Compulsory — min 1 input"
+    // Admissibility spec §2.4: "Compulsory  -  min 1 input"
     const fields = fullProcessDataSheetFields({ inputs: '[]' })
     const result = evaluateAdmissibility('PROCESS_DATA_SHEET', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
@@ -397,7 +397,7 @@ describe('evaluateAdmissibility — process data sheet (2.4)', () => {
   })
 
   it('empty outputs array → Tier B with CRITICAL flag', () => {
-    // Admissibility spec §2.4: "Compulsory — min 1 output"
+    // Admissibility spec §2.4: "Compulsory  -  min 1 output"
     const fields = fullProcessDataSheetFields({ outputs: '[]' })
     const result = evaluateAdmissibility('PROCESS_DATA_SHEET', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
@@ -452,7 +452,7 @@ function fullFreightInvoiceFields(
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — freight invoice (3.1)', () => {
+describe('evaluateAdmissibility  -  freight invoice (3.1)', () => {
   it('all compulsory fields, SEA mode → Tier A', () => {
     // Admissibility spec §3.1: all compulsory fields → Tier A for non-MULTIMODAL
     const result = evaluateAdmissibility(
@@ -526,7 +526,7 @@ function fullMaterialIntakeFields(
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — material intake record (2.2)', () => {
+describe('evaluateAdmissibility  -  material intake record (2.2)', () => {
   it('all compulsory fields present → Tier A', () => {
     // Admissibility spec §2.2: all compulsory fields sufficient for Tier A
     const result = evaluateAdmissibility('MATERIAL_INTAKE', fullMaterialIntakeFields(), 'Acme Ltd')
@@ -585,7 +585,7 @@ function fullGasBillFields(overrides: Record<string, string | null> = {}): Extra
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — gas bill (1.2)', () => {
+describe('evaluateAdmissibility  -  gas bill (1.2)', () => {
   it('ACTUAL read with all compulsory fields → Tier A', () => {
     // Admissibility spec §1.2: all compulsory fields, read_type = ACTUAL → Tier A
     const result = evaluateAdmissibility('GAS_BILL', fullGasBillFields(), 'Acme Ltd')
@@ -651,12 +651,12 @@ function fullFuelReceiptFields(
     supplier_name: 'Shell UK',
     receipt_or_invoice_number: 'SHL-2024-001',
     use_type: 'STATIONARY_COMBUSTION',
-    site_or_vehicle_reference: 'Sheffield Steelworks — Boiler Room 1',
+    site_or_vehicle_reference: 'Sheffield Steelworks  -  Boiler Room 1',
   }
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — fuel purchase receipt (1.3)', () => {
+describe('evaluateAdmissibility  -  fuel purchase receipt (1.3)', () => {
   it('all compulsory fields present → Tier A', () => {
     // Admissibility spec §1.3: all compulsory fields sufficient for Tier A
     const result = evaluateAdmissibility('FUEL_RECEIPT', fullFuelReceiptFields(), 'Acme Ltd')
@@ -728,7 +728,7 @@ function fullProductionLogFields(
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — production log (2.1)', () => {
+describe('evaluateAdmissibility  -  production log (2.1)', () => {
   it('all compulsory fields → Tier A', () => {
     // Admissibility spec §2.1: all compulsory fields sufficient for Tier A
     const result = evaluateAdmissibility('PRODUCTION_LOG', fullProductionLogFields(), 'Acme Ltd')
@@ -799,7 +799,7 @@ function fullSupplierInvoiceFields(
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — supplier invoice (4.1)', () => {
+describe('evaluateAdmissibility  -  supplier invoice (4.1)', () => {
   it('all compulsory fields with valid line items → Tier A', () => {
     // Admissibility spec §4.1: all compulsory fields with ≥1 line item → Tier A
     const result = evaluateAdmissibility('SUPPLIER_INVOICE', fullSupplierInvoiceFields(), 'Acme Ltd')
@@ -819,7 +819,7 @@ describe('evaluateAdmissibility — supplier invoice (4.1)', () => {
   })
 
   it('empty line_items array → Tier B with CRITICAL flag', () => {
-    // Admissibility spec §4.1: "Compulsory — min 1 line"
+    // Admissibility spec §4.1: "Compulsory  -  min 1 line"
     const fields = fullSupplierInvoiceFields({ line_items: '[]' })
     const result = evaluateAdmissibility('SUPPLIER_INVOICE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
@@ -854,7 +854,7 @@ function fullBomFields(overrides: Record<string, string | null> = {}): Extracted
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — bill of materials (2.3)', () => {
+describe('evaluateAdmissibility  -  bill of materials (2.3)', () => {
   it('all compulsory fields with valid line items → Tier A', () => {
     // Admissibility spec §2.3: all compulsory fields with ≥1 line item → Tier A
     const result = evaluateAdmissibility('BILL_OF_MATERIALS', fullBomFields(), 'Acme Ltd')
@@ -908,7 +908,7 @@ function fullCarbonFootprintFields(overrides: Record<string, string | null> = {}
     entity_name: 'Acme Ltd',
     report_title: 'Carbon Footprint Report FY2024',
     methodology: 'GHG Protocol Corporate Standard',
-    system_boundary: 'Operational control — Scope 1 and 2',
+    system_boundary: 'Operational control  -  Scope 1 and 2',
     data_year: '2024',
     publication_date: '2025-03-31',
     total_co2e: '12500',
@@ -919,7 +919,7 @@ function fullCarbonFootprintFields(overrides: Record<string, string | null> = {}
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — carbon footprint report', () => {
+describe('evaluateAdmissibility  -  carbon footprint report', () => {
   // [GHG Protocol Corporate Standard Chapter 5] all compulsory fields required for Tier A
   it('all compulsory fields, assurance_level NONE → Tier A', () => {
     const result = evaluateAdmissibility('CARBON_FOOTPRINT_REPORT', fullCarbonFootprintFields(), 'Acme Ltd')
@@ -955,7 +955,7 @@ describe('evaluateAdmissibility — carbon footprint report', () => {
     expect(flag?.severity).toBe('WARNING')
   })
 
-  it('assurance_level NONE — assurance_body not required → no MISSING_CONDITIONAL_FIELD', () => {
+  it('assurance_level NONE  -  assurance_body not required → no MISSING_CONDITIONAL_FIELD', () => {
     const result = evaluateAdmissibility('CARBON_FOOTPRINT_REPORT', fullCarbonFootprintFields(), 'Acme Ltd')
     expect(result.flags.find((f) => f.fieldName === 'assurance_body' && f.flagType === 'MISSING_CONDITIONAL_FIELD')).toBeUndefined()
   })
@@ -988,7 +988,7 @@ function fullChainOfCustodyFields(overrides: Record<string, string | null> = {})
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — chain of custody', () => {
+describe('evaluateAdmissibility  -  chain of custody', () => {
   // [Admissibility Spec §8.3] custody_stages must contain at least 2 entries (origin + destination)
   it('two custody stages → Tier A', () => {
     const result = evaluateAdmissibility('CHAIN_OF_CUSTODY', fullChainOfCustodyFields(), 'Acme Ltd')
@@ -1003,7 +1003,7 @@ describe('evaluateAdmissibility — chain of custody', () => {
     expect(result.flags.find((f) => f.fieldName === 'custody_stages' && f.severity === 'CRITICAL')).toBeDefined()
   })
 
-  // [Admissibility Spec §8.3] fewer than 2 stages cannot establish chain of custody — not admissible
+  // [Admissibility Spec §8.3] fewer than 2 stages cannot establish chain of custody  -  not admissible
   it('custody_stages with only 1 entry → CRITICAL COMPLETENESS_GAP → Tier B', () => {
     const oneStage = JSON.stringify([
       { stage: 1, entity: 'Acme Ltd', location: 'Rotherham', date: '2024-01-15' },

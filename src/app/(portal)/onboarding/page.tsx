@@ -68,7 +68,7 @@ export default async function OnboardingPage({
         >
           {customerName
             ? `${customerName} has asked for emissions data related to your supplies. Arbor helps you respond using documents you already have.`
-            : 'Arbor organises your business documents so you can answer customer data requests quickly and accurately. Your customers may ask you for this data — having it ready means you can respond in minutes instead of days.'}
+            : 'Arbor organises your business documents so you can answer customer data requests quickly and accurately. Your customers may ask you for this data. Having it ready means you can respond in minutes instead of days.'}
         </p>
 
         <div
@@ -93,7 +93,7 @@ export default async function OnboardingPage({
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
-              { n: '1', text: 'Upload the documents you already have — invoices, energy bills, delivery notes, production records.' },
+              { n: '1', text: 'Upload the documents you already have: invoices, energy bills, delivery notes, production records.' },
               { n: '2', text: 'Arbor reads them and stores the information. You confirm anything it is not sure about.' },
               { n: '3', text: 'Share your data when a customer asks. It will already be there.' },
             ].map(step => (

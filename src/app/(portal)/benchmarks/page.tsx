@@ -113,7 +113,7 @@ export default function BenchmarksPage() {
   }
 
   return (
-    <div style={{ maxWidth: '860px' }}>
+    <div>
       <div style={{ marginBottom: spacing[5] }}>
         <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
           Sector benchmarks
@@ -152,11 +152,11 @@ export default function BenchmarksPage() {
       )}
 
       {!loading && data && data.benchmarks.length === 0 && (
-        <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[5], textAlign: 'center' }}>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[2]}`, letterSpacing: typography.tracking.tight }}>
+        <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[3] }}>
+          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: typography.tracking.tight }}>
             No benchmarks available yet
           </p>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0, lineHeight: '1.6', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto' }}>
+          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0, lineHeight: '1.6' }}>
             Benchmarks appear once at least {data.floor} businesses in the same sector have submitted
             verified records for the same field. Currently {data.optedInEntities} {data.optedInEntities === 1 ? 'business has' : 'businesses have'} opted in to data sharing.
             Enable data sharing in Settings to contribute to sector benchmarks.

@@ -1,6 +1,6 @@
-// Layer 3 — Unit Conversion. Pure functions only — no DB reads, no API calls, no side effects.
+// Layer 3  -  Unit Conversion. Pure functions only  -  no DB reads, no API calls, no side effects.
 // Converts stored SI values to recipient-requested units on output. Never modifies stored data.
-// PRD Section 14 — supported conversion dimensions and constraints.
+// PRD Section 14  -  supported conversion dimensions and constraints.
 
 // ── TO-SI (used at ingestion time, Layer 2) ───────────────────────────────────
 

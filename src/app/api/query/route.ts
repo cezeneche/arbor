@@ -4,8 +4,8 @@ import { authenticateApiKey } from '@/lib/api-key-auth'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
-// Layer 3 — Relational Query Engine. Read-only. No modification of stored data.
-// PRD Section 15 — entity, supply-chain, gap, and historical query types.
+// Layer 3  -  Relational Query Engine. Read-only. No modification of stored data.
+// PRD Section 15  -  entity, supply-chain, gap, and historical query types.
 // Trust tier is always visible on every record in every result.
 
 type QueryType = 'entity' | 'supply_chain' | 'gap' | 'historical'
@@ -298,7 +298,7 @@ async function handleGapQuery(params: {
 
 // ── HISTORICAL QUERY ──────────────────────────────────────────────────────────
 // Returns period-over-period values for a given domain+fieldName.
-// Presented as ordered data points — no aggregation or calculation applied.
+// Presented as ordered data points  -  no aggregation or calculation applied.
 
 async function handleHistoricalQuery(params: {
   entityId: string

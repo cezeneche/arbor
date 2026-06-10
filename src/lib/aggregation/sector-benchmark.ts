@@ -1,6 +1,6 @@
-// Layer 2 — pure function. No DB reads. No API calls. No side effects.
+// Layer 2  -  pure function. No DB reads. No API calls. No side effects.
 // Sector benchmark computation from anonymised, multi-entity Tier A dataset.
-// [PRD §15.2 — Aggregated and anonymised benchmark product]
+// [PRD §15.2  -  Aggregated and anonymised benchmark product]
 
 export const BENCHMARK_MIN_ENTITIES = 10
 
@@ -73,7 +73,7 @@ export function computeSectorBenchmarks(
 
     const entityCount = byEntity.size
 
-    // Anonymisation gate — enforced here, not just at the API layer
+    // Anonymisation gate  -  enforced here, not just at the API layer
     if (!validateAnonymisation(entityCount)) continue
 
     const entityValues = Array.from(byEntity.values()).map(

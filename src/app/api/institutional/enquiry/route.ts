@@ -1,5 +1,5 @@
-// Layer 2 — write path for institutional partner expressions of interest.
-// Public endpoint — no auth required. Writes to InstitutionalEnquiry table only.
+// Layer 2  -  write path for institutional partner expressions of interest.
+// Public endpoint  -  no auth required. Writes to InstitutionalEnquiry table only.
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 

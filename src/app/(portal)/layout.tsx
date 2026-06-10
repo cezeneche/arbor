@@ -12,21 +12,26 @@ export default async function PortalLayout({ children }: { children: React.React
 
   let entityName = 'Your organisation'
   let entityType: 'SUPPLIER' | 'BUYER' = 'SUPPLIER'
+  let recordCount: number | undefined
   if (entityId) {
-    const entity = await prisma.entity.findUnique({
-      where: { id: entityId },
-      select: { legalName: true, entityType: true },
-    })
+    const [entity, count] = await Promise.all([
+      prisma.entity.findUnique({
+        where: { id: entityId },
+        select: { legalName: true, entityType: true },
+      }),
+      prisma.dataRecord.count({ where: { entityId, isActive: true } }),
+    ])
     if (entity) {
       entityName = entity.legalName
       entityType = entity.entityType as 'SUPPLIER' | 'BUYER'
     }
+    recordCount = count
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: colours.background }}>
-      <Nav entityName={entityName} entityType={entityType} />
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 32px' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: colours.background }}>
+      <Nav entityName={entityName} entityType={entityType} recordCount={recordCount} />
+      <main style={{ flex: 1, minWidth: 0, padding: '40px 40px' }}>
         {children}
       </main>
     </div>

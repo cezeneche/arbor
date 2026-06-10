@@ -146,7 +146,7 @@ export default function SubmitPage() {
             Done. Your data has been saved.
           </h1>
           <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[3]}` }}>
-            {request?.buyerName} will be able to see the information you entered. It has been recorded as Declared — you can improve its status at any time by uploading a supporting document.
+            {request?.buyerName} will be able to see the information you entered. It has been recorded as Declared. You can improve its status at any time by uploading a supporting document.
           </p>
           <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
             You can close this window.
@@ -198,7 +198,7 @@ export default function SubmitPage() {
             {request.buyerName} needs some data from you
           </h1>
           <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[3]}`, lineHeight: '1.6' }}>
-            They need your {DOMAIN_LABELS[request.domain] ?? request.domain} figures for {periodLabel}. Enter the values below — it should take about five minutes.
+            They need your {DOMAIN_LABELS[request.domain] ?? request.domain} figures for {periodLabel}. Enter the values below. It should take about five minutes.
           </p>
 
           {request.notes && (

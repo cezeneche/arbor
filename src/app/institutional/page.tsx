@@ -167,7 +167,7 @@ export default function InstitutionalPage() {
           {[
             {
               title: 'Document-backed records',
-              body: 'Every data point is tied to a source document — electricity bills, production logs, freight invoices, certificates. The source text is stored alongside the value so any claim can be traced.',
+              body: 'Every data point is tied to a source document: electricity bills, production logs, freight invoices, certificates. The source text is stored alongside the value so any claim can be traced.',
             },
             {
               title: 'Sector benchmarks',
@@ -458,7 +458,7 @@ export default function InstitutionalPage() {
             margin: `${spacing[5]} 0 0`,
           }}
         >
-          Arbor — certified operational data repository
+          Arbor, certified operational data repository
         </p>
       </main>
     </div>

@@ -1,4 +1,4 @@
-// Layer 2 — updates entity's allowBenchmarkAggregation flag.
+// Layer 2  -  updates entity's allowBenchmarkAggregation flag.
 // Logs consent grant/revocation in the audit chain for traceability (PRD §19.3).
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'

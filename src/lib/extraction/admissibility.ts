@@ -158,7 +158,7 @@ export function evaluateAdmissibility(
           })
         }
       } catch {
-        // non-JSON string — treated as non-empty, no flag
+        // non-JSON string  -  treated as non-empty, no flag
       }
     }
   }
@@ -178,7 +178,7 @@ export function evaluateAdmissibility(
           })
         }
       } catch {
-        // non-JSON string — treated as a non-empty value, no flag
+        // non-JSON string  -  treated as a non-empty value, no flag
       }
     }
   }
@@ -198,7 +198,7 @@ export function evaluateAdmissibility(
           })
         }
       } catch {
-        // non-JSON string — treated as non-empty, no flag
+        // non-JSON string  -  treated as non-empty, no flag
       }
     }
   }
@@ -218,7 +218,7 @@ export function evaluateAdmissibility(
           })
         }
       } catch {
-        // non-JSON string — treated as non-empty, no flag
+        // non-JSON string  -  treated as non-empty, no flag
       }
     }
   }
@@ -239,7 +239,7 @@ export function evaluateAdmissibility(
             })
           }
         } catch {
-          // non-JSON string — treated as a non-empty value, no flag
+          // non-JSON string  -  treated as a non-empty value, no flag
         }
       }
     }
@@ -281,7 +281,7 @@ export function evaluateAdmissibility(
         flags.push({
           fieldName: f,
           flagType: 'COMPLETENESS_GAP',
-          message: `source is OTHER — full citation required. '${f}' is absent. Factor is unverifiable without it.`,
+          message: `source is OTHER  -  full citation required. '${f}' is absent. Factor is unverifiable without it.`,
           severity: 'CRITICAL',
         })
       }
@@ -295,11 +295,11 @@ export function evaluateAdmissibility(
       flags.push({
         fieldName: 'assurance_body',
         flagType: 'MISSING_CONDITIONAL_FIELD',
-        message: `assurance_level is ${level} — assurance_body is required. The verifying organisation must be named for the assurance claim to be admissible.`,
+        message: `assurance_level is ${level}  -  assurance_body is required. The verifying organisation must be named for the assurance claim to be admissible.`,
         severity: 'WARNING',
       })
     }
-    // At least one emissions or resource figure is expected (not CRITICAL — report may exist without quantitative data)
+    // At least one emissions or resource figure is expected (not CRITICAL  -  report may exist without quantitative data)
     const quantFields = ['scope_1_co2e', 'scope_2_co2e', 'scope_3_co2e', 'total_energy_gwh', 'water_withdrawal_m3', 'waste_generated_tonnes']
     const hasAny = quantFields.some(f => fieldValues[f] && fieldValues[f] !== '')
     if (!hasAny) {

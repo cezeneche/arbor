@@ -65,7 +65,7 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
             where: { id: field.id },
             data: {
               flagged: true,
-              flagReason: `Certificate expires ${field.rawValue} — within 30 days. Renew before reporting period end.`,
+              flagReason: `Certificate expires ${field.rawValue}. Within 30 days. Renew before reporting period end.`,
             },
           })
         })

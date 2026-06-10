@@ -7,7 +7,7 @@ const baseInput = {
   fieldName: 'shipment_weight',
 }
 
-describe('crossValidate — pure function', () => {
+describe('crossValidate  -  pure function', () => {
   it('passes when values are within tolerance', () => {
     const result = crossValidate({ ...baseInput, valueA: 1000, valueB: 1010, tolerancePercent: 2 })
     expect(result.passed).toBe(true)

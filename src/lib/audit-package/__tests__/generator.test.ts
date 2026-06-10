@@ -114,7 +114,7 @@ describe('generateAuditPackage', () => {
     expect(tierBRecord?.trustTier).toBe('B')
   })
 
-  it('is a pure function — same inputs always return same outputs', () => {
+  it('is a pure function  -  same inputs always return same outputs', () => {
     const a = generateAuditPackage(BASE_INPUT)
     const b = generateAuditPackage(BASE_INPUT)
     expect(a.summary.totalRecords).toBe(b.summary.totalRecords)

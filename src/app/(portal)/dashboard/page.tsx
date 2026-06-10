@@ -3,7 +3,11 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
-import { computeReadinessScore } from '@/lib/readiness-score'
+
+const DOMAINS = [
+  'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
+  'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
+] as const
 
 const DOMAIN_LABELS: Record<string, string> = {
   ENERGY: 'Energy',
@@ -16,10 +20,20 @@ const DOMAIN_LABELS: Record<string, string> = {
   COMPLIANCE: 'Compliance',
 }
 
-const TIER_LABELS: Record<string, string> = {
-  A: 'Verified',
-  B: 'Declared',
-  C: 'Estimated',
+const DOC_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Queued',
+  EXTRACTING: 'Processing',
+  REVIEW_REQUIRED: 'Review required',
+  ACCEPTED: 'Accepted',
+  REJECTED: 'Failed',
+}
+
+const DOC_STATUS_COLOURS: Record<string, string> = {
+  PENDING: colours.textTertiary,
+  EXTRACTING: colours.navy,
+  REVIEW_REQUIRED: colours.amber,
+  ACCEPTED: colours.green,
+  REJECTED: colours.red,
 }
 
 const TIER_COLOURS: Record<string, string> = {
@@ -28,20 +42,29 @@ const TIER_COLOURS: Record<string, string> = {
   C: colours.textTertiary,
 }
 
-const DOC_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Reading',
-  EXTRACTING: 'Reading',
-  REVIEW_REQUIRED: 'Needs your attention',
-  ACCEPTED: 'Ready',
-  REJECTED: 'Could not read',
+const TIER_LABELS: Record<string, string> = {
+  A: 'Verified',
+  B: 'Declared',
+  C: 'Estimated',
 }
 
-const DOC_STATUS_COLOURS: Record<string, string> = {
-  PENDING: colours.textTertiary,
-  EXTRACTING: colours.textTertiary,
-  REVIEW_REQUIRED: colours.amber,
-  ACCEPTED: colours.green,
-  REJECTED: colours.red,
+const colStyle = {
+  padding: '10px 14px',
+  fontSize: typography.sizes.xs,
+  fontWeight: typography.weights.medium,
+  color: colours.textSecondary,
+  letterSpacing: typography.tracking.wider,
+  textTransform: 'uppercase' as const,
+  textAlign: 'left' as const,
+  whiteSpace: 'nowrap' as const,
+}
+
+const cellStyle = {
+  padding: '10px 14px',
+  fontSize: typography.sizes.sm,
+  fontWeight: typography.weights.light,
+  color: colours.textPrimary,
+  fontVariantNumeric: 'tabular-nums' as const,
 }
 
 export default async function DashboardPage() {
@@ -50,66 +73,48 @@ export default async function DashboardPage() {
 
   const entityId = (session.user as Record<string, unknown>).entityId as string
 
-  const [recentDocuments, pendingRequests, recentRecordGroups, allRecords] = await Promise.all([
+  const [recentDocuments, pendingRequests, allRecords] = await Promise.all([
     prisma.document.findMany({
       where: { entityId },
       orderBy: { submittedAt: 'desc' },
-      take: 10,
+      take: 8,
     }),
     prisma.dataRequest.findMany({
       where: { supplierEntityId: entityId, status: 'PENDING' },
       include: { buyerEntity: { select: { legalName: true } } },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.dataRecord.groupBy({
-      by: ['domain', 'trustTier', 'periodStart', 'periodEnd'],
-      where: { entityId, isActive: true },
-      _count: { id: true },
-      orderBy: [{ periodEnd: 'desc' }],
-      take: 20,
-    }),
     prisma.dataRecord.findMany({
       where: { entityId, isActive: true },
-      select: { id: true, domain: true, trustTier: true },
+      select: { domain: true, trustTier: true },
     }),
   ])
 
-  const readiness = computeReadinessScore({ records: allRecords.map(r => ({ id: r.id, domain: r.domain, trustTier: r.trustTier as 'A' | 'B' | 'C' })) })
-  const readinessColour = readiness.interpretation === 'HIGH' ? colours.green : readiness.interpretation === 'MEDIUM' ? colours.amber : colours.red
+  type DomainRow = { domain: string; A: number; B: number; C: number; total: number }
+  const matrix: DomainRow[] = DOMAINS.map(domain => {
+    const rows = allRecords.filter(r => r.domain === domain)
+    const A = rows.filter(r => r.trustTier === 'A').length
+    const B = rows.filter(r => r.trustTier === 'B').length
+    const C = rows.filter(r => r.trustTier === 'C').length
+    return { domain, A, B, C, total: A + B + C }
+  }).filter(r => r.total > 0)
 
-  const sectionLabel = {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
-    color: colours.textSecondary,
-    letterSpacing: typography.tracking.wider,
-    textTransform: 'uppercase' as const,
-    margin: `0 0 ${spacing[2]}`,
-  }
-
-  // Collapse record groups into period buckets: { period -> { domain -> tier } }
-  type PeriodEntry = { domain: string; tier: string; count: number; periodStart: Date; periodEnd: Date }
-  const periodMap = new Map<string, PeriodEntry[]>()
-  for (const g of recentRecordGroups) {
-    const key = `${g.periodStart.toISOString()}__${g.periodEnd.toISOString()}`
-    const existing = periodMap.get(key) ?? []
-    existing.push({ domain: g.domain, tier: g.trustTier, count: g._count.id, periodStart: g.periodStart, periodEnd: g.periodEnd })
-    periodMap.set(key, existing)
-  }
-
-  const periodEntries = Array.from(periodMap.entries())
-    .map(([, entries]) => entries)
-    .sort((a, b) => b[0].periodEnd.getTime() - a[0].periodEnd.getTime())
-    .slice(0, 6)
+  const totalRecords = allRecords.length
+  const verifiedCount = allRecords.filter(r => r.trustTier === 'A').length
+  const declaredCount = allRecords.filter(r => r.trustTier === 'B').length
+  const estimatedCount = allRecords.filter(r => r.trustTier === 'C').length
+  const verifiedPct = totalRecords > 0 ? Math.round((verifiedCount / totalRecords) * 100) : 0
+  const openRequestsCount = pendingRequests.length
+  const reviewCount = recentDocuments.filter(d => d.status === 'REVIEW_REQUIRED').length
 
   return (
     <div>
-      {/* Header */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: spacing[5],
+          alignItems: 'center',
+          marginBottom: spacing[4],
         }}
       >
         <h1
@@ -121,327 +126,234 @@ export default async function DashboardPage() {
             letterSpacing: typography.tracking.tight,
           }}
         >
-          Your data
+          Overview
         </h1>
         <Link
           href="/upload"
           style={{
-            padding: '12px 24px',
+            padding: '10px 20px',
             backgroundColor: colours.navy,
             color: colours.surface,
-            fontSize: typography.sizes.base,
+            fontSize: typography.sizes.sm,
             fontWeight: typography.weights.medium,
             borderRadius: '4px',
             textDecoration: 'none',
             letterSpacing: typography.tracking.wide,
-            display: 'inline-block',
           }}
         >
           Upload documents
         </Link>
       </div>
 
-      {/* ── READINESS SCORE (Phase 2 — shown once records exist) ────────────── */}
-      {allRecords.length > 0 && (
-        <section style={{ marginBottom: spacing[5] }}>
+      {/* Stats row */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: spacing[4], flexWrap: 'wrap' as const }}>
+        {[
+          { label: 'Total records', value: totalRecords.toLocaleString(), sub: undefined, col: undefined },
+          {
+            label: 'Verified',
+            value: `${verifiedPct}%`,
+            sub: `${verifiedCount.toLocaleString()} of ${totalRecords.toLocaleString()}`,
+            col: verifiedPct >= 75 ? colours.green : verifiedPct >= 40 ? colours.amber : totalRecords > 0 ? colours.red : undefined,
+          },
+          { label: 'Domains', value: String(matrix.length), sub: `of ${DOMAINS.length} total`, col: undefined },
+          {
+            label: 'Open requests',
+            value: String(openRequestsCount),
+            sub: openRequestsCount > 0 ? 'awaiting response' : 'none pending',
+            col: openRequestsCount > 0 ? colours.amber : undefined,
+          },
+          ...(reviewCount > 0
+            ? [{ label: 'Review queue', value: String(reviewCount), sub: 'need attention', col: colours.amber }]
+            : []),
+        ].map(({ label, value, sub, col }) => (
+          <div
+            key={label}
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '4px',
+              padding: `${spacing[2]} ${spacing[2]}`,
+              flex: 1,
+              minWidth: '120px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.medium,
+                color: colours.textTertiary,
+                letterSpacing: typography.tracking.wider,
+                textTransform: 'uppercase' as const,
+                marginBottom: '6px',
+              }}
+            >
+              {label}
+            </div>
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: typography.weights.medium,
+                color: col ?? colours.textPrimary,
+                letterSpacing: typography.tracking.tight,
+                lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {value}
+            </div>
+            {sub && (
+              <div
+                style={{
+                  fontSize: typography.sizes.xs,
+                  fontWeight: typography.weights.light,
+                  color: colours.textTertiary,
+                  marginTop: '4px',
+                }}
+              >
+                {sub}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Domain x Tier matrix */}
+      {matrix.length > 0 && (
+        <section style={{ marginBottom: spacing[4] }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: spacing[1],
+            }}
+          >
+            <span
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.medium,
+                color: colours.textSecondary,
+                letterSpacing: typography.tracking.wider,
+                textTransform: 'uppercase',
+              }}
+            >
+              Record store
+            </span>
+            <Link
+              href="/records"
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.navy,
+                textDecoration: 'none',
+              }}
+            >
+              All records
+            </Link>
+          </div>
           <div
             style={{
               backgroundColor: colours.surface,
               border: `1px solid ${colours.border}`,
-              borderRadius: '8px',
-              padding: spacing[3],
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: spacing[4],
+              borderRadius: '4px',
+              overflow: 'hidden',
             }}
           >
-            <div>
-              <p style={{ ...sectionLabel, margin: `0 0 ${spacing[1]}` }}>Data readiness</p>
-              <p
-                style={{
-                  fontSize: '36px',
-                  fontWeight: typography.weights.medium,
-                  color: readinessColour,
-                  margin: 0,
-                  letterSpacing: typography.tracking.tight,
-                  lineHeight: 1,
-                }}
-              >
-                {readiness.overallScore}%
-              </p>
-              <p
-                style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
-                  margin: `${spacing[1]} 0 0`,
-                }}
-              >
-                {readiness.interpretation} — {readiness.tierACount} of {readiness.totalRecords} records verified
-              </p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', maxWidth: '460px', justifyContent: 'flex-end' }}>
-              {readiness.byDomain.map(d => (
-                <span
-                  key={d.domain}
-                  style={{
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.light,
-                    color: colours.textSecondary,
-                    backgroundColor: colours.background,
-                    border: `1px solid ${colours.border}`,
-                    borderRadius: '4px',
-                    padding: '4px 10px',
-                  }}
-                >
-                  {DOMAIN_LABELS[d.domain] ?? d.domain}
-                  {' '}
-                  <span style={{ fontWeight: typography.weights.medium, color: d.interpretation === 'HIGH' ? colours.green : d.interpretation === 'MEDIUM' ? colours.amber : colours.red }}>
-                    {d.score}%
-                  </span>
-                </span>
-              ))}
-            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
+                  <th style={colStyle}>Domain</th>
+                  <th style={{ ...colStyle, color: colours.green }}>Verified</th>
+                  <th style={{ ...colStyle, color: colours.amber }}>Declared</th>
+                  <th style={{ ...colStyle, color: colours.textTertiary }}>Estimated</th>
+                  <th style={{ ...colStyle, textAlign: 'right' as const }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matrix.map((row, i) => (
+                  <tr
+                    key={row.domain}
+                    style={{
+                      borderBottom: i < matrix.length - 1 ? `1px solid ${colours.border}` : 'none',
+                    }}
+                  >
+                    <td style={{ ...cellStyle, fontWeight: typography.weights.medium }}>
+                      {DOMAIN_LABELS[row.domain] ?? row.domain}
+                    </td>
+                    <td style={cellStyle}>
+                      {row.A > 0 ? (
+                        <span style={{ color: colours.green, fontWeight: typography.weights.medium }}>
+                          {row.A}
+                        </span>
+                      ) : (
+                        <span style={{ color: colours.textTertiary }}>0</span>
+                      )}
+                    </td>
+                    <td style={cellStyle}>
+                      {row.B > 0 ? (
+                        <span style={{ color: colours.amber }}>{row.B}</span>
+                      ) : (
+                        <span style={{ color: colours.textTertiary }}>0</span>
+                      )}
+                    </td>
+                    <td style={cellStyle}>
+                      {row.C > 0 ? (
+                        <span style={{ color: colours.textTertiary }}>{row.C}</span>
+                      ) : (
+                        <span style={{ color: colours.textTertiary }}>0</span>
+                      )}
+                    </td>
+                    <td
+                      style={{
+                        ...cellStyle,
+                        textAlign: 'right' as const,
+                        fontWeight: typography.weights.medium,
+                        color: colours.textSecondary,
+                      }}
+                    >
+                      {row.total}
+                    </td>
+                  </tr>
+                ))}
+                <tr style={{ borderTop: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
+                  <td
+                    style={{
+                      ...cellStyle,
+                      fontWeight: typography.weights.medium,
+                      color: colours.textSecondary,
+                    }}
+                  >
+                    Total
+                  </td>
+                  <td style={{ ...cellStyle, color: colours.green, fontWeight: typography.weights.medium }}>
+                    {verifiedCount}
+                  </td>
+                  <td style={{ ...cellStyle, color: colours.amber }}>{declaredCount}</td>
+                  <td style={{ ...cellStyle, color: colours.textTertiary }}>{estimatedCount}</td>
+                  <td
+                    style={{
+                      ...cellStyle,
+                      textAlign: 'right' as const,
+                      fontWeight: typography.weights.medium,
+                      color: colours.textPrimary,
+                    }}
+                  >
+                    {totalRecords}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
       )}
 
-      {/* ── SECTION 1: Requests ─────────────────────────────────────────────── */}
-      <section style={{ marginBottom: spacing[5] }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: spacing[2],
-          }}
-        >
-          <p style={{ ...sectionLabel, margin: 0 }}>Requests</p>
-          <Link
-            href="/requests"
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.navy,
-              textDecoration: 'none',
-            }}
-          >
-            View all
-          </Link>
-        </div>
-
-        {pendingRequests.length === 0 ? (
+      {totalRecords === 0 && (
+        <section style={{ marginBottom: spacing[4] }}>
           <div
             style={{
               backgroundColor: colours.surface,
               border: `1px solid ${colours.border}`,
-              borderRadius: '6px',
-              padding: spacing[3],
-            }}
-          >
-            <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
-                margin: 0,
-              }}
-            >
-              No pending requests from customers.
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {pendingRequests.map(req => (
-              <div
-                key={req.id}
-                style={{
-                  backgroundColor: colours.surface,
-                  border: `1px solid ${colours.border}`,
-                  borderRadius: '6px',
-                  padding: spacing[2],
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <p
-                    style={{
-                      fontSize: typography.sizes.base,
-                      fontWeight: typography.weights.medium,
-                      color: colours.textPrimary,
-                      margin: 0,
-                    }}
-                  >
-                    {req.buyerEntity.legalName}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: typography.sizes.sm,
-                      fontWeight: typography.weights.light,
-                      color: colours.textSecondary,
-                      margin: '2px 0 0',
-                    }}
-                  >
-                    {DOMAIN_LABELS[req.domain] ?? req.domain}
-                    {' · '}
-                    {new Date(req.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                    {' – '}
-                    {new Date(req.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                    {req.deadline &&
-                      ` · Due ${new Date(req.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
-                  </p>
-                </div>
-                <Link
-                  href="/requests"
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: colours.navy,
-                    color: colours.surface,
-                    fontSize: typography.sizes.sm,
-                    fontWeight: typography.weights.medium,
-                    borderRadius: '4px',
-                    textDecoration: 'none',
-                    whiteSpace: 'nowrap' as const,
-                  }}
-                >
-                  Respond
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ── SECTION 2: Your data ─────────────────────────────────────────────── */}
-      <section style={{ marginBottom: spacing[5] }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: spacing[2],
-          }}
-        >
-          <p style={{ ...sectionLabel, margin: 0 }}>Your data</p>
-          <Link
-            href="/records"
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.navy,
-              textDecoration: 'none',
-            }}
-          >
-            View all
-          </Link>
-        </div>
-
-        {periodEntries.length === 0 ? (
-          <div
-            style={{
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '6px',
-              padding: spacing[3],
-            }}
-          >
-            <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
-                margin: 0,
-              }}
-            >
-              No data yet. Upload a document to get started.
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {periodEntries.map((entries, i) => {
-              const { periodStart, periodEnd } = entries[0]
-              const periodLabel = `${new Date(periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} – ${new Date(periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`
-              return (
-                <div
-                  key={i}
-                  style={{
-                    backgroundColor: colours.surface,
-                    border: `1px solid ${colours.border}`,
-                    borderRadius: '6px',
-                    padding: spacing[2],
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: typography.sizes.xs,
-                      fontWeight: typography.weights.medium,
-                      color: colours.textTertiary,
-                      letterSpacing: typography.tracking.wide,
-                      textTransform: 'uppercase',
-                      margin: `0 0 ${spacing[1]}`,
-                    }}
-                  >
-                    {periodLabel}
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
-                    {entries.map(entry => (
-                      <span
-                        key={`${entry.domain}-${entry.tier}`}
-                        style={{
-                          fontSize: typography.sizes.sm,
-                          fontWeight: typography.weights.light,
-                          color: colours.textPrimary,
-                          backgroundColor: colours.background,
-                          border: `1px solid ${colours.border}`,
-                          borderRadius: '4px',
-                          padding: '4px 10px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                        }}
-                      >
-                        {DOMAIN_LABELS[entry.domain] ?? entry.domain}
-                        <span
-                          style={{
-                            fontSize: typography.sizes.xs,
-                            fontWeight: typography.weights.medium,
-                            color: TIER_COLOURS[entry.tier],
-                          }}
-                        >
-                          {TIER_LABELS[entry.tier] ?? entry.tier}
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* ── SECTION 3: Your documents ────────────────────────────────────────── */}
-      <section>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: spacing[2],
-          }}
-        >
-          <p style={{ ...sectionLabel, margin: 0 }}>Your documents</p>
-        </div>
-
-        {recentDocuments.length === 0 ? (
-          <div
-            style={{
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '6px',
+              borderRadius: '4px',
               padding: spacing[4],
               textAlign: 'center',
             }}
@@ -451,10 +363,20 @@ export default async function DashboardPage() {
                 fontSize: typography.sizes.base,
                 fontWeight: typography.weights.light,
                 color: colours.textSecondary,
+                margin: `0 0 ${spacing[1]}`,
+              }}
+            >
+              No records in the store yet.
+            </p>
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
                 margin: `0 0 ${spacing[2]}`,
               }}
             >
-              You have not uploaded any documents yet.
+              Upload energy bills, production logs, invoices, or delivery notes to populate your data record.
             </p>
             <Link
               href="/upload"
@@ -469,89 +391,276 @@ export default async function DashboardPage() {
                 display: 'inline-block',
               }}
             >
-              Upload a document
+              Upload documents
             </Link>
           </div>
-        ) : (
+        </section>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3] }}>
+        {/* Open requests */}
+        <section>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: spacing[1],
+            }}
+          >
+            <span
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.medium,
+                color: colours.textSecondary,
+                letterSpacing: typography.tracking.wider,
+                textTransform: 'uppercase' as const,
+              }}
+            >
+              Open requests
+            </span>
+            <Link
+              href="/requests"
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.navy,
+                textDecoration: 'none',
+              }}
+            >
+              All requests
+            </Link>
+          </div>
           <div
             style={{
               backgroundColor: colours.surface,
               border: `1px solid ${colours.border}`,
-              borderRadius: '8px',
+              borderRadius: '4px',
               overflow: 'hidden',
             }}
           >
-            {recentDocuments.map((doc, i) => {
-              const statusLabel = DOC_STATUS_LABELS[doc.status] ?? doc.status.replace(/_/g, ' ')
-              const statusColour = DOC_STATUS_COLOURS[doc.status] ?? colours.textTertiary
-              const periodLabel = new Date(doc.submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-
-              return (
-                <div
-                  key={doc.id}
+            {pendingRequests.length === 0 ? (
+              <div style={{ padding: `${spacing[2]} 14px` }}>
+                <p
                   style={{
-                    padding: spacing[2],
-                    borderBottom: i < recentDocuments.length - 1 ? `1px solid ${colours.border}` : 'none',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.light,
+                    color: colours.textTertiary,
+                    margin: 0,
                   }}
                 >
-                  <div>
-                    <p
+                  No pending requests.
+                </p>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr
+                    style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}
+                  >
+                    <th style={colStyle}>From</th>
+                    <th style={colStyle}>Domain</th>
+                    <th style={colStyle}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingRequests.map((req, i) => (
+                    <tr
+                      key={req.id}
                       style={{
-                        fontSize: typography.sizes.base,
-                        fontWeight: typography.weights.medium,
-                        color: colours.textPrimary,
-                        margin: 0,
+                        borderBottom:
+                          i < pendingRequests.length - 1 ? `1px solid ${colours.border}` : 'none',
                       }}
                     >
-                      {doc.fileName}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.light,
-                        color: colours.textSecondary,
-                        margin: '2px 0 0',
-                      }}
-                    >
-                      {periodLabel}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                    <span
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.medium,
-                        color: statusColour,
-                      }}
-                    >
-                      {statusLabel}
-                    </span>
-                    {doc.status === 'REVIEW_REQUIRED' && (
-                      <Link
-                        href={`/upload/${doc.id}/review`}
+                      <td
                         style={{
-                          padding: '6px 14px',
-                          backgroundColor: colours.navy,
-                          color: colours.surface,
-                          fontSize: typography.sizes.sm,
+                          ...cellStyle,
                           fontWeight: typography.weights.medium,
-                          borderRadius: '4px',
-                          textDecoration: 'none',
+                          maxWidth: '140px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap' as const,
                         }}
                       >
-                        Review
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+                        {req.buyerEntity.legalName}
+                      </td>
+                      <td style={{ ...cellStyle, color: colours.textSecondary }}>
+                        {DOMAIN_LABELS[req.domain] ?? req.domain}
+                      </td>
+                      <td style={{ ...cellStyle, textAlign: 'right' as const }}>
+                        <Link
+                          href="/requests"
+                          style={{
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.medium,
+                            color: colours.navy,
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap' as const,
+                          }}
+                        >
+                          Respond
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-        )}
-      </section>
+        </section>
+
+        {/* Document ingestion queue */}
+        <section>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: spacing[1],
+            }}
+          >
+            <span
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.medium,
+                color: colours.textSecondary,
+                letterSpacing: typography.tracking.wider,
+                textTransform: 'uppercase' as const,
+              }}
+            >
+              Document queue
+            </span>
+          </div>
+          <div
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '4px',
+              overflow: 'hidden',
+            }}
+          >
+            {recentDocuments.length === 0 ? (
+              <div style={{ padding: `${spacing[2]} 14px` }}>
+                <p
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.light,
+                    color: colours.textTertiary,
+                    margin: 0,
+                  }}
+                >
+                  No documents submitted yet.
+                </p>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr
+                    style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}
+                  >
+                    <th style={colStyle}>Document</th>
+                    <th style={colStyle}>Date</th>
+                    <th style={colStyle}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentDocuments.map((doc, i) => {
+                    const statusLabel = DOC_STATUS_LABELS[doc.status] ?? doc.status
+                    const statusColour = DOC_STATUS_COLOURS[doc.status] ?? colours.textTertiary
+                    return (
+                      <tr
+                        key={doc.id}
+                        style={{
+                          borderBottom:
+                            i < recentDocuments.length - 1 ? `1px solid ${colours.border}` : 'none',
+                        }}
+                      >
+                        <td
+                          style={{
+                            ...cellStyle,
+                            maxWidth: '160px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap' as const,
+                          }}
+                          title={doc.fileName}
+                        >
+                          {doc.status === 'REVIEW_REQUIRED' ? (
+                            <Link
+                              href={`/upload/${doc.id}/review`}
+                              style={{
+                                color: colours.navy,
+                                textDecoration: 'none',
+                                fontWeight: typography.weights.medium,
+                              }}
+                            >
+                              {doc.fileName}
+                            </Link>
+                          ) : (
+                            doc.fileName
+                          )}
+                        </td>
+                        <td
+                          style={{
+                            ...cellStyle,
+                            color: colours.textTertiary,
+                            whiteSpace: 'nowrap' as const,
+                          }}
+                        >
+                          {new Date(doc.submittedAt).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </td>
+                        <td
+                          style={{
+                            ...cellStyle,
+                            color: statusColour,
+                            fontWeight: typography.weights.medium,
+                            whiteSpace: 'nowrap' as const,
+                          }}
+                        >
+                          {statusLabel}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Tier legend */}
+      {totalRecords > 0 && (
+        <div style={{ marginTop: spacing[3], display: 'flex', gap: spacing[3], flexWrap: 'wrap' as const }}>
+          {(['A', 'B', 'C'] as const).map(tier => (
+            <span
+              key={tier}
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: TIER_COLOURS[tier],
+                }}
+              />
+              {TIER_LABELS[tier]}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

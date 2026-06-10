@@ -3,7 +3,7 @@ import { UploadZone } from '@/components/UploadZone'
 
 export default function UploadPage() {
   return (
-    <div style={{ maxWidth: '680px' }}>
+    <div>
       <div style={{ marginBottom: spacing[5] }}>
         <h1
           style={{

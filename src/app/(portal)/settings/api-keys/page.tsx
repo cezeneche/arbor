@@ -30,7 +30,7 @@ export default async function ApiKeysPage() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://your-arbor-instance.com'
 
   return (
-    <div style={{ maxWidth: '680px' }}>
+    <div>
       <div style={{ marginBottom: spacing[5] }}>
         <h1
           style={{
@@ -85,7 +85,7 @@ export default async function ApiKeysPage() {
               label: 'Push operational data',
               method: 'POST',
               path: '/api/v1/ingest',
-              description: 'Send structured records from your ERP or accounting system. Returns per-record status. Records are created as Declared (Tier B) — submit supporting documents to upgrade to Verified.',
+              description: 'Send structured records from your ERP or accounting system. Returns per-record status. Records are created as Declared (Tier B). Submit supporting documents to upgrade to Verified.',
             },
             {
               label: 'Read your records',

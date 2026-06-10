@@ -18,7 +18,7 @@ export function TierBadge({ tier }: { tier: 'A' | 'B' | 'C' }) {
         whiteSpace: 'nowrap',
       }}
     >
-      {tier} — {config.label}
+      {tier}: {config.label}
     </span>
   )
 }

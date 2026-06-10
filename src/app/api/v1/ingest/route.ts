@@ -1,6 +1,6 @@
-// Layer 2 — ERP / accounting system ingest webhook.
+// Layer 2  -  ERP / accounting system ingest webhook.
 // Accepts structured operational data pushed from third-party systems.
-// Records are written as Tier B / SYSTEM_INTEGRATION — no source document is attached.
+// Records are written as Tier B / SYSTEM_INTEGRATION  -  no source document is attached.
 // A source document must be submitted separately to upgrade to Tier A.
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
   const { records, idempotencyKey } = parsed.data
 
   // Idempotency: if this key was already processed, return the previous result.
-  // Look up by recordId pattern (batch_<key>) — avoids searching inside JSON payload.
+  // Look up by recordId pattern (batch_<key>)  -  avoids searching inside JSON payload.
   if (idempotencyKey) {
     const previous = await prisma.auditEntry.findFirst({
       where: {

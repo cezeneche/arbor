@@ -110,7 +110,7 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
               margin: `0 0 ${spacing[1]}`,
             }}
           >
-            API key created. Copy it now — it will not be shown again.
+            API key created. Copy it now. It will not be shown again.
           </p>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <code

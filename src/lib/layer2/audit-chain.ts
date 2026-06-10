@@ -1,4 +1,4 @@
-// Layer 2 — Audit Chain. Pure cryptographic functions.
+// Layer 2  -  Audit Chain. Pure cryptographic functions.
 // HMAC-SHA256 chain links each record to the previous one, ensuring tamper-evidence.
 import { createHmac } from 'crypto'
 

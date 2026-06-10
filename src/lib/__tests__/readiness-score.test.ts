@@ -123,7 +123,7 @@ describe('computeReadinessScore', () => {
     expect(result.byDomain).toHaveLength(0)
   })
 
-  it('is a pure function — same inputs always return same outputs', () => {
+  it('is a pure function  -  same inputs always return same outputs', () => {
     const input: ReadinessInput = {
       records: [makeRecord('r1', 'ENERGY', 'A'), makeRecord('r2', 'ENERGY', 'C')],
     }

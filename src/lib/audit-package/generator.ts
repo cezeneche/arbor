@@ -1,4 +1,4 @@
-// Layer 3 — packaging only. No calculation logic. No DB reads. No API calls.
+// Layer 3  -  packaging only. No calculation logic. No DB reads. No API calls.
 // Assembles DataRecords, source documents, audit chain, and cross-validation results
 // into a structured JSON package for third-party verification (Bureau Veritas, SGS, EY, etc.)
 

@@ -1,6 +1,6 @@
-// Layer 3 — packaging only. No calculation logic.
+// Layer 3  -  packaging only. No calculation logic.
 // Formats DataRecord rows as RFC 4180 CSV.
-// Trust tier is always present — cannot be omitted.
+// Trust tier is always present  -  cannot be omitted.
 
 export interface ExportRecord {
   id: string

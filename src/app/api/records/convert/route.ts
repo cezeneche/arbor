@@ -7,9 +7,9 @@ import { prisma } from '@/lib/prisma'
 import { convertFromSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
 import type { SupportedUnit } from '@/lib/layer3/unit-conversion'
 
-// Layer 3 — output-time unit conversion.
+// Layer 3  -  output-time unit conversion.
 // Converts a stored SI value to the requested unit. Never modifies stored data.
-// PRD Section 14 — conversion transparency: response always includes original + converted + factor.
+// PRD Section 14  -  conversion transparency: response always includes original + converted + factor.
 
 const bodySchema = z.object({
   recordId: z.string().min(1),
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     const periodOk =
       (!grant.periodStart || record.periodEnd >= grant.periodStart) &&
       (!grant.periodEnd || record.periodStart <= grant.periodEnd)
-    if (!periodOk) return err('Access denied — record outside grant period', 'FORBIDDEN', 403)
+    if (!periodOk) return err('Access denied : record outside grant period', 'FORBIDDEN', 403)
   }
 
   let conversion

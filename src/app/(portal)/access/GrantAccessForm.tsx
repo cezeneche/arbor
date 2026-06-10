@@ -149,7 +149,7 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
                 {knownBuyers.map(b => (
                   <option key={b.id} value={b.id}>{b.legalName}</option>
                 ))}
-                <option value="">Other — enter buyer ID below</option>
+                <option value="">Other: enter buyer ID below</option>
               </select>
             )}
             {(knownBuyers.length === 0 || !buyerEntityId || customBuyerId !== '') && (

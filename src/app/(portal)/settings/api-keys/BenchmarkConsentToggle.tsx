@@ -66,7 +66,7 @@ export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean
           >
             When enabled, your verified records are included in anonymised statistical benchmarks for your sector.
             Your business is never identified. Benchmarks require at least 10 businesses before any figure is shown.
-            You can withdraw consent at any time — your records are removed from future benchmark calculations.
+            You can withdraw consent at any time. Your records are removed from future benchmark calculations.
           </p>
         </div>
 

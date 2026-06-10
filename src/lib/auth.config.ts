@@ -1,6 +1,6 @@
 import type { NextAuthConfig } from 'next-auth'
 
-// Edge-safe auth config — no Prisma, no bcrypt.
+// Edge-safe auth config  -  no Prisma, no bcrypt.
 // Used by middleware. The full config (with adapter + provider) lives in auth.ts.
 export const authConfig = {
   session: { strategy: 'jwt' },

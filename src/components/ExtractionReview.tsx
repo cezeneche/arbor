@@ -192,7 +192,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
             color: colours.textSecondary,
           }}
         >
-          Extraction in progress — this page will update when complete.
+          Extraction in progress. This page will update when complete.
         </p>
         <p
           style={{
@@ -470,7 +470,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
             }}
           >
             The following records already exist for this domain and period. Review for consistency before confirming.
-            Both will be stored — the newer record will be marked as the current version.
+            Both will be stored. The newer record will be marked as the current version.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {existingConflicts.map((c, i) => (

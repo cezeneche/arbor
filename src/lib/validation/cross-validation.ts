@@ -1,4 +1,4 @@
-// crossValidate is Layer 2 (pure function — no DB reads, no side effects).
+// crossValidate is Layer 2 (pure function  -  no DB reads, no side effects).
 // runCrossValidation is Layer 1 (reads DB, raises flags).
 
 import { prisma } from '@/lib/prisma'
@@ -21,7 +21,7 @@ export interface CrossValidationOutput {
 
 export function crossValidate(input: CrossValidationInput): CrossValidationOutput {
   if (input.valueA === 0 && input.valueB === 0) {
-    return { passed: true, discrepancyPercent: 0, message: 'Both values are zero — consistent.' }
+    return { passed: true, discrepancyPercent: 0, message: 'Both values are zero  -  consistent.' }
   }
 
   const reference = Math.max(Math.abs(input.valueA), Math.abs(input.valueB))

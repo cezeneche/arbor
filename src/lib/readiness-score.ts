@@ -1,4 +1,4 @@
-// Layer 2 — pure function. No DB reads. No API calls. No side effects.
+// Layer 2  -  pure function. No DB reads. No API calls. No side effects.
 // Supplier Data Readiness Score: percentage of active DataRecords at Tier A, by domain.
 
 export type ReadinessInterpretation = 'HIGH' | 'MEDIUM' | 'LOW'

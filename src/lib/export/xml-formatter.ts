@@ -1,6 +1,6 @@
-// Layer 3 — packaging only. No calculation logic.
+// Layer 3  -  packaging only. No calculation logic.
 // Formats DataRecord rows as XML.
-// Trust tier is an attribute on every Record element — cannot be omitted.
+// Trust tier is an attribute on every Record element  -  cannot be omitted.
 
 import type { ExportRecord } from './csv-formatter'
 

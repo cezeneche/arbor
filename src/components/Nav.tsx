@@ -5,108 +5,150 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-// SME supplier view — plain English, minimal navigation (PRD Section 7 Simplicity Constraint)
 const SUPPLIER_LINKS = [
-  { href: '/dashboard', label: 'Your data' },
-  { href: '/upload', label: 'Upload' },
-  { href: '/requests', label: 'Requests' },
-  { href: '/analytics', label: 'Analytics' },
-  { href: '/activity', label: 'Activity' },
-  { href: '/benchmarks', label: 'Benchmarks' },
-]
-
-// Buyer view — full technical interface (PRD Section 18)
-const BUYER_LINKS = [
-  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/dashboard', label: 'Overview' },
   { href: '/upload', label: 'Upload' },
   { href: '/records', label: 'Records' },
   { href: '/requests', label: 'Requests' },
-  { href: '/supply-chain', label: 'Supply chain' },
-  { href: '/analytics', label: 'Analytics' },
+  { href: '/analytics', label: 'Data quality' },
   { href: '/activity', label: 'Activity' },
   { href: '/benchmarks', label: 'Benchmarks' },
+]
+
+const BUYER_LINKS = [
+  { href: '/dashboard', label: 'Overview' },
+  { href: '/upload', label: 'Ingest' },
+  { href: '/records', label: 'Records' },
+  { href: '/requests', label: 'Requests' },
+  { href: '/supply-chain', label: 'Entity network' },
+  { href: '/analytics', label: 'Data quality' },
+  { href: '/activity', label: 'Audit log' },
+  { href: '/benchmarks', label: 'Benchmarks' },
   { href: '/export', label: 'Export' },
-  { href: '/access', label: 'Access' },
+  { href: '/access', label: 'Access control' },
   { href: '/settings/api-keys', label: 'Settings' },
 ]
 
-export function Nav({ entityName, entityType = 'SUPPLIER' }: { entityName: string; entityType?: 'SUPPLIER' | 'BUYER' }) {
+export function Nav({
+  entityName,
+  entityType = 'SUPPLIER',
+  recordCount,
+}: {
+  entityName: string
+  entityType?: 'SUPPLIER' | 'BUYER'
+  recordCount?: number
+}) {
   const pathname = usePathname()
   const links = entityType === 'BUYER' ? BUYER_LINKS : SUPPLIER_LINKS
 
   return (
     <nav
       style={{
-        backgroundColor: colours.surface,
-        borderBottom: `1px solid ${colours.border}`,
-        padding: `0 ${spacing[4]}`,
+        width: '216px',
+        minHeight: '100vh',
+        backgroundColor: colours.navy,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '56px',
+        flexDirection: 'column',
         position: 'sticky',
         top: 0,
-        zIndex: 10,
+        flexShrink: 0,
+        overflowY: 'auto',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[5] }}>
-        <span
+      {/* Wordmark + entity */}
+      <div style={{ padding: `${spacing[3]} ${spacing[2]} ${spacing[2]}` }}>
+        <div
           style={{
             fontSize: typography.sizes.base,
             fontWeight: typography.weights.medium,
-            color: colours.navy,
+            color: '#FFFFFF',
             letterSpacing: typography.tracking.tight,
+            marginBottom: '6px',
           }}
         >
           Arbor
-        </span>
-
-        <div style={{ display: 'flex', gap: spacing[1] }}>
-          {links.map(link => {
-            const active = pathname === link.href || pathname.startsWith(link.href + '/')
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '4px',
-                  fontSize: typography.sizes.sm,
-                  fontWeight: active ? typography.weights.medium : typography.weights.light,
-                  color: active ? colours.navy : colours.textSecondary,
-                  backgroundColor: active ? colours.background : 'transparent',
-                  textDecoration: 'none',
-                  transition: 'background-color 0.1s',
-                }}
-              >
-                {link.label}
-              </Link>
-            )
-          })}
         </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-        <span
+        <div
           style={{
-            fontSize: typography.sizes.sm,
+            fontSize: typography.sizes.xs,
             fontWeight: typography.weights.light,
-            color: colours.textSecondary,
+            color: 'rgba(255,255,255,0.45)',
+            letterSpacing: typography.tracking.wide,
+            textTransform: 'uppercase',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {entityName}
-        </span>
+        </div>
+      </div>
+
+      <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.08)', margin: `0 ${spacing[2]}` }} />
+
+      {/* Navigation links */}
+      <div style={{ flex: 1, paddingTop: spacing[1] }}>
+        {links.map(link => {
+          const active =
+            pathname === link.href ||
+            (link.href !== '/dashboard' && pathname.startsWith(link.href + '/'))
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              style={{
+                display: 'block',
+                padding: '9px 20px',
+                fontSize: typography.sizes.sm,
+                fontWeight: active ? typography.weights.medium : typography.weights.light,
+                color: active ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+                textDecoration: 'none',
+                backgroundColor: active ? 'rgba(255,255,255,0.09)' : 'transparent',
+                borderLeft: active ? '2px solid rgba(255,255,255,0.7)' : '2px solid transparent',
+                letterSpacing: typography.tracking.normal,
+              }}
+            >
+              {link.label}
+            </Link>
+          )
+        })}
+      </div>
+
+      {/* Footer */}
+      <div
+        style={{
+          padding: spacing[2],
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        {recordCount !== undefined && (
+          <div
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: 'rgba(255,255,255,0.3)',
+              marginBottom: spacing[1],
+              letterSpacing: typography.tracking.wide,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {recordCount.toLocaleString()} records
+          </div>
+        )}
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           style={{
-            padding: '6px 12px',
-            fontSize: typography.sizes.sm,
+            width: '100%',
+            padding: '7px 12px',
+            fontSize: typography.sizes.xs,
             fontWeight: typography.weights.light,
-            color: colours.textSecondary,
+            color: 'rgba(255,255,255,0.4)',
             backgroundColor: 'transparent',
-            border: `1px solid ${colours.border}`,
-            borderRadius: '4px',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '3px',
             cursor: 'pointer',
+            textAlign: 'left' as const,
+            letterSpacing: typography.tracking.wide,
           }}
         >
           Sign out

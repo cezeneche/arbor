@@ -88,7 +88,7 @@ export function ExportBuilder({
   }
 
   function buildDownloadUrl(format: 'csv' | 'xml'): string {
-    // Download uses the authenticated session via cookie — direct to query API
+    // Download uses the authenticated session via cookie  -  direct to query API
     const params = new URLSearchParams()
     params.set('format', format)
     if (domain) params.set('domain', domain)

@@ -1,6 +1,6 @@
 // Admin-only endpoint. Queries all Tier A DataRecords from opted-in entities,
 // computes sector benchmarks, and upserts into SectorBenchmark table.
-// [PRD §15.3 — Governance gate: min 10 entities enforced by computeSectorBenchmarks()]
+// [PRD §15.3  -  Governance gate: min 10 entities enforced by computeSectorBenchmarks()]
 
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const platformSecret = process.env.PLATFORM_ADMIN_SECRET
   if (!platformSecret) return NextResponse.json({ error: 'Platform admin secret not configured' }, { status: 500 })
   if (req.headers.get('x-platform-admin-secret') !== platformSecret) {
-    return NextResponse.json({ error: 'Forbidden — platform admin only' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden : platform admin only' }, { status: 403 })
   }
 
   const year = new Date().getFullYear()
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   const benchmarks = computeSectorBenchmarks({ records: flat, year })
 
-  // Upsert — each unique sector+domain+fieldName+year combination
+  // Upsert  -  each unique sector+domain+fieldName+year combination
   let upsertCount = 0
   for (const b of benchmarks) {
     await prisma.sectorBenchmark.upsert({

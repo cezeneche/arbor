@@ -340,7 +340,7 @@ export default async function RecordsPage({
                             color: colours.textTertiary,
                           }}
                         >
-                          —
+                          none
                         </span>
                       )}
                     </td>

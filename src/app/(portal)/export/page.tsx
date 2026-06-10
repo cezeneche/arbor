@@ -36,7 +36,7 @@ export default async function ExportPage() {
   }))
 
   return (
-    <div style={{ maxWidth: '860px' }}>
+    <div>
       <div style={{ marginBottom: spacing[5] }}>
         <h1
           style={{

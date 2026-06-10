@@ -56,7 +56,7 @@ function notificationSubject(type: NotificationType, payload: Record<string, unk
     case 'DATA_REQUEST_RESPONDED':
       return `Supplier responded to your data request`
     case 'EXTRACTION_COMPLETE':
-      return `Extraction complete — ${payload.documentType}`
+      return `Extraction complete  -  ${payload.documentType}`
     case 'FLAG_RAISED':
       return `Validation flag raised on your data`
     case 'TIER_UPGRADED':

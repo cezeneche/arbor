@@ -458,7 +458,7 @@ export const DOCUMENT_FIELD_DEFINITIONS: Record<string, FieldDefinition[]> = {
     },
   ],
 
-  // Phase 3 — §11.3
+  // Phase 3  -  §11.3
   ESG_DISCLOSURE: [
     { name: 'entity_name', admissibility: 'compulsory' },
     { name: 'report_title', admissibility: 'compulsory' },

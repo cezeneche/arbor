@@ -166,7 +166,7 @@ export function UploadZone() {
                 margin: `${spacing[1]} 0 0`,
               }}
             >
-              {(file.size / 1024 / 1024).toFixed(2)} MB — click to change
+              {(file.size / 1024 / 1024).toFixed(2)} MB. Click to change
             </p>
           </div>
         ) : (
@@ -228,7 +228,7 @@ export function UploadZone() {
               letterSpacing: 0,
             }}
           >
-            (optional — used for certificate expiry checks)
+            (optional , used for certificate expiry checks)
           </span>
         </label>
         <input

@@ -189,7 +189,7 @@ export default async function SupplierRecordsPage({
               margin: `0 0 6px`,
             }}
           >
-            Gap analysis — missing domains
+            Gap analysis: missing domains
           </p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {gapDomains.map(domain => (

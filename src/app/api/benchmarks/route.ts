@@ -1,4 +1,4 @@
-// Layer 3 — read-only. Computes anonymised sector benchmarks on-the-fly from Tier A records.
+// Layer 3  -  read-only. Computes anonymised sector benchmarks on-the-fly from Tier A records.
 // Only includes entities with allowBenchmarkAggregation=true.
 // Population floor: 10 distinct entities required before any figure is shown (PRD §16.3).
 import { NextRequest, NextResponse } from 'next/server'

@@ -35,14 +35,14 @@ function baseFertiliserFields(overrides: Record<string, string | null> = {}): Ex
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — fertiliser record', () => {
+describe('evaluateAdmissibility  -  fertiliser record', () => {
   it('all compulsory fields present → Tier A', () => {
     const result = evaluateAdmissibility('FERTILISER_RECORD', baseFertiliserFields(), 'Green Farm Ltd')
     expect(result.tier).toBe('A')
     expect(result.criticalCount).toBe(0)
   })
 
-  // [Admissibility Spec 6.2] nitrogen_content_percent is compulsory —
+  // [Admissibility Spec 6.2] nitrogen_content_percent is compulsory  - 
   // N2O emissions calculated from N content; without it emissions calculation is impossible
   it('missing nitrogen_content_percent → CRITICAL flag → Tier B', () => {
     const fields = baseFertiliserFields({ nitrogen_content_percent: null })
@@ -132,7 +132,7 @@ function baseCropYieldFields(overrides: Record<string, string | null> = {}): Ext
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — crop yield record', () => {
+describe('evaluateAdmissibility  -  crop yield record', () => {
   it('all compulsory fields present → Tier A', () => {
     const result = evaluateAdmissibility('CROP_YIELD_RECORD', baseCropYieldFields(), 'Green Farm Ltd')
     expect(result.tier).toBe('A')
@@ -179,7 +179,7 @@ function baseLivestockFields(overrides: Record<string, string | null> = {}): Ext
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — livestock record', () => {
+describe('evaluateAdmissibility  -  livestock record', () => {
   it('all compulsory fields, no feed_quantity → Tier A', () => {
     const result = evaluateAdmissibility('LIVESTOCK_RECORD', baseLivestockFields(), 'Green Farm Ltd')
     expect(result.tier).toBe('A')
@@ -245,7 +245,7 @@ function fullLandUseCertFields(overrides: Record<string, string | null> = {}): E
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility — land use certificate', () => {
+describe('evaluateAdmissibility  -  land use certificate', () => {
   it('all compulsory fields present, valid expiry → Tier A', () => {
     const result = evaluateAdmissibility(
       'LAND_USE_CERTIFICATE',
@@ -257,7 +257,7 @@ describe('evaluateAdmissibility — land use certificate', () => {
     expect(result.criticalCount).toBe(0)
   })
 
-  // [Admissibility Spec §7.1] land_parcel_reference is compulsory — identifies the specific parcel
+  // [Admissibility Spec §7.1] land_parcel_reference is compulsory  -  identifies the specific parcel
   it('missing land_parcel_reference → CRITICAL flag → Tier B', () => {
     const fields = fullLandUseCertFields({ land_parcel_reference: null })
     const result = evaluateAdmissibility('LAND_USE_CERTIFICATE', fields, 'Green Farm Ltd')
@@ -297,9 +297,9 @@ describe('evaluateAdmissibility — land use certificate', () => {
   })
 })
 
-// ── EXTRACTION PROMPTS — AGRICULTURAL TYPES ──────────────────────────────────
+// ── EXTRACTION PROMPTS  -  AGRICULTURAL TYPES ──────────────────────────────────
 
-describe('buildExtractionPrompt — agricultural document types', () => {
+describe('buildExtractionPrompt  -  agricultural document types', () => {
   it('FERTILISER_RECORD prompt includes nitrogen_content guidance', () => {
     const prompt = buildExtractionPrompt('FERTILISER_RECORD', ['nitrogen_content_percent', 'product_name'])
     expect(prompt).toContain('nitrogen')

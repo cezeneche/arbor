@@ -17,7 +17,7 @@ const bodySchema = z.object({
   entries: z.array(entrySchema).min(1),
 })
 
-// System user sentinel — records written via submission link are attributed to a system account
+// System user sentinel  -  records written via submission link are attributed to a system account
 const SYSTEM_USER_ID = 'system'
 
 export async function GET(
@@ -75,7 +75,7 @@ export async function POST(
 
   const entityId = request.supplierEntityId
 
-  // Find a real user for this entity to attribute submissions — use first user or fall back to system
+  // Find a real user for this entity to attribute submissions  -  use first user or fall back to system
   const entityUser = await prisma.user.findFirst({
     where: { entityId },
     select: { id: true },

@@ -11,7 +11,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
   const requiredFields = fieldDefs.map((f) => f.name)
   const userPrompt = buildExtractionPrompt(input.documentType, requiredFields)
 
-  // PDFs use type:'document'; images use type:'image' — distinct API content block types
+  // PDFs use type:'document'; images use type:'image'  -  distinct API content block types
   const documentBlock =
     input.mediaType === 'application/pdf'
       ? ({
@@ -71,7 +71,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
       success: false,
       fields: [],
       documentTypeConfirmed: input.documentType,
-      extractionNotes: 'Extraction failed — could not parse Claude response as JSON',
+      extractionNotes: 'Extraction failed : could not parse Claude response as JSON',
       rawResponse: rawText,
     }
   }

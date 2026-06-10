@@ -1,6 +1,6 @@
 import { normaliseToSI, convertFromSI, isSupportedUnit } from '../unit-conversion'
 
-describe('normaliseToSI — ingestion path', () => {
+describe('normaliseToSI  -  ingestion path', () => {
   describe('energy', () => {
     it('kWh → MJ: 1 kWh = 3.6 MJ (SI definition)', () => {
       const r = normaliseToSI(1, 'kwh')
@@ -165,7 +165,7 @@ describe('normaliseToSI — ingestion path', () => {
   })
 })
 
-describe('convertFromSI — output path', () => {
+describe('convertFromSI  -  output path', () => {
   it('MJ → kWh: 360 MJ = 100 kWh', () => {
     const r = convertFromSI(360, 'mj', 'kwh')
     expect(r.convertedValue).toBeCloseTo(100, 6)

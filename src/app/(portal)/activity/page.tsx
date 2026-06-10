@@ -84,7 +84,7 @@ export default async function ActivityPage() {
   }
 
   return (
-    <div style={{ maxWidth: '720px' }}>
+    <div>
       <div style={{ marginBottom: spacing[5] }}>
         <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
           Activity

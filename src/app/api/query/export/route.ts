@@ -1,6 +1,6 @@
-// Layer 3 — read-only. Buyer-facing multi-supplier export endpoint.
+// Layer 3  -  read-only. Buyer-facing multi-supplier export endpoint.
 // Auth: session only (buyers). Validates grants before returning any supplier data.
-// Trust tier and provenance travel with every record — cannot be removed (PRD §21.2).
+// Trust tier and provenance travel with every record  -  cannot be removed (PRD §21.2).
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'

@@ -10,7 +10,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
 }
 
-// Canonical compulsory field names per domain — derived from field-definitions to stay in sync
+// Canonical compulsory field names per domain  -  derived from field-definitions to stay in sync
 const DOMAIN_COMPULSORY: Record<string, string[]> = {}
 for (const [docType, defs] of Object.entries(DOCUMENT_FIELD_DEFINITIONS)) {
   const domain = docTypeToDomain(docType)
@@ -69,11 +69,11 @@ export default async function AnalyticsPage() {
     orderBy: { periodStart: 'asc' },
   })
 
-  // — Domain-level summary —
+  //  -  Domain-level summary  - 
   const byDomain: Record<string, {
     totalRecords: number; tierA: number; tierB: number; tierC: number; fields: Set<string>
   }> = {}
-  // — Quarter × Domain × Field presence —
+  //  -  Quarter × Domain × Field presence  - 
   const quarterFieldMap: Record<string, Record<string, Set<string>>> = {}
   const quarterTierMap: Record<string, Record<string, { A: number; B: number; C: number }>> = {}
 
@@ -100,7 +100,7 @@ export default async function AnalyticsPage() {
   const lastFourQuarters = allQuarters.slice(-4)
   const domainsWithData = Object.keys(byDomain)
 
-  // — Period-over-period value map: domain → fieldName → [{quarter, value, unit, tier}]
+  //  -  Period-over-period value map: domain → fieldName → [{quarter, value, unit, tier}]
   // Only numeric values; keeps latest record per field per quarter.
   type ValuePoint = { quarter: string; value: number; unit: string; tier: string }
   const valueByField: Record<string, Record<string, ValuePoint[]>> = {}
@@ -124,7 +124,7 @@ export default async function AnalyticsPage() {
     }
   }
 
-  // — Buyer supply chain coverage —
+  //  -  Buyer supply chain coverage  - 
   let supplierCoverage: Array<{
     supplierId: string; supplierName: string
     domains: Record<string, { count: number; tierA: number }>
@@ -178,13 +178,13 @@ export default async function AnalyticsPage() {
   }
 
   return (
-    <div style={{ maxWidth: '900px' }}>
-      <div style={{ marginBottom: spacing[5] }}>
+    <div>
+      <div style={{ marginBottom: spacing[4] }}>
         <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
-          Analytics
+          Data quality
         </h1>
         <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
-          {isSupplier ? 'Data completeness and coverage for your records.' : 'Supply chain data coverage across your authorised suppliers.'}
+          {isSupplier ? 'Field completeness and certification status across all data domains.' : 'Supply chain data coverage across your authorised suppliers.'}
         </p>
       </div>
 
@@ -382,7 +382,7 @@ export default async function AnalyticsPage() {
                                       </span>
                                     </span>
                                   ) : (
-                                    <span style={{ color: colours.textTertiary }}>—</span>
+                                    <span style={{ color: colours.textTertiary }}></span>
                                   )}
                                 </td>
                               )
@@ -397,7 +397,7 @@ export default async function AnalyticsPage() {
             ))}
           </div>
           <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: `${spacing[2]} 0 0` }}>
-            ✓ Verified · ~ Declared · ? Estimated. Figures are stored values — no calculations applied.
+            ✓ Verified  ·  ~ Declared  ·  ? Estimated. Figures are stored values. No calculations applied.
           </p>
         </section>
       )}
