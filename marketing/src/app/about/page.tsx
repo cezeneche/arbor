@@ -149,7 +149,7 @@ export default function AboutPage() {
             ].map((r) => (
               <div
                 key={r.label}
-                className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6 py-6"
+                className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6 py-6 px-4"
                 style={{ borderBottom: "0.5px solid var(--color-border)" }}
               >
                 <p className="text-sm text-text-primary" style={{ fontWeight: 500 }}>

@@ -103,7 +103,7 @@ export default function HowItWorksPage() {
             {pipeline.map((step) => (
               <div
                 key={step.number}
-                className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-8 py-12"
+                className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-8 py-12 px-4"
                 style={{ borderBottom: "0.5px solid var(--color-border)" }}
               >
                 <div>

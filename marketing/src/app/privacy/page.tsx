@@ -46,7 +46,6 @@ export default function PrivacyPage() {
             style={{
               border: "0.5px solid var(--color-border)",
               padding: "clamp(32px, 5vw, 64px)",
-              maxWidth: "720px",
             }}
           >
             <LegalSection title="1. Who we are">

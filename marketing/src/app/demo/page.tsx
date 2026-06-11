@@ -325,7 +325,7 @@ export default function DemoPage() {
                   ].map((s) => (
                     <div
                       key={s.step}
-                      className="flex gap-6 py-6"
+                      className="flex gap-6 py-6 px-4"
                       style={{ borderBottom: "0.5px solid var(--color-border)" }}
                     >
                       <p

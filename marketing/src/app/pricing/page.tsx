@@ -249,7 +249,7 @@ export default function PricingPage() {
             {faqs.map((f) => (
               <div
                 key={f.q}
-                className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8"
+                className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8 px-4"
                 style={{ borderBottom: "0.5px solid var(--color-border)" }}
               >
                 <p

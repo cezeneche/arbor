@@ -125,7 +125,7 @@ export default function ResourcesPage() {
               <Link
                 key={a.slug}
                 href={`/resources/${a.slug}`}
-                className="group grid grid-cols-1 md:grid-cols-[1fr_200px] gap-6 py-8 hover:bg-surface transition-colors"
+                className="group grid grid-cols-1 md:grid-cols-[1fr_200px] gap-6 py-8 px-4 hover:bg-surface transition-colors"
                 style={{ borderBottom: "0.5px solid var(--color-border)", borderRadius: "var(--card-radius)" }}
               >
                 <div>

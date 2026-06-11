@@ -219,7 +219,7 @@ export default function Home() {
             {steps.map((s, i) => (
               <div
                 key={s.step}
-                className="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-8 py-10"
+                className="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-8 py-10 px-4"
                 style={{ borderBottom: "0.5px solid var(--color-border)" }}
               >
                 <div>
