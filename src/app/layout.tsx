@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Arbor',
-  description: 'Sustainability data infrastructure',
+  description: 'Certified operational data infrastructure for manufacturers, suppliers, and producers.',
 }
 
 export default function RootLayout({

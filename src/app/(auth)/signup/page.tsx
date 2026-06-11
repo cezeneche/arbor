@@ -43,11 +43,16 @@ export default function SignupPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy to create an account.')
+      return
+    }
     setError(null)
     setLoading(true)
 
@@ -268,6 +273,41 @@ export default function SignupPage() {
             At least 8 characters
           </p>
         </div>
+
+        {/* Terms acceptance */}
+        <label
+          style={{
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'flex-start',
+            cursor: 'pointer',
+            marginTop: spacing[1],
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={e => setAgreedToTerms(e.target.checked)}
+            style={{ marginTop: '2px', flexShrink: 0, accentColor: colours.navy }}
+          />
+          <span
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              lineHeight: '1.5',
+            }}
+          >
+            I agree to the{' '}
+            <a href="/legal/terms" target="_blank" rel="noopener noreferrer" style={{ color: colours.navy, textDecoration: 'none' }}>
+              Terms of Service
+            </a>
+            {' '}and{' '}
+            <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" style={{ color: colours.navy, textDecoration: 'none' }}>
+              Privacy Policy
+            </a>
+          </span>
+        </label>
 
         {error && (
           <p

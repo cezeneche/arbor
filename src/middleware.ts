@@ -9,6 +9,9 @@ const { auth } = NextAuth(authConfig)
 export default auth((req) => {
   const isAuthed = !!req.auth
   const isPublic =
+    req.nextUrl.pathname === '/' ||
+    req.nextUrl.pathname.startsWith('/pricing') ||
+    req.nextUrl.pathname.startsWith('/legal') ||
     req.nextUrl.pathname.startsWith('/login') ||
     req.nextUrl.pathname.startsWith('/signup') ||
     req.nextUrl.pathname.startsWith('/submit') ||
