@@ -43,10 +43,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import NamedTuple
 
 __all__ = [
     "UKCBAMRateMissing",
+    "UKCBAMRatePlaceholder",
     "UKCBAMRateEntry",
     "get_uk_cbam_rate",
     "get_uk_cbam_rate_or_raise",
@@ -63,6 +63,25 @@ class UKCBAMRateMissing(KeyError):
         super().__init__(
             f"No UK CBAM rate found for sector={sector!r} period={period!r}. "
             "Check HMRC Government Gateway for the published quarterly rate."
+        )
+
+
+class UKCBAMRatePlaceholder(ValueError):
+    """Raised when the found rate is a placeholder estimate, not an HMRC-published figure.
+
+    Placeholder rates must never be used in a real HMRC return.  Replace them
+    with the official quarterly rate published via Government Gateway before
+    generating any production return.
+    """
+
+    def __init__(self, entry: "UKCBAMRateEntry") -> None:
+        period = f"Q{entry.quarter} {entry.year}" if entry.quarter else f"{entry.year} Annual"
+        super().__init__(
+            f"UK CBAM rate for sector={entry.sector!r} period={period!r} is a placeholder "
+            "engineering estimate, not an HMRC-published figure. "
+            "Populate the rate table with the HMRC Government Gateway quarterly rate notice "
+            "before generating a real HMRC return. "
+            f"Placeholder basis: {entry.notes!r}"
         )
 
 
@@ -109,33 +128,74 @@ def get_sector_for_cn8(cn8_code: str) -> str | None:
     return None
 
 
+# ── Placeholder rate derivation constants ──────────────────────────────────────
+#
+# These named constants make the engineering-estimate basis traceable in code.
+# Formula: cbam_rate = uk_ets_price × (1 − free_allocation_factor)
+# Source: Finance (No.2) Bill 2025-26; HMRC has not yet published official rates.
+#
+# Replace _PLACEHOLDER_UK_ETS_PRICE_2027 and _PLACEHOLDER_FREE_ALLOC values
+# with HMRC Government Gateway figures once published (expected Q4 2026).
+
+_PLACEHOLDER_UK_ETS_PRICE_2027: Decimal = Decimal("45")   # £/tCO₂e assumed annual average
+
+# Fraction of ETS cost covered by free allowances per sector (engineering estimate).
+# A factor of 0.85 means 85% of the ETS cost is offset by free allocations,
+# so only 15% is passed through as the CBAM rate.
+_PLACEHOLDER_FREE_ALLOC: dict[str, Decimal] = {
+    "iron_steel":  Decimal("0.85"),
+    "aluminium":   Decimal("0.80"),
+    "cement":      Decimal("0.75"),
+    "fertilisers": Decimal("0.70"),
+    "hydrogen":    Decimal("0.65"),
+}
+
+
+def _placeholder_rate(sector: str) -> Decimal:
+    """Compute a placeholder CBAM rate from named constants.
+
+    cbam_rate = uk_ets_price × (1 − free_allocation_factor)
+    """
+    return _PLACEHOLDER_UK_ETS_PRICE_2027 * (Decimal("1") - _PLACEHOLDER_FREE_ALLOC[sector])
+
+
 # ── Rate table ─────────────────────────────────────────────────────────────────
 #
 # HMRC publishes rates quarterly via Government Gateway notices.
 # UK CBAM goes live 1 January 2027; first return is annual (due 31 May 2028).
 # Quarterly returns start from Q1 2028 (due 31 March 2028 — 2 months after Q end).
 #
-# Until HMRC publishes official rates, entries are marked source="placeholder"
-# with engineering-estimate values.  These MUST be replaced with official figures.
-#
-# Engineering estimate basis (placeholder rates):
-#   Assumed UK ETS price ≈ £45/tCO₂e (2027 annual average estimate)
-#   Free allocation factor: iron_steel ≈ 0.85, aluminium ≈ 0.80, cement ≈ 0.75,
-#                           fertilisers ≈ 0.70, hydrogen ≈ 0.65
-#   cbam_rate = uk_ets_price × (1 - free_alloc)
+# Until HMRC publishes official rates, entries are marked source="placeholder".
+# These MUST be replaced with HMRC-published figures before use in a real return.
+# Use get_uk_cbam_rate_or_raise(..., reject_placeholder=True) to enforce this.
 
 _RATES: list[UKCBAMRateEntry] = [
     # 2027 Annual return (Finance No.2 Bill 2025-26 transitional first year)
-    UKCBAMRateEntry("iron_steel",  2027, None, Decimal("6.75"),  "placeholder",
-                    "Estimate: £45 × (1−0.85); replace with HMRC Q4-2027 notice"),
-    UKCBAMRateEntry("aluminium",   2027, None, Decimal("9.00"),  "placeholder",
-                    "Estimate: £45 × (1−0.80); replace with HMRC Q4-2027 notice"),
-    UKCBAMRateEntry("cement",      2027, None, Decimal("11.25"), "placeholder",
-                    "Estimate: £45 × (1−0.75); replace with HMRC Q4-2027 notice"),
-    UKCBAMRateEntry("fertilisers", 2027, None, Decimal("13.50"), "placeholder",
-                    "Estimate: £45 × (1−0.70); replace with HMRC Q4-2027 notice"),
-    UKCBAMRateEntry("hydrogen",    2027, None, Decimal("15.75"), "placeholder",
-                    "Estimate: £45 × (1−0.65); replace with HMRC Q4-2027 notice"),
+    UKCBAMRateEntry(
+        "iron_steel", 2027, None, _placeholder_rate("iron_steel"), "placeholder",
+        f"£{_PLACEHOLDER_UK_ETS_PRICE_2027} × (1−{_PLACEHOLDER_FREE_ALLOC['iron_steel']}); "
+        "replace with HMRC Government Gateway Q4-2027 rate notice",
+    ),
+    UKCBAMRateEntry(
+        "aluminium", 2027, None, _placeholder_rate("aluminium"), "placeholder",
+        f"£{_PLACEHOLDER_UK_ETS_PRICE_2027} × (1−{_PLACEHOLDER_FREE_ALLOC['aluminium']}); "
+        "replace with HMRC Government Gateway Q4-2027 rate notice",
+    ),
+    UKCBAMRateEntry(
+        "cement", 2027, None, _placeholder_rate("cement"), "placeholder",
+        f"£{_PLACEHOLDER_UK_ETS_PRICE_2027} × (1−{_PLACEHOLDER_FREE_ALLOC['cement']}); "
+        "replace with HMRC Government Gateway Q4-2027 rate notice",
+    ),
+    UKCBAMRateEntry(
+        "fertilisers", 2027, None, _placeholder_rate("fertilisers"), "placeholder",
+        f"£{_PLACEHOLDER_UK_ETS_PRICE_2027} × (1−{_PLACEHOLDER_FREE_ALLOC['fertilisers']}); "
+        "replace with HMRC Government Gateway Q4-2027 rate notice",
+    ),
+    UKCBAMRateEntry(
+        "hydrogen", 2027, None, _placeholder_rate("hydrogen"), "placeholder",
+        f"£{_PLACEHOLDER_UK_ETS_PRICE_2027} × (1−{_PLACEHOLDER_FREE_ALLOC['hydrogen']}); "
+        "replace with HMRC Government Gateway Q4-2027 rate notice",
+    ),
 ]
 
 # Build lookup dict: (sector, year, quarter) → UKCBAMRateEntry
@@ -174,13 +234,29 @@ def get_uk_cbam_rate_or_raise(
     sector: str,
     year: int,
     quarter: int | None = None,
+    *,
+    reject_placeholder: bool = False,
 ) -> Decimal:
-    """Return the UK CBAM rate or raise UKCBAMRateMissing.
+    """Return the UK CBAM rate or raise.
 
-    Use this when a missing rate should halt processing (e.g. report generation).
-    For planning / informational use, prefer ``get_uk_cbam_rate`` which returns None.
+    Parameters
+    ----------
+    reject_placeholder:
+        When True, raises ``UKCBAMRatePlaceholder`` if the rate is an engineering
+        estimate rather than an HMRC-published figure.  Set this to True whenever
+        building a real HMRC return to prevent placeholder values reaching customers.
+        Default is False for planning / estimation use cases.
+
+    Raises
+    ------
+    UKCBAMRateMissing
+        When no rate entry exists for the requested sector and period.
+    UKCBAMRatePlaceholder
+        When ``reject_placeholder=True`` and the rate is marked as a placeholder.
     """
-    rate = get_uk_cbam_rate(sector, year, quarter)
-    if rate is None:
+    entry = _RATE_INDEX.get((sector.lower(), year, quarter))
+    if entry is None:
         raise UKCBAMRateMissing(sector, year, quarter)
-    return rate
+    if reject_placeholder and entry.source == "placeholder":
+        raise UKCBAMRatePlaceholder(entry)
+    return entry.rate_gbp_per_tco2e

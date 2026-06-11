@@ -55,9 +55,6 @@ __all__ = [
 # HMRC brand colours
 _HMRC_BLACK  = "#0B0C0C"
 _HMRC_GREEN  = "#00703C"
-_HMRC_YELLOW = "#FFDD00"
-_HMRC_RED    = "#D4351C"
-_HMRC_BLUE   = "#1D70B8"
 _MDASH       = "\u2014"
 
 # Financial rounding: 2 d.p. for GBP amounts
@@ -275,9 +272,19 @@ def _validate(
             f"got {report_package.get('type')!r}"
         )
 
+    # Jurisdiction guard: HMRC returns are for UK or BOTH, never EU-only.
+    # EU cases must use eu_xml_builder.build_xml_for_case() instead.
+    case = report_package.get("case") or {}
+    jurisdiction = str(case.get("jurisdiction") or "UK").upper()
+    if jurisdiction == "EU":
+        failures.append(
+            "jurisdiction=EU: this report_package is flagged for EU CBAM only. "
+            "Use eu_xml_builder.build_xml_for_case() for EU registry submission. "
+            "If this case requires both UK and EU reporting, set jurisdiction='BOTH'."
+        )
+
     # Every goods line must have a calculation method
     missing_method: list[str] = []
-    actual_without_vref: list[str] = []
     for ship_item in report_package.get("shipments") or []:
         for gl_item in ship_item.get("goods_lines") or []:
             gl   = gl_item.get("goods_line") or {}
@@ -286,11 +293,6 @@ def _validate(
             meth = em.get("method") or em.get("calculation_method")
             if not meth:
                 missing_method.append(gid)
-            elif meth.lower() == "actual":
-                vref = input_data.verification_refs.get(gid)
-                # actual_unverified is legal — flag but do not block
-                # Only block if caller explicitly asserts verified without providing ref
-                _ = vref  # accepted: actual_unverified is a valid HMRC category
 
     if missing_method:
         failures.append(
@@ -317,6 +319,8 @@ def build_hmrc_return(
         When accuracy_declaration is False, package type is wrong, or any
         goods line is missing a calculation_method.
     """
+    from app.services.cbam_uk_rates import get_sector_for_cn8  # local to avoid circular import
+
     _validate(report_package, input_data)
 
     case     = report_package.get("case") or {}
@@ -390,6 +394,14 @@ def build_hmrc_return(
             hmrc_method, vref = _map_emissions_method(
                 meth_raw, gid, input_data.verification_refs
             )
+            if hmrc_method == "actual_unverified":
+                warnings.append(
+                    f"actual_unverified:goods_line_id={gid}:"
+                    "method=actual but no verification_reference supplied — "
+                    "goods line will be reported as actual_unverified; "
+                    "obtain GACI-accredited verification before HMRC submission "
+                    "(Finance No.2 Bill 2025-26, CLAUDE.md Rule 7)"
+                )
 
             # net_weight_kg: prefer goods_line.net_mass_kg, fall back to quantity
             net_wt = _to_decimal(
@@ -433,6 +445,13 @@ def build_hmrc_return(
             cn8, disambiguated = _normalise_cn8(
                 str(gl.get("cn_code") or ""), gid, input_data.cn8_overrides
             )
+            if get_sector_for_cn8(cn8) is None:
+                warnings.append(
+                    f"cn8_out_of_scope:goods_line_id={gid}:cn8_code={cn8}:"
+                    "CN8 code does not map to any UK CBAM sector — "
+                    "verify goods classification before HMRC submission "
+                    "(Finance No.2 Bill 2025-26 Schedule 1)"
+                )
             if disambiguated:
                 warnings.append(
                     f"cn8_padded:goods_line_id={gid}:cn_code={gl.get('cn_code')}"
@@ -593,8 +612,6 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
     styles = getSampleStyleSheet()
     hmrc_green  = colors.HexColor(_HMRC_GREEN)
     hmrc_black  = colors.HexColor(_HMRC_BLACK)
-    hmrc_red    = colors.HexColor(_HMRC_RED)
-    hmrc_blue   = colors.HexColor(_HMRC_BLUE)
     light_grey  = colors.HexColor("#F3F2F1")
 
     title_style = ParagraphStyle(

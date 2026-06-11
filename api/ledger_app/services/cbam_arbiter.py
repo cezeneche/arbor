@@ -5,6 +5,12 @@ from datetime import date
 import re
 from typing import Any
 
+# Keyword proximity scoring thresholds (character distance in source text).
+# Within _PROXIMITY_CLOSE characters of a keyword → strong signal (2.0 bonus).
+# Within _PROXIMITY_MEDIUM characters of a keyword → weak signal (1.0 bonus).
+_PROXIMITY_CLOSE = 40
+_PROXIMITY_MEDIUM = 120
+
 
 def _layout_text(layout: dict[str, Any] | None, zone: str) -> str:
     if not isinstance(layout, dict):
@@ -76,9 +82,9 @@ def _keyword_proximity_score(text: str, value: str, keywords: list[str]) -> floa
 
     if best_distance is None:
         return 0.0
-    if best_distance <= 40:
+    if best_distance <= _PROXIMITY_CLOSE:
         return 2.0
-    if best_distance <= 120:
+    if best_distance <= _PROXIMITY_MEDIUM:
         return 1.0
     return 0.0
 

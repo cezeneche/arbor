@@ -27,7 +27,10 @@ from copy import deepcopy
 
 import pytest
 
+from decimal import Decimal
+
 from app.services.compliance_pack import (
+    _canonical_json,
     build_cbam_compliance_pack,
     serialise_to_registry_schema,
 )
@@ -260,15 +263,15 @@ class TestEmissionsDetermination:
     # kgCO2e → tCO2e conversion (÷ 1000)
     def test_direct_converted_to_tco2e(self):
         det = self._det(direct_kgco2e=633.0, indirect_kgco2e=0.0)
-        assert det["directEmbeddedEmissionsTco2e"] == pytest.approx(0.633, rel=1e-5)
+        assert det["directEmbeddedEmissionsTco2e"] == Decimal("0.633000")
 
     def test_indirect_converted_to_tco2e(self):
         det = self._det(direct_kgco2e=0.0, indirect_kgco2e=14000.0)
-        assert det["indirectEmbeddedEmissionsTco2e"] == pytest.approx(14.0, rel=1e-5)
+        assert det["indirectEmbeddedEmissionsTco2e"] == Decimal("14.000000")
 
     def test_total_is_direct_plus_indirect(self):
         det = self._det(direct_kgco2e=50000.0, indirect_kgco2e=10000.0)
-        assert det["totalEmbeddedEmissionsTco2e"] == pytest.approx(60.0, rel=1e-5)
+        assert det["totalEmbeddedEmissionsTco2e"] == Decimal("60.000000")
 
     def test_carbon_price_paid_defaults_none(self):
         assert self._det()["carbonPricePaidEurPerTco2e"] is None
@@ -379,13 +382,12 @@ class TestBuildIntegration:
         """payload_hash must differ if registry_submission content changes."""
         result1 = self._build(monkeypatch)
 
-        # Tamper with the registry submission post-hoc and recompute hash
-        import hashlib, json
+        import hashlib
         tampered = deepcopy(result1)
         tampered["registry_submission"]["declarant"]["eori"] = "TAMPERED"
-        canonical = json.dumps(tampered, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        tampered_hash = hashlib.sha256(canonical.encode()).hexdigest()
-        # The stored hash should NOT match the tampered payload
+        # Use the same Decimal-aware serialiser that production uses so the
+        # comparison is apples-to-apples.
+        tampered_hash = hashlib.sha256(_canonical_json(tampered).encode()).hexdigest()
         assert result1["audit"]["payload_hash"] != tampered_hash
 
     def test_audit_hash_is_64_hex_chars(self, monkeypatch):

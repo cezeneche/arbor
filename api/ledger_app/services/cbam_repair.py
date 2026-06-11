@@ -7,6 +7,12 @@ from typing import Any
 from ledger_app.schemas.evidence import EvidenceAtom
 from ledger_app.schemas.evidence import EvidenceSpan
 
+# Confidence assigned to values recovered by the regex repair layer.
+# Lower than a human-reviewed extraction (1.0) but above the default fallback
+# tier boundary (0.60), meaning the repair layer produces Tier 1-eligible data
+# that will be flagged as "estimated" pending verifier confirmation.
+_REPAIR_REGEX_CONFIDENCE: float = 0.82
+
 
 def _layout_text(layout: dict[str, Any] | None, zone: str) -> str:
     if not isinstance(layout, dict):
@@ -163,7 +169,7 @@ def _append_repair_evidence(
             source=source,
             span=EvidenceSpan(start=match.start(0), end=match.end(0)),
             snippet=text[max(0, match.start(0) - 40) : min(len(text), match.end(0) + 40)].strip(),
-            confidence=0.82,
+            confidence=_REPAIR_REGEX_CONFIDENCE,
         ).model_dump(mode="json")
     )
 

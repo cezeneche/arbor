@@ -114,6 +114,39 @@ class ChainIntegrityError(RuntimeError):
     """
 
 
+def _verify_chain(records: list["SnapshotRecord"]) -> None:
+    """Verify every link in an ordered list of snapshot records.
+
+    Called when reading the full chain so that tampering between writes is
+    detected before any output is generated (CLAUDE.md Rule 5).
+
+    Parameters
+    ----------
+    records:
+        All snapshots for a case, ordered by created_at ascending.
+
+    Raises
+    ------
+    ChainIntegrityError
+        When any record's parent_hash does not match its predecessor's payload_hash.
+    """
+    for i in range(1, len(records)):
+        prev = records[i - 1]
+        curr = records[i]
+        if curr.parent_hash is None:
+            continue  # first record after a gap — accepted, not tampered
+        if curr.parent_hash != prev.payload_hash:
+            raise ChainIntegrityError(
+                f"Audit chain integrity violation at position {i}: "
+                f"record id={curr.id!r} (stage={curr.stage!r}) claims "
+                f"parent_hash={curr.parent_hash!r} but predecessor "
+                f"id={prev.id!r} (stage={prev.stage!r}) has "
+                f"payload_hash={prev.payload_hash!r}. "
+                "This may indicate tampering or corruption between writes. "
+                "Human review is required (CLAUDE.md Rule 5)."
+            )
+
+
 def _verify_chain_link(previous: "SnapshotRecord | None", claimed_parent_hash: "str | None") -> None:
     """Assert that *claimed_parent_hash* matches the hash of *previous*.
 
@@ -182,6 +215,7 @@ class FileSystemSnapshotStore:
         for path in files:
             payload = json.loads(path.read_text(encoding="utf-8"))
             snapshots.append(SnapshotRecord.model_validate(payload))
+        _verify_chain(snapshots)
         return snapshots
 
     def latest_snapshot_by_stage(self, case_id: str, stage: str) -> SnapshotRecord | None:
@@ -355,7 +389,9 @@ class SQLSnapshotStore:
                 ),
                 {"case_id": case_id},
             ).mappings().all()
-        return [_row_to_snapshot(r) for r in rows]
+        snapshots = [_row_to_snapshot(r) for r in rows]
+        _verify_chain(snapshots)
+        return snapshots
 
     def latest_snapshot_by_stage(self, case_id: str, stage: str) -> SnapshotRecord | None:
         with self._engine.begin() as conn:

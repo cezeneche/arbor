@@ -18,6 +18,8 @@ import hashlib
 import json
 import re
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from typing import Any
 
 # EU MRN: YY + CC (2 letters) + 13 alphanumeric + 1 check digit = 18 chars
 # Source: EU UCC Reg. 952/2013; Commission Del. Reg. 2015/2446 Annex B
@@ -28,15 +30,21 @@ def _now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _to_float(value) -> float:
+def _to_decimal(value: Any) -> Decimal:
+    if value is None:
+        return Decimal("0")
     try:
-        return float(value or 0)
-    except (TypeError, ValueError):
-        return 0.0
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("0")
 
 
 def _canonical_json(payload: object) -> str:
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    def _default(obj: Any) -> Any:
+        if isinstance(obj, Decimal):
+            return str(obj)
+        raise TypeError(f"Object of type {type(obj).__name__} is not JSON serialisable")
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=_default)
 
 
 def _sha256_hex(value: str) -> str:
@@ -108,9 +116,9 @@ def _build_goods_lines_table(report_package: dict) -> list[dict[str, object]]:
                     "shipment": shipment_label,
                     "goods_line_id": goods_line.get("id"),
                     "cn_code": goods_line.get("cn_code"),
-                    "mass_kg": _to_float(mass),
-                    "direct_embedded_kgco2e": _to_float(direct),
-                    "indirect_embedded_kgco2e": _to_float(indirect),
+                    "mass_kg": _to_decimal(mass),
+                    "direct_embedded_kgco2e": _to_decimal(direct),
+                    "indirect_embedded_kgco2e": _to_decimal(indirect),
                     "method": latest_emissions.get("method") or latest_emissions.get("calculation_method"),
                 }
             )
@@ -134,12 +142,13 @@ _METHOD_CODES: dict[str, str] = {
     "estimated": "ESTIMATED",
 }
 
-_KG_TO_T = 1000.0  # 1 tonne = 1000 kg
+_KG_TO_T = Decimal("1000")
 
 
-def _kg_to_tco2e(value_kg: float, precision: int = 6) -> float:
-    """Convert kgCO2e to tCO2e, rounded to ``precision`` decimal places."""
-    return round(value_kg / _KG_TO_T, precision)
+def _kg_to_tco2e(value_kg: Decimal, precision: int = 6) -> Decimal:
+    """Convert kgCO2e to tCO2e using Decimal arithmetic to avoid float rounding drift."""
+    quantizer = Decimal("0." + "0" * precision)
+    return (value_kg / _KG_TO_T).quantize(quantizer, rounding=ROUND_HALF_UP)
 
 
 def serialise_to_registry_schema(compliance_pack: dict) -> dict:
@@ -177,8 +186,8 @@ def serialise_to_registry_schema(compliance_pack: dict) -> dict:
     # Set at compliance pack level; applies uniformly to all goods lines.
     # None when no recognised equivalent carbon pricing scheme applies.
     _cpp_raw = compliance_pack.get("carbon_price_paid_eur_per_tco2e")
-    _carbon_price_paid: float | None = (
-        float(_cpp_raw) if _cpp_raw is not None and float(_cpp_raw) > 0 else None
+    _carbon_price_paid: Decimal | None = (
+        _to_decimal(_cpp_raw) if _cpp_raw is not None and _to_decimal(_cpp_raw) > Decimal("0") else None
     )
 
     # ── Import entries ────────────────────────────────────────────────────────
@@ -191,15 +200,15 @@ def serialise_to_registry_schema(compliance_pack: dict) -> dict:
             goods_line = goods_bundle.get("goods_line") or {}
             emissions = goods_bundle.get("latest_emissions") or {}
 
-            mass_kg = _to_float(
+            mass_kg = _to_decimal(
                 goods_line.get("net_mass_kg") or goods_line.get("quantity")
             )
 
-            direct_kg = _to_float(
+            direct_kg = _to_decimal(
                 emissions.get("direct_embedded_kgco2e")
                 or emissions.get("direct_emissions_kgco2e")
             )
-            indirect_kg = _to_float(
+            indirect_kg = _to_decimal(
                 emissions.get("indirect_embedded_kgco2e")
                 or emissions.get("indirect_emissions_kgco2e")
             )
@@ -243,10 +252,10 @@ def serialise_to_registry_schema(compliance_pack: dict) -> dict:
     tables = compliance_pack.get("tables") or {}
     totals = tables.get("totals") or {}
 
-    total_direct_kg = _to_float(totals.get("total_direct_emissions_kgco2e"))
-    total_indirect_kg = _to_float(totals.get("total_indirect_emissions_kgco2e"))
-    total_embedded_kg = _to_float(totals.get("total_embedded_emissions_kgco2e"))
-    total_mass_kg = _to_float(totals.get("total_net_mass_kg"))
+    total_direct_kg = _to_decimal(totals.get("total_direct_emissions_kgco2e"))
+    total_indirect_kg = _to_decimal(totals.get("total_indirect_emissions_kgco2e"))
+    total_embedded_kg = _to_decimal(totals.get("total_embedded_emissions_kgco2e"))
+    total_mass_kg = _to_decimal(totals.get("total_net_mass_kg"))
 
     return {
         "schemaVersion": _REGISTRY_SCHEMA_VERSION,
@@ -279,10 +288,10 @@ def build_cbam_compliance_pack(case_id: str, report_package: dict, narrative: di
 
     totals = {
         "total_goods_lines": int(summary.get("total_goods_lines") or len(goods_lines)),
-        "total_net_mass_kg": _to_float(summary.get("total_net_mass_kg")),
-        "total_direct_emissions_kgco2e": _to_float(summary.get("total_direct_emissions_kgco2e")),
-        "total_indirect_emissions_kgco2e": _to_float(summary.get("total_indirect_emissions_kgco2e")),
-        "total_embedded_emissions_kgco2e": _to_float(summary.get("total_embedded_emissions_kgco2e")),
+        "total_net_mass_kg": _to_decimal(summary.get("total_net_mass_kg")),
+        "total_direct_emissions_kgco2e": _to_decimal(summary.get("total_direct_emissions_kgco2e")),
+        "total_indirect_emissions_kgco2e": _to_decimal(summary.get("total_indirect_emissions_kgco2e")),
+        "total_embedded_emissions_kgco2e": _to_decimal(summary.get("total_embedded_emissions_kgco2e")),
         "shipments_count": len(report_package.get("shipments") or []),
     }
 

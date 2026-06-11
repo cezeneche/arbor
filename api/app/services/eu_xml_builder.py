@@ -68,7 +68,11 @@ _D = Decimal
 _ZERO = _D("0")
 
 # Jurisdictions that require EU XML output (migration 009)
-_EU_JURISDICTIONS: frozenset[str] = frozenset(("EU", "BOTH"))
+_EU_JURISDICTIONS: frozenset[str] = frozenset({"EU", "BOTH"})
+
+# All valid jurisdiction values — anything outside this set is a data error,
+# not a "UK-only, skip EU XML" decision.
+_VALID_JURISDICTIONS: frozenset[str] = frozenset({"EU", "UK", "BOTH"})
 
 # ---------------------------------------------------------------------------
 # EmissionsCalculationMethod mapping
@@ -595,6 +599,12 @@ def build_xml_for_case(
         (e.g. ``total_embedded_tco2e``, ``eu_ets_price_eur``).
     """
     jurisdiction = str(case.get("jurisdiction") or "EU").upper()
+    if jurisdiction not in _VALID_JURISDICTIONS:
+        raise ValueError(
+            f"Unknown jurisdiction {jurisdiction!r}. "
+            f"Must be one of {sorted(_VALID_JURISDICTIONS)}. "
+            "Check that the case record was created with a valid jurisdiction value."
+        )
     if jurisdiction not in _EU_JURISDICTIONS:
         return None
 
