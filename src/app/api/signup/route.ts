@@ -10,6 +10,7 @@ const signupSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email(),
   password: z.string().min(8),
+  entityType: z.enum(['SUPPLIER', 'BUYER']).default('SUPPLIER'),
 })
 
 export async function POST(req: NextRequest) {
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
-  const { companyName, sector, country, name, email, password } = parsed.data
+  const { companyName, sector, country, name, email, password, entityType } = parsed.data
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
   const passwordHash = await hash(password, 12)
 
   const entity = await prisma.entity.create({
-    data: { legalName: companyName, sector, country },
+    data: { legalName: companyName, sector, country, entityType },
   })
 
   await prisma.user.create({

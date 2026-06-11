@@ -36,6 +36,7 @@ const COUNTRIES = [
 
 export default function SignupPage() {
   const router = useRouter()
+  const [entityType, setEntityType] = useState<'SUPPLIER' | 'BUYER'>('SUPPLIER')
   const [companyName, setCompanyName] = useState('')
   const [sector, setSector] = useState('')
   const [country, setCountry] = useState('GB')
@@ -53,7 +54,7 @@ export default function SignupPage() {
     const res = await fetch('/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyName, sector, country, name, email, password }),
+      body: JSON.stringify({ companyName, sector, country, name, email, password, entityType }),
     })
 
     const data = await res.json()
@@ -138,6 +139,41 @@ export default function SignupPage() {
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+
+        {/* Entity type */}
+        <div>
+          <p style={{ ...labelStyle, marginBottom: '8px' }}>I am signing up as a</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            {([
+              { value: 'SUPPLIER', heading: 'Supplier / manufacturer', sub: 'I supply goods or services and need to manage my operational data' },
+              { value: 'BUYER', heading: 'Buyer / large company', sub: 'I need verified operational data from my supply chain' },
+            ] as const).map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setEntityType(opt.value)}
+                style={{
+                  padding: '12px',
+                  border: `1.5px solid ${entityType === opt.value ? colours.navy : colours.border}`,
+                  borderRadius: '4px',
+                  backgroundColor: entityType === opt.value ? colours.background : colours.surface,
+                  cursor: 'pointer',
+                  textAlign: 'left' as const,
+                }}
+              >
+                <div style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, marginBottom: '4px' }}>
+                  {opt.heading}
+                </div>
+                <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, lineHeight: '1.4' }}>
+                  {opt.sub}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ borderTop: `1px solid ${colours.border}`, marginTop: '4px' }} />
+
         <div>
           <label htmlFor="companyName" style={labelStyle}>Company name</label>
           <input
@@ -183,13 +219,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <div
-          style={{
-            borderTop: `1px solid ${colours.border}`,
-            paddingTop: spacing[2],
-            marginTop: '4px',
-          }}
-        />
+        <div style={{ borderTop: `1px solid ${colours.border}`, marginTop: '4px' }} />
 
         <div>
           <label htmlFor="name" style={labelStyle}>Your name</label>
