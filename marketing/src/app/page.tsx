@@ -5,15 +5,15 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "nucleos — CBAM compliance, calculated",
+  title: { absolute: "nucleos: CBAM compliance, calculated" },
   description:
-    "nucleos reads your supplier documents and calculates exactly what you owe under UK and EU CBAM — line by line, tonne by tonne.",
+    "nucleos reads your supplier documents and calculates exactly what you owe under UK and EU CBAM, line by line, tonne by tonne.",
 };
 
 const stats = [
   { value: "5", label: "sectors in scope" },
   { value: "£50k", label: "UK registration threshold" },
-  { value: "31 May 2028", label: "first UK return due" },
+  { value: "May 2028", label: "first UK return deadline" },
   { value: "6 years", label: "record retention required" },
 ];
 
@@ -26,7 +26,7 @@ const problems = [
   {
     number: "02",
     title: "Default value surcharge",
-    body: "If you cannot provide verified supplier emissions data, HMRC applies a 10% surcharge on top of the default Annex VI figure. For a £200,000 liability, that is £20,000 overpaid — every year.",
+    body: "If you cannot provide verified supplier emissions data, HMRC applies a 10% surcharge on top of the default Annex VI figure. For a £200,000 liability, that is £20,000 overpaid every year.",
   },
   {
     number: "03",
@@ -60,7 +60,7 @@ const features = [
   },
   {
     title: "Conflict arbitration",
-    body: "When two documents disagree — a mill certificate says BF-BOF, an invoice says EAF — the arbitration layer resolves the conflict and records why, so your auditor can follow the reasoning.",
+    body: "When two documents disagree (a mill certificate says BF-BOF, an invoice says EAF), the arbitration layer resolves the conflict and records why, so your auditor can follow the reasoning.",
   },
   {
     title: "Default value fallback",
@@ -68,7 +68,7 @@ const features = [
   },
   {
     title: "Carbon Price Relief",
-    body: "If your goods were produced in a country with a qualifying carbon pricing scheme, nucleos calculates the CPR deduction and reduces your CBAM liability accordingly — properly documented for HMRC.",
+    body: "If your goods were produced in a country with a qualifying carbon pricing scheme, nucleos calculates the CPR deduction and reduces your CBAM liability accordingly, properly documented for HMRC.",
   },
   {
     title: "UK and EU coverage",
@@ -116,8 +116,8 @@ export default function Home() {
               className="text-base mb-12 max-w-[440px]"
               style={{ color: "rgba(255,255,255,0.65)", lineHeight: 1.7 }}
             >
-              nucleos reads your supplier documents and calculates exactly what you owe
-              — line by line, tonne by tonne, before the deadline.
+              nucleos reads your supplier documents and calculates exactly what you owe,
+              line by line, tonne by tonne, before the deadline.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -274,7 +274,7 @@ export default function Home() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-px" style={{ backgroundColor: "var(--color-border)" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px" style={{ backgroundColor: "var(--color-border)", border: "0.5px solid var(--color-border)", borderRadius: "var(--card-radius)", overflow: "hidden" }}>
             {features.map((f) => (
               <div
                 key={f.title}

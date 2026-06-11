@@ -38,7 +38,7 @@ export function Footer() {
               nucleos
             </p>
             <p className="text-text-secondary text-sm mb-6 max-w-[240px]">
-              nucleos reads your supply chain documents and calculates the carbon price of your imports.
+              nucleos reads your supplier documents and calculates exactly what you owe under UK and EU CBAM.
             </p>
             <p className="text-text-tertiary text-xs">
               Nucleos Compliance Ltd

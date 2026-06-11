@@ -4,7 +4,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "CBAM resources — guides for UK and EU importers",
+  title: "CBAM resources: guides for UK and EU importers",
   description:
     "Practical CBAM guides for UK and EU importers: registration deadlines, sector rules, default values, Carbon Price Relief, and the difference between UK and EU CBAM.",
 };
@@ -24,7 +24,7 @@ const articles = [
     category: "Registration",
     title: "When do I need to register for UK CBAM?",
     summary:
-      "The UK CBAM registration threshold is £50,000 of covered goods in a rolling 12-month window, tested on the first of each month. Miss it and you are late — with a penalty clock running from the day you should have registered.",
+      "The UK CBAM registration threshold is £50,000 of covered goods in a rolling 12-month window, tested on the first of each month. Miss it and you are late, with a penalty clock running from the day you should have registered.",
     date: "March 2026",
     readTime: "5 min read",
   },
@@ -33,7 +33,7 @@ const articles = [
     category: "Calculation",
     title: "Understanding Annex VI default values and the 10% surcharge",
     summary:
-      "When supplier emissions data is unavailable, CBAM regulations specify default SEE values from Annex VI of EU Regulation 2023/1773. Using these values attracts a 10% loading — and that loading compounds annually as the CBAM rate rises.",
+      "When supplier emissions data is unavailable, CBAM regulations specify default SEE values from Annex VI of EU Regulation 2023/1773. Using these values attracts a 10% loading, and that loading compounds annually as the CBAM rate rises.",
     date: "February 2026",
     readTime: "6 min read",
   },
@@ -42,7 +42,7 @@ const articles = [
     category: "Calculation",
     title: "Carbon Price Relief: how to claim the deduction",
     summary:
-      "If your goods were produced in a country with a qualifying carbon pricing scheme, you can deduct the carbon price already paid from your CBAM liability. The CPR calculation requires GACI-accredited verification — but can reduce liability to near zero.",
+      "If your goods were produced in a country with a qualifying carbon pricing scheme, you can deduct the carbon price already paid from your CBAM liability. The CPR calculation requires GACI-accredited verification, but can reduce liability to near zero.",
     date: "February 2026",
     readTime: "7 min read",
   },
@@ -51,7 +51,7 @@ const articles = [
     category: "Sectors",
     title: "CBAM by sector: iron & steel, aluminium, cement, fertilisers, hydrogen",
     summary:
-      "Each CBAM sector has different production routes, different emissions intensities, and different calculation rules. This guide covers what you need to know for each sector — and where the data collection challenge is hardest.",
+      "Each CBAM sector has different production routes, different emissions intensities, and different calculation rules. This guide covers what you need to know for each sector, and where the data collection challenge is hardest.",
     date: "January 2026",
     readTime: "12 min read",
   },
@@ -69,7 +69,7 @@ const articles = [
     category: "Records",
     title: "What does a defensible CBAM audit trail look like?",
     summary:
-      "CBAM records must be retained for six years and be defensible under HMRC enquiry. This guide describes what HMRC expects — and what a spreadsheet cannot provide.",
+      "CBAM records must be retained for six years and be defensible under HMRC enquiry. This guide describes what HMRC expects, and what a spreadsheet cannot provide.",
     date: "December 2025",
     readTime: "6 min read",
   },
@@ -78,13 +78,11 @@ const articles = [
     category: "Calculation",
     title: "How the free allocation adjustment affects your CBAM rate",
     summary:
-      "The CBAM rate is not simply the UK ETS price. It is the ETS price adjusted for the sector-specific free allocation that domestic producers receive. As free allocations phase out, the CBAM rate rises — and this happens on a published schedule.",
+      "The CBAM rate is not simply the UK ETS price. It is the ETS price adjusted for the sector-specific free allocation that domestic producers receive. As free allocations phase out, the CBAM rate rises, and this happens on a published schedule.",
     date: "December 2025",
     readTime: "5 min read",
   },
 ];
-
-const categories = ["All", "Comparison", "Registration", "Calculation", "Sectors", "Data collection", "Records"];
 
 export default function ResourcesPage() {
   return (
@@ -113,29 +111,6 @@ export default function ResourcesPage() {
             Plain-language guides to every aspect of CBAM compliance. No marketing.
             No jargon. Just what you need to know, referenced to the regulations.
           </p>
-        </div>
-      </section>
-
-      {/* Category filter — static labels, no JS filtering for SSR */}
-      <section
-        className="bg-surface"
-        style={{ borderBottom: "0.5px solid var(--color-border)" }}
-      >
-        <div className="page-content py-4 flex gap-6 overflow-x-auto">
-          {categories.map((c, i) => (
-            <span
-              key={c}
-              className="text-sm whitespace-nowrap cursor-default"
-              style={{
-                color: i === 0 ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
-                fontWeight: i === 0 ? 500 : 300,
-                paddingBottom: "4px",
-                borderBottom: i === 0 ? "1px solid var(--color-text-primary)" : "none",
-              }}
-            >
-              {c}
-            </span>
-          ))}
         </div>
       </section>
 

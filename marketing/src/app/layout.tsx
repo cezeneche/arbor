@@ -6,7 +6,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://nucleos.co.uk",
   ),
   title: {
-    default: "nucleos — CBAM compliance, calculated",
+    default: "nucleos: CBAM compliance, calculated",
     template: "%s | nucleos",
   },
   description:
@@ -28,13 +28,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_GB",
     siteName: "nucleos",
-    title: "nucleos — CBAM compliance, calculated",
+    title: "nucleos: CBAM compliance, calculated",
     description:
       "nucleos reads your supply chain documents and calculates the carbon price of your imports.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "nucleos — CBAM compliance, calculated",
+    title: "nucleos: CBAM compliance, calculated",
     description:
       "nucleos reads your supply chain documents and calculates the carbon price of your imports.",
   },

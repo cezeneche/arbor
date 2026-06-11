@@ -4,9 +4,9 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "About nucleos — Nucleos Compliance Ltd",
+  title: "About nucleos | Nucleos Compliance Ltd",
   description:
-    "nucleos is built by Nucleos Compliance Ltd to make CBAM compliance accurate and defensible for UK and EU importers. The platform is the calculation — not a wrapper around a spreadsheet.",
+    "nucleos is built by Nucleos Compliance Ltd to make CBAM compliance accurate and defensible for UK and EU importers. The platform is the calculation, not a wrapper around a spreadsheet.",
 };
 
 const principles = [
@@ -20,7 +20,7 @@ const principles = [
   },
   {
     title: "Defaults are honest.",
-    body: "When supplier data is unavailable, the correct answer is a documented default with the appropriate surcharge — not an approximation presented as actual data. nucleos shows you the cost of defaults so you can decide whether to pursue actual data.",
+    body: "When supplier data is unavailable, the correct answer is a documented default with the appropriate surcharge, not an approximation presented as actual data. nucleos shows you the cost of defaults so you can decide whether to pursue actual data.",
   },
   {
     title: "Both regimes, correctly.",
@@ -73,13 +73,13 @@ export default function AboutPage() {
                 reconcile conflicting supplier documents, and cannot apply Carbon Price Relief.
               </p>
               <p className="text-sm text-text-secondary" style={{ lineHeight: 1.8 }}>
-                nucleos is the platform that fills this gap — from supplier document upload to
+                nucleos is the platform that fills this gap, from supplier document upload to
                 submitted HMRC return, with every calculation traceable and every assumption
                 documented.
               </p>
             </div>
 
-            <div className="flex flex-col gap-px" style={{ backgroundColor: "var(--color-border)" }}>
+            <div className="flex flex-col gap-px" style={{ backgroundColor: "var(--color-border)", border: "0.5px solid var(--color-border)", borderRadius: "var(--card-radius)", overflow: "hidden" }}>
               {principles.map((p) => (
                 <div key={p.title} className="bg-surface p-8">
                   <h3
@@ -138,7 +138,7 @@ export default function AboutPage() {
               },
               {
                 label: "Emissions calculation",
-                ref: "EU 2023/1773 Art. 4 — three-tier hierarchy",
+                ref: "EU 2023/1773 Art. 4: three-tier hierarchy",
                 note: "Tier 1 actual verified, Tier 2 estimated, Tier 3 default",
               },
               {
@@ -201,8 +201,7 @@ export default function AboutPage() {
                 Nucleos Compliance Ltd
               </p>
               <p className="text-sm text-text-secondary" style={{ lineHeight: 1.7 }}>
-                For product questions, compliance queries, or enterprise enquiries —
-                use the demo request form and we will respond within one business day.
+                For product questions, compliance queries, or enterprise enquiries, use the demo request form and we will respond within one business day.
               </p>
             </div>
           </div>

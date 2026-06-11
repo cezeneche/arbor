@@ -4,9 +4,9 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "How nucleos works — from supplier document to HMRC return",
+  title: "How nucleos works: from supplier document to HMRC return",
   description:
-    "nucleos extracts emissions data from your supplier documents, resolves conflicts, calculates your CBAM liability, and generates your HMRC return — automatically and with a complete audit trail.",
+    "nucleos extracts emissions data from your supplier documents, resolves conflicts, calculates your CBAM liability, and generates your HMRC return, automatically and with a complete audit trail.",
 };
 
 const pipeline = [
@@ -14,7 +14,7 @@ const pipeline = [
     number: "01",
     title: "Document upload",
     subtitle: "Any format. Any supplier.",
-    body: "Drop in mill certificates, purchase invoices, customs declarations, and supplier emissions reports — PDF, scanned image, or structured file. nucleos accepts them all and routes each document to the correct extraction pipeline.",
+    body: "Drop in mill certificates, purchase invoices, customs declarations, and supplier emissions reports in any format: PDF, scanned image, or structured file. nucleos accepts them all and routes each document to the correct extraction pipeline.",
     detail: "Documents are stored securely and linked to the specific goods line they relate to. Every upload is timestamped and retained for the six-year HMRC record-keeping requirement.",
   },
   {
@@ -35,7 +35,7 @@ const pipeline = [
     number: "04",
     title: "Default value fallback",
     subtitle: "No supplier data? No problem.",
-    body: "When a supplier cannot or will not provide verified emissions data, nucleos automatically applies the correct Annex VI world-average default for the specific CN code. The 10% default surcharge is calculated and shown — so you can see the cost of not having actual data.",
+    body: "When a supplier cannot or will not provide verified emissions data, nucleos automatically applies the correct Annex VI world-average default for the specific CN code. The 10% default surcharge is calculated and shown, so you can see the cost of not having actual data.",
     detail: "The default value applied, its version reference, and the date of application are recorded. If a supplier provides actual data later, the calculation updates and the improvement in liability is visible.",
   },
   {
@@ -50,7 +50,7 @@ const pipeline = [
     title: "Return generation",
     subtitle: "Ready to submit.",
     body: "nucleos generates your HMRC self-assessment return (UK) or EU CBAM declaration XML in the correct format, pre-populated with all required fields. Every figure in the return traces to its source document and calculation step.",
-    detail: "The audit package — all source documents, extraction outputs, conflict resolutions, and calculation records — is bundled alongside the return. Six-year retention is built in.",
+    detail: "The audit package (source documents, extraction outputs, conflict resolutions, and calculation records) is bundled alongside the return. Six-year retention is built in.",
   },
 ];
 
@@ -87,8 +87,8 @@ export default function HowItWorksPage() {
             From supplier document to HMRC return.
           </h1>
           <p className="text-sm text-text-secondary max-w-[560px]" style={{ lineHeight: 1.7 }}>
-            nucleos handles every step of the CBAM compliance workflow — extraction,
-            calculation, and submission — with a complete audit trail at every stage.
+            nucleos handles every step of the CBAM compliance workflow: extraction,
+            calculation, and submission, with a complete audit trail at every stage.
           </p>
         </div>
       </section>
@@ -157,7 +157,7 @@ export default function HowItWorksPage() {
               UK and EU CBAM, both regimes.
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-px" style={{ backgroundColor: "var(--color-border)" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px" style={{ backgroundColor: "var(--color-border)", border: "0.5px solid var(--color-border)", borderRadius: "var(--card-radius)", overflow: "hidden" }}>
             {sectors.map((s) => (
               <div
                 key={s.name}

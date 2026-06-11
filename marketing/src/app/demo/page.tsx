@@ -94,9 +94,18 @@ export default function DemoPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("sending");
-    // In production, send to a form endpoint or email service.
-    // For now, simulate a successful submission.
-    await new Promise((r) => setTimeout(r, 1200));
+    const body = [
+      `Name: ${form.name}`,
+      `Email: ${form.email}`,
+      form.company ? `Company: ${form.company}` : null,
+      form.role ? `Role: ${form.role}` : null,
+      form.sector ? `Sector: ${form.sector}` : null,
+      form.enquiry ? `Enquiry type: ${form.enquiry}` : null,
+      form.message ? `\nMessage:\n${form.message}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    window.location.href = `mailto:hello@nucleos.co.uk?subject=${encodeURIComponent(`Demo request: ${form.name}`)}&body=${encodeURIComponent(body)}`;
     setStatus("sent");
   }
 
@@ -159,7 +168,7 @@ export default function DemoPage() {
           <p className="text-sm text-text-secondary max-w-[480px]" style={{ lineHeight: 1.7 }}>
             Tell us about your import profile and we&apos;ll arrange a call. If you have
             a real supplier document you&apos;d like us to run through the pipeline,
-            mention it in the message — we&apos;ll do it before the demo.
+            mention it in the message; we&apos;ll do it before the demo.
           </p>
         </div>
       </section>
@@ -278,7 +287,7 @@ export default function DemoPage() {
                 </Button>
 
                 <p className="text-xs text-text-tertiary">
-                  We respond within one business day. No sales sequences — a person reads every message.
+                  We respond within one business day. No sales sequences. A person reads every message.
                 </p>
               </form>
             </div>
@@ -307,7 +316,7 @@ export default function DemoPage() {
                     },
                     {
                       step: "03",
-                      text: "We schedule a 30-minute call — no slides, just your data in the product.",
+                      text: "We schedule a 30-minute call: no slides, just your data in the product.",
                     },
                     {
                       step: "04",
@@ -342,7 +351,7 @@ export default function DemoPage() {
                 </p>
                 <p className="text-sm text-text-secondary mb-4" style={{ lineHeight: 1.7 }}>
                   If you just want to know whether your CN code is in scope and what your
-                  estimated liability is — no call needed — use the free scope checker.
+                  estimated liability, use the free scope checker. No call needed.
                 </p>
                 <Button href="/scope-checker" variant="ghost" size="sm">
                   Check your CN code →

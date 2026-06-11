@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "Pricing — nucleos CBAM compliance software",
+  title: "Pricing: nucleos CBAM compliance software",
   description:
     "nucleos pricing for UK and EU CBAM compliance. Start with the free scope checker. Move to a full plan when you need extraction, calculation, and return generation.",
 };
@@ -21,7 +21,7 @@ const tiers = [
       "UK CBAM annual return generation",
       "Default value fallback with Annex VI data",
       "Conflict arbitration",
-      "Audit package — 6-year retention",
+      "Audit package with 6-year retention",
       "Email support",
     ],
     cta: "Get started",
@@ -70,7 +70,7 @@ const tiers = [
 const faqs = [
   {
     q: "How is nucleos priced relative to my CBAM liability?",
-    a: "For a Professional subscriber with a £200,000 annual CBAM liability, the subscription is 1.25% of the liability. By claiming actual data instead of defaults, you typically save 10% of the default liability — many times the cost of the subscription.",
+    a: "For a Professional subscriber with a £200,000 annual CBAM liability, the subscription is 1.25% of the liability. By claiming actual data instead of defaults, you typically save 10% of the default liability, many times the cost of the subscription.",
   },
   {
     q: "Do I need a subscription to use the scope checker?",
@@ -86,7 +86,7 @@ const faqs = [
   },
   {
     q: "What if I only import from one country with its own carbon pricing scheme?",
-    a: "nucleos calculates your Carbon Price Relief deduction automatically. For imports from countries with a qualifying ETS or carbon tax, the CPR can reduce your CBAM liability to near zero — but the calculation and documentation must still be correct and defensible.",
+    a: "nucleos calculates your Carbon Price Relief deduction automatically. For imports from countries with a qualifying ETS or carbon tax, the CPR can reduce your CBAM liability to near zero, but the calculation and documentation must still be correct and defensible.",
   },
   {
     q: "Is there a contract or can I cancel?",
@@ -135,7 +135,7 @@ export default function PricingPage() {
                 style={{
                   backgroundColor: t.highlight ? "var(--color-navy)" : "var(--color-surface)",
                   border: t.highlight
-                    ? "none"
+                    ? "0.5px solid rgba(255,255,255,0.15)"
                     : "0.5px solid var(--color-border)",
                   boxShadow: t.highlight ? "none" : "var(--card-shadow)",
                 }}

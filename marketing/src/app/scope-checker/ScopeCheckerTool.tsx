@@ -308,7 +308,7 @@ export function ScopeCheckerTool() {
             >
               Estimated annual import weight (tonnes){" "}
               <span className="text-text-tertiary" style={{ fontWeight: 300 }}>
-                — optional, for liability estimate
+                (optional, for liability estimate)
               </span>
             </label>
             <div className="relative">

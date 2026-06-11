@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 import { ScopeCheckerTool } from "./ScopeCheckerTool";
 
 export const metadata: Metadata = {
-  title: "CBAM Scope Checker — Is your CN code in scope?",
+  title: "CBAM scope checker: is your CN code in scope?",
   description:
     "Enter your CN commodity code and estimated annual import value to find out immediately whether UK or EU CBAM applies, what your estimated liability is, and when you need to register.",
 };
