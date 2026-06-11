@@ -7,11 +7,9 @@ import { cn } from "@/lib/cn";
 import { Button } from "./ui/Button";
 
 const links = [
-  { label: "How it works", href: "/how-it-works" },
   { label: "Scope checker", href: "/scope-checker" },
   { label: "Pricing", href: "/pricing" },
   { label: "Resources", href: "/resources" },
-  { label: "About", href: "/about" },
 ];
 
 interface NavProps {
