@@ -169,7 +169,7 @@ export default function ResourcesPage() {
             className="rounded-card p-12"
             style={{ backgroundColor: "var(--color-bg)", border: "0.5px solid var(--color-border)" }}
           >
-            <div className="max-w-[480px]">
+            <div>
               <p
                 className="text-xs text-text-tertiary mb-4"
                 style={{ letterSpacing: "0.1em" }}

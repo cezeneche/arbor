@@ -23,7 +23,7 @@ export function Nav({ dark = false }: NavProps) {
   const [open, setOpen] = useState(false);
 
   const textCls = dark
-    ? "text-surface hover:opacity-70"
+    ? "text-surface/70 hover:text-surface"
     : "text-text-secondary hover:text-text-primary";
 
   const wordmarkCls = dark ? "text-surface" : "text-text-primary";
@@ -48,8 +48,9 @@ export function Nav({ dark = false }: NavProps) {
         <Link
           href="/"
           className={cn(
-            "font-inter text-base tracking-tight transition-opacity hover:opacity-70",
+            "font-inter text-base tracking-tight transition-colors",
             wordmarkCls,
+            dark ? "hover:text-surface" : "hover:text-text-secondary",
           )}
           style={{ fontWeight: 300, letterSpacing: "-0.02em" }}
         >

@@ -24,11 +24,11 @@ const variants: Record<Variant, string> = {
   primary:
     "bg-navy text-surface hover:bg-navy-hover",
   ghost:
-    "border text-navy hover:bg-bg",
+    "border border-border text-navy hover:bg-footer-bg",
   "primary-inverse":
-    "bg-surface text-navy hover:bg-bg",
+    "bg-surface text-navy hover:bg-footer-bg",
   "ghost-inverse":
-    "border border-surface/30 text-surface hover:border-surface/60",
+    "border border-surface/30 text-surface hover:border-surface/70 hover:bg-surface/10",
 };
 
 const sizes: Record<Size, string> = {
