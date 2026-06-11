@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/design-system";
 import { sectorLabel } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import AlertBanner from "@/components/ui/AlertBanner";
 
 
 
@@ -519,12 +520,14 @@ export default function CarbonReliefPage() {
         fontWeight:   300,
         color:        "var(--color-text-secondary)",
         lineHeight:   1.7,
-        marginBottom: "var(--space-40)",
+        marginBottom: "var(--space-24)",
       }}>
         Goods produced in EU member states, Norway, Iceland, Liechtenstein or Switzerland
         with a qualifying carbon price are eligible. Deduct the carbon price already paid
         from your UK CBAM liability, reducing it close to zero for large EU importers.
       </p>
+
+      <AlertBanner message="The CBAM liability shown below uses a placeholder UK CBAM rate. HMRC has not published official quarterly rates yet. Relief calculations will update when official rates are published, expected Q4 2026." />
 
       {isLoading ? (
         Array.from({ length: 2 }).map((_, i) => (

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use } from "react";
 import { useCase, useReportPackage } from "@/lib/hooks/useCases";
 import { Card } from "@/components/ui/card";
+import AlertBanner from "@/components/ui/AlertBanner";
 import { formatTco2e, periodLabel } from "@/lib/design-system";
 
 export default function ReportPage({ params }: { params: Promise<{ id: string }> }) {
@@ -56,6 +57,8 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
       >
         ← Back to case
       </Link>
+
+      <AlertBanner message="UK CBAM rate estimate: HMRC has not yet published official quarterly rates. The liability figures below use a placeholder rate. Calculations will update when HMRC publishes official rates, expected Q4 2026." />
 
       {/* Hero — liability number. One per screen. */}
       <div style={{ marginBottom: "var(--space-48)" }}>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import AlertBanner from "@/components/ui/AlertBanner";
 import { formatCurrency, methodLabel, methodBadgeVariant } from "@/lib/design-system";
 import { sectorLabel } from "@/lib/constants";
 import { UK_CBAM_RATES, ROUGH_SEE, MONO, Divider, fmtMass } from "./shared";
@@ -37,6 +38,8 @@ export function EmissionsTab({ case_, onProvideData }: { case_: CaseDetail; onPr
 
   return (
     <div>
+      <AlertBanner message="UK CBAM rate estimate: HMRC has not yet published official quarterly rates. These calculations use a placeholder of £45/tCO₂e with sector-specific free allocation factors and will update automatically when HMRC publishes official rates, expected Q4 2026." />
+
       {/* Per-line calculations */}
       {goods_lines.map((gl, i) => {
         const kg       = gl.net_mass_kg ?? gl.quantity ?? 0;
@@ -103,7 +106,7 @@ export function EmissionsTab({ case_, onProvideData }: { case_: CaseDetail; onPr
                 <span style={{ fontWeight: 500, color: "var(--color-navy)" }}>{formatCurrency(charge)}</span>
               </p>
               <p style={{ fontSize: "11px", fontWeight: 300, color: "var(--color-text-tertiary)", margin: 0 }}>
-                UK CBAM rate: £{rate.toFixed(2)}/tCO₂e (ETS price × (1 − free allocation), Q1 2027 placeholder)
+                UK CBAM rate: £{rate.toFixed(2)}/tCO₂e (ETS price × (1 − free allocation factor))
               </p>
             </div>
 
