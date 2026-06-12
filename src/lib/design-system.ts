@@ -67,4 +67,8 @@ export const trustTierConfig = {
   },
 } as const
 
+export const shadows = {
+  dropdown: '0 4px 16px rgba(0,0,0,0.08)',
+} as const
+
 export const confidenceThreshold = 0.85

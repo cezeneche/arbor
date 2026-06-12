@@ -157,8 +157,8 @@ describe('buildSqlPreview', () => {
   it('omits trust_tier clause when all three tiers selected', () => {
     expect(buildSqlPreview(getDefaultFilters())).not.toContain('r.trust_tier')
   })
-  it('lowercases the domain value', () => {
-    expect(buildSqlPreview(getDefaultFilters())).toContain("r.domain = 'energy'")
+  it('uses the domain enum value unchanged', () => {
+    expect(buildSqlPreview(getDefaultFilters())).toContain("r.domain = 'ENERGY'")
   })
   it('always ends with is_active and ORDER BY', () => {
     const sql = buildSqlPreview(getDefaultFilters())

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { colours, typography, spacing, trustTierConfig } from '@/lib/design-system'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { colours, typography, spacing, shadows, trustTierConfig } from '@/lib/design-system'
 import type {
   FilterState,
   TrustTier,
@@ -97,8 +97,7 @@ export function getDefaultFilters(): FilterState {
   }
 }
 
-export function countActiveFilters(filters: FilterState): number {
-  const defaults = getDefaultFilters()
+export function countActiveFilters(filters: FilterState, defaults = getDefaultFilters()): number {
   let count = 0
   if (filters.sectors.length > 0) count++
   if (filters.countries.length > 0) count++
@@ -134,7 +133,7 @@ export function buildSqlPreview(filters: FilterState, buyerId = '[BUYER_ID]'): s
   if (trustTiers.length < 3) {
     lines.push(`AND r.trust_tier IN (${trustTiers.map(t => `'${t}'`).join(', ')})`)
   }
-  lines.push(`AND r.domain = '${domain.toLowerCase()}'`)
+  lines.push(`AND r.domain = '${domain}'`)
   lines.push('AND r.is_active = true')
   lines.push('ORDER BY e.legal_name, r.period_start')
 
@@ -145,8 +144,7 @@ export function buildSqlPreview(filters: FilterState, buyerId = '[BUYER_ID]'): s
 
 type FilterTag = { key: string; label: string; value: string; onRemove: () => void }
 
-export function buildFilterTags(filters: FilterState, onChange: (f: FilterState) => void): FilterTag[] {
-  const defaults = getDefaultFilters()
+export function buildFilterTags(filters: FilterState, onChange: (f: FilterState) => void, defaults = getDefaultFilters()): FilterTag[] {
   const tags: FilterTag[] = []
 
   for (const s of filters.sectors) {
@@ -220,7 +218,7 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () =
   }, [ref, onClose])
 }
 
-function MultiSelectDropdown({
+function MultiSelectDropdown<T extends string>({
   id,
   label,
   options,
@@ -229,16 +227,16 @@ function MultiSelectDropdown({
 }: {
   id: string
   label: string
-  options: string[]
-  selected: string[]
-  onChange: (vals: string[]) => void
+  options: T[]
+  selected: T[]
+  onChange: (vals: T[]) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useClickOutside(ref, close)
 
-  const toggle = (val: string) =>
+  const toggle = (val: T) =>
     selected.includes(val)
       ? onChange(selected.filter(v => v !== val))
       : onChange([...selected, val])
@@ -261,7 +259,7 @@ function MultiSelectDropdown({
           gap: '6px',
           padding: '7px 12px',
           backgroundColor: selected.length > 0 ? colours.navy : colours.surface,
-          color: selected.length > 0 ? '#fff' : colours.textPrimary,
+          color: selected.length > 0 ? colours.surface : colours.textPrimary,
           border: `1px solid ${selected.length > 0 ? colours.navy : colours.border}`,
           borderRadius: '4px',
           fontSize: typography.sizes.sm,
@@ -275,7 +273,7 @@ function MultiSelectDropdown({
           style={{
             fontSize: typography.sizes.xs,
             fontWeight: typography.weights.medium,
-            color: selected.length > 0 ? 'rgba(255,255,255,0.65)' : colours.textTertiary,
+            color: selected.length > 0 ? colours.surface : colours.textTertiary,
             letterSpacing: typography.tracking.wider,
             textTransform: 'uppercase',
             marginRight: '2px',
@@ -299,11 +297,23 @@ function MultiSelectDropdown({
             backgroundColor: colours.surface,
             border: `1px solid ${colours.border}`,
             borderRadius: '6px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            boxShadow: shadows.dropdown,
             minWidth: '180px',
             padding: '6px 0',
           }}
         >
+          {options.length === 0 ? (
+            <div
+              style={{
+                padding: '8px 14px',
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+              }}
+            >
+              No options available
+            </div>
+          ) : null}
           {options.map(opt => {
             const checked = selected.includes(opt)
             return (
@@ -432,7 +442,7 @@ function SingleSelectDropdown({
             backgroundColor: colours.surface,
             border: `1px solid ${colours.border}`,
             borderRadius: '6px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            boxShadow: shadows.dropdown,
             minWidth: '180px',
             padding: '6px 0',
           }}
@@ -508,7 +518,7 @@ function TrustTierPills({
               border: 'none',
               borderLeft: i > 0 ? `1px solid ${active ? colours.navy : colours.border}` : 'none',
               backgroundColor: active ? colours.navy : colours.surface,
-              color: active ? '#ffffff' : colours.textSecondary,
+              color: active ? colours.surface : colours.textSecondary,
               fontSize: typography.sizes.sm,
               fontWeight: active ? typography.weights.medium : typography.weights.light,
               cursor: 'pointer',
@@ -566,7 +576,8 @@ function PeriodPicker({
   }
 
   const fromOptions = ALL_QUARTERS
-  const toOptions = ALL_QUARTERS.filter(q => ALL_QUARTERS.indexOf(q) >= ALL_QUARTERS.indexOf(from))
+  const fromIdx = ALL_QUARTERS.indexOf(from)
+  const toOptions = fromIdx >= 0 ? ALL_QUARTERS.slice(fromIdx) : ALL_QUARTERS
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -636,11 +647,12 @@ export function FilterBar({ supplierCountries, value, onChange, buyerId }: Filte
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const activeCount = countActiveFilters(value)
-  const tags = buildFilterTags(value, onChange)
+  const pinnedDefaults = useMemo(() => getDefaultFilters(), [])
+  const activeCount = countActiveFilters(value, pinnedDefaults)
+  const tags = buildFilterTags(value, onChange, pinnedDefaults)
   const showFilters = !isMobile || mobileExpanded
 
-  const clearAll = useCallback(() => onChange(getDefaultFilters()), [onChange])
+  const clearAll = useCallback(() => onChange(pinnedDefaults), [onChange, pinnedDefaults])
 
   return (
     <div>
@@ -710,7 +722,7 @@ export function FilterBar({ supplierCountries, value, onChange, buyerId }: Filte
           label="Sector"
           options={SECTOR_OPTIONS}
           selected={value.sectors}
-          onChange={sectors => onChange({ ...value, sectors: sectors as typeof value.sectors })}
+          onChange={sectors => onChange({ ...value, sectors })}
         />
 
         {/* Country */}
@@ -854,7 +866,7 @@ function ActiveBadge({ count }: { count: number }) {
         height: '18px',
         padding: '0 5px',
         backgroundColor: colours.navy,
-        color: '#ffffff',
+        color: colours.surface,
         borderRadius: '100px',
         fontSize: typography.sizes.xs,
         fontWeight: typography.weights.medium,
