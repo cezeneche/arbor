@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
 
@@ -32,8 +33,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  const { session, response } = await requireAdmin()
+  if (!session) return response!
   const entityId = (session.user as Record<string, unknown>).entityId as string
 
   const body = await req.json().catch(() => null)

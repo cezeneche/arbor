@@ -4,36 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing, confidenceThreshold } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
-
-const DOMAIN_BY_DOC_TYPE: Record<string, string> = {
-  ELECTRICITY_BILL: 'ENERGY',
-  GAS_BILL: 'ENERGY',
-  FUEL_RECEIPT: 'ENERGY',
-  RENEWABLE_CERTIFICATE: 'ENERGY',
-  PRODUCTION_LOG: 'PRODUCTION',
-  MATERIAL_INTAKE: 'MATERIALS',
-  BILL_OF_MATERIALS: 'MATERIALS',
-  PROCESS_DATA_SHEET: 'PRODUCTION',
-  FREIGHT_INVOICE: 'LOGISTICS',
-  DELIVERY_NOTE: 'LOGISTICS',
-  CUSTOMS_DECLARATION: 'LOGISTICS',
-  BILL_OF_LADING: 'LOGISTICS',
-  SUPPLIER_INVOICE: 'MATERIALS',
-  PURCHASE_ORDER: 'MATERIALS',
-  CBAM_DECLARATION: 'COMPLIANCE',
-  ENVIRONMENTAL_CERTIFICATE: 'EMISSIONS',
-  CARBON_FOOTPRINT_REPORT: 'EMISSIONS',
-  WASTE_RECORD: 'WASTE_AND_WATER',
-  WATER_RECORD: 'WASTE_AND_WATER',
-  CROP_YIELD_RECORD: 'AGRICULTURE',
-  FERTILISER_RECORD: 'AGRICULTURE',
-  LIVESTOCK_RECORD: 'AGRICULTURE',
-  PRODUCT_CERTIFICATE: 'COMPLIANCE',
-  CHAIN_OF_CUSTODY: 'COMPLIANCE',
-  ESG_REPORT: 'COMPLIANCE',
-  AUDIT_REPORT: 'COMPLIANCE',
-  OTHER: 'COMPLIANCE',
-}
+import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 
 interface ExtractedField {
   id: string
@@ -96,7 +67,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
 
-  const domain = DOMAIN_BY_DOC_TYPE[document.documentType] ?? 'COMPLIANCE'
+  const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
   const periodStartField = fields.find(
     f => f.fieldName === 'period_start' || f.fieldName === 'production_period_start'
   )

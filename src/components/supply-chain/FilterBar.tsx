@@ -68,7 +68,7 @@ export function getLastCompletedQuarter(): QuarterValue {
 
 export function generateQuarterRange(from: QuarterValue, to: QuarterValue): QuarterValue[] {
   const quarters: QuarterValue[] = []
-  let [y, q] = from.split('-')
+  const [y, q] = from.split('-')
   let year = parseInt(y, 10)
   let qNum = parseInt(q.slice(1), 10)
   const [toY, toQ] = to.split('-')

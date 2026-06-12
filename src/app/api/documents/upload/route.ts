@@ -5,9 +5,10 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { storeDocument } from '@/lib/storage'
 import { inngest } from '@/inngest/client'
+import { documentTypeSchema, DOCUMENT_MAX_BYTES, ALLOWED_MIME_TYPES } from '@/lib/constants'
 
 const bodySchema = z.object({
-  documentType: z.string().min(1),
+  documentType: documentTypeSchema,
   reportingPeriodEnd: z.string().datetime().optional(),
 })
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!entityId) return err('Entity not found for session user', 'NO_ENTITY', 403)
 
   let file: File | null = null
-  let documentType = ''
+  let documentType: z.infer<typeof documentTypeSchema>
   let reportingPeriodEnd: string | undefined
 
   try {
@@ -37,6 +38,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (!file) return err('No file provided', 'NO_FILE', 400)
+  if (file.size > DOCUMENT_MAX_BYTES) return err('File exceeds 50 MB limit', 'FILE_TOO_LARGE', 413)
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return err('Unsupported file type. Accepted: PDF, JPEG, PNG, TIFF, Excel, CSV', 'UNSUPPORTED_FILE_TYPE', 415)
+  }
 
   const { url } = await storeDocument(file, entityId)
 
@@ -48,7 +53,7 @@ export async function POST(req: NextRequest) {
       entityId,
       fileName: file.name,
       fileType: file.type,
-      documentType: documentType as never,
+      documentType,
       blobUrl: url,
       submittedById: session.user!.id!,
       status: 'PENDING',
@@ -68,7 +73,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (e) {
     // Document is safely stored — log the Inngest failure but don't surface it to the caller.
-    // Extraction can be re-triggered by re-sending the event once Inngest recovers.
     console.error('[upload] inngest.send failed for document', document.id, e)
   }
 

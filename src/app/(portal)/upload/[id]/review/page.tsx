@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { ExtractionReview } from '@/components/ExtractionReview'
 import { ExtractionPoller } from '@/components/ExtractionPoller'
+import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 
 export default async function ReviewPage({
   params,
@@ -41,23 +42,7 @@ export default async function ReviewPage({
 
   // Cross-validation: look up existing records for the same domain+period
   // to surface conflicts before the user confirms (PRD §12.3).
-  const DOMAIN_BY_DOC: Record<string, string> = {
-    ELECTRICITY_BILL: 'ENERGY', GAS_BILL: 'ENERGY', FUEL_RECEIPT: 'ENERGY',
-    RENEWABLE_CERTIFICATE: 'ENERGY', PRODUCTION_LOG: 'PRODUCTION',
-    BILL_OF_MATERIALS: 'PRODUCTION', PROCESS_DATA_SHEET: 'PRODUCTION',
-    MATERIAL_INTAKE: 'MATERIALS', SUPPLIER_INVOICE: 'MATERIALS',
-    PURCHASE_ORDER: 'MATERIALS', FREIGHT_INVOICE: 'LOGISTICS',
-    DELIVERY_NOTE: 'LOGISTICS', CUSTOMS_DECLARATION: 'LOGISTICS',
-    BILL_OF_LADING: 'LOGISTICS', CBAM_DECLARATION: 'COMPLIANCE',
-    ENVIRONMENTAL_CERTIFICATE: 'COMPLIANCE', PRODUCT_CERTIFICATE: 'COMPLIANCE',
-    CHAIN_OF_CUSTODY: 'COMPLIANCE', ESG_DISCLOSURE: 'COMPLIANCE',
-    THIRD_PARTY_AUDIT_REPORT: 'COMPLIANCE', CARBON_FOOTPRINT_REPORT: 'EMISSIONS',
-    EMISSIONS_FACTOR_DOC: 'EMISSIONS', WASTE_RECORD: 'WASTE_AND_WATER',
-    WATER_RECORD: 'WASTE_AND_WATER', CROP_YIELD_RECORD: 'AGRICULTURE',
-    FERTILISER_RECORD: 'AGRICULTURE', LIVESTOCK_RECORD: 'AGRICULTURE',
-    LAND_USE_CERTIFICATE: 'AGRICULTURE',
-  }
-  const domain = DOMAIN_BY_DOC[document.documentType] ?? 'COMPLIANCE'
+  const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
   const fields = job?.extractedFields ?? []
   const periodStartRaw = fields.find(f => f.fieldName === 'period_start' || f.fieldName === 'production_period_start')?.rawValue
   const periodEndRaw = fields.find(f => f.fieldName === 'period_end' || f.fieldName === 'production_period_end')?.rawValue

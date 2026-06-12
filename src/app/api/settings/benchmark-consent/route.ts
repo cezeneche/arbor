@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { computeRecordHash } from '@/lib/layer2/audit-chain'
+import type { AuditPayload } from '@/lib/layer2/audit-chain'
 import type { Prisma } from '@prisma/client'
 
 export async function POST(req: NextRequest) {
@@ -35,14 +36,17 @@ export async function POST(req: NextRequest) {
     select: { hash: true },
   })
 
-  const payload = {
-    recordId: `consent_${Date.now()}`,
+  // recordId is assigned once and reused for both hash computation and storage.
+  const recordId = `consent_${Date.now()}`
+
+  const payload: AuditPayload = {
+    recordId,
     entityId,
     domain: 'COMPLIANCE',
     fieldName: 'benchmark_aggregation_consent',
     value: body.allow ? 1 : 0,
     unit: 'boolean',
-    trustTier: 'B' as const,
+    trustTier: 'B',
     submittedAt: new Date().toISOString(),
     submittedById: userId,
   }
@@ -51,9 +55,9 @@ export async function POST(req: NextRequest) {
   await prisma.auditEntry.create({
     data: {
       entityId,
-      recordId: `consent_${Date.now()}`,
+      recordId,
       eventType: body.allow ? 'BENCHMARK_CONSENT_GRANTED' : 'BENCHMARK_CONSENT_REVOKED',
-      payload: { action: body.allow ? 'granted' : 'revoked', userId } as Prisma.InputJsonValue,
+      payload: payload as unknown as Prisma.InputJsonValue,
       hash,
       previousHash: lastEntry?.hash ?? null,
     },

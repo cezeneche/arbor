@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { authenticateApiKey } from '@/lib/api-key-auth'
 import { err } from '@/lib/api-helpers'
 import { inngest } from '@/inngest/client'
+import { documentTypeSchema } from '@/lib/constants'
+
+const bodySchema = z.object({
+  documentType: documentTypeSchema,
+  blobUrl: z.string().min(1),
+  fileName: z.string().min(1),
+  reportingPeriodEnd: z.string().datetime().optional(),
+})
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateApiKey(req.headers.get('authorization'))
@@ -17,15 +26,17 @@ export async function POST(req: NextRequest) {
     return err('Invalid JSON body', 'INVALID_BODY', 400)
   }
 
-  const { documentType, blobUrl, fileName, reportingPeriodEnd } = body as {
-    documentType: string
-    blobUrl: string
-    fileName: string
-    reportingPeriodEnd?: string
+  const parsed = bodySchema.safeParse(body)
+  if (!parsed.success) {
+    return err(parsed.error.errors[0]?.message ?? 'Invalid request body', 'VALIDATION_ERROR', 400)
   }
 
-  if (!documentType || !blobUrl || !fileName) {
-    return err('documentType, blobUrl, and fileName are required', 'MISSING_FIELDS', 400)
+  const { documentType, blobUrl, fileName, reportingPeriodEnd } = parsed.data
+
+  // blobUrl must be a storage path owned by the authenticated entity.
+  // Stored paths take the form "{entityId}/{timestamp}.{ext}".
+  if (!blobUrl.startsWith(`${auth.entityId!}/`)) {
+    return err('blobUrl does not belong to the authenticated entity', 'FORBIDDEN', 403)
   }
 
   const entity = await prisma.entity.findUnique({ where: { id: auth.entityId! } })
@@ -40,7 +51,7 @@ export async function POST(req: NextRequest) {
   const document = await prisma.document.create({
     data: {
       entityId: auth.entityId!,
-      documentType: documentType as never,
+      documentType,
       blobUrl,
       fileName,
       fileType: fileName.split('.').pop() ?? 'pdf',

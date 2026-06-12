@@ -30,6 +30,11 @@ export async function GET(
 
   if (!request) return err('Invalid or expired submission link', 'NOT_FOUND', 404)
 
+  // Require an explicit expiry on GET as well — expired links should not expose request details.
+  if (!request.submissionTokenExpiry || request.submissionTokenExpiry < new Date()) {
+    return err('This submission link has expired', 'TOKEN_EXPIRED', 410)
+  }
+
   return NextResponse.json({
     id: request.id,
     buyerName: request.buyerEntity.legalName,
@@ -40,7 +45,7 @@ export async function GET(
     deadline: request.deadline?.toISOString() ?? null,
     notes: request.notes ?? null,
     status: request.status,
-    submissionTokenExpiry: request.submissionTokenExpiry?.toISOString() ?? null,
+    submissionTokenExpiry: request.submissionTokenExpiry.toISOString(),
   })
 }
 
@@ -63,7 +68,6 @@ export async function POST(
     return err('This request has already been responded to', 'ALREADY_RESPONDED', 409)
   }
 
-  // Require an explicit expiry — tokens without one are no longer valid (legacy records).
   if (!request.submissionTokenExpiry || request.submissionTokenExpiry < new Date()) {
     return err('This submission link has expired', 'TOKEN_EXPIRED', 410)
   }
@@ -72,9 +76,23 @@ export async function POST(
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
 
+  // Validate that every submitted fieldName is in the request's requiredFields list.
+  const requiredFields = request.requiredFields as string[]
+  if (requiredFields.length > 0) {
+    const unknownFields = parsed.data.entries
+      .map(e => e.fieldName)
+      .filter(name => !requiredFields.includes(name))
+    if (unknownFields.length > 0) {
+      return err(
+        `Unknown field(s): ${unknownFields.join(', ')}. Accepted fields: ${requiredFields.join(', ')}`,
+        'UNKNOWN_FIELDS',
+        400,
+      )
+    }
+  }
+
   const entityId = request.supplierEntityId
 
-  // System user is the correct actor for token-based submissions (no authenticated session).
   const systemUser = await getSystemUser(entityId)
 
   const createdRecordIds: string[] = []
@@ -110,12 +128,17 @@ export async function POST(
   })
 
   // Grant buyer access to this domain + period so they can query the records.
+  // Only skip creation if an existing active grant already covers the full requested period.
   const existingGrant = await prisma.dataAccessGrant.findFirst({
     where: {
       grantorEntityId: entityId,
       granteeEntityId: request.buyerEntityId,
       domain: request.domain,
       isActive: true,
+      AND: [
+        { OR: [{ periodStart: null }, { periodStart: { lte: request.periodStart } }] },
+        { OR: [{ periodEnd: null }, { periodEnd: { gte: request.periodEnd } }] },
+      ],
     },
   })
   if (!existingGrant) {

@@ -49,13 +49,18 @@ export async function PATCH(
   })
 
   if (parsed.data.status === 'SUBMITTED') {
-    // Create a DataAccessGrant so the buyer can see the supplier's data
+    // Create a DataAccessGrant so the buyer can see the supplier's data.
+    // Only skip if an existing active grant already covers the full requested period.
     const existing = await prisma.dataAccessGrant.findFirst({
       where: {
         grantorEntityId: dataRequest.supplierEntityId,
         granteeEntityId: dataRequest.buyerEntityId,
         domain: dataRequest.domain,
         isActive: true,
+        AND: [
+          { OR: [{ periodStart: null }, { periodStart: { lte: dataRequest.periodStart } }] },
+          { OR: [{ periodEnd: null }, { periodEnd: { gte: dataRequest.periodEnd } }] },
+        ],
       },
     })
     if (!existing) {

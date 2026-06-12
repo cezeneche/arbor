@@ -3,10 +3,9 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
-import { computeRecordHash } from '@/lib/layer2/audit-chain'
+import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
-import type { AuditPayload } from '@/lib/layer2/audit-chain'
-import type { Prisma } from '@prisma/client'
+import { ExtractionMethod, TrustTier } from '@prisma/client'
 
 const fieldSchema = z.object({
   fieldName: z.string(),
@@ -42,63 +41,33 @@ export async function POST(
   if (!document) return err('Document not found', 'NOT_FOUND', 404)
   if (document.entityId !== entityId) return err('Access denied', 'FORBIDDEN', 403)
 
-  const lastAuditEntry = await prisma.auditEntry.findFirst({
-    where: { entityId },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  const createdRecords = []
+  const createdRecords: string[] = []
 
   for (const field of parsed.data.fields) {
-    const auditPayload: AuditPayload = {
-      recordId: `pending_${Date.now()}_${field.fieldName}`,
-      entityId,
-      domain: field.domain,
-      fieldName: field.fieldName,
-      value: field.normalisedValue,
-      unit: field.normalisedUnit,
-      trustTier: parsed.data.trustTier,
-      submittedAt: new Date().toISOString(),
-      submittedById: session.user!.id!,
-    }
-
-    const hash = computeRecordHash(auditPayload, lastAuditEntry?.hash ?? null)
-
-    const record = await prisma.dataRecord.create({
-      data: {
-        entityId,
-        documentId,
-        domain: field.domain,
-        fieldName: field.fieldName,
-        value: field.normalisedValue,
-        unit: field.normalisedUnit,
-        originalValue: parseFloat(field.confirmedValue),
-        originalUnit: field.confirmedUnit ?? field.normalisedUnit,
-        periodStart: new Date(field.periodStart),
-        periodEnd: new Date(field.periodEnd),
-        trustTier: parsed.data.trustTier,
-        extractionMethod: 'DOCUMENT_AI',
-        submittedById: session.user!.id!,
-        auditHash: hash,
-        isActive: true,
-      },
-    })
-
-    auditPayload.recordId = record.id
-    const finalHash = computeRecordHash(auditPayload, lastAuditEntry?.hash ?? null)
-
-    await prisma.auditEntry.create({
-      data: {
-        entityId,
-        recordId: record.id,
-        eventType: 'CREATED',
-        payload: auditPayload as unknown as Prisma.InputJsonValue,
-        hash: finalHash,
-        previousHash: lastAuditEntry?.hash ?? null,
-      },
-    })
-
-    createdRecords.push(record.id)
+    const { recordId } = await prisma.$transaction(
+      (tx) =>
+        writeRecordWithAuditEntry(
+          tx,
+          {
+            entityId,
+            domain: field.domain,
+            fieldName: field.fieldName,
+            value: field.normalisedValue,
+            unit: field.normalisedUnit,
+            originalValue: parseFloat(field.confirmedValue),
+            originalUnit: field.confirmedUnit ?? field.normalisedUnit,
+            periodStart: new Date(field.periodStart),
+            periodEnd: new Date(field.periodEnd),
+            trustTier: parsed.data.trustTier as TrustTier,
+            extractionMethod: ExtractionMethod.DOCUMENT_AI,
+            submittedById: session.user!.id!,
+            documentId,
+          },
+          'CREATED',
+        ),
+      { isolationLevel: 'Serializable' },
+    )
+    createdRecords.push(recordId)
   }
 
   await prisma.document.update({

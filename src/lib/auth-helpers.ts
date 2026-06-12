@@ -14,3 +14,22 @@ export async function requireAuth() {
   }
   return { session, response: null }
 }
+
+/** Requires an authenticated session AND the ADMIN role.
+ *  Returns the session on success, or a 401/403 response on failure.
+ */
+export async function requireAdmin() {
+  const { session, response } = await requireAuth()
+  if (!session) return { session: null, response: response! }
+  const role = (session.user as Record<string, unknown>).role as string
+  if (role !== 'ADMIN') {
+    return {
+      session: null,
+      response: NextResponse.json(
+        { error: 'Forbidden — ADMIN role required', code: 'FORBIDDEN' },
+        { status: 403 }
+      ),
+    }
+  }
+  return { session, response: null }
+}
