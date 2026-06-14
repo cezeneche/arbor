@@ -1,6 +1,14 @@
 import Link from 'next/link'
 import { colours, typography } from '@/lib/design-system'
 
+const navLink = {
+  fontSize: typography.sizes.sm,
+  fontWeight: typography.weights.light,
+  color: colours.textSecondary,
+  textDecoration: 'none',
+  letterSpacing: typography.tracking.normal,
+}
+
 export function PublicNav() {
   return (
     <nav
@@ -26,6 +34,7 @@ export function PublicNav() {
           justifyContent: 'space-between',
         }}
       >
+        {/* Wordmark */}
         <Link
           href="/"
           style={{
@@ -39,27 +48,20 @@ export function PublicNav() {
           arbor
         </Link>
 
+        {/* Centre links */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-          <Link
-            href="/pricing"
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              textDecoration: 'none',
-              letterSpacing: typography.tracking.normal,
-            }}
-          >
-            Pricing
-          </Link>
+          <Link href="/how-it-works" style={navLink}>How it works</Link>
+          <Link href="/pricing" style={navLink}>Pricing</Link>
+          <Link href="/about" style={navLink}>About</Link>
+        </div>
+
+        {/* Auth actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <Link
             href="/login"
             style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
+              ...navLink,
               color: colours.textPrimary,
-              textDecoration: 'none',
-              letterSpacing: typography.tracking.normal,
             }}
           >
             Sign in

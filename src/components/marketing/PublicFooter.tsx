@@ -74,7 +74,9 @@ export function PublicFooter() {
           {/* Product */}
           <div>
             <p style={headingStyle}>Product</p>
+            <Link href="/how-it-works" style={linkStyle}>How it works</Link>
             <Link href="/pricing" style={linkStyle}>Pricing</Link>
+            <Link href="/about" style={linkStyle}>About</Link>
             <Link href="/signup" style={linkStyle}>Get started</Link>
             <Link href="/login" style={linkStyle}>Sign in</Link>
           </div>
