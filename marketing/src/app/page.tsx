@@ -83,9 +83,8 @@ const features = [
 export default function Home() {
   return (
     <>
-      {/* Navy hero uses its own dark nav */}
       <div className="bg-navy">
-        <Nav dark />
+        <Nav />
 
         {/* Hero */}
         <section className="page-content pt-24 pb-32 md:pt-32 md:pb-40">

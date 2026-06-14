@@ -95,25 +95,19 @@ export default function ResourcesPage() {
         style={{ borderBottom: "0.5px solid var(--color-border)" }}
       >
         <div className="page-content">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-            <div>
-              <p
-                className="text-xs text-text-tertiary mb-4"
-                style={{ letterSpacing: "0.1em" }}
-              >
-                RESOURCES
-              </p>
-              <h1
-                className="text-lg text-text-primary"
-                style={{ fontWeight: 500, letterSpacing: "-0.01em" }}
-              >
-                CBAM guides for UK importers.
-              </h1>
-            </div>
-            <p className="text-sm text-text-secondary" style={{ lineHeight: 1.7 }}>
-              Plain-language guides to every aspect of CBAM compliance. No marketing.
-              No jargon. Just what you need to know, referenced to the regulations.
+          <div>
+            <p
+              className="text-xs text-text-tertiary mb-4"
+              style={{ letterSpacing: "0.1em" }}
+            >
+              RESOURCES
             </p>
+            <h1
+              className="text-lg text-text-primary"
+              style={{ fontWeight: 500, letterSpacing: "-0.01em" }}
+            >
+              CBAM guides for UK importers.
+            </h1>
           </div>
         </div>
       </section>
@@ -135,7 +129,7 @@ export default function ResourcesPage() {
                 <div>
                   <div className="flex items-center gap-3 mb-3">
                     <span
-                      className="text-xs rounded-badge px-2 py-1"
+                      className="text-xs rounded-badge px-3 py-1.5"
                       style={{
                         fontWeight: 500,
                         backgroundColor: "var(--color-surface)",

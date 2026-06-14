@@ -529,7 +529,7 @@ export default function ResourceArticlePage({
             <article>
               <div className="mb-10">
                 <span
-                  className="text-xs rounded-badge px-2 py-1 mb-4 inline-block"
+                  className="text-xs rounded-badge px-3 py-1.5 mb-4 inline-block"
                   style={{
                     fontWeight: 500,
                     backgroundColor: "var(--color-surface)",

@@ -22,7 +22,7 @@ export function Nav({ dark = false }: NavProps) {
 
   const textCls = dark
     ? "text-surface/70 hover:text-surface"
-    : "text-text-secondary hover:text-text-primary";
+    : "text-text-primary";
 
   const wordmarkCls = dark ? "text-surface" : "text-text-primary";
   const borderCls = dark ? "border-surface/10" : "border-border";
@@ -50,7 +50,7 @@ export function Nav({ dark = false }: NavProps) {
             wordmarkCls,
             dark ? "hover:text-surface" : "hover:text-text-secondary",
           )}
-          style={{ fontWeight: 300, letterSpacing: "-0.02em" }}
+          style={{ fontWeight: 500, letterSpacing: "-0.02em" }}
         >
           nucleos
         </Link>
@@ -73,7 +73,7 @@ export function Nav({ dark = false }: NavProps) {
         </div>
 
         {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-8">
           <Link
             href="/login"
             className={cn("text-sm transition-colors", textCls)}

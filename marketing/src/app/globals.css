@@ -74,8 +74,8 @@
   max-width:     var(--max-width);
   margin-left:   auto;
   margin-right:  auto;
-  padding-left:  var(--space-32);
-  padding-right: var(--space-32);
+  padding-left:  var(--space-40);
+  padding-right: var(--space-40);
 }
 
 .page-content-wide {

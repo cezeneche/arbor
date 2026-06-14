@@ -22,13 +22,13 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-navy text-surface hover:bg-navy-hover",
+    "bg-navy !text-white visited:!text-white hover:bg-navy-hover",
   ghost:
     "border border-border text-navy hover:bg-footer-bg",
   "primary-inverse":
-    "bg-surface text-navy hover:bg-footer-bg",
+    "bg-white !text-navy visited:!text-navy",
   "ghost-inverse":
-    "border border-surface/30 text-surface hover:border-surface/70 hover:bg-surface/10",
+    "border border-white/50 !text-white visited:!text-white focus:outline-none",
 };
 
 const sizes: Record<Size, string> = {
