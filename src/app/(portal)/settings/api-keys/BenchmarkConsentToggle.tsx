@@ -38,7 +38,7 @@ export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3] }}>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{
               fontSize: typography.sizes.xs,
@@ -61,7 +61,6 @@ export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean
               color: colours.textSecondary,
               margin: 0,
               lineHeight: '1.6',
-              maxWidth: '480px',
             }}
           >
             When enabled, your verified records are included in anonymised statistical benchmarks for your sector.
