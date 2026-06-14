@@ -11,7 +11,7 @@ import { parseNlQuery } from '@/lib/query-interpreter/nl-parser'
 import type { DataDomain, TrustTier } from '@prisma/client'
 
 const CALCULATION_NOTE =
-  'Arbor stores the operational data but does not perform this calculation. ' +
+  'arbor stores the operational data but does not perform this calculation. ' +
   'Here are the records you need to calculate it yourself or pass to your reporting tool.'
 
 export async function POST(req: NextRequest) {

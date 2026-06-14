@@ -54,7 +54,7 @@ export default function LoginPage() {
             letterSpacing: typography.tracking.tight,
           }}
         >
-          Arbor
+          arbor
         </h1>
         <p
           style={{

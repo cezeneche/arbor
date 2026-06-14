@@ -22,7 +22,7 @@ export interface ParsedQuery {
 }
 
 function buildSystemPrompt(todayIso: string): string {
-  return `You are a query parameter extractor for Arbor, a certified operational data repository for manufacturers and suppliers.
+  return `You are a query parameter extractor for arbor, a certified operational data repository for manufacturers and suppliers.
 
 Your only job is to translate a plain English question into structured query parameters. You do NOT answer questions — you extract parameters.
 

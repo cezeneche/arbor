@@ -9,7 +9,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Arbor',
+  title: 'arbor',
   description: 'Certified operational data infrastructure for manufacturers, suppliers, and producers.',
 }
 

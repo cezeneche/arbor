@@ -193,7 +193,7 @@ export default async function AnalyticsPage() {
         <p style={sectionLabel}>Completeness by data type</p>
         {domainsWithData.length === 0 ? (
           <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[4], textAlign: 'center' }}>
-            <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>No records yet.</p>
+            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>No records yet.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -408,7 +408,7 @@ export default async function AnalyticsPage() {
           <p style={sectionLabel}>Supply chain coverage</p>
           {supplierCoverage.length === 0 ? (
             <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[4], textAlign: 'center' }}>
-              <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
                 No authorised suppliers yet. Send a data request to get started.
               </p>
             </div>

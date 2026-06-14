@@ -40,7 +40,7 @@ export default async function OnboardingPage({
             margin: `0 0 ${spacing[3]}`,
           }}
         >
-          Welcome to Arbor
+          Welcome to arbor
         </p>
 
         <h1
@@ -54,7 +54,7 @@ export default async function OnboardingPage({
         >
           {customerName
             ? `${customerName} needs some data from you`
-            : 'Arbor organises your business documents'}
+            : 'arbor organises your business documents'}
         </h1>
 
         <p
@@ -67,8 +67,8 @@ export default async function OnboardingPage({
           }}
         >
           {customerName
-            ? `${customerName} has asked for emissions data related to your supplies. Arbor helps you respond using documents you already have.`
-            : 'Arbor organises your business documents so you can answer customer data requests quickly and accurately. Your customers may ask you for this data. Having it ready means you can respond in minutes instead of days.'}
+            ? `${customerName} has asked for emissions data related to your supplies. arbor helps you respond using documents you already have.`
+            : 'arbor organises your business documents so you can answer customer data requests quickly and accurately. Your customers may ask you for this data. Having it ready means you can respond in minutes instead of days.'}
         </p>
 
         <div
@@ -94,7 +94,7 @@ export default async function OnboardingPage({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
               { n: '1', text: 'Upload the documents you already have: invoices, energy bills, delivery notes, production records.' },
-              { n: '2', text: 'Arbor reads them and stores the information. You confirm anything it is not sure about.' },
+              { n: '2', text: 'arbor reads them and stores the information. You confirm anything it is not sure about.' },
               { n: '3', text: 'Share your data when a customer asks. It will already be there.' },
             ].map(step => (
               <div key={step.n} style={{ display: 'flex', gap: spacing[2], alignItems: 'flex-start' }}>

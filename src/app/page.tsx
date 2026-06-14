@@ -97,8 +97,8 @@ export default async function RootPage() {
                 maxWidth: '560px',
               }}
             >
-              Arbor is a certified data repository for manufacturers, suppliers, and producers.
-              Upload the documents your business already produces. Arbor reads them, certifies
+              arbor is a certified data repository for manufacturers, suppliers, and producers.
+              Upload the documents your business already produces. arbor reads them, certifies
               their provenance, and stores the data permanently. Share verified records with any
               authorised party, instantly.
             </p>
@@ -273,7 +273,7 @@ export default async function RootPage() {
                 {
                   n: '02',
                   heading: 'Extraction and review',
-                  body: 'Arbor reads each document and extracts structured data fields. Fields below the confidence threshold are flagged for your review before anything is stored.',
+                  body: 'arbor reads each document and extracts structured data fields. Fields below the confidence threshold are flagged for your review before anything is stored.',
                 },
                 {
                   n: '03',
@@ -422,7 +422,7 @@ export default async function RootPage() {
                     margin: '0 0 28px',
                   }}
                 >
-                  Upload the documents you already have. Arbor organises and certifies
+                  Upload the documents you already have. arbor organises and certifies
                   the data. Every submission traces back to a source document. Control
                   exactly which buyers can see your records.
                 </p>

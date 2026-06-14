@@ -55,7 +55,7 @@ export function PublicFooter() {
                 marginBottom: '12px',
               }}
             >
-              Arbor
+              arbor
             </div>
             <p
               style={{
@@ -112,7 +112,7 @@ export function PublicFooter() {
               margin: 0,
             }}
           >
-            {year} Arbor Data Ltd. All rights reserved. Registered in England and Wales.
+            {year} arbor Data Ltd. All rights reserved. Registered in England and Wales.
           </p>
           <p
             style={{

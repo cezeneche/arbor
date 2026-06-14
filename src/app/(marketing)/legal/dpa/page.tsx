@@ -75,9 +75,9 @@ export default function DpaPage() {
           </p>
           <p style={{ ...pStyle, margin: 0 }}>
             This Data Processing Agreement (&quot;DPA&quot;) forms part of the Terms of Service between
-            Arbor Data Ltd (&quot;Arbor&quot;, &quot;Processor&quot;) and the entity that has agreed to those terms
-            (&quot;Customer&quot;, &quot;Controller&quot;). It applies where Arbor processes personal data on behalf
-            of the Customer in the course of providing the Arbor platform service.
+            arbor Data Ltd (&quot;arbor&quot;, &quot;Processor&quot;) and the entity that has agreed to those terms
+            (&quot;Customer&quot;, &quot;Controller&quot;). It applies where arbor processes personal data on behalf
+            of the Customer in the course of providing the arbor platform service.
           </p>
         </div>
       </div>
@@ -93,20 +93,20 @@ export default function DpaPage() {
             &quot;data controller&quot;, and &quot;data processor&quot; are used as defined in those instruments.
           </p>
           <p style={pStyle}>
-            &quot;Services&quot; means the operational data repository platform provided by Arbor under the Terms
+            &quot;Services&quot; means the operational data repository platform provided by arbor under the Terms
             of Service, including document ingestion, data extraction, certification, storage, and access
             facilitation.
           </p>
 
           <h2 style={h2Style}>2. Scope and subject matter</h2>
           <p style={pStyle}>
-            Arbor processes personal data on behalf of the Customer solely to provide the Services.
+            arbor processes personal data on behalf of the Customer solely to provide the Services.
             The nature and purpose of processing is the ingestion, AI-powered extraction, storage,
             certification, and controlled sharing of operational data records derived from documents
             submitted by the Customer.
           </p>
           <p style={pStyle}>
-            Arbor does not process personal data for its own purposes beyond what is necessary to
+            arbor does not process personal data for its own purposes beyond what is necessary to
             provide the Services, comply with legal obligations, and maintain the security of the platform.
           </p>
 
@@ -140,7 +140,7 @@ export default function DpaPage() {
           </p>
 
           <h2 style={h2Style}>5. Processor obligations</h2>
-          <p style={pStyle}>Arbor shall:</p>
+          <p style={pStyle}>arbor shall:</p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             <li style={liStyle}>
               Process personal data only on documented instructions from the Controller, including with
@@ -178,7 +178,7 @@ export default function DpaPage() {
 
           <h2 style={h2Style}>6. Sub-processors</h2>
           <p style={pStyle}>
-            The Customer provides general authorisation for Arbor to engage the following sub-processors,
+            The Customer provides general authorisation for arbor to engage the following sub-processors,
             who assist in delivering the Services:
           </p>
           <div
@@ -223,33 +223,33 @@ export default function DpaPage() {
             ))}
           </div>
           <p style={pStyle}>
-            Arbor will notify the Customer of any intended changes to this list (additions or replacements)
+            arbor will notify the Customer of any intended changes to this list (additions or replacements)
             by email, with at least 14 days&apos; prior notice, giving the Customer opportunity to object.
-            Arbor will impose equivalent data protection obligations on all sub-processors.
+            arbor will impose equivalent data protection obligations on all sub-processors.
           </p>
 
           <h2 style={h2Style}>7. International transfers</h2>
           <p style={pStyle}>
             Where sub-processors are located in countries outside the UK not covered by an adequacy
-            decision, Arbor ensures appropriate safeguards are in place under UK GDPR Article 46.
-            Where Standard Contractual Clauses are used, Arbor will make copies available to the Customer
+            decision, arbor ensures appropriate safeguards are in place under UK GDPR Article 46.
+            Where Standard Contractual Clauses are used, arbor will make copies available to the Customer
             upon written request.
           </p>
 
           <h2 style={h2Style}>8. Data subject rights</h2>
           <p style={pStyle}>
-            Where Arbor receives a data subject request relating to personal data it processes on behalf
-            of the Customer, Arbor will promptly forward the request to the Customer and will not respond
+            Where arbor receives a data subject request relating to personal data it processes on behalf
+            of the Customer, arbor will promptly forward the request to the Customer and will not respond
             to the data subject directly without the Customer&apos;s authorisation, except as required by law.
           </p>
           <p style={pStyle}>
-            Arbor will, at the Customer&apos;s written request, assist with the fulfilment of data subject
+            arbor will, at the Customer&apos;s written request, assist with the fulfilment of data subject
             requests to the extent technically feasible, given the nature of the processing.
           </p>
 
           <h2 style={h2Style}>9. Personal data breach notification</h2>
           <p style={pStyle}>
-            Arbor shall notify the Customer without undue delay, and where feasible within 72 hours,
+            arbor shall notify the Customer without undue delay, and where feasible within 72 hours,
             after becoming aware of a personal data breach affecting data processed under this DPA.
             Notification will include the nature of the breach, the categories and approximate number
             of data subjects and records concerned, the likely consequences, and measures taken or
@@ -258,7 +258,7 @@ export default function DpaPage() {
 
           <h2 style={h2Style}>10. Technical and organisational measures</h2>
           <p style={pStyle}>
-            Arbor implements the following technical and organisational measures to protect personal data:
+            arbor implements the following technical and organisational measures to protect personal data:
           </p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             {[
@@ -278,7 +278,7 @@ export default function DpaPage() {
 
           <h2 style={h2Style}>11. Return and deletion of data</h2>
           <p style={pStyle}>
-            On termination of the Services, Arbor shall, at the Customer&apos;s election:
+            On termination of the Services, arbor shall, at the Customer&apos;s election:
           </p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             <li style={liStyle}>
@@ -289,19 +289,19 @@ export default function DpaPage() {
             </li>
           </ul>
           <p style={pStyle}>
-            Arbor may retain personal data beyond termination where required to do so by applicable law,
+            arbor may retain personal data beyond termination where required to do so by applicable law,
             for the period required by that law only.
           </p>
 
           <h2 style={h2Style}>12. Audit rights</h2>
           <p style={pStyle}>
-            Arbor shall make available to the Customer all information reasonably necessary to demonstrate
+            arbor shall make available to the Customer all information reasonably necessary to demonstrate
             compliance with this DPA and shall allow for and contribute to audits and inspections conducted
             by the Customer or its nominated auditor, on reasonable prior written notice of no less than
             30 days.
           </p>
           <p style={pStyle}>
-            Arbor may object to an audit on reasonable grounds (including disruption to operations or
+            arbor may object to an audit on reasonable grounds (including disruption to operations or
             conflict with confidentiality obligations to other customers) and in such case shall work with
             the Customer to agree an alternative approach that satisfies the Customer&apos;s compliance needs.
           </p>
@@ -315,7 +315,7 @@ export default function DpaPage() {
           <h2 style={h2Style}>14. Contact</h2>
           <p style={pStyle}>
             For all data protection queries, contact legal@arbor.io or write to:
-            Arbor Data Ltd, [Company Address, City, Postcode].
+            arbor Data Ltd, [Company Address, City, Postcode].
           </p>
 
         </div>

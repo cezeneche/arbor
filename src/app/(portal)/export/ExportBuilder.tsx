@@ -275,7 +275,7 @@ export function ExportBuilder({
 
           {records.length === 0 ? (
             <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[4], textAlign: 'center' }}>
-              <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
                 No records match these filters.
               </p>
             </div>

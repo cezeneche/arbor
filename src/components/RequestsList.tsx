@@ -3,6 +3,45 @@
 import { useState } from 'react'
 import { colours, typography, spacing } from '@/lib/design-system'
 
+const PAGE_SIZE = 20
+
+function PaginationBar({
+  page,
+  totalPages,
+  onPage,
+}: {
+  page: number
+  totalPages: number
+  onPage: (p: number) => void
+}) {
+  if (totalPages <= 1) return null
+  const btn: React.CSSProperties = {
+    padding: '6px 14px',
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colours.navy,
+    backgroundColor: colours.surface,
+    border: `1px solid ${colours.border}`,
+    borderRadius: '4px',
+    cursor: 'pointer',
+    letterSpacing: typography.tracking.wide,
+  }
+  const ghost: React.CSSProperties = { ...btn, color: 'transparent', border: '1px solid transparent', cursor: 'default' }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[3] }}>
+      {page > 1
+        ? <button style={btn} onClick={() => onPage(page - 1)}>← Previous</button>
+        : <span style={ghost}>← Previous</span>}
+      <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>
+        Page {page} of {totalPages}
+      </span>
+      {page < totalPages
+        ? <button style={btn} onClick={() => onPage(page + 1)}>Next →</button>
+        : <span style={ghost}>Next →</span>}
+    </div>
+  )
+}
+
 export interface DataRequest {
   id: string
   domain: string
@@ -55,9 +94,16 @@ export function RequestsList({ incoming, outgoing }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [generatingLink, setGeneratingLink] = useState<string | null>(null)
   const [generatedLinks, setGeneratedLinks] = useState<Record<string, string>>({})
+  const [incomingPage, setIncomingPage] = useState(1)
+  const [outgoingPage, setOutgoingPage] = useState(1)
 
   const currentIncoming = requests.filter(r => incoming.some(i => i.id === r.id))
   const currentOutgoing = requests.filter(r => outgoing.some(o => o.id === r.id))
+
+  const incomingTotalPages = Math.ceil(currentIncoming.length / PAGE_SIZE)
+  const outgoingTotalPages = Math.ceil(currentOutgoing.length / PAGE_SIZE)
+  const pagedIncoming = currentIncoming.slice((incomingPage - 1) * PAGE_SIZE, incomingPage * PAGE_SIZE)
+  const pagedOutgoing = currentOutgoing.slice((outgoingPage - 1) * PAGE_SIZE, outgoingPage * PAGE_SIZE)
 
   async function handleGenerateLink(requestId: string) {
     setGeneratingLink(requestId)
@@ -144,7 +190,7 @@ export function RequestsList({ incoming, outgoing }: Props) {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {currentIncoming.map(req => (
+            {pagedIncoming.map(req => (
               <div
                 key={req.id}
                 style={{
@@ -363,6 +409,7 @@ export function RequestsList({ incoming, outgoing }: Props) {
                 )}
               </div>
             ))}
+            <PaginationBar page={incomingPage} totalPages={incomingTotalPages} onPage={setIncomingPage} />
           </div>
         )}
       </section>
@@ -371,7 +418,7 @@ export function RequestsList({ incoming, outgoing }: Props) {
         <section>
           <p style={sectionLabel}>Sent requests</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {currentOutgoing.map(req => (
+            {pagedOutgoing.map(req => (
               <div
                 key={req.id}
                 style={{
@@ -484,6 +531,7 @@ export function RequestsList({ incoming, outgoing }: Props) {
               </div>
             ))}
           </div>
+          <PaginationBar page={outgoingPage} totalPages={outgoingTotalPages} onPage={setOutgoingPage} />
         </section>
       )}
     </div>

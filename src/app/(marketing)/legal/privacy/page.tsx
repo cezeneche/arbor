@@ -72,7 +72,7 @@ export default function PrivacyPolicyPage() {
             Privacy Policy
           </h1>
           <p style={{ ...pStyle, margin: 0 }}>
-            Last updated: 1 June 2026. This policy applies to all users of the Arbor platform.
+            Last updated: 1 June 2026. This policy applies to all users of the arbor platform.
           </p>
         </div>
       </div>
@@ -83,13 +83,13 @@ export default function PrivacyPolicyPage() {
 
           <h2 style={h2Style}>1. Who we are</h2>
           <p style={pStyle}>
-            Arbor Data Ltd (&quot;Arbor&quot;, &quot;we&quot;, &quot;us&quot;, &quot;our&quot;) is a company registered in England and Wales
+            arbor Data Ltd (&quot;arbor&quot;, &quot;we&quot;, &quot;us&quot;, &quot;our&quot;) is a company registered in England and Wales
             (company number [TO BE CONFIRMED], registered address [Company Address, City, Postcode]).
-            We operate the Arbor platform, a certified operational data repository accessible at arbor.io
+            We operate the arbor platform, a certified operational data repository accessible at arbor.io
             and related subdomains.
           </p>
           <p style={pStyle}>
-            For the purposes of UK data protection law, Arbor Data Ltd is the data controller for personal
+            For the purposes of UK data protection law, arbor Data Ltd is the data controller for personal
             data collected from visitors to our website and users of our platform. Where we process personal
             data on behalf of our business customers, we act as a data processor. This distinction is addressed
             in our Data Processing Agreement.
@@ -313,7 +313,7 @@ export default function PrivacyPolicyPage() {
           <h2 style={h2Style}>11. Contact</h2>
           <p style={pStyle}>
             For any questions about this policy or our data practices, contact us at legal@arbor.io or write
-            to: Arbor Data Ltd, [Company Address, City, Postcode].
+            to: arbor Data Ltd, [Company Address, City, Postcode].
           </p>
 
         </div>

@@ -77,7 +77,7 @@ export async function sendNotification<T extends NotificationType>(
   await Promise.allSettled(
     users.map((u) =>
       resend.emails.send({
-        from: 'Arbor <onboarding@resend.dev>',
+        from: 'arbor <onboarding@resend.dev>',
         to: u.email,
         subject,
         html,
@@ -103,7 +103,7 @@ function notificationSubject(type: NotificationType, payload: NotificationPayloa
     case 'ACCESS_REVOKED':
       return `Data access revoked`
     default:
-      return `Arbor notification`
+      return `arbor notification`
   }
 }
 
@@ -139,6 +139,6 @@ function notificationHtml(
     case 'FLAG_RAISED':
       return `<p>A validation flag has been raised on your data.<br><a href="${appUrl}/records">Review records</a></p>`
     default:
-      return `<p><a href="${appUrl}">Log in to Arbor</a></p>`
+      return `<p><a href="${appUrl}">Log in to arbor</a></p>`
   }
 }

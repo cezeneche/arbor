@@ -24,7 +24,7 @@ export default function QueryPage() {
             margin: `${spacing[1]} 0 0`,
           }}
         >
-          Ask a question in plain English. Arbor finds the matching records and shows them with their trust tier.
+          Ask a question in plain English. arbor finds the matching records and shows them with their trust tier.
         </p>
       </div>
 

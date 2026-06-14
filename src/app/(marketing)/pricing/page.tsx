@@ -27,7 +27,7 @@ const supplierPlans: Plan[] = [
       'Respond to buyer data requests',
       'Up to 5 manual declarations',
       'Standard trust tier labels',
-      'Arbor data portal access',
+      'arbor data portal access',
     ],
     cta: 'Get started free',
   },
@@ -442,7 +442,7 @@ export default function PricingPage() {
               'All prices are exclusive of VAT. VAT is charged at the applicable rate for UK businesses.',
               'Annual billing is available on all paid plans at a 20% discount.',
               'Responding to buyer data requests is always free for suppliers, regardless of plan.',
-              'Data submitted to Arbor remains owned by the submitting entity. Arbor holds a licence to store and serve it.',
+              'Data submitted to arbor remains owned by the submitting entity. arbor holds a licence to store and serve it.',
               'A Data Processing Agreement is included in the Enterprise plan and available separately for other plans.',
               'For custom pricing, volume discounts, or procurement requirements, contact hello@arbor.io.',
             ].map((note, i) => (

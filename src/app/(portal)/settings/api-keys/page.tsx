@@ -51,7 +51,7 @@ export default async function ApiKeysPage() {
             margin: `${spacing[1]} 0 0`,
           }}
         >
-          Connect your accounting or ERP system to push data into Arbor automatically.
+          Connect your accounting or ERP system to push data into arbor automatically.
           Create an API key and configure your system to POST to the ingest endpoint below.
         </p>
       </div>

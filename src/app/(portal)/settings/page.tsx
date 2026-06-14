@@ -47,7 +47,7 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div style={{ maxWidth: '720px' }}>
+    <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[4] }}>
         <h1
           style={{
@@ -119,7 +119,7 @@ export default async function SettingsPage() {
                 Integrations &amp; API keys
               </p>
               <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `4px 0 0` }}>
-                Connect your ERP or accounting system to push data into Arbor automatically.
+                Connect your ERP or accounting system to push data into arbor automatically.
               </p>
             </div>
             <Link

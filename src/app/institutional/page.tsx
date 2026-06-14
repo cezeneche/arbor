@@ -95,7 +95,7 @@ export default function InstitutionalPage() {
             letterSpacing: typography.tracking.tight,
           }}
         >
-          Arbor
+          arbor
         </span>
         <a
           href="/login"
@@ -148,7 +148,7 @@ export default function InstitutionalPage() {
               margin: 0,
             }}
           >
-            Arbor is a certified operational data repository. Manufacturers and suppliers upload
+            arbor is a certified operational data repository. Manufacturers and suppliers upload
             production documents. The platform extracts, certifies, and stores the data. Every
             record carries a trust tier, a confidence score, and a link to the source document
             it came from.
@@ -223,7 +223,7 @@ export default function InstitutionalPage() {
               margin: `0 0 ${spacing[2]}`,
             }}
           >
-            How institutions use Arbor data
+            How institutions use arbor data
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[2] }}>
             {[
@@ -458,7 +458,7 @@ export default function InstitutionalPage() {
             margin: `${spacing[5]} 0 0`,
           }}
         >
-          Arbor, certified operational data repository
+          arbor, certified operational data repository
         </p>
       </main>
     </div>

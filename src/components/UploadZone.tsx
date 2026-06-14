@@ -119,162 +119,132 @@ export function UploadZone() {
     border: `1px solid ${colours.border}`,
     borderRadius: '4px',
     outline: 'none',
+    boxSizing: 'border-box' as const,
   }
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        style={{
-          border: `2px dashed ${dragging ? colours.navy : colours.border}`,
-          borderRadius: '8px',
-          padding: spacing[6],
-          textAlign: 'center',
-          cursor: 'pointer',
-          backgroundColor: dragging ? colours.background : colours.surface,
-          transition: 'border-color 0.15s, background-color 0.15s',
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
 
-        {file ? (
-          <div>
-            <p
-              style={{
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.medium,
-                color: colours.textPrimary,
-                margin: 0,
-              }}
-            >
-              {file.name}
-            </p>
-            <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                margin: `${spacing[1]} 0 0`,
-              }}
-            >
-              {(file.size / 1024 / 1024).toFixed(2)} MB. Click to change
-            </p>
-          </div>
-        ) : (
-          <div>
-            <p
-              style={{
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.medium,
-                color: colours.textSecondary,
-                margin: 0,
-              }}
-            >
-              Drop a file here, or click to browse
-            </p>
-            <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
-                margin: `${spacing[1]} 0 0`,
-              }}
-            >
-              PDF, JPEG, or PNG
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Two-column area */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3], alignItems: 'stretch' }}>
 
-      <div>
-        <label htmlFor="documentType" style={labelStyle}>
-          Document type
-        </label>
-        <select
-          id="documentType"
-          value={documentType}
-          onChange={e => setDocumentType(e.target.value)}
-          required
-          style={inputStyle}
-        >
-          <option value="">Select document type…</option>
-          {DOCUMENT_TYPES.map(dt => (
-            <option key={dt.value} value={dt.value}>
-              {dt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label htmlFor="reportingPeriodEnd" style={labelStyle}>
-          Reporting period end
-          <span
-            style={{
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.light,
-              color: colours.textTertiary,
-              marginLeft: '6px',
-              textTransform: 'none',
-              letterSpacing: 0,
-            }}
-          >
-            (optional , used for certificate expiry checks)
-          </span>
-        </label>
-        <input
-          id="reportingPeriodEnd"
-          type="date"
-          value={reportingPeriodEnd}
-          onChange={e => setReportingPeriodEnd(e.target.value)}
-          style={inputStyle}
-        />
-      </div>
-
-      {error && (
-        <p
+        {/* Left: drop zone */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
           style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.red,
-            backgroundColor: colours.redBg,
-            padding: '10px 12px',
-            borderRadius: '4px',
-            margin: 0,
+            border: `2px dashed ${dragging ? colours.navy : colours.border}`,
+            borderRadius: '8px',
+            padding: spacing[4],
+            textAlign: 'center',
+            cursor: 'pointer',
+            backgroundColor: dragging ? colours.background : colours.surface,
+            transition: 'border-color 0.15s, background-color 0.15s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          {error}
-        </p>
-      )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          type="submit"
-          disabled={!file || !documentType || uploading}
-          style={{
-            padding: '12px 24px',
-            backgroundColor:
-              !file || !documentType || uploading ? colours.textTertiary : colours.navy,
-            color: colours.surface,
-            fontSize: typography.sizes.base,
-            fontWeight: typography.weights.medium,
-            border: 'none',
-            borderRadius: '4px',
-            cursor: !file || !documentType || uploading ? 'not-allowed' : 'pointer',
-            letterSpacing: typography.tracking.wide,
-          }}
-        >
-          {uploading ? 'Uploading…' : 'Upload and extract'}
-        </button>
+          {file ? (
+            <div>
+              <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+                {file.name}
+              </p>
+              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+                {(file.size / 1024 / 1024).toFixed(2)} MB · Click to change
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textSecondary, margin: 0 }}>
+                Drop a file here, or click to browse
+              </p>
+              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: `${spacing[1]} 0 0` }}>
+                PDF, JPEG, or PNG
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Right: document type + period + button */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+          <div>
+            <label htmlFor="documentType" style={labelStyle}>
+              Document type
+            </label>
+            <select
+              id="documentType"
+              value={documentType}
+              onChange={e => setDocumentType(e.target.value)}
+              required
+              style={inputStyle}
+            >
+              <option value="">Select document type…</option>
+              {DOCUMENT_TYPES.map(dt => (
+                <option key={dt.value} value={dt.value}>
+                  {dt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="reportingPeriodEnd" style={labelStyle}>
+              Reporting period end
+              <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, marginLeft: '6px', textTransform: 'none', letterSpacing: 0 }}>
+                (optional)
+              </span>
+            </label>
+            <input
+              id="reportingPeriodEnd"
+              type="date"
+              value={reportingPeriodEnd}
+              onChange={e => setReportingPeriodEnd(e.target.value)}
+              style={inputStyle}
+            />
+            <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '6px 0 0' }}>
+              Used for certificate expiry checks.
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, backgroundColor: colours.redBg, padding: '10px 12px', borderRadius: '4px', margin: 0 }}>
+              {error}
+            </p>
+          )}
+
+          {/* Submit — centred in right column */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'auto' }}>
+            <button
+              type="submit"
+              disabled={!file || !documentType || uploading}
+              style={{
+                padding: '12px 28px',
+                backgroundColor: !file || !documentType || uploading ? colours.textTertiary : colours.navy,
+                color: colours.surface,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: !file || !documentType || uploading ? 'not-allowed' : 'pointer',
+                letterSpacing: typography.tracking.wide,
+              }}
+            >
+              {uploading ? 'Uploading…' : 'Upload and extract'}
+            </button>
+          </div>
+        </div>
       </div>
     </form>
   )

@@ -56,10 +56,50 @@ function formatNum(v: number): string {
   return v.toLocaleString('en-GB', { maximumFractionDigits: 2 })
 }
 
+const PAGE_SIZE = 20
+
+function PaginationBar({
+  page,
+  totalPages,
+  onPage,
+}: {
+  page: number
+  totalPages: number
+  onPage: (p: number) => void
+}) {
+  if (totalPages <= 1) return null
+  const btn: React.CSSProperties = {
+    padding: '6px 14px',
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colours.navy,
+    backgroundColor: colours.surface,
+    border: `1px solid ${colours.border}`,
+    borderRadius: '4px',
+    cursor: 'pointer',
+    letterSpacing: typography.tracking.wide,
+  }
+  const ghost: React.CSSProperties = { ...btn, color: 'transparent', border: '1px solid transparent', cursor: 'default' }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[3] }}>
+      {page > 1
+        ? <button style={btn} onClick={() => onPage(page - 1)}>← Previous</button>
+        : <span style={ghost}>← Previous</span>}
+      <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>
+        Page {page} of {totalPages}
+      </span>
+      {page < totalPages
+        ? <button style={btn} onClick={() => onPage(page + 1)}>Next →</button>
+        : <span style={ghost}>Next →</span>}
+    </div>
+  )
+}
+
 export default function BenchmarksPage() {
   const [data, setData] = useState<BenchmarkResponse | null>(null)
   const [sector, setSector] = useState('')
   const [domain, setDomain] = useState('')
+  const [benchmarkPage, setBenchmarkPage] = useState(1)
 
   const loading = data === null
 
@@ -77,11 +117,13 @@ export default function BenchmarksPage() {
   const handleSectorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSector(e.target.value)
     setData(null)
+    setBenchmarkPage(1)
   }
 
   const handleDomainChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setDomain(e.target.value)
     setData(null)
+    setBenchmarkPage(1)
   }
 
   const sectionLabel = {
@@ -93,9 +135,13 @@ export default function BenchmarksPage() {
     margin: `0 0 ${spacing[2]}`,
   }
 
-  // Group benchmarks by domain
+  const allBenchmarks = data?.benchmarks ?? []
+  const totalBenchmarkPages = Math.ceil(allBenchmarks.length / PAGE_SIZE)
+  const pagedBenchmarks = allBenchmarks.slice((benchmarkPage - 1) * PAGE_SIZE, benchmarkPage * PAGE_SIZE)
+
+  // Group paginated benchmarks by domain
   const grouped: Record<string, BenchmarkPoint[]> = {}
-  for (const b of data?.benchmarks ?? []) {
+  for (const b of pagedBenchmarks) {
     if (!grouped[b.domain]) grouped[b.domain] = []
     grouped[b.domain].push(b)
   }
@@ -153,7 +199,7 @@ export default function BenchmarksPage() {
 
       {!loading && data && data.benchmarks.length === 0 && (
         <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[3] }}>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: typography.tracking.tight }}>
+          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}` }}>
             No benchmarks available yet
           </p>
           <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0, lineHeight: '1.6' }}>
@@ -207,6 +253,7 @@ export default function BenchmarksPage() {
               </div>
             </section>
           ))}
+          <PaginationBar page={benchmarkPage} totalPages={totalBenchmarkPages} onPage={setBenchmarkPage} />
         </div>
       )}
 

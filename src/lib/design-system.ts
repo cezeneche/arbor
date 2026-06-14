@@ -71,4 +71,35 @@ export const shadows = {
   dropdown: '0 4px 16px rgba(0,0,0,0.08)',
 } as const
 
+export const borders = {
+  width: {
+    thin: '1px',
+    medium: '2px',
+  },
+  radius: {
+    xs: '3px',
+    sm: '4px',
+    md: '6px',
+    lg: '8px',
+    xl: '12px',
+  },
+  style: {
+    default: `1px solid ${colours.border}`,
+    focus: `1px solid ${colours.navy}`,
+    subtle: '1px solid rgba(255,255,255,0.08)',
+    activeNav: '2px solid rgba(255,255,255,0.7)',
+    inactiveNav: '2px solid transparent',
+  },
+} as const
+
+export const layout = {
+  navWidth: '216px',
+  mainPaddingX: '40px',
+  mainPaddingY: '40px',
+  sectionGap: spacing[3],
+  sectionPadding: spacing[3],
+  cardBorderRadius: '8px',
+  codeBorderRadius: '4px',
+} as const
+
 export const confidenceThreshold = 0.85

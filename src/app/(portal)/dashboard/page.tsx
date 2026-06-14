@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
+import { Pagination, PAGE_SIZE } from '@/components/Pagination'
 
 const DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
@@ -67,28 +68,41 @@ const cellStyle = {
   fontVariantNumeric: 'tabular-nums' as const,
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}) {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
   const entityId = (session.user as Record<string, unknown>).entityId as string
+  const sp = await searchParams
+  const reqPage = Math.max(1, parseInt(sp.reqPage ?? '1', 10))
 
-  const [recentDocuments, pendingRequests, allRecords] = await Promise.all([
+  const [recentDocuments, [pendingRequests, totalPending], allRecords] = await Promise.all([
     prisma.document.findMany({
       where: { entityId },
       orderBy: { submittedAt: 'desc' },
       take: 8,
     }),
-    prisma.dataRequest.findMany({
-      where: { supplierEntityId: entityId, status: 'PENDING' },
-      include: { buyerEntity: { select: { legalName: true } } },
-      orderBy: { createdAt: 'desc' },
-    }),
+    Promise.all([
+      prisma.dataRequest.findMany({
+        where: { supplierEntityId: entityId, status: 'PENDING' },
+        include: { buyerEntity: { select: { legalName: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (reqPage - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+      }),
+      prisma.dataRequest.count({ where: { supplierEntityId: entityId, status: 'PENDING' } }),
+    ]),
     prisma.dataRecord.findMany({
       where: { entityId, isActive: true },
       select: { domain: true, trustTier: true },
     }),
   ])
+
+  const reqTotalPages = Math.ceil(totalPending / PAGE_SIZE)
 
   type DomainRow = { domain: string; A: number; B: number; C: number; total: number }
   const matrix: DomainRow[] = DOMAINS.map(domain => {
@@ -104,7 +118,7 @@ export default async function DashboardPage() {
   const declaredCount = allRecords.filter(r => r.trustTier === 'B').length
   const estimatedCount = allRecords.filter(r => r.trustTier === 'C').length
   const verifiedPct = totalRecords > 0 ? Math.round((verifiedCount / totalRecords) * 100) : 0
-  const openRequestsCount = pendingRequests.length
+  const openRequestsCount = totalPending
   const reviewCount = recentDocuments.filter(d => d.status === 'REVIEW_REQUIRED').length
 
   return (
@@ -158,9 +172,9 @@ export default async function DashboardPage() {
           { label: 'Domains', value: String(matrix.length), sub: `of ${DOMAINS.length} total`, col: undefined },
           {
             label: 'Open requests',
-            value: String(openRequestsCount),
-            sub: openRequestsCount > 0 ? 'awaiting response' : 'none pending',
-            col: openRequestsCount > 0 ? colours.amber : undefined,
+            value: String(totalPending),
+            sub: totalPending > 0 ? 'awaiting response' : 'none pending',
+            col: totalPending > 0 ? colours.amber : undefined,
           },
           ...(reviewCount > 0
             ? [{ label: 'Review queue', value: String(reviewCount), sub: 'need attention', col: colours.amber }]
@@ -360,9 +374,9 @@ export default async function DashboardPage() {
           >
             <p
               style={{
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                color: colours.textPrimary,
                 margin: `0 0 ${spacing[1]}`,
               }}
             >
@@ -507,6 +521,11 @@ export default async function DashboardPage() {
               </table>
             )}
           </div>
+          <Pagination
+            page={reqPage}
+            totalPages={reqTotalPages}
+            buildUrl={(p) => p > 1 ? `/dashboard?reqPage=${p}` : '/dashboard'}
+          />
         </section>
 
         {/* Document ingestion queue */}

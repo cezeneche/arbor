@@ -36,7 +36,7 @@ export function PublicNav() {
             letterSpacing: typography.tracking.tight,
           }}
         >
-          Arbor
+          arbor
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>

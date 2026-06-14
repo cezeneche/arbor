@@ -48,12 +48,10 @@ export function Nav({
     <nav
       style={{
         width: '216px',
-        minHeight: '100vh',
+        height: '100vh',
         backgroundColor: colours.navy,
         display: 'flex',
         flexDirection: 'column',
-        position: 'sticky',
-        top: 0,
         flexShrink: 0,
         overflowY: 'auto',
       }}
@@ -69,7 +67,7 @@ export function Nav({
             marginBottom: '6px',
           }}
         >
-          Arbor
+          arbor
         </div>
         <div
           style={{

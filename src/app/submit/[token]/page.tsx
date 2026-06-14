@@ -122,7 +122,7 @@ export default function SubmitPage() {
       <div style={containerStyle}>
         <div style={cardStyle}>
           <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 ${spacing[1]}` }}>
-            Arbor
+            arbor
           </p>
           <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: '-0.03em' }}>
             This link is not available
@@ -140,7 +140,7 @@ export default function SubmitPage() {
       <div style={containerStyle}>
         <div style={cardStyle}>
           <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 ${spacing[1]}` }}>
-            Arbor
+            arbor
           </p>
           <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: '-0.03em' }}>
             Done. Your data has been saved.
@@ -166,7 +166,7 @@ export default function SubmitPage() {
       <div style={containerStyle}>
         <div style={cardStyle}>
           <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 ${spacing[1]}` }}>
-            Arbor
+            arbor
           </p>
           <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: '-0.03em' }}>
             {alreadyResponded ? 'This request has already been responded to' : 'This link has expired'}
@@ -190,7 +190,7 @@ export default function SubmitPage() {
     <div style={containerStyle}>
       <div style={{ width: '100%', maxWidth: '560px' }}>
         <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 ${spacing[2]}` }}>
-          Arbor
+          arbor
         </p>
 
         <div style={cardStyle}>

@@ -71,7 +71,7 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p style={{ ...pStyle, margin: 0 }}>
-            Last updated: 1 June 2026. By creating an account and using the Arbor platform,
+            Last updated: 1 June 2026. By creating an account and using the arbor platform,
             you agree to these terms.
           </p>
         </div>
@@ -83,16 +83,16 @@ export default function TermsPage() {
 
           <h2 style={h2Style}>1. About the service</h2>
           <p style={pStyle}>
-            Arbor is a certified operational data repository. The service enables manufacturers,
+            arbor is a certified operational data repository. The service enables manufacturers,
             suppliers, and producers (&quot;Suppliers&quot;) to upload operational documents, extract structured
             data fields, and store those records with a permanent audit chain. It enables buyers,
             large companies, and procurement teams (&quot;Buyers&quot;) to request and receive certified data
             records from their supply chain.
           </p>
           <p style={pStyle}>
-            Arbor certifies the provenance of data records, not their accuracy. A trust tier of
+            arbor certifies the provenance of data records, not their accuracy. A trust tier of
             &quot;Verified&quot; means the data was extracted from a document you submitted and that extraction
-            met the required confidence threshold. It does not mean Arbor has independently verified
+            met the required confidence threshold. It does not mean arbor has independently verified
             the accuracy of the underlying document.
           </p>
 
@@ -107,7 +107,7 @@ export default function TermsPage() {
             suspect unauthorised access.
           </p>
           <p style={pStyle}>
-            Arbor Data Ltd reserves the right to decline or suspend accounts at its discretion,
+            arbor Data Ltd reserves the right to decline or suspend accounts at its discretion,
             including where use is inconsistent with these terms or applicable law.
           </p>
 
@@ -115,8 +115,8 @@ export default function TermsPage() {
 
           <h3 style={h3Style}>Ownership</h3>
           <p style={pStyle}>
-            You retain ownership of all data and documents you submit to Arbor. By submitting data,
-            you grant Arbor Data Ltd a limited, non-exclusive, worldwide licence to store, process,
+            You retain ownership of all data and documents you submit to arbor. By submitting data,
+            you grant arbor Data Ltd a limited, non-exclusive, worldwide licence to store, process,
             and serve that data for the purpose of providing the service to you and to authorised parties
             you designate.
           </p>
@@ -130,7 +130,7 @@ export default function TermsPage() {
 
           <h3 style={h3Style}>Permanent records</h3>
           <p style={pStyle}>
-            Data records stored in Arbor are permanent. Corrections do not overwrite existing records.
+            Data records stored in arbor are permanent. Corrections do not overwrite existing records.
             Instead, a new record is created that supersedes the original, and the original is retained
             in the audit chain. This behaviour is fundamental to the integrity of the certification system
             and cannot be waived.
@@ -138,7 +138,7 @@ export default function TermsPage() {
 
           <h2 style={h2Style}>4. Trust certification</h2>
           <p style={pStyle}>
-            Every data record stored in Arbor carries a trust tier: Verified, Declared, or Estimated.
+            Every data record stored in arbor carries a trust tier: Verified, Declared, or Estimated.
             These tiers are determined automatically by applying the admissibility rules of the service.
             You may not select or override a trust tier directly. You may upgrade a Declared record to
             Verified by submitting a qualifying source document.
@@ -153,7 +153,7 @@ export default function TermsPage() {
             Suppliers control which Buyers can access their certified records. Granting access authorises
             the Buyer to read the records you specify for the duration you specify. You may revoke access
             at any time. Revocation does not delete any data the Buyer has already downloaded or stored
-            outside Arbor.
+            outside arbor.
           </p>
           <p style={pStyle}>
             Buyers must not share, resell, or republish certified records outside their own internal
@@ -181,18 +181,18 @@ export default function TermsPage() {
 
           <h2 style={h2Style}>7. Intellectual property</h2>
           <p style={pStyle}>
-            The Arbor platform, including its extraction algorithms, trust certification methodology,
-            audit chain implementation, and user interface, is owned by Arbor Data Ltd. Nothing in
+            The arbor platform, including its extraction algorithms, trust certification methodology,
+            audit chain implementation, and user interface, is owned by arbor Data Ltd. Nothing in
             these terms transfers any intellectual property rights to you.
           </p>
           <p style={pStyle}>
-            &quot;Arbor&quot;, the Arbor wordmark, and associated logos are trademarks of Arbor Data Ltd. You may
+            &quot;arbor&quot;, the arbor wordmark, and associated logos are trademarks of arbor Data Ltd. You may
             not use them without our prior written consent.
           </p>
 
           <h2 style={h2Style}>8. Limitation of liability</h2>
           <p style={pStyle}>
-            To the maximum extent permitted by applicable law, Arbor Data Ltd shall not be liable for any
+            To the maximum extent permitted by applicable law, arbor Data Ltd shall not be liable for any
             indirect, incidental, special, consequential, or punitive damages arising from or related to
             your use of the service, including but not limited to loss of data, loss of profits, or business
             interruption.
@@ -202,13 +202,13 @@ export default function TermsPage() {
             the amount you paid us in the three months preceding the claim.
           </p>
           <p style={pStyle}>
-            Arbor certifies the provenance of records, not their factual accuracy. We are not liable for
-            decisions made by you or any third party in reliance on data records stored in Arbor.
+            arbor certifies the provenance of records, not their factual accuracy. We are not liable for
+            decisions made by you or any third party in reliance on data records stored in arbor.
           </p>
 
           <h2 style={h2Style}>9. Indemnification</h2>
           <p style={pStyle}>
-            You agree to indemnify and hold harmless Arbor Data Ltd, its officers, directors, and employees
+            You agree to indemnify and hold harmless arbor Data Ltd, its officers, directors, and employees
             from any claims, damages, or costs (including reasonable legal fees) arising from your violation
             of these terms, your submitted content, or your use of the service.
           </p>
@@ -249,7 +249,7 @@ export default function TermsPage() {
           <h2 style={h2Style}>14. Contact</h2>
           <p style={pStyle}>
             For questions about these terms, contact us at legal@arbor.io or write to:
-            Arbor Data Ltd, [Company Address, City, Postcode].
+            arbor Data Ltd, [Company Address, City, Postcode].
           </p>
 
         </div>

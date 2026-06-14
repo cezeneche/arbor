@@ -29,9 +29,9 @@ export default async function PortalLayout({ children }: { children: React.React
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: colours.background }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: colours.background }}>
       <Nav entityName={entityName} entityType={entityType} recordCount={recordCount} />
-      <main style={{ flex: 1, minWidth: 0, padding: '40px 40px' }}>
+      <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '40px' }}>
         {children}
       </main>
     </div>
