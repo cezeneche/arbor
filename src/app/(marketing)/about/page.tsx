@@ -17,7 +17,7 @@ const eyebrow = {
   fontSize: typography.sizes.xs,
   fontWeight: typography.weights.medium,
   color: colours.textTertiary,
-  letterSpacing: '0.18em',
+  letterSpacing: typography.tracking.wider,
   textTransform: 'uppercase' as const,
   marginBottom: '16px',
   display: 'block',
@@ -48,8 +48,8 @@ export default function AboutPage() {
               fontSize: '44px',
               fontWeight: typography.weights.medium,
               color: '#FFFFFF',
-              letterSpacing: typography.tracking.tight,
-              lineHeight: '1.1',
+              letterSpacing: typography.tracking.heading,
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 24px',
               maxWidth: '640px',
             }}
@@ -58,10 +58,10 @@ export default function AboutPage() {
           </h1>
           <p
             style={{
-              fontSize: '17px',
+              fontSize: typography.sizes.base,
               fontWeight: typography.weights.light,
               color: 'rgba(255,255,255,0.6)',
-              lineHeight: '1.7',
+              lineHeight: typography.lineHeight.body,
               maxWidth: '560px',
               margin: 0,
             }}
@@ -82,8 +82,8 @@ export default function AboutPage() {
               fontSize: '32px',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
-              letterSpacing: typography.tracking.tight,
-              lineHeight: '1.2',
+              letterSpacing: typography.tracking.heading,
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 24px',
             }}
           >
@@ -100,10 +100,10 @@ export default function AboutPage() {
               <p
                 key={i}
                 style={{
-                  fontSize: '17px',
+                  fontSize: typography.sizes.base,
                   fontWeight: typography.weights.light,
                   color: colours.textSecondary,
-                  lineHeight: '1.75',
+                  lineHeight: typography.lineHeight.body,
                   margin: 0,
                 }}
               >
@@ -123,8 +123,8 @@ export default function AboutPage() {
               fontSize: '32px',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
-              letterSpacing: typography.tracking.tight,
-              lineHeight: '1.2',
+              letterSpacing: typography.tracking.heading,
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 40px',
             }}
           >
@@ -152,7 +152,7 @@ export default function AboutPage() {
                     fontWeight: typography.weights.medium,
                     color: colours.textPrimary,
                     margin: '0 0 12px',
-                    letterSpacing: typography.tracking.tight,
+                    letterSpacing: typography.tracking.heading,
                   }}
                 >
                   {heading}
@@ -162,7 +162,7 @@ export default function AboutPage() {
                     fontSize: typography.sizes.sm,
                     fontWeight: typography.weights.light,
                     color: colours.textSecondary,
-                    lineHeight: '1.65',
+                    lineHeight: typography.lineHeight.body,
                     margin: 0,
                   }}
                 >
@@ -183,8 +183,8 @@ export default function AboutPage() {
               fontSize: '32px',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
-              letterSpacing: typography.tracking.tight,
-              lineHeight: '1.2',
+              letterSpacing: typography.tracking.heading,
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 24px',
             }}
           >
@@ -201,10 +201,10 @@ export default function AboutPage() {
               <p
                 key={i}
                 style={{
-                  fontSize: '17px',
+                  fontSize: typography.sizes.base,
                   fontWeight: typography.weights.light,
                   color: colours.textSecondary,
-                  lineHeight: '1.75',
+                  lineHeight: typography.lineHeight.body,
                   margin: 0,
                 }}
               >
@@ -224,8 +224,8 @@ export default function AboutPage() {
               fontSize: '32px',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
-              letterSpacing: typography.tracking.tight,
-              lineHeight: '1.2',
+              letterSpacing: typography.tracking.heading,
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 40px',
             }}
           >
@@ -265,7 +265,7 @@ export default function AboutPage() {
                     fontWeight: typography.weights.medium,
                     color: colours.textPrimary,
                     margin: '0 0 12px',
-                    letterSpacing: typography.tracking.tight,
+                    letterSpacing: typography.tracking.heading,
                   }}
                 >
                   {heading}
@@ -275,7 +275,7 @@ export default function AboutPage() {
                     fontSize: typography.sizes.sm,
                     fontWeight: typography.weights.light,
                     color: colours.textSecondary,
-                    lineHeight: '1.65',
+                    lineHeight: typography.lineHeight.body,
                     margin: 0,
                   }}
                 >
@@ -296,8 +296,8 @@ export default function AboutPage() {
               fontSize: '32px',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
-              letterSpacing: typography.tracking.tight,
-              lineHeight: '1.2',
+              letterSpacing: typography.tracking.heading,
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 24px',
             }}
           >
@@ -314,7 +314,7 @@ export default function AboutPage() {
                     fontSize: typography.sizes.xs,
                     fontWeight: typography.weights.medium,
                     color: colours.textTertiary,
-                    letterSpacing: '0.14em',
+                    letterSpacing: typography.tracking.wider,
                     textTransform: 'uppercase' as const,
                     margin: '0 0 8px',
                   }}

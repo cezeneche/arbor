@@ -11,7 +11,7 @@ const eyebrow = {
   fontSize: typography.sizes.xs,
   fontWeight: typography.weights.medium,
   color: 'rgba(255,255,255,0.4)',
-  letterSpacing: '0.18em',
+  letterSpacing: typography.tracking.wider,
   textTransform: 'uppercase' as const,
   marginBottom: '28px',
   display: 'block',
@@ -21,7 +21,7 @@ const sectionEyebrow = {
   fontSize: typography.sizes.xs,
   fontWeight: typography.weights.medium,
   color: colours.textTertiary,
-  letterSpacing: '0.18em',
+  letterSpacing: typography.tracking.wider,
   textTransform: 'uppercase' as const,
   marginBottom: '16px',
   display: 'block',
@@ -31,24 +31,24 @@ const sectionHeading = {
   fontSize: '32px',
   fontWeight: typography.weights.medium,
   color: colours.textPrimary,
-  letterSpacing: typography.tracking.tight,
-  lineHeight: '1.2',
+  letterSpacing: typography.tracking.heading,
+  lineHeight: typography.lineHeight.display,
   margin: '0 0 20px',
 }
 
 const sectionBody = {
-  fontSize: '17px',
+  fontSize: typography.sizes.base,
   fontWeight: typography.weights.light,
   color: colours.textSecondary,
-  lineHeight: '1.7',
+  lineHeight: typography.lineHeight.body,
   margin: '0',
 }
 
 const stepNumber = {
-  fontSize: '11px',
+  fontSize: typography.sizes.xs,
   fontWeight: typography.weights.medium,
   color: colours.textTertiary,
-  letterSpacing: '0.14em',
+  letterSpacing: typography.tracking.wider,
   fontVariantNumeric: 'tabular-nums' as const,
   marginBottom: '12px',
   display: 'block',
@@ -59,29 +59,28 @@ export default function HomePage() {
     <div>
 
       {/* Hero */}
-      <section style={{ backgroundColor: colours.navy, padding: '100px 0 96px' }}>
+      <section style={{ backgroundColor: colours.navy, padding: '128px 0 160px' }}>
         <div style={container}>
           <span style={eyebrow}>Operational data infrastructure</span>
           <h1
             style={{
-              fontSize: typography.sizes.hero,
+              fontSize: typography.sizes.heroXl,
               fontWeight: typography.weights.medium,
               color: '#FFFFFF',
               letterSpacing: typography.tracking.tight,
-              lineHeight: '1.1',
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 28px',
-              maxWidth: '680px',
+              maxWidth: '600px',
             }}
           >
-            Operational data, all in<br />
-            one verified data record.
+            Operational data, all in one verified data record.
           </h1>
           <p
             style={{
-              fontSize: '17px',
+              fontSize: typography.sizes.base,
               fontWeight: typography.weights.light,
               color: 'rgba(255,255,255,0.65)',
-              lineHeight: '1.7',
+              lineHeight: typography.lineHeight.body,
               margin: '0 0 40px',
               maxWidth: '520px',
             }}

@@ -17,7 +17,7 @@ const eyebrow = {
   fontSize: typography.sizes.xs,
   fontWeight: typography.weights.medium,
   color: colours.textTertiary,
-  letterSpacing: '0.18em',
+  letterSpacing: typography.tracking.wider,
   textTransform: 'uppercase' as const,
   marginBottom: '16px',
   display: 'block',
@@ -27,8 +27,8 @@ const sectionHeading = {
   fontSize: '32px',
   fontWeight: typography.weights.medium,
   color: colours.textPrimary,
-  letterSpacing: typography.tracking.tight,
-  lineHeight: '1.2',
+  letterSpacing: typography.tracking.heading,
+  lineHeight: typography.lineHeight.display,
   margin: '0 0 20px',
 }
 
@@ -52,7 +52,7 @@ export default function HowItWorksPage() {
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
               letterSpacing: typography.tracking.tight,
-              lineHeight: '1.1',
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 20px',
               maxWidth: '640px',
             }}
@@ -61,10 +61,10 @@ export default function HowItWorksPage() {
           </h1>
           <p
             style={{
-              fontSize: '17px',
+              fontSize: typography.sizes.base,
               fontWeight: typography.weights.light,
               color: colours.textSecondary,
-              lineHeight: '1.7',
+              lineHeight: typography.lineHeight.body,
               margin: 0,
               maxWidth: '560px',
             }}
@@ -121,7 +121,7 @@ export default function HowItWorksPage() {
                       fontSize: typography.sizes.xs,
                       fontWeight: typography.weights.medium,
                       color: colours.textTertiary,
-                      letterSpacing: '0.14em',
+                      letterSpacing: typography.tracking.wider,
                       textTransform: 'uppercase' as const,
                     }}
                   >
@@ -144,7 +144,7 @@ export default function HowItWorksPage() {
                     fontSize: typography.sizes.sm,
                     fontWeight: typography.weights.light,
                     color: colours.textSecondary,
-                    lineHeight: '1.65',
+                    lineHeight: typography.lineHeight.body,
                     margin: 0,
                   }}
                 >
@@ -268,7 +268,7 @@ export default function HowItWorksPage() {
                             fontSize: typography.sizes.sm,
                             fontWeight: typography.weights.light,
                             color: colours.textSecondary,
-                            lineHeight: '1.65',
+                            lineHeight: typography.lineHeight.body,
                             margin: 0,
                           }}
                         >
@@ -293,10 +293,10 @@ export default function HowItWorksPage() {
           </h2>
           <p
             style={{
-              fontSize: '17px',
+              fontSize: typography.sizes.base,
               fontWeight: typography.weights.light,
               color: colours.textSecondary,
-              lineHeight: '1.7',
+              lineHeight: typography.lineHeight.body,
               maxWidth: '600px',
               margin: '0 0 48px',
             }}
@@ -364,7 +364,7 @@ export default function HowItWorksPage() {
                       fontSize: typography.sizes.sm,
                       fontWeight: typography.weights.light,
                       color: colours.textPrimary,
-                      lineHeight: '1.65',
+                      lineHeight: typography.lineHeight.body,
                       margin: '0 0 10px',
                     }}
                   >
@@ -375,7 +375,7 @@ export default function HowItWorksPage() {
                       fontSize: typography.sizes.xs,
                       fontWeight: typography.weights.light,
                       color: colours.textTertiary,
-                      lineHeight: '1.55',
+                      lineHeight: typography.lineHeight.body,
                       margin: 0,
                     }}
                   >
@@ -395,10 +395,10 @@ export default function HowItWorksPage() {
           <h2 style={sectionHeading}>Every record is cryptographically linked.</h2>
           <p
             style={{
-              fontSize: '17px',
+              fontSize: typography.sizes.base,
               fontWeight: typography.weights.light,
               color: colours.textSecondary,
-              lineHeight: '1.7',
+              lineHeight: typography.lineHeight.body,
               margin: '0 0 40px',
             }}
           >
@@ -433,7 +433,7 @@ export default function HowItWorksPage() {
                     fontSize: typography.sizes.sm,
                     fontWeight: typography.weights.light,
                     color: colours.textSecondary,
-                    lineHeight: '1.65',
+                    lineHeight: typography.lineHeight.body,
                     margin: 0,
                   }}
                 >
@@ -473,7 +473,7 @@ export default function HowItWorksPage() {
                     fontSize: typography.sizes.xs,
                     fontWeight: typography.weights.medium,
                     color: colours.textTertiary,
-                    letterSpacing: '0.14em',
+                    letterSpacing: typography.tracking.wider,
                     textTransform: 'uppercase' as const,
                     margin: '0 0 14px',
                   }}
@@ -488,7 +488,7 @@ export default function HowItWorksPage() {
                         fontSize: typography.sizes.sm,
                         fontWeight: typography.weights.light,
                         color: colours.textSecondary,
-                        lineHeight: '1.4',
+                        lineHeight: typography.lineHeight.body,
                         margin: 0,
                       }}
                     >
@@ -511,7 +511,7 @@ export default function HowItWorksPage() {
               fontWeight: typography.weights.medium,
               color: '#FFFFFF',
               letterSpacing: typography.tracking.tight,
-              lineHeight: '1.2',
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 16px',
             }}
           >
@@ -519,7 +519,7 @@ export default function HowItWorksPage() {
           </h2>
           <p
             style={{
-              fontSize: '17px',
+              fontSize: typography.sizes.base,
               fontWeight: typography.weights.light,
               color: 'rgba(255,255,255,0.55)',
               margin: '0 0 36px',

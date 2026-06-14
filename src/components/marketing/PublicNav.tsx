@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { colours, typography } from '@/lib/design-system'
 
 const navLink = {
-  fontSize: typography.sizes.sm,
+  fontSize: typography.sizes.base,
   fontWeight: typography.weights.light,
   color: colours.textSecondary,
   textDecoration: 'none',
@@ -18,7 +18,7 @@ export function PublicNav() {
         zIndex: 100,
         backgroundColor: colours.surface,
         borderBottom: `1px solid ${colours.border}`,
-        height: '56px',
+        height: '64px',
         display: 'flex',
         alignItems: 'center',
       }}

@@ -4,8 +4,8 @@ export const colours = {
   background: '#F8F8F6',
   surface: '#FFFFFF',
   textPrimary: '#141414',
-  textSecondary: '#636363',
-  textTertiary: '#A0A09A',
+  textSecondary: '#505050',
+  textTertiary: '#6E6E6A',
   border: '#E6E6E2',
   green: '#2A6048',
   greenBg: '#EFF9F4',
@@ -19,6 +19,7 @@ export const typography = {
   fontFamily: 'Inter, -apple-system, sans-serif',
   weights: { light: 300, medium: 500 } as const,
   sizes: {
+    heroXl: '72px',
     hero: '52px',
     lg: '24px',
     base: '15px',
@@ -26,11 +27,16 @@ export const typography = {
     xs: '11px',
     label: '10px',
   },
+  lineHeight: {
+    display: '1.1',
+    body: '1.6',
+  },
   tracking: {
-    tight: '-0.03em',
-    normal: '0',
-    wide: '0.08em',
-    wider: '0.12em',
+    tight: '-0.03em',    // hero only
+    heading: '-0.01em',  // h2, h3 section headings
+    normal: '0',         // body
+    wide: '0.08em',      // buttons, status labels
+    wider: '0.1em',      // eyebrow caps
   },
 } as const
 
