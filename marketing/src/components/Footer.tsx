@@ -33,7 +33,7 @@ export function Footer() {
           <div className="col-span-2">
             <p
               className="text-text-primary text-base mb-3"
-              style={{ fontWeight: 300, letterSpacing: "-0.02em" }}
+              style={{ fontWeight: 500, letterSpacing: "-0.02em" }}
             >
               nucleos
             </p>
