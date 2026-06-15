@@ -31,7 +31,7 @@ const COUNTRIES = [
   { value: 'US', label: 'United States' },
   { value: 'CN', label: 'China' },
   { value: 'IN', label: 'India' },
-  { value: 'OTHER', label: 'Other' },
+  { value: 'ZZ', label: 'Other' },
 ]
 
 export default function SignupPage() {

@@ -48,6 +48,8 @@ export async function POST(req: NextRequest) {
           fieldName: parsed.data.fieldName,
           value: parsed.data.value,
           unit: parsed.data.unit,
+          originalValue: parsed.data.value,
+          originalUnit: parsed.data.unit,
           periodStart,
           periodEnd,
           sourceText: parsed.data.sourceText,

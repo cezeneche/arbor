@@ -30,7 +30,6 @@ export async function GET(
 
   if (!request) return err('Invalid or expired submission link', 'NOT_FOUND', 404)
 
-  // Require an explicit expiry on GET as well — expired links should not expose request details.
   if (!request.submissionTokenExpiry || request.submissionTokenExpiry < new Date()) {
     return err('This submission link has expired', 'TOKEN_EXPIRED', 410)
   }
@@ -67,7 +66,6 @@ export async function POST(
   if (request.status === 'SUBMITTED' || request.status === 'ACCEPTED') {
     return err('This request has already been responded to', 'ALREADY_RESPONDED', 409)
   }
-
   if (!request.submissionTokenExpiry || request.submissionTokenExpiry < new Date()) {
     return err('This submission link has expired', 'TOKEN_EXPIRED', 410)
   }
@@ -76,21 +74,7 @@ export async function POST(
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
 
-  // Atomically claim the request to prevent concurrent double-submissions.
-  // updateMany only matches rows that are still PENDING, so the second concurrent
-  // request will see count=0 and return 409 rather than writing duplicate records.
-  const claimed = await prisma.dataRequest.updateMany({
-    where: {
-      id: request.id,
-      status: { notIn: ['SUBMITTED', 'ACCEPTED'] },
-    },
-    data: { status: 'SUBMITTED', respondedAt: new Date() },
-  })
-  if (claimed.count === 0) {
-    return err('This request has already been responded to', 'ALREADY_RESPONDED', 409)
-  }
-
-  // Validate that every submitted fieldName is in the request's requiredFields list.
+  // Validate field names BEFORE claiming — a bad payload must not brick the request.
   const requiredFields = request.requiredFields as string[]
   if (requiredFields.length > 0) {
     const unknownFields = parsed.data.entries
@@ -106,15 +90,26 @@ export async function POST(
   }
 
   const entityId = request.supplierEntityId
-
   const systemUser = await getSystemUser(entityId)
 
-  const createdRecordIds: string[] = []
+  // One serializable transaction: claim + records + grant.
+  // If any step fails the whole thing rolls back — no partial state.
+  let recordCount = 0
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Atomic claim — prevents concurrent double-submissions.
+      const claimed = await tx.dataRequest.updateMany({
+        where: { id: request.id, status: { notIn: ['SUBMITTED', 'ACCEPTED'] } },
+        data: { status: 'SUBMITTED', respondedAt: new Date() },
+      })
+      if (claimed.count === 0) {
+        const alreadyDone = new Error('ALREADY_RESPONDED')
+        alreadyDone.name = 'ALREADY_RESPONDED'
+        throw alreadyDone
+      }
 
-  for (const entry of parsed.data.entries) {
-    const { recordId } = await prisma.$transaction(
-      (tx) =>
-        writeRecordWithAuditEntry(
+      for (const entry of parsed.data.entries) {
+        await writeRecordWithAuditEntry(
           tx,
           {
             entityId,
@@ -122,6 +117,8 @@ export async function POST(
             fieldName: entry.fieldName,
             value: entry.value,
             unit: entry.unit,
+            originalValue: entry.value,
+            originalUnit: entry.unit,
             periodStart: request.periodStart,
             periodEnd: request.periodEnd,
             sourceText: entry.sourceText,
@@ -130,38 +127,42 @@ export async function POST(
             submittedById: systemUser.id,
           },
           'CREATED_VIA_SUBMISSION_LINK',
-        ),
-      { isolationLevel: 'Serializable' },
-    )
-    createdRecordIds.push(recordId)
+        )
+        recordCount++
+      }
+
+      // Grant buyer access to this domain + period.
+      const existingGrant = await tx.dataAccessGrant.findFirst({
+        where: {
+          grantorEntityId: entityId,
+          granteeEntityId: request.buyerEntityId,
+          domain: request.domain,
+          isActive: true,
+          AND: [
+            { OR: [{ periodStart: null }, { periodStart: { lte: request.periodStart } }] },
+            { OR: [{ periodEnd: null }, { periodEnd: { gte: request.periodEnd } }] },
+          ],
+        },
+      })
+      if (!existingGrant) {
+        await tx.dataAccessGrant.create({
+          data: {
+            grantorEntityId: entityId,
+            granteeEntityId: request.buyerEntityId,
+            domain: request.domain,
+            periodStart: request.periodStart,
+            periodEnd: request.periodEnd,
+            isActive: true,
+          },
+        })
+      }
+    }, { isolationLevel: 'Serializable' })
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === 'ALREADY_RESPONDED') {
+      return err('This request has already been responded to', 'ALREADY_RESPONDED', 409)
+    }
+    throw e
   }
 
-  // Grant buyer access to this domain + period so they can query the records.
-  // Only skip creation if an existing active grant already covers the full requested period.
-  const existingGrant = await prisma.dataAccessGrant.findFirst({
-    where: {
-      grantorEntityId: entityId,
-      granteeEntityId: request.buyerEntityId,
-      domain: request.domain,
-      isActive: true,
-      AND: [
-        { OR: [{ periodStart: null }, { periodStart: { lte: request.periodStart } }] },
-        { OR: [{ periodEnd: null }, { periodEnd: { gte: request.periodEnd } }] },
-      ],
-    },
-  })
-  if (!existingGrant) {
-    await prisma.dataAccessGrant.create({
-      data: {
-        grantorEntityId: entityId,
-        granteeEntityId: request.buyerEntityId,
-        domain: request.domain,
-        periodStart: request.periodStart,
-        periodEnd: request.periodEnd,
-        isActive: true,
-      },
-    })
-  }
-
-  return ok({ recordsCreated: createdRecordIds.length, trustTier: 'B' }, 201)
+  return ok({ recordsCreated: recordCount, trustTier: 'B' }, 201)
 }

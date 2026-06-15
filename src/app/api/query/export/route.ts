@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const format = sp.get('format') ?? 'csv'
   const domainParam = sp.get('domain')
   const periodStart = sp.get('periodStart') ?? undefined
-  const periodEnd = sp.get('periodTo') ?? undefined
+  const periodEnd = sp.get('periodEnd') ?? undefined
   const supplierIdsParam = sp.get('supplierEntityIds')
 
   if (domainParam) {

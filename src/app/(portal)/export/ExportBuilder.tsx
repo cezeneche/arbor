@@ -94,7 +94,7 @@ export function ExportBuilder({
     params.set('format', format)
     if (domain) params.set('domain', domain)
     if (periodFrom) params.set('periodStart', new Date(periodFrom).toISOString())
-    if (periodTo) params.set('periodTo', new Date(periodTo).toISOString())
+    if (periodTo) params.set('periodEnd', new Date(periodTo).toISOString())
     if (selectedSuppliers.length > 0) params.set('supplierEntityIds', selectedSuppliers.join(','))
     return `/api/query/export?${params.toString()}`
   }

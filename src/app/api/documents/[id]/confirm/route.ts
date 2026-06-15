@@ -52,7 +52,7 @@ export async function POST(
   if (document.entityId !== entityId) return err('Access denied', 'FORBIDDEN', 403)
   if (document.status === 'ACCEPTED') return err('Document already confirmed', 'ALREADY_CONFIRMED', 409)
 
-  // Re-derive trust tier server-side from the extraction job, not from the client
+  // Re-derive trust tier server-side from the extraction job, not from the client.
   const job = document.extractionJobs[0]
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[document.documentType] ?? []
   const compulsoryFieldNames = new Set(
@@ -70,12 +70,20 @@ export async function POST(
       }
     }
   } else {
-    // No extraction job — this is a manual confirmation without AI backing
     trustTier = TrustTier.B
   }
 
-  const createdRecords: string[] = []
+  // Pre-compute normalised values outside the transaction (pure, no DB).
+  type PreparedField = {
+    field: typeof parsed.data.fields[number]
+    rawNum: number
+    siValue: number
+    siUnit: string
+    periodStart: Date
+    periodEnd: Date
+  }
 
+  const preparedFields: PreparedField[] = []
   for (const field of parsed.data.fields) {
     const rawNum = parseFloat(field.confirmedValue)
     if (isNaN(rawNum)) continue
@@ -88,64 +96,67 @@ export async function POST(
     const periodStart = new Date(field.periodStart)
     const periodEnd = new Date(field.periodEnd)
 
-    const { recordId } = await prisma.$transaction(
-      async (tx) => {
-        // Supersede any existing active records for the same entity+domain+fieldName+period
-        const prior = await tx.dataRecord.findMany({
-          where: {
-            entityId,
-            domain: field.domain,
-            fieldName: field.fieldName,
-            periodStart,
-            periodEnd,
-            isActive: true,
-          },
-          select: { id: true },
-        })
-
-        const result = await writeRecordWithAuditEntry(
-          tx,
-          {
-            entityId,
-            domain: field.domain,
-            fieldName: field.fieldName,
-            value: siValue,
-            unit: siUnit,
-            originalValue: rawNum,
-            originalUnit: unit,
-            periodStart,
-            periodEnd,
-            trustTier,
-            extractionMethod: ExtractionMethod.DOCUMENT_AI,
-            submittedById: session.user!.id!,
-            documentId,
-            sourceText: field.sourceText,
-            confidenceScore: field.confidenceScore,
-          },
-          'CREATED',
-        )
-
-        // Mark prior records inactive and point them to the new record
-        if (prior.length > 0) {
-          await tx.dataRecord.updateMany({
-            where: { id: { in: prior.map(p => p.id) } },
-            data: { isActive: false, supersededById: result.recordId },
-          })
-        }
-
-        return result
-      },
-      { isolationLevel: 'Serializable' },
-    )
-    createdRecords.push(recordId)
+    preparedFields.push({ field, rawNum, siValue, siUnit, periodStart, periodEnd })
   }
 
-  await prisma.document.update({
-    where: { id: documentId },
-    data: { status: 'ACCEPTED' },
-  })
+  // Single serializable transaction: all records + supersessions + document status.
+  // If any field write fails the entire confirmation rolls back — no partial state.
+  const createdRecords = await prisma.$transaction(async (tx) => {
+    const recordIds: string[] = []
 
-  await runCrossValidation(entityId, documentId, document.documentType)
+    for (const { field, rawNum, siValue, siUnit, periodStart, periodEnd } of preparedFields) {
+      // Supersede any existing active records for the same entity+domain+fieldName+period.
+      const prior = await tx.dataRecord.findMany({
+        where: { entityId, domain: field.domain, fieldName: field.fieldName, periodStart, periodEnd, isActive: true },
+        select: { id: true },
+      })
+
+      const result = await writeRecordWithAuditEntry(
+        tx,
+        {
+          entityId,
+          domain: field.domain,
+          fieldName: field.fieldName,
+          value: siValue,
+          unit: siUnit,
+          originalValue: rawNum,
+          originalUnit: field.confirmedUnit ?? 'unknown',
+          periodStart,
+          periodEnd,
+          trustTier,
+          extractionMethod: ExtractionMethod.DOCUMENT_AI,
+          submittedById: session.user!.id!,
+          documentId,
+          sourceText: field.sourceText,
+          confidenceScore: field.confidenceScore,
+        },
+        'CREATED',
+      )
+
+      if (prior.length > 0) {
+        await tx.dataRecord.updateMany({
+          where: { id: { in: prior.map(p => p.id) } },
+          data: { isActive: false, supersededById: result.recordId },
+        })
+      }
+
+      recordIds.push(result.recordId)
+    }
+
+    // Mark document accepted inside the transaction so status and records are consistent.
+    await tx.document.update({
+      where: { id: documentId },
+      data: { status: 'ACCEPTED' },
+    })
+
+    return recordIds
+  }, { isolationLevel: 'Serializable' })
+
+  // Cross-validation runs after commit — it reads accepted records and writes CV results.
+  // Failures here do not roll back the confirmation (warnings only, not blocking).
+  await runCrossValidation(entityId, documentId, document.documentType).catch(
+    (e) => console.error('[confirm] runCrossValidation failed:', e)
+  )
 
   return ok({ recordIds: createdRecords, documentStatus: 'ACCEPTED' })
 }

@@ -23,10 +23,10 @@ export interface RecordInput {
   fieldName: string
   value: number
   unit: string
-  /** Pre-normalisation value as entered or extracted. Defaults to value when omitted. */
-  originalValue?: number
-  /** Pre-normalisation unit. Defaults to unit when omitted. */
-  originalUnit?: string
+  /** Pre-normalisation value as entered or extracted. Must always be provided. */
+  originalValue: number
+  /** Pre-normalisation unit as entered or extracted. Must always be provided. */
+  originalUnit: string
   periodStart: Date
   periodEnd: Date
   trustTier: TrustTier
@@ -62,8 +62,8 @@ export async function writeRecordWithAuditEntry(
       fieldName: input.fieldName,
       value: input.value,
       unit: input.unit,
-      originalValue: input.originalValue ?? input.value,
-      originalUnit: input.originalUnit ?? input.unit,
+      originalValue: input.originalValue,
+      originalUnit: input.originalUnit,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
       trustTier: input.trustTier,
@@ -85,8 +85,8 @@ export async function writeRecordWithAuditEntry(
     fieldName: input.fieldName,
     value: input.value,
     unit: input.unit,
-    originalValue: input.originalValue ?? input.value,
-    originalUnit: input.originalUnit ?? input.unit,
+    originalValue: input.originalValue,
+    originalUnit: input.originalUnit,
     periodStart: input.periodStart.toISOString(),
     periodEnd: input.periodEnd.toISOString(),
     trustTier: input.trustTier,

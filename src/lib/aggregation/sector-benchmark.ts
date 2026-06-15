@@ -66,6 +66,7 @@ export function computeSectorBenchmarks(
     // One value per entity (average if multiple records per entity for this field)
     const byEntity = new Map<string, number[]>()
     for (const r of records) {
+      if (typeof r.value !== 'number' || isNaN(r.value)) continue
       const vals = byEntity.get(r.entityId) ?? []
       vals.push(r.value)
       byEntity.set(r.entityId, vals)

@@ -132,6 +132,8 @@ export async function POST(req: NextRequest) {
           fieldName: r.fieldName,
           value: r.value,
           unit: r.unit,
+          originalValue: r.value,
+          originalUnit: r.unit,
           periodStart: new Date(r.periodStart),
           periodEnd: new Date(r.periodEnd),
           trustTier: TrustTier.B,

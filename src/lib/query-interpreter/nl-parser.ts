@@ -3,6 +3,7 @@
 // Sits in front of Layer 3 (Access and Sharing); is not part of the data pipeline.
 
 import Anthropic from '@anthropic-ai/sdk'
+import { z } from 'zod'
 
 export type QueryType = 'entity' | 'supply_chain' | 'gap' | 'historical'
 export type DataDomain = 'ENERGY' | 'MATERIALS' | 'PRODUCTION' | 'LOGISTICS' | 'EMISSIONS' | 'AGRICULTURE' | 'WASTE_AND_WATER' | 'COMPLIANCE'
@@ -20,6 +21,19 @@ export interface ParsedQuery {
   trustTier?: TrustTier
   supplierEntityId?: string
 }
+
+const parsedQuerySchema = z.object({
+  interpretation: z.string().min(1),
+  isCalculation: z.boolean(),
+  calculationNote: z.string().optional(),
+  queryType: z.enum(['entity', 'supply_chain', 'gap', 'historical']),
+  domain: z.enum(['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']).nullable().optional(),
+  fieldName: z.string().nullable().optional(),
+  periodStart: z.string().nullable().optional(),
+  periodEnd: z.string().nullable().optional(),
+  trustTier: z.enum(['A', 'B', 'C']).nullable().optional(),
+  supplierEntityId: z.string().nullable().optional(),
+})
 
 function buildSystemPrompt(todayIso: string): string {
   return `You are a query parameter extractor for arbor, a certified operational data repository for manufacturers and suppliers.
@@ -93,5 +107,30 @@ export async function parseNlQuery(question: string): Promise<ParsedQuery> {
     throw new Error('Could not parse query parameters from the question. Please try rephrasing.')
   }
 
-  return JSON.parse(jsonMatch[0]) as ParsedQuery
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(jsonMatch[0])
+  } catch {
+    throw new Error('Could not parse query parameters from the question. Please try rephrasing.')
+  }
+
+  const validated = parsedQuerySchema.safeParse(parsed)
+  if (!validated.success) {
+    throw new Error('Could not parse query parameters from the question. Please try rephrasing.')
+  }
+
+  // Strip nulls so callers can check presence with simple truthiness.
+  const d = validated.data
+  return {
+    interpretation: d.interpretation,
+    isCalculation: d.isCalculation,
+    ...(d.calculationNote ? { calculationNote: d.calculationNote } : {}),
+    queryType: d.queryType,
+    ...(d.domain ? { domain: d.domain } : {}),
+    ...(d.fieldName ? { fieldName: d.fieldName } : {}),
+    ...(d.periodStart ? { periodStart: d.periodStart } : {}),
+    ...(d.periodEnd ? { periodEnd: d.periodEnd } : {}),
+    ...(d.trustTier ? { trustTier: d.trustTier } : {}),
+    ...(d.supplierEntityId ? { supplierEntityId: d.supplierEntityId } : {}),
+  }
 }

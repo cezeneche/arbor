@@ -72,7 +72,15 @@ export async function GET(
     if (record.fieldName !== p.fieldName) mismatches.push('fieldName')
     if (record.value !== p.value) mismatches.push('value')
     if (record.unit !== p.unit) mismatches.push('unit')
+    if (record.originalValue !== p.originalValue) mismatches.push('originalValue')
+    if (record.originalUnit !== p.originalUnit) mismatches.push('originalUnit')
+    // Compare period dates as ISO strings — DB returns Date objects, payload stores strings.
+    if (new Date(record.periodStart).toISOString() !== p.periodStart) mismatches.push('periodStart')
+    if (new Date(record.periodEnd).toISOString() !== p.periodEnd) mismatches.push('periodEnd')
     if (record.trustTier !== p.trustTier) mismatches.push('trustTier')
+    if (record.confidenceScore !== p.confidenceScore) mismatches.push('confidenceScore')
+    if ((record.sourceText ?? null) !== p.sourceText) mismatches.push('sourceText')
+    if ((record.documentId ?? null) !== p.documentId) mismatches.push('documentId')
     if (record.extractionMethod !== p.extractionMethod) mismatches.push('extractionMethod')
     if (record.submittedById !== p.submittedById) mismatches.push('submittedById')
     if (mismatches.length > 0) {

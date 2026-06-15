@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { requireAuth } from '@/lib/auth-helpers'
+import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
@@ -17,7 +17,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, response } = await requireAuth()
+  const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
   const entityId = (session.user as Record<string, unknown>).entityId as string
@@ -49,8 +49,12 @@ export async function PATCH(
   })
 
   if (parsed.data.status === 'SUBMITTED') {
-    // Create a DataAccessGrant so the buyer can see the supplier's data.
-    // Only skip if an existing active grant already covers the full requested period.
+    // Both period fields must be set together — a grant with only one set is a misconfiguration
+    // that would silently expand or eliminate period filtering on the buyer's export queries.
+    if ((dataRequest.periodStart === null) !== (dataRequest.periodEnd === null)) {
+      return err('Request period is misconfigured: periodStart and periodEnd must both be set or both be null', 'INVALID_STATE', 500)
+    }
+
     const existing = await prisma.dataAccessGrant.findFirst({
       where: {
         grantorEntityId: dataRequest.supplierEntityId,

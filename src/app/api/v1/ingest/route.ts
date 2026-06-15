@@ -86,8 +86,6 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // writeRecordWithAuditEntry fetches previousHash inside the Serializable transaction —
-      // safe under concurrent requests; second writer will retry on P2034.
       const { recordId } = await prisma.$transaction(
         (tx) =>
           writeRecordWithAuditEntry(tx, {
@@ -96,6 +94,8 @@ export async function POST(req: NextRequest) {
             fieldName: r.fieldName,
             value: r.value,
             unit: r.unit,
+            originalValue: r.value,
+            originalUnit: r.unit,
             periodStart: new Date(r.periodStart),
             periodEnd: new Date(r.periodEnd),
             sourceText: r.sourceSystem,
@@ -114,7 +114,8 @@ export async function POST(req: NextRequest) {
   const created = results.filter(r => r.status === 'created').length
   const rejected = results.filter(r => r.status === 'rejected').length
 
-  // Batch audit tombstone for idempotency lookups — written after all records are committed.
+  // Batch audit tombstone for idempotency lookups.
+  // Must be awaited — if it fails we return 500 rather than silently breaking the audit chain.
   if (idempotencyKey && created > 0) {
     const lastEntry = await prisma.auditEntry.findFirst({
       where: { entityId },
@@ -151,7 +152,7 @@ export async function POST(req: NextRequest) {
         hash: batchHash,
         previousHash: lastEntry?.hash ?? null,
       },
-    }).catch(e => console.error('[ingest] batch audit tombstone failed:', e))
+    })
   }
 
   return NextResponse.json({

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   if (!file) return err('No file provided', 'NO_FILE', 400)
   if (file.size > DOCUMENT_MAX_BYTES) return err('File exceeds 50 MB limit', 'FILE_TOO_LARGE', 413)
   if (!ALLOWED_MIME_TYPES.has(file.type)) {
-    return err('Unsupported file type. Accepted: PDF, JPEG, PNG, TIFF, Excel, CSV', 'UNSUPPORTED_FILE_TYPE', 415)
+    return err('Unsupported file type. Accepted: PDF, JPEG, PNG', 'UNSUPPORTED_FILE_TYPE', 415)
   }
 
   const { url } = await storeDocument(file, entityId)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { requireWriteAccess } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
 
@@ -7,8 +7,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  const { session, response } = await requireWriteAccess()
+  if (!session) return response!
+
   const entityId = (session.user as Record<string, unknown>).entityId as string
 
   const { id } = await params

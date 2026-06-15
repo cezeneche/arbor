@@ -75,7 +75,7 @@ export const CROSS_VALIDATION_RULES = [
     docTypeA: 'ELECTRICITY_BILL',
     docTypeB: 'RENEWABLE_CERTIFICATE',
     fieldA: 'total_consumption_kwh',
-    fieldB: 'quantity_mwh_in_kwh',
+    fieldB: 'quantity_mwh',
     tolerancePercent: 0,
     description: 'REGO quantity must not exceed metered consumption',
   },

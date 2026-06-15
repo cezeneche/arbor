@@ -83,14 +83,14 @@ export async function GET(req: NextRequest) {
   const groups = new Map<GroupKey, { values: { entityId: string; value: number }[]; unit: string }>()
 
   for (const r of records) {
-    if (typeof r.value !== 'number') continue
+    if (typeof r.value !== 'number' || isNaN(r.value)) continue
     const year = new Date(r.periodStart).getFullYear()
     if (filterYear !== undefined && year !== filterYear) continue
 
     const sector = sectorMap.get(r.entityId) ?? 'Unknown'
     if (filterSector && sector !== filterSector) continue
 
-    const key = `${sector}||${r.domain}||${r.fieldName}||${year}`
+    const key = `${sector}||${r.domain}||${r.fieldName}||${year}||${r.unit}`
     if (!groups.has(key)) groups.set(key, { values: [], unit: r.unit })
     groups.get(key)!.values.push({ entityId: r.entityId, value: r.value })
   }
@@ -99,6 +99,7 @@ export async function GET(req: NextRequest) {
 
   for (const [key, group] of groups.entries()) {
     const [sector, domain, fieldName, yearStr] = key.split('||')
+    // unit comes from group.unit (already set on first insert for this key)
 
     // Population floor: count distinct entities
     const distinctEntities = new Set(group.values.map(v => v.entityId))
