@@ -482,7 +482,11 @@ def build_case_hmrc_return(
 
     Requires: accuracy_declaration = True (certifies the return is accurate).
     """
-    from app.services.cbam_uk_rates import get_uk_cbam_rate  # noqa: PLC0415
+    from app.services.cbam_uk_rates import (  # noqa: PLC0415
+        UKCBAMRateMissing,
+        UKCBAMRatePlaceholder,
+        get_uk_cbam_rate_or_raise,
+    )
     from app.services.cpr_calculator import get_cpr_by_consignment_db  # noqa: PLC0415
     from app.services.hmrc_return_builder import (  # noqa: PLC0415
         HMRCReturnInput,
@@ -548,14 +552,27 @@ def build_case_hmrc_return(
             if primary_sector:
                 break
 
-        cbam_rate = get_uk_cbam_rate(primary_sector or "iron_steel", year, quarter)
-        if cbam_rate is None:
+        try:
+            cbam_rate = get_uk_cbam_rate_or_raise(
+                primary_sector or "iron_steel", year, quarter, reject_placeholder=True
+            )
+        except UKCBAMRateMissing:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
                     f"No UK CBAM rate found for sector={primary_sector!r} "
                     f"year={year} quarter={quarter}. "
                     "Supply cbam_rate_override in the request body."
+                ),
+            )
+        except UKCBAMRatePlaceholder:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"HMRC has not yet published the CBAM rate for sector={primary_sector!r} "
+                    f"year={year} quarter={quarter}. Only HMRC-published rates may be used in "
+                    "a production HMRC return. Supply cbam_rate_override to proceed with a "
+                    "manually confirmed rate."
                 ),
             )
 

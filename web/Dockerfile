@@ -14,6 +14,11 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+# rewrites() in next.config.mjs runs at build time and bakes the destination
+# URL into the standalone output — LEDGER_URL must be an ARG, not a runtime ENV.
+ARG LEDGER_URL=http://localhost:8000
+ENV LEDGER_URL=$LEDGER_URL
+
 RUN npm run build
 
 FROM node:20-alpine AS runner

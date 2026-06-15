@@ -4,11 +4,12 @@ from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import bindparam, text
 
 from ledger_app.services.cbam_data_quality import evaluate_cbam_data_quality
+from shared_auth import require_scopes
 from . import _shared
 
 
@@ -247,7 +248,7 @@ def list_carbon_pricing_schemes():
     }
 
 
-@router.post("/cases", status_code=status.HTTP_201_CREATED)
+@router.post("/cases", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_scopes(["cbam:write"]))])
 def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     actor_sub: str = getattr(getattr(request.state, "auth_context", None), "sub", "system")
@@ -369,7 +370,7 @@ def get_cbam_case(request: Request, case_id: str):
         return result
 
 
-@router.patch("/cases/{case_id}", status_code=status.HTTP_200_OK)
+@router.patch("/cases/{case_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(require_scopes(["cbam:write"]))])
 def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
     """Persist editable field changes to cbam_cases / shipments / goods_lines / emissions
     and write an HMAC-chained audit event so every change is version-controlled."""
@@ -510,7 +511,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
     return {"status": "ok", "case_id": case_id}
 
 
-@router.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_scopes(["cbam:write"]))])
 def delete_cbam_case(request: Request, case_id: str):
     """Permanently delete a CBAM case and all associated data.
 

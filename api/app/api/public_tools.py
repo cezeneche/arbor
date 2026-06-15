@@ -50,10 +50,14 @@ from pydantic import BaseModel, Field, model_validator
 _UK_THRESHOLD_GBP: Decimal = Decimal("50000.00")
 _UK_APPROACHING_GBP: Decimal = Decimal("40000.00")
 
-# UK ETS Q1 2027 quarterly-average allowance price (HMRC published reference rate).
-# Update each quarter when HMRC publishes the new rate.
+# EU CBAM registration threshold: 50 tonnes net mass per year (Regulation (EU) 2023/956 Art. 2(3))
+_EU_THRESHOLD_TONNES: Decimal = Decimal("50")
+_EU_APPROACHING_TONNES: Decimal = Decimal("40")
+
+# UK ETS Q1 2027 quarterly-average allowance price — engineering estimate only.
+# HMRC has not yet published operative CBAM rates; replace when published.
 _UK_ETS_RATE: Decimal = Decimal("52.40")
-_UK_ETS_RATE_SOURCE: str = "UK ETS Q1 2027 quarterly average (HMRC reference rate)"
+_UK_ETS_RATE_SOURCE: str = "UK ETS Q1 2027 quarterly average (engineering estimate — HMRC rate not yet published)"
 
 # EU ETS 2026 annual average (European Energy Exchange spot, converted at HMRC
 # CDRM EUR/GBP rate).  Update when EU ETS Authority publishes annual averages.
@@ -224,6 +228,10 @@ def _resolve_see(cn8_code: str) -> tuple[object, str] | tuple[None, None]:
 class ScopeCheckRequest(BaseModel):
     cn8_code: str = Field(..., description="CN8 commodity code (2–8 digits)")
     annual_import_value_gbp: Decimal = Field(..., ge=0)
+    annual_import_tonnes: Decimal | None = Field(
+        None, ge=0,
+        description="Annual import mass in tonnes — required for EU threshold assessment (50 t/yr)"
+    )
     regime: Literal["UK", "EU", "BOTH"] = "UK"
 
     @model_validator(mode="after")
@@ -328,29 +336,94 @@ def scope_check(request: Request, body: ScopeCheckRequest) -> dict:
             ],
         }
 
-    # Threshold assessment
+    # Threshold assessment — UK and EU use different measures
     gbp = body.annual_import_value_gbp
-    registration_required = gbp >= _UK_THRESHOLD_GBP
-    approaching = _UK_APPROACHING_GBP <= gbp < _UK_THRESHOLD_GBP
+    uk_required = gbp >= _UK_THRESHOLD_GBP
+    uk_approaching = _UK_APPROACHING_GBP <= gbp < _UK_THRESHOLD_GBP
 
-    if registration_required:
-        reason = (
-            f"Annual import value of £{gbp:,.0f} exceeds the £50,000 "
-            f"UK CBAM registration threshold for {entry.sector.replace('_', ' ')} imports. "
-            "You must register with HMRC."
-        )
-    elif approaching:
-        reason = (
-            f"Annual import value of £{gbp:,.0f} is approaching the £50,000 "
-            "UK CBAM registration threshold. Prepare your EORI number and "
-            "Government Gateway credentials now."
-        )
-    else:
-        reason = (
-            f"Annual import value of £{gbp:,.0f} is below the £50,000 "
-            "UK CBAM registration threshold. No registration action required at this time. "
-            "Check monthly on the first of each month."
-        )
+    # EU threshold: 50 tonnes net mass (Regulation (EU) 2023/956 Art. 2(3))
+    eu_required: bool | None = None
+    eu_approaching: bool | None = None
+    if body.annual_import_tonnes is not None:
+        t = body.annual_import_tonnes
+        eu_required = t >= _EU_THRESHOLD_TONNES
+        eu_approaching = _EU_APPROACHING_TONNES <= t < _EU_THRESHOLD_TONNES
+
+    if body.regime == "UK":
+        registration_required = uk_required
+        approaching = uk_approaching
+        sector_label = entry.sector.replace("_", " ")
+        if registration_required:
+            reason = (
+                f"Annual import value of £{gbp:,.0f} exceeds the £50,000 "
+                f"UK CBAM registration threshold for {sector_label} imports. "
+                "You must register with HMRC."
+            )
+        elif approaching:
+            reason = (
+                f"Annual import value of £{gbp:,.0f} is approaching the £50,000 "
+                "UK CBAM registration threshold. Prepare your EORI number and "
+                "Government Gateway credentials now."
+            )
+        else:
+            reason = (
+                f"Annual import value of £{gbp:,.0f} is below the £50,000 "
+                "UK CBAM registration threshold. No registration action required at this time. "
+                "Check monthly on the first of each month."
+            )
+    elif body.regime == "EU":
+        if eu_required is not None:
+            registration_required = eu_required
+            approaching = eu_approaching or False
+            t = body.annual_import_tonnes  # type: ignore[assignment]
+            if registration_required:
+                reason = (
+                    f"Annual import of {t:,.1f} tonnes exceeds the 50 tonne EU CBAM "
+                    "registration threshold (Regulation (EU) 2023/956 Art. 2(3)). "
+                    "You must register as an Authorised CBAM Declarant."
+                )
+            elif approaching:
+                reason = (
+                    f"Annual import of {t:,.1f} tonnes is approaching the 50 tonne EU CBAM "
+                    "registration threshold. Prepare your EORI and contact your national "
+                    "competent authority."
+                )
+            else:
+                reason = (
+                    f"Annual import of {t:,.1f} tonnes is below the 50 tonne EU CBAM "
+                    "registration threshold. No registration action required at this time."
+                )
+        else:
+            registration_required = False
+            approaching = False
+            reason = (
+                "EU CBAM registration is required when annual imports exceed 50 tonnes net mass "
+                "(Regulation (EU) 2023/956 Art. 2(3)). Supply annual_import_tonnes to receive "
+                "a threshold assessment."
+            )
+    else:  # BOTH
+        registration_required = uk_required or bool(eu_required)
+        approaching = uk_approaching or bool(eu_approaching)
+        parts: list[str] = []
+        if uk_required:
+            parts.append(f"Annual import value of £{gbp:,.0f} exceeds the £50,000 UK CBAM threshold.")
+        elif uk_approaching:
+            parts.append(f"Annual import value of £{gbp:,.0f} is approaching the £50,000 UK CBAM threshold.")
+        else:
+            parts.append(f"Annual import value of £{gbp:,.0f} is below the £50,000 UK CBAM threshold.")
+        if eu_required is not None:
+            t = body.annual_import_tonnes  # type: ignore[assignment]
+            if eu_required:
+                parts.append(f"Annual import of {t:,.1f} tonnes exceeds the 50 tonne EU CBAM threshold.")
+            elif eu_approaching:
+                parts.append(f"Annual import of {t:,.1f} tonnes is approaching the 50 tonne EU CBAM threshold.")
+            else:
+                parts.append(f"Annual import of {t:,.1f} tonnes is below the 50 tonne EU CBAM threshold.")
+        else:
+            parts.append(
+                "Supply annual_import_tonnes to assess the EU 50 tonne threshold."
+            )
+        reason = " ".join(parts)
 
     # First return due date
     if body.regime == "UK":
@@ -424,8 +497,9 @@ def liability_estimate(request: Request, body: LiabilityRequest) -> dict:
     else:
         see_tco2e_per_t = entry.total_tco2e_per_t
         markup_note = (
-            "10% surcharge applied to default SEE when claiming liability reduction — "
-            "using actual (verified) data removes this loading"
+            "A 10% surcharge will be added to your CBAM liability when using default (non-verified) "
+            "SEE values — the figure shown is the base estimate before this loading is applied. "
+            "Using verified supplier data eliminates the surcharge."
         )
 
     # Core calculation

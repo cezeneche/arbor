@@ -128,13 +128,32 @@ def _verify_chain(records: list["SnapshotRecord"]) -> None:
     Raises
     ------
     ChainIntegrityError
-        When any record's parent_hash does not match its predecessor's payload_hash.
+        When any record's payload_hash does not match its recomputed hash,
+        when a non-first record has a null parent_hash (injected orphan),
+        or when any record's parent_hash does not match its predecessor's payload_hash.
     """
-    for i in range(1, len(records)):
+    for i, curr in enumerate(records):
+        # Recompute and verify payload integrity for every record.
+        recomputed = sha256_hex(curr.payload_json)
+        if recomputed != curr.payload_hash:
+            raise ChainIntegrityError(
+                f"Audit chain payload tampered at position {i}: "
+                f"record id={curr.id!r} (stage={curr.stage!r}) stored "
+                f"payload_hash={curr.payload_hash!r} but recomputed "
+                f"hash={recomputed!r}. "
+                "Human review is required (CLAUDE.md Rule 5)."
+            )
+        if i == 0:
+            continue  # first record — no predecessor link to verify
         prev = records[i - 1]
-        curr = records[i]
         if curr.parent_hash is None:
-            continue  # first record after a gap — accepted, not tampered
+            raise ChainIntegrityError(
+                f"Audit chain integrity violation at position {i}: "
+                f"record id={curr.id!r} (stage={curr.stage!r}) has a null "
+                f"parent_hash but is not the first record in the chain. "
+                "This indicates an injected or orphaned snapshot. "
+                "Human review is required (CLAUDE.md Rule 5)."
+            )
         if curr.parent_hash != prev.payload_hash:
             raise ChainIntegrityError(
                 f"Audit chain integrity violation at position {i}: "

@@ -338,10 +338,14 @@ class FakeEngine:
 
 
 def _client_with_fake_engine() -> tuple[TestClient, FakeConnection]:
+    from shared_auth.testing import make_test_token
+
     conn = FakeConnection()
     cbam_api.engine = FakeEngine(conn)
+
+    token = make_test_token(scopes=["cbam:read", "cbam:write", "narrative:run"])
 
     app = FastAPI()
     app.include_router(cbam_api.router, prefix="/api")
     app.include_router(report_package_api.router, prefix="/api")
-    return TestClient(app), conn
+    return TestClient(app, headers={"Authorization": f"Bearer {token}"}), conn

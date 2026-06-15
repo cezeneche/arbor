@@ -86,10 +86,20 @@ export default function LoginPage() {
   async function handleResetSubmit() {
     if (!resetEmail.trim()) return;
     setResetLoading(true);
-    // Simulate — real reset endpoint wired when available
-    await new Promise((r) => setTimeout(r, 800));
-    setResetLoading(false);
-    setResetSent(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+      setResetSent(true);
+    } catch {
+      setAuthError("Unable to send reset email. Please try again.");
+    } finally {
+      setResetLoading(false);
+    }
   }
 
   return (
