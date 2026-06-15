@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
   // recordId is assigned once and reused for both hash computation and storage.
   const recordId = `consent_${Date.now()}`
 
+  const now = new Date().toISOString()
   const payload: AuditPayload = {
     recordId,
     entityId,
@@ -46,8 +47,16 @@ export async function POST(req: NextRequest) {
     fieldName: 'benchmark_aggregation_consent',
     value: body.allow ? 1 : 0,
     unit: 'boolean',
+    originalValue: body.allow ? 1 : 0,
+    originalUnit: 'boolean',
+    periodStart: now,
+    periodEnd: now,
     trustTier: 'B',
-    submittedAt: new Date().toISOString(),
+    confidenceScore: 1.0,
+    sourceText: null,
+    documentId: null,
+    extractionMethod: 'MANUAL_ENTRY',
+    submittedAt: now,
     submittedById: userId,
   }
   const hash = computeRecordHash(payload, lastEntry?.hash ?? null)

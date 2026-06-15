@@ -9,7 +9,15 @@ export interface AuditPayload {
   fieldName: string
   value: number
   unit: string
+  originalValue: number
+  originalUnit: string
+  periodStart: string
+  periodEnd: string
   trustTier: string
+  confidenceScore: number
+  sourceText: string | null
+  documentId: string | null
+  extractionMethod: string
   submittedAt: string
   submittedById: string
 }

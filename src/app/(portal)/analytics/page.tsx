@@ -132,28 +132,50 @@ export default async function AnalyticsPage() {
   }> = []
   if (!isSupplier) {
     const grants = await prisma.dataAccessGrant.findMany({
-      where: { granteeEntityId: entityId, isActive: true },
-      select: { grantorEntityId: true, grantorEntity: { select: { legalName: true } } },
-      distinct: ['grantorEntityId'],
+      where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
+      select: {
+        grantorEntityId: true,
+        domain: true,
+        periodStart: true,
+        periodEnd: true,
+        grantorEntity: { select: { legalName: true } },
+      },
     })
-    supplierCoverage = await Promise.all(grants.map(async g => {
+    // Group grants by supplier so we can union all scopes per supplier
+    const grantsBySupplierId = new Map<string, typeof grants>()
+    for (const g of grants) {
+      const arr = grantsBySupplierId.get(g.grantorEntityId) ?? []
+      arr.push(g)
+      grantsBySupplierId.set(g.grantorEntityId, arr)
+    }
+    supplierCoverage = await Promise.all([...grantsBySupplierId.entries()].map(async ([supplierId, supplierGrants]) => {
       const sr = await prisma.dataRecord.findMany({
-        where: { entityId: g.grantorEntityId, isActive: true },
-        select: { domain: true, trustTier: true, submittedAt: true },
+        where: { entityId: supplierId, isActive: true },
+        select: { domain: true, trustTier: true, submittedAt: true, periodStart: true, periodEnd: true },
         orderBy: { submittedAt: 'desc' },
       })
+      // Enforce grant scope: only include records within at least one grant's domain+period
+      const scoped = sr.filter(record =>
+        supplierGrants.some(grant => {
+          const domainMatch = !grant.domain || grant.domain === record.domain
+          const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
+          const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
+          return domainMatch && startMatch && endMatch
+        })
+      )
+      const g = supplierGrants[0]
       const domains: Record<string, { count: number; tierA: number }> = {}
-      for (const r of sr) {
+      for (const r of scoped) {
         if (!domains[r.domain]) domains[r.domain] = { count: 0, tierA: 0 }
         domains[r.domain].count++
         if (r.trustTier === 'A') domains[r.domain].tierA++
       }
       return {
-        supplierId: g.grantorEntityId,
+        supplierId,
         supplierName: g.grantorEntity.legalName,
         domains,
-        lastSubmission: sr[0]?.submittedAt
-          ? new Date(sr[0].submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        lastSubmission: scoped[0]?.submittedAt
+          ? new Date(scoped[0].submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
           : null,
       }
     }))

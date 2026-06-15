@@ -76,6 +76,20 @@ export async function POST(
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
 
+  // Atomically claim the request to prevent concurrent double-submissions.
+  // updateMany only matches rows that are still PENDING, so the second concurrent
+  // request will see count=0 and return 409 rather than writing duplicate records.
+  const claimed = await prisma.dataRequest.updateMany({
+    where: {
+      id: request.id,
+      status: { notIn: ['SUBMITTED', 'ACCEPTED'] },
+    },
+    data: { status: 'SUBMITTED', respondedAt: new Date() },
+  })
+  if (claimed.count === 0) {
+    return err('This request has already been responded to', 'ALREADY_RESPONDED', 409)
+  }
+
   // Validate that every submitted fieldName is in the request's requiredFields list.
   const requiredFields = request.requiredFields as string[]
   if (requiredFields.length > 0) {
@@ -121,11 +135,6 @@ export async function POST(
     )
     createdRecordIds.push(recordId)
   }
-
-  await prisma.dataRequest.update({
-    where: { id: request.id },
-    data: { status: 'SUBMITTED', respondedAt: new Date() },
-  })
 
   // Grant buyer access to this domain + period so they can query the records.
   // Only skip creation if an existing active grant already covers the full requested period.

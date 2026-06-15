@@ -31,15 +31,14 @@ export async function GET(req: NextRequest) {
 
   const domain: DataDomain | undefined = domainParam ? domainSchema.parse(domainParam) : undefined
 
-  // Resolve which suppliers this buyer is authorised to access
+  // Resolve which suppliers this buyer is authorised to access, retaining each grant's scope
   const grants = await prisma.dataAccessGrant.findMany({
     where: {
       granteeEntityId: buyerEntityId,
       isActive: true,
-      ...(domain ? { domain } : {}),
+      revokedAt: null,
     },
-    select: { grantorEntityId: true },
-    distinct: ['grantorEntityId'],
+    select: { grantorEntityId: true, domain: true, periodStart: true, periodEnd: true },
   })
   const authorisedSupplierIds = new Set(grants.map(g => g.grantorEntityId))
 
@@ -58,7 +57,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const records = await prisma.dataRecord.findMany({
+  const candidateRecords = await prisma.dataRecord.findMany({
     where: {
       entityId: { in: targetIds },
       isActive: true,
@@ -68,6 +67,7 @@ export async function GET(req: NextRequest) {
     },
     select: {
       id: true,
+      entityId: true,
       domain: true,
       fieldName: true,
       value: true,
@@ -80,6 +80,17 @@ export async function GET(req: NextRequest) {
       documentId: true,
     },
     orderBy: [{ entityId: 'asc' }, { domain: 'asc' }, { periodStart: 'asc' }],
+  })
+
+  // Enforce each grant's domain and period bounds on the fetched records
+  const records = candidateRecords.filter(record => {
+    const entityGrants = grants.filter(g => g.grantorEntityId === record.entityId)
+    return entityGrants.some(grant => {
+      const domainMatch = !grant.domain || grant.domain === record.domain
+      const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
+      const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
+      return domainMatch && startMatch && endMatch
+    })
   })
 
   if (format === 'xml') {

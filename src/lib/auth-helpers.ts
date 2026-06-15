@@ -15,6 +15,25 @@ export async function requireAuth() {
   return { session, response: null }
 }
 
+/** Requires an authenticated session with any write-capable role.
+ *  Blocks VIEWER — read-only role cannot upload, confirm, or create records.
+ */
+export async function requireWriteAccess() {
+  const { session, response } = await requireAuth()
+  if (!session) return { session: null, response: response! }
+  const role = (session.user as Record<string, unknown>).role as string
+  if (role === 'VIEWER') {
+    return {
+      session: null,
+      response: NextResponse.json(
+        { error: 'Forbidden — VIEWER role is read-only', code: 'FORBIDDEN' },
+        { status: 403 },
+      ),
+    }
+  }
+  return { session, response: null }
+}
+
 /** Requires an authenticated session AND the ADMIN role.
  *  Returns the session on success, or a 401/403 response on failure.
  */

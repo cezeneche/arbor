@@ -17,11 +17,6 @@ export const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
   'image/jpeg',
   'image/png',
-  'image/tiff',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/csv',
-  'application/csv',
 ])
 
 /** Canonical mapping from DocumentType to DataDomain.
@@ -46,9 +41,7 @@ export const DOMAIN_BY_DOCUMENT_TYPE: Record<string, DataDomain> = {
   PRODUCT_CERTIFICATE: DataDomain.COMPLIANCE,
   ENVIRONMENTAL_CERTIFICATE: DataDomain.COMPLIANCE,
   CHAIN_OF_CUSTODY: DataDomain.COMPLIANCE,
-  ESG_DISCLOSURE: DataDomain.COMPLIANCE,
   ESG_REPORT: DataDomain.COMPLIANCE,
-  THIRD_PARTY_AUDIT_REPORT: DataDomain.COMPLIANCE,
   AUDIT_REPORT: DataDomain.COMPLIANCE,
   OTHER: DataDomain.COMPLIANCE,
   CARBON_FOOTPRINT_REPORT: DataDomain.EMISSIONS,

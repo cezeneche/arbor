@@ -60,8 +60,8 @@ function RequestForm() {
         periodStart,
         periodEnd,
         requiredFields: selectedFields,
-        deadline: deadline || null,
-        notes: notes || null,
+        ...(deadline ? { deadline } : {}),
+        ...(notes ? { notes } : {}),
       }),
     })
 

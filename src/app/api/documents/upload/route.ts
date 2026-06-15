@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { requireAuth } from '@/lib/auth-helpers'
+import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { storeDocument } from '@/lib/storage'
@@ -13,7 +13,7 @@ const bodySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const { session, response } = await requireAuth()
+  const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
   const entityId = (session.user as Record<string, unknown>).entityId as string

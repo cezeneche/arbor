@@ -14,11 +14,18 @@ export default auth((req) => {
     req.nextUrl.pathname.startsWith('/legal') ||
     req.nextUrl.pathname.startsWith('/login') ||
     req.nextUrl.pathname.startsWith('/signup') ||
+    req.nextUrl.pathname.startsWith('/about') ||
+    req.nextUrl.pathname.startsWith('/how-it-works') ||
+    req.nextUrl.pathname.startsWith('/institutional') ||
     req.nextUrl.pathname.startsWith('/submit') ||
     req.nextUrl.pathname.startsWith('/api/auth') ||
     req.nextUrl.pathname.startsWith('/api/submit') ||
     req.nextUrl.pathname.startsWith('/api/signup') ||
-    req.nextUrl.pathname.startsWith('/api/inngest')
+    req.nextUrl.pathname.startsWith('/api/inngest') ||
+    req.nextUrl.pathname.startsWith('/api/v1') ||
+    req.nextUrl.pathname.startsWith('/api/query') ||
+    req.nextUrl.pathname.startsWith('/api/records/convert') ||
+    req.nextUrl.pathname.startsWith('/api/institutional')
 
   if (!isAuthed && !isPublic) {
     return NextResponse.redirect(new URL('/login', req.url))

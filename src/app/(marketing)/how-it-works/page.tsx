@@ -171,7 +171,7 @@ export default function HowItWorksPage() {
                   'Accepted formats: PDF, JPEG, PNG.',
                   'Select the document type — electricity bill, freight invoice, production log, customs declaration, and more.',
                   'Optionally set the reporting period end date, used for certificate expiry validation.',
-                  'Drag and drop or click to browse. Maximum file size 20 MB.',
+                  'Drag and drop or click to browse. Maximum file size 50 MB.',
                 ],
               },
               {

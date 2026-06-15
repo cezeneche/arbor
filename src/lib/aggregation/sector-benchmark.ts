@@ -54,7 +54,7 @@ export function computeSectorBenchmarks(
   const groups = new Map<GroupKey, BenchmarkRecord[]>()
 
   for (const record of input.records) {
-    const key = `${record.sector}__${record.domain}__${record.fieldName}`
+    const key = `${record.sector}__${record.domain}__${record.fieldName}__${record.unit}`
     const existing = groups.get(key) ?? []
     existing.push(record)
     groups.set(key, existing)

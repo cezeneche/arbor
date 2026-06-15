@@ -101,10 +101,10 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         confirmedValue: values[f.fieldName],
         confirmedUnit: f.rawUnit ?? undefined,
         domain,
-        normalisedValue: parseFloat(values[f.fieldName]) || 0,
-        normalisedUnit: f.rawUnit ?? 'unknown',
         periodStart,
         periodEnd,
+        sourceText: f.sourceText || undefined,
+        confidenceScore: f.confidenceScore,
       }))
 
     if (numericFieldEntries.length === 0) {
@@ -118,7 +118,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
       const res = await fetch(`/api/documents/${document.id}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: numericFieldEntries, trustTier }),
+        body: JSON.stringify({ fields: numericFieldEntries }),
       })
 
       const data = await res.json()

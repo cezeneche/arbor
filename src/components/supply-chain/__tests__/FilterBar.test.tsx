@@ -63,7 +63,8 @@ describe('getLastCompletedQuarter', () => {
     const fixed = new RealDate(isoString)
     ;(global as typeof globalThis).Date = class extends RealDate {
       constructor(...args: ConstructorParameters<typeof RealDate>) {
-        super(...(args.length ? args : [fixed.toISOString()]))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        super(...(args.length ? args : [fixed.toISOString()]) as [any])
       }
       static now() { return fixed.getTime() }
     } as typeof Date

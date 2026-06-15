@@ -124,11 +124,11 @@ function notificationHtml(
   switch (type) {
     case 'DATA_REQUEST_RECEIVED': {
       const p = payload as NotificationPayloads['DATA_REQUEST_RECEIVED']
-      return `<p>Data request from <strong>${escapeHtml(p.buyerName)}</strong>.<br>Domain: ${escapeHtml(p.domain)} | Period: ${escapeHtml(p.periodStart)} – ${escapeHtml(p.periodEnd)}<br><a href="${appUrl}/requests/${escapeHtml(p.requestId)}">View request</a></p>`
+      return `<p>Data request from <strong>${escapeHtml(p.buyerName)}</strong>.<br>Domain: ${escapeHtml(p.domain)} | Period: ${escapeHtml(p.periodStart)} – ${escapeHtml(p.periodEnd)}<br><a href="${appUrl}/upload">Log in to view and respond to this request</a></p>`
     }
     case 'DATA_REQUEST_RESPONDED': {
       const p = payload as NotificationPayloads['DATA_REQUEST_RESPONDED']
-      return `<p>Your supplier has responded to the data request.<br><a href="${appUrl}/requests/${escapeHtml(p.requestId)}">View response</a></p>`
+      return `<p>Your supplier has responded to the data request.<br><a href="${appUrl}/supply-chain">View supply chain data</a></p>`
     }
     case 'EXTRACTION_COMPLETE': {
       const p = payload as NotificationPayloads['EXTRACTION_COMPLETE']

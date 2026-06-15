@@ -10,14 +10,21 @@ export default async function SupplyChainPage() {
 
   const entityId = (session.user as Record<string, unknown>).entityId as string
 
-  const suppliers = await prisma.dataAccessGrant.findMany({
-    where: { granteeEntityId: entityId, isActive: true },
-    include: {
+  const grants = await prisma.dataAccessGrant.findMany({
+    where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
+    select: {
+      grantorEntityId: true,
+      domain: true,
+      periodStart: true,
+      periodEnd: true,
       grantorEntity: {
-        include: {
+        select: {
+          legalName: true,
+          country: true,
+          sector: true,
           dataRecords: {
             where: { isActive: true },
-            select: { domain: true, trustTier: true, periodEnd: true },
+            select: { domain: true, trustTier: true, periodEnd: true, periodStart: true },
           },
           documents: {
             orderBy: { submittedAt: 'desc' },
@@ -27,7 +34,28 @@ export default async function SupplyChainPage() {
         },
       },
     },
-    distinct: ['grantorEntityId'],
+  })
+
+  // Group grants by supplier and build one summary row per supplier
+  const supplierMap = new Map<string, typeof grants>()
+  for (const g of grants) {
+    const existing = supplierMap.get(g.grantorEntityId) ?? []
+    existing.push(g)
+    supplierMap.set(g.grantorEntityId, existing)
+  }
+
+  const suppliers = [...supplierMap.entries()].map(([grantorEntityId, supplierGrants]) => {
+    const first = supplierGrants[0]
+    // Filter records to only those within the union of all grants for this supplier
+    const allRecords = first.grantorEntity.dataRecords.filter(record =>
+      supplierGrants.some(grant => {
+        const domainMatch = !grant.domain || grant.domain === record.domain
+        const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
+        const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
+        return domainMatch && startMatch && endMatch
+      })
+    )
+    return { grantorEntityId, grantorEntity: { ...first.grantorEntity, dataRecords: allRecords } }
   })
 
   const sectionLabel = {

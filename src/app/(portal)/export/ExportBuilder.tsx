@@ -67,10 +67,11 @@ export function ExportBuilder({
       const results = await Promise.all(
         targets.map(async supplierId => {
           const params = new URLSearchParams()
+          params.set('type', 'supply_chain')
           params.set('supplierEntityId', supplierId)
           if (domain) params.set('domain', domain)
           if (periodFrom) params.set('periodStart', new Date(periodFrom).toISOString())
-          if (periodTo) params.set('periodTo', new Date(periodTo).toISOString())
+          if (periodTo) params.set('periodEnd', new Date(periodTo).toISOString())
           const res = await fetch(`/api/query?${params.toString()}`)
           if (!res.ok) return []
           const data = await res.json()

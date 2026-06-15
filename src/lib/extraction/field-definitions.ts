@@ -459,7 +459,7 @@ export const DOCUMENT_FIELD_DEFINITIONS: Record<string, FieldDefinition[]> = {
   ],
 
   // Phase 3  -  §11.3
-  ESG_DISCLOSURE: [
+  ESG_REPORT: [
     { name: 'entity_name', admissibility: 'compulsory' },
     { name: 'report_title', admissibility: 'compulsory' },
     { name: 'reporting_year', admissibility: 'compulsory' },
@@ -480,7 +480,7 @@ export const DOCUMENT_FIELD_DEFINITIONS: Record<string, FieldDefinition[]> = {
     { name: 'waste_generated_tonnes', admissibility: 'optional' },
   ],
 
-  THIRD_PARTY_AUDIT_REPORT: [
+  AUDIT_REPORT: [
     { name: 'auditor_name', admissibility: 'compulsory' },
     { name: 'auditee_name', admissibility: 'compulsory' },
     { name: 'audit_scope', admissibility: 'compulsory' },

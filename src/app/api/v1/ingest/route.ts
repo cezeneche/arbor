@@ -121,6 +121,7 @@ export async function POST(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
       select: { hash: true },
     })
+    const batchNow = new Date().toISOString()
     const batchPayload: AuditPayload = {
       recordId: `batch_${idempotencyKey}`,
       entityId,
@@ -128,8 +129,16 @@ export async function POST(req: NextRequest) {
       fieldName: 'ingest_batch',
       value: created,
       unit: 'records',
+      originalValue: created,
+      originalUnit: 'records',
+      periodStart: batchNow,
+      periodEnd: batchNow,
       trustTier: 'B',
-      submittedAt: new Date().toISOString(),
+      confidenceScore: 1.0,
+      sourceText: null,
+      documentId: null,
+      extractionMethod: 'SYSTEM_INTEGRATION',
+      submittedAt: batchNow,
       submittedById: systemUser.id,
     }
     const batchHash = computeRecordHash(batchPayload, lastEntry?.hash ?? null)

@@ -21,29 +21,33 @@ export default async function SupplierRecordsPage({
   const { supplierId } = await params
   const buyerEntityId = (session.user as Record<string, unknown>).entityId as string
 
-  const grant = await prisma.dataAccessGrant.findFirst({
-    where: { grantorEntityId: supplierId, granteeEntityId: buyerEntityId, isActive: true },
+  const grants = await prisma.dataAccessGrant.findMany({
+    where: { grantorEntityId: supplierId, granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },
     include: { grantorEntity: { select: { legalName: true, country: true, sector: true } } },
   })
 
-  if (!grant) notFound()
+  if (grants.length === 0) notFound()
 
-  const supplier = grant.grantorEntity
+  const supplier = grants[0].grantorEntity
 
-  const records = await prisma.dataRecord.findMany({
-    where: {
-      entityId: supplierId,
-      isActive: true,
-      ...(grant.domain ? { domain: grant.domain } : {}),
-      ...(grant.periodStart ? { periodStart: { gte: grant.periodStart } } : {}),
-      ...(grant.periodEnd ? { periodEnd: { lte: grant.periodEnd } } : {}),
-    },
+  const candidateRecords = await prisma.dataRecord.findMany({
+    where: { entityId: supplierId, isActive: true },
     include: {
       validationFlags: { where: { resolvedAt: null } },
       document: { select: { id: true, fileName: true } },
     },
     orderBy: [{ domain: 'asc' }, { periodStart: 'desc' }],
   })
+
+  // Enforce union of all grant scopes (domain + period) for this supplier
+  const records = candidateRecords.filter(record =>
+    grants.some(grant => {
+      const domainMatch = !grant.domain || grant.domain === record.domain
+      const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
+      const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
+      return domainMatch && startMatch && endMatch
+    })
+  )
 
   const byDomain = DOMAINS.map(domain => {
     const domainRecords = records.filter(r => r.domain === domain)

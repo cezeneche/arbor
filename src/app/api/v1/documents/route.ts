@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) {
-    return err(parsed.error.errors[0]?.message ?? 'Invalid request body', 'VALIDATION_ERROR', 400)
+    return err(parsed.error.issues[0]?.message ?? 'Invalid request body', 'VALIDATION_ERROR', 400)
   }
 
   const { documentType, blobUrl, fileName, reportingPeriodEnd } = parsed.data
