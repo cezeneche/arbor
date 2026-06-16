@@ -47,21 +47,6 @@ def _base_url() -> str:
     return os.getenv("BASE_URL", "").rstrip("/")
 
 
-def _slack_post_sync(payload: dict) -> None:
-    """Synchronous Slack webhook POST. Used from non-async callers (background threads)."""
-    webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
-    if not webhook_url:
-        return
-    try:
-        timeout = httpx.Timeout(connect=_CONNECT_TIMEOUT, read=_READ_TIMEOUT, write=5.0, pool=5.0)
-        with httpx.Client(timeout=timeout) as client:
-            resp = client.post(webhook_url, json=payload)
-        if resp.status_code != 200:
-            log.error("Slack webhook returned status=%s body=%.200s", resp.status_code, resp.text)
-    except Exception as exc:
-        log.error("Slack webhook POST failed: %s", exc)
-
-
 # ── Flow 1: pipeline error alert (sync) ───────────────────────────────────────
 
 def notify_pipeline_error(
@@ -72,63 +57,32 @@ def notify_pipeline_error(
 ) -> None:
     """POST a Slack alert when document parsing, ingestion, or post-calculation fails.
 
+    Delegates to ledger_app.services.slack_notifier which owns the Slack
+    transport (retry logic, event filtering, Block Kit formatting). This
+    function is the call-site adapter — it maps pipeline error context into
+    the event_data shape that slack_notifier.notify() expects.
+
     Parameters
     ----------
-    stage         : Human-readable stage name, e.g. "document_parsing", "ingestion",
-                    "calculation".
+    stage         : Human-readable stage name: "document_parsing", "ingestion",
+                    or "calculation".
     error_message : The error string (truncated to 500 chars in the alert).
     case_id       : CBAM case UUID, if known — used to build a deep-link.
     filename      : Original document filename, if applicable.
     """
-    webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
-    if not webhook_url:
-        log.warning("notify_pipeline_error: SLACK_WEBHOOK_URL not set — skipping")
-        return
-
-    effective_base = _base_url()
-    case_url = (
-        f"{effective_base}/cases/{case_id}" if effective_base and case_id else None
-    )
-    error_display = (error_message or "Unknown error")[:500]
-
-    context_lines = []
-    if filename:
-        context_lines.append(f"*File:* `{filename}`")
-    if case_id:
-        context_lines.append(f"*Case:* `{case_id}`")
-    context_text = "\n".join(context_lines) if context_lines else "_No additional context_"
-
-    blocks: list[dict] = [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f":x: *Pipeline error — {stage}*\n```{error_display}```",
-            },
-        },
-        {
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": context_text},
-        },
-    ]
-    if case_url:
-        blocks.append({
-            "type": "actions",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Open Case"},
-                    "url": case_url,
-                }
-            ],
-        })
-
-    payload = {
-        "text": f":x: Pipeline error ({stage})" + (f" — case `{case_id}`" if case_id else ""),
-        "attachments": [{"color": "#e01e5a", "blocks": blocks}],
-    }
-    _slack_post_sync(payload)
-    log.info("notify_pipeline_error: sent stage=%s case=%s", stage, case_id)
+    try:
+        from ledger_app.services.slack_notifier import notify as _slack_notify
+        event_data: dict = {
+            "stage": stage,
+            "error": (error_message or "Unknown error")[:500],
+            "run_id": case_id or "—",
+        }
+        if filename:
+            event_data["filename"] = filename
+        _slack_notify(case_id or "unknown", "pipeline_error", event_data)
+        log.info("notify_pipeline_error: sent stage=%s case=%s", stage, case_id)
+    except Exception as exc:
+        log.error("notify_pipeline_error: failed stage=%s case=%s: %s", stage, case_id, exc)
 
 
 # ── Flow 2: human review alert (async) ────────────────────────────────────────

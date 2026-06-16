@@ -27,7 +27,7 @@ logger = logging.getLogger("ledger.slack")
 _WEBHOOK_URL: str | None = os.getenv("SLACK_WEBHOOK_URL", "").strip() or None
 
 _RAW_EVENTS = os.getenv(
-    "SLACK_NOTIFY_EVENTS", "human_review_required,cbam_calculation_completed"
+    "SLACK_NOTIFY_EVENTS", "human_review_required,cbam_calculation_completed,pipeline_error"
 )
 _NOTIFY_EVENTS: set[str] | None = (
     None  # None == "all"
@@ -144,6 +144,36 @@ def _build_message(case_id: str, event_type: str, event_data: dict[str, Any]) ->
                                     ),
                                 }
                             ],
+                        },
+                    ],
+                }
+            ],
+        }
+
+    if event_type == "pipeline_error":
+        stage = event_data.get("stage") or "unknown"
+        error = event_data.get("error") or "Unknown error"
+        filename = event_data.get("filename")
+        context_parts = [f"*Stage:* `{stage}`", f"*Case:* `{case_id}`"]
+        if filename:
+            context_parts.append(f"*File:* `{filename}`")
+        return {
+            "text": f"\u274c Pipeline error ({stage}) \u2014 Case `{case_id}`",
+            "attachments": [
+                {
+                    "color": "#e01e5a",
+                    "blocks": [
+                        {
+                            "type": "header",
+                            "text": {"type": "plain_text", "text": "\u274c Pipeline Error"},
+                        },
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": "  ".join(context_parts)},
+                        },
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": f"```{error}```"},
                         },
                     ],
                 }
