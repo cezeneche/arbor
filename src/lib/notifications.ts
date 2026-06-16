@@ -48,7 +48,16 @@ export type NotificationInput<T extends NotificationType = NotificationType> = {
   payload: NotificationPayloads[T]
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazily instantiated so importing this module (e.g. during `next build` page
+// data collection) never requires RESEND_API_KEY. Returns null when no key is
+// configured — email delivery is non-fatal, so notifications still persist.
+let _resend: Resend | null = null
+function getResend(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return null
+  if (!_resend) _resend = new Resend(apiKey)
+  return _resend
+}
 
 export async function sendNotification<T extends NotificationType>(
   input: NotificationInput<T>,
@@ -68,6 +77,10 @@ export async function sendNotification<T extends NotificationType>(
   })
 
   if (users.length === 0) return
+
+  // No email provider configured — the DB notification is already written.
+  const resend = getResend()
+  if (!resend) return
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const subject = notificationSubject(input.type, input.payload as NotificationPayloads[NotificationType])

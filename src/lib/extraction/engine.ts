@@ -4,7 +4,13 @@ import type { ExtractionInput, ExtractionResult } from './types'
 import { EXTRACTION_SYSTEM_PROMPT, buildExtractionPrompt } from './prompts'
 import { DOCUMENT_FIELD_DEFINITIONS } from './field-definitions'
 
-const client = new Anthropic()
+// Lazily instantiated so importing this module (e.g. during `next build` page
+// data collection) never requires ANTHROPIC_API_KEY to be present.
+let _client: Anthropic | null = null
+function getClient(): Anthropic {
+  if (!_client) _client = new Anthropic()
+  return _client
+}
 
 export async function extractDocument(input: ExtractionInput): Promise<ExtractionResult> {
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[input.documentType] ?? []
@@ -35,7 +41,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
     { role: 'user', content: [documentBlock, { type: 'text', text: userPrompt }] },
   ]
 
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     system: [

@@ -84,12 +84,18 @@ DOMAIN MAPPING:
 - customs declaration, certificates, compliance, CBAM, regulatory → COMPLIANCE`
 }
 
-const client = new Anthropic()
+// Lazily instantiated so importing this module (e.g. during `next build` page
+// data collection) never requires ANTHROPIC_API_KEY to be present.
+let _client: Anthropic | null = null
+function getClient(): Anthropic {
+  if (!_client) _client = new Anthropic()
+  return _client
+}
 
 export async function parseNlQuery(question: string): Promise<ParsedQuery> {
   const todayIso = new Date().toISOString().split('T')[0]
 
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
     system: buildSystemPrompt(todayIso),
