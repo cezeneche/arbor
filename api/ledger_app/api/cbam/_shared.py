@@ -25,6 +25,7 @@ from ledger_app.services.cbam_carbon_pricing import (  # noqa: F401
 )
 from ledger_app.services.cbam_data_quality import evaluate_cbam_data_quality  # noqa: F401
 from ledger_app.services.cbam_emission_factors import (  # noqa: F401
+    TABLE_VERSION as FACTOR_TABLE_VERSION,
     compute_see_from_defaults,
     validate_against_defaults,
 )
@@ -35,9 +36,6 @@ from ledger_app.services.cbam_repair import repair_parsed_invoice  # noqa: F401
 from ledger_app.services.cbam_scope import ScopeStatus, determine_cbam_scope  # noqa: F401
 from ledger_app.services.cbam_taric import CBAMCodeNotInScope, lookup_sector  # noqa: F401
 from ledger_app.services.document_text_extractor import extract_document_from_upload  # noqa: F401
-from ledger_app.services.gemini_structured_extractor import (  # noqa: F401
-    extract_structured_with_gemini,
-)
 from ledger_app.services.llama_orchestrator import LlamaOrchestrator  # noqa: F401
 from ledger_app.services.llama_structured_extractor import compare_extractions  # noqa: F401
 from ledger_app.services.orchestration import llama_orchestrator as ingest_orchestrator  # noqa: F401
@@ -61,8 +59,6 @@ from .schemas import (  # noqa: F401
     CBAMShipmentCreate,
     CaseJurisdiction,
     EmissionsMethod,
-    ENABLE_GEMINI_FALLBACK,
-    GEMINI_MATCH_THRESHOLD,
     ParsedInvoiceEmissions,
     ParsedInvoiceImporter,
     ParsedInvoiceLine,

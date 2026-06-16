@@ -84,6 +84,14 @@ class AppConfig:
     def force_https() -> bool:
         return os.getenv("FORCE_HTTPS", "").strip().lower() in ("1", "true", "yes")
 
+    @staticmethod
+    def environment() -> str:
+        return os.getenv("ENVIRONMENT", "development").strip().lower()
+
+    @staticmethod
+    def is_production() -> bool:
+        return AppConfig.environment() in ("production", "prod")
+
     # ── LLM / AI ─────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -181,6 +189,16 @@ def validate_startup_config() -> None:
             "FIELD_ENCRYPTION_KEY is required for startup. "
             "Generate with: "
             "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
+
+    # The narrative pipeline and Claude gap-fill extraction both require an
+    # Anthropic key. Outside production a missing key is a warning (regex-only
+    # fallback); in production it is a hard failure — a silently degraded
+    # pipeline must not reach a customer's return.
+    if AppConfig.is_production() and not AppConfig.anthropic_api_key():
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY is required in production "
+            "(ENVIRONMENT=production). The narrative pipeline cannot run without it."
         )
 
 

@@ -816,53 +816,6 @@ def _run_document_pipeline_inner(
 
     extraction_validation["data_quality"] = dq_precheck
 
-    # ── Gemini fallback (if enabled) ──────────────────────────────────────────
-    match_score  = float(extraction_validation.get("match_score", 0.0) or 0.0)
-    dq_blocking  = bool(dq_precheck.get("blocking", False))
-    if _shared.ENABLE_GEMINI_FALLBACK and match_score < _shared.GEMINI_MATCH_THRESHOLD and dq_blocking:
-        gemini_output = _shared.extract_structured_with_gemini(raw_text)
-        if gemini_output:
-            gemini_candidate = _shared._llama_candidate_from_structured_invoice(
-                rule_candidate=rule_candidate,
-                llama_output=gemini_output,
-                raw_text=raw_text,
-                layout_payload=layout_payload,
-            )
-            if gemini_candidate is not None:
-                gemini_candidate["source"] = "gemini"
-                candidates.append(gemini_candidate)
-                extraction_validation["gemini_fallback_used"] = True
-                extraction_validation.setdefault("fallback_sources", []).append("gemini")
-                if len(candidates) > 1:
-                    arbitrated_candidate, arbiter_warnings = _shared.arbitrate_parsed_invoice(candidates)
-                else:
-                    arbitrated_candidate, arbiter_warnings = candidates[0], []
-                repaired_candidate, repair_warnings = _shared.repair_parsed_invoice(arbitrated_candidate)
-                try:
-                    parsed_payload, resolved_year, resolved_quarter, parse_warnings = (
-                        _shared._build_parsed_invoice_request_from_extraction(
-                            extraction=repaired_candidate,
-                            importer_name=importer_name,
-                            importer_eori=importer_eori,
-                            reporting_year=reporting_year,
-                            reporting_quarter=reporting_quarter,
-                            consignment_reference=consignment_reference,
-                            customs_procedure_code=customs_procedure_code,
-                            is_temporary_admission=is_temporary_admission,
-                        )
-                    )
-                    dq_precheck = _shared._parsed_data_quality_precheck_from_payload(
-                        payload=parsed_payload,
-                        reporting_year=resolved_year,
-                        reporting_quarter=resolved_quarter,
-                    )
-                    extraction_validation["data_quality"]     = dq_precheck
-                    extraction_validation["arbiter_warnings"] = arbiter_warnings
-                    extraction_validation["repair_warnings"]  = repair_warnings
-                    extraction_validation["evidence"]         = _shared._normalized_evidence(repaired_candidate.get("evidence"))
-                except Exception:
-                    pass
-
     # ── Persist: create/update case, shipments, goods lines, emissions ────────
     _set_stage(case_id, tenant_id, "saving")
     try:
@@ -906,7 +859,6 @@ def _run_document_pipeline_inner(
         algo_versions=_extraction_algo,
         model_versions={
             "llama": str(os.getenv("LLAMA_STRUCTURED_MODEL", "unknown")),
-            "gemini_enabled": bool(_shared.ENABLE_GEMINI_FALLBACK),
             "extraction_prompt": _EXTRACTION_PROMPT_VERSION,
         },
     )
@@ -914,7 +866,6 @@ def _run_document_pipeline_inner(
         "document_sha256":    document_sha256,
         "snapshot_hash":      parent_hash,
         "candidates_count":   len(candidates),
-        "gemini_fallback_used": extraction_validation.get("gemini_fallback_used", False),
         "run_id":             run_id,
     }, tenant_id=tenant_id)
     parent_hash = _shared._safe_snapshot_write(

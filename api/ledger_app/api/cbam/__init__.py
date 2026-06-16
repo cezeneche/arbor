@@ -41,8 +41,6 @@ __all__ = ["router", "get_cbam_report_package"]
 _PATCHABLE = {
     "engine",
     "CBAM_STORAGE_ROOT",
-    "ENABLE_GEMINI_FALLBACK",
-    "GEMINI_MATCH_THRESHOLD",
     "extract_cbam_document",
     "extract_document_from_upload",
     "LlamaOrchestrator",
@@ -50,7 +48,6 @@ _PATCHABLE = {
     "arbitrate_parsed_invoice",
     "repair_parsed_invoice",
     "compare_extractions",
-    "extract_structured_with_gemini",
     "bytes_sha256_hex",
     "get_snapshot_store",
 }
@@ -58,8 +55,6 @@ _PATCHABLE = {
 # Expose current values from _shared so attribute lookups work immediately.
 engine = _shared.engine
 CBAM_STORAGE_ROOT = _shared.CBAM_STORAGE_ROOT
-ENABLE_GEMINI_FALLBACK = _shared.ENABLE_GEMINI_FALLBACK
-GEMINI_MATCH_THRESHOLD = _shared.GEMINI_MATCH_THRESHOLD
 extract_cbam_document = _shared.extract_cbam_document
 extract_document_from_upload = _shared.extract_document_from_upload
 LlamaOrchestrator = _shared.LlamaOrchestrator
@@ -67,7 +62,6 @@ ingest_orchestrator = _shared.ingest_orchestrator
 arbitrate_parsed_invoice = _shared.arbitrate_parsed_invoice
 repair_parsed_invoice = _shared.repair_parsed_invoice
 compare_extractions = _shared.compare_extractions
-extract_structured_with_gemini = _shared.extract_structured_with_gemini
 bytes_sha256_hex = _shared.bytes_sha256_hex
 get_snapshot_store = _shared.get_snapshot_store
 

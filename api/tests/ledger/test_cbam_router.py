@@ -291,6 +291,47 @@ def test_cbam_flow_and_summary():
     assert body["total_embedded_emissions_kgco2e"] == 60000
 
 
+def test_emission_records_factor_table_version_and_route():
+    """CLAUDE.md Rule 4 — the factor table version active at calculation time
+    must be recorded on the emission record for audit reproducibility, along
+    with the production route that selected the Annex VI default."""
+    client, conn = _client_with_fake_engine()
+
+    case_id = client.post(
+        "/api/cbam/cases",
+        json={"importer_eori": "GB123456789", "reporting_year": 2025, "reporting_quarter": 1},
+    ).json()["id"]
+    shipment_id = client.post(
+        "/api/cbam/shipments",
+        json={"cbam_case_id": case_id, "origin_country": "CN", "customs_procedure": "40"},
+    ).json()["id"]
+    goods_line_id = client.post(
+        "/api/cbam/goods-lines",
+        json={
+            "shipment_id": shipment_id,
+            "cn_code": "720711",
+            "product_description": "Hot rolled steel coil",
+            "net_mass_kg": 10000,
+        },
+    ).json()["id"]
+
+    em_res = client.post(
+        "/api/cbam/emissions",
+        json={
+            "goods_line_id": goods_line_id,
+            "direct_emissions_kgco2e": 50000,
+            "calculation_method": "actual",
+            "production_route": "BF_BOF",
+            "version": 1,
+        },
+    )
+    assert em_res.status_code == 201
+
+    stored = next(iter(conn.emissions.values()))
+    assert stored["factor_table_version"] == "2023"
+    assert stored["production_route"] == "BF_BOF"
+
+
 def test_invalid_fk_returns_400():
     client, _ = _client_with_fake_engine()
 

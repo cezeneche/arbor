@@ -172,6 +172,11 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
             factor_warnings: list[str] = []
             direct_value: Decimal | None = payload.direct_emissions_kgco2e
             indirect_value: Decimal | None = payload.indirect_emissions_kgco2e
+            # Version of the Annex VI factor table consulted for this calculation.
+            # Recorded on the emission row for audit reproducibility (CLAUDE.md
+            # Rule 4) whenever defaults are applied or values are validated
+            # against them.
+            factor_version_used: str | None = None
 
             if cn_col and mass_col:
                 select_cols = f"{cn_col}, {mass_col}"
@@ -217,6 +222,7 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                         )
                         if computed is not None:
                             direct_value, indirect_value = computed
+                            factor_version_used = _shared.FACTOR_TABLE_VERSION
                         else:
                             factor_warnings.append(
                                 f"cbam_factors:no_default_factor:{cn_code} — "
@@ -235,6 +241,7 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                             payload.production_route,
                         )
                         factor_warnings.extend(vr.warnings)
+                        factor_version_used = _shared.FACTOR_TABLE_VERSION
 
             # Require explicit values for non-default methods or when auto-compute
             # was not possible.
@@ -258,6 +265,11 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                 method_col: payload.calculation_method.value,
                 "version": payload.version,
             }
+
+            if "factor_table_version" in columns and factor_version_used is not None:
+                insert_payload["factor_table_version"] = factor_version_used
+            if "production_route" in columns and payload.production_route:
+                insert_payload["production_route"] = payload.production_route
 
             created = _shared._insert_returning(conn, "cbam_emissions", insert_payload)
             if factor_warnings:

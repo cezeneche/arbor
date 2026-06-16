@@ -56,3 +56,12 @@ jobs:
             --tb=short \
             -q \
             --import-mode=importlib
+
+      - name: Regulatory gate (must pass, zero skips)
+        run: |
+          set -o pipefail
+          python -m pytest -m regulatory --tb=short -rs | tee regulatory.txt
+          if grep -qiE "skipped|no tests ran|deselected.*0 selected" regulatory.txt; then
+            echo "::error::Regulatory tests were skipped or none were collected — blocking. software.md Rule 6 / test.md require @regulatory tests to pass with zero skips."
+            exit 1
+          fi

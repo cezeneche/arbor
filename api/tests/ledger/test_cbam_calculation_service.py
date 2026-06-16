@@ -18,16 +18,25 @@ Coverage:
 
 from __future__ import annotations
 
+import ast
 import math
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
+import ledger_app.services.cbam_calculation_service as calc_module
 from ledger_app.services.cbam_calculation_service import (
     CBAMLiabilityResult,
     compute_cbam_liability,
     compute_see,
 )
+
+# This module exercises the Layer 2 calculation engine and its regulatory
+# correctness. Every test here is a regulatory gate (software.md Rule 6 /
+# test.md deployment gate): it must pass and never be skipped before a
+# production deploy.
+pytestmark = pytest.mark.regulatory
 
 _D = Decimal
 
@@ -247,3 +256,63 @@ class TestComputeCBAMLiability:
         assert gl.see_total_tco2e_per_t == _D("0.600000")
         # embedded = 0.6 × 2 t = 1.2 tCO2e
         assert gl.embedded_tco2e == _D("1.200000")
+
+
+class TestLayer2Purity:
+    """The calculation engine must stay a pure Layer 2 function.
+
+    CLAUDE.md product architecture (Alan Kay) and software.md Rule 3 require
+    Layer 2 to read no database, make no external calls, and have no side
+    effects — given identical inputs it returns identical outputs. A regression
+    that reintroduces a DB session import or a `.execute()`/`.query()` call into
+    cbam_calculation_service.py must fail this test. This is the guard that the
+    deleted compute_cbam_emissions() violation cannot return undetected.
+    """
+
+    # Library roots that imply database or network I/O.
+    FORBIDDEN_IMPORT_ROOTS = {"sqlalchemy", "psycopg2", "asyncpg", "requests", "httpx"}
+    # Identifiers that name a DB session/engine/connection.
+    FORBIDDEN_NAMES = {
+        "session", "db_session", "object_session", "sessionmaker", "engine",
+        "create_engine", "Session",
+    }
+    # Method names that only exist on DB sessions/connections.
+    FORBIDDEN_ATTRS = {
+        "execute", "query", "commit", "rollback", "scalar_one",
+        "scalar_one_or_none", "scalars", "get_bind",
+    }
+
+    @staticmethod
+    def _tree() -> ast.AST:
+        source = Path(calc_module.__file__).read_text()
+        return ast.parse(source)
+
+    def test_no_database_or_network_imports(self):
+        offenders: list[str] = []
+        for node in ast.walk(self._tree()):
+            if isinstance(node, ast.Import):
+                offenders += [
+                    a.name for a in node.names
+                    if a.name.split(".")[0] in self.FORBIDDEN_IMPORT_ROOTS
+                ]
+            elif isinstance(node, ast.ImportFrom):
+                if (node.module or "").split(".")[0] in self.FORBIDDEN_IMPORT_ROOTS:
+                    offenders.append(node.module or "")
+        assert not offenders, (
+            f"Layer 2 calculation module must not import DB/network libraries: {offenders}"
+        )
+
+    def test_no_session_references_or_db_calls(self):
+        name_offenders: set[str] = set()
+        attr_offenders: set[str] = set()
+        for node in ast.walk(self._tree()):
+            if isinstance(node, ast.Name) and node.id in self.FORBIDDEN_NAMES:
+                name_offenders.add(node.id)
+            if isinstance(node, ast.Attribute) and node.attr in self.FORBIDDEN_ATTRS:
+                attr_offenders.add(node.attr)
+        assert not name_offenders, (
+            f"Layer 2 must not reference a DB session/engine: {sorted(name_offenders)}"
+        )
+        assert not attr_offenders, (
+            f"Layer 2 must not call DB session/connection methods: {sorted(attr_offenders)}"
+        )

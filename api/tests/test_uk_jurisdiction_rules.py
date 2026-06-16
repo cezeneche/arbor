@@ -33,6 +33,11 @@ from app.services.hmrc_return_builder import (
     build_hmrc_return,
 )
 
+# These tests verify UK CBAM jurisdiction rules (indirect-emission and
+# UK-precursor exclusions). They are regulatory gates (software.md Rule 6 /
+# test.md deployment gate): they must pass with zero skips before deploy.
+pytestmark = pytest.mark.regulatory
+
 
 # ── Shared fixtures ─────────────────────────────────────────────────────────────
 

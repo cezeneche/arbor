@@ -99,6 +99,10 @@ class CBAMEmission(Base):
     data_quality_score: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Factor table version active at calculation time — must be recorded for
+    # audit reproducibility (CLAUDE.md Rule 4). Added in migration 007.
+    factor_table_version: Mapped[str | None] = mapped_column(Text, nullable=True)
+    production_route: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("now()"))
 
     goods_line: Mapped["CBAMGoodsLine"] = relationship(back_populates="emissions")

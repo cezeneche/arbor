@@ -1,11 +1,14 @@
 """
 CBAM Calculation Service — SEE formula and liability calculation.
 
+This module is Layer 2 (calculation): pure functions only. No database reads,
+no network calls, no side effects. Given identical inputs they return identical
+outputs. Persistence of emission records belongs in the repository/router layer.
+
 Implements:
   - compute_see()             Specific Embedded Emissions per tonne (EU 2023/1773 Art. 3)
   - compute_cbam_liability()  CBAM certificate count and financial exposure
                               (EU 2023/956 Arts. 9 and 21)
-  - compute_cbam_emissions()  Persist an emission record for a goods line (unchanged)
 
 Regulation references
 ---------------------
@@ -24,20 +27,11 @@ import math
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Mapping
-from uuid import uuid4
-
-from sqlalchemy import text
-from sqlalchemy.orm import object_session
-
-from ledger_app.models.cbam import CBAMEmission, CBAMGoodsLine
-from ledger_app.schemas.cbam import CBAMEmissionsCreate
 
 _D = Decimal
 _ZERO = _D("0")
 _THOUSAND = _D("1000")
 
-
-# ── SEE result types ──────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class GoodsLineSEE:
@@ -102,8 +96,6 @@ class CBAMLiabilityResult:
         "Commission Implementing Regulation 2023/1773, Article 3 (SEE methodology)",
     ])
 
-
-# ── Public API ────────────────────────────────────────────────────────────────
 
 def compute_see(
     direct_kgco2e: Decimal,
@@ -232,8 +224,10 @@ def compute_cbam_liability(
 
     net_liability = max(_ZERO, total_embedded - deduction).quantize(_D("0.000001"))
 
+    # EU 2023/956 Art. 21 — financial exposure = chargeable emissions × ETS price
     gross_financial = (total_embedded * eu_ets).quantize(_D("0.01"))
     net_financial = (net_liability * eu_ets).quantize(_D("0.01"))
+    # EU 2023/956 Art. 22(5) — one certificate per tCO2e, rounded up to a whole number
     certificates = math.ceil(float(net_liability))
 
     total_direct = sum((gl.direct_kgco2e for gl in line_results), _ZERO).quantize(_D("0.001"))
@@ -257,72 +251,3 @@ def compute_cbam_liability(
         carbon_pricing_scheme_name=carbon_pricing_scheme_name,
         carbon_pricing_scheme_type=carbon_pricing_scheme_type,
     )
-
-
-# ── Emission record persistence (unchanged) ───────────────────────────────────
-
-def compute_cbam_emissions(
-    goods_line: CBAMGoodsLine,
-    inputs: CBAMEmissionsCreate,
-    factors: Mapping[str, Any] | None,
-) -> CBAMEmission:
-    """Persist a CBAMEmission record for a goods line.
-
-    Computes total = direct + indirect and appends to the DB session attached
-    to goods_line.  The version is derived from the max existing version + 1.
-    """
-    session = None
-    if factors:
-        session = factors.get("db_session")
-
-    if session is None:
-        session = object_session(goods_line)
-
-    if session is None:
-        raise ValueError("No active database session found for goods_line.")
-
-    next_version = session.execute(
-        text(
-            """
-            SELECT COALESCE(MAX(version), 0) + 1 AS next_version
-            FROM cbam.cbam_emissions
-            WHERE goods_line_id = :goods_line_id
-            """
-        ),
-        {"goods_line_id": str(goods_line.id)},
-    ).scalar_one()
-
-    direct = Decimal(inputs.direct_embedded_kgco2e or 0)
-    indirect = inputs.indirect_embedded_kgco2e
-    total = direct + Decimal(indirect or 0)
-
-    # Annotate with SEE if quantity is available and unit is kg
-    see_note = ""
-    try:
-        qty = goods_line.quantity
-        if qty and Decimal(str(qty)) > 0 and getattr(goods_line, "quantity_unit", None) == "kg":
-            see_d, see_i, see_t = compute_see(direct, Decimal(indirect or 0), Decimal(str(qty)))
-            see_note = (
-                f" | see_direct={see_d}tCO2e/t"
-                f" | see_indirect={see_i}tCO2e/t"
-                f" | see_total={see_t}tCO2e/t"
-            )
-    except Exception:
-        pass
-
-    notes = inputs.notes
-    base = f"computed_total_kgco2e={total}{see_note}"
-    notes = f"{notes} | {base}" if notes else base
-
-    emission = CBAMEmission(
-        id=uuid4(),
-        goods_line_id=goods_line.id,
-        method=inputs.method,
-        direct_embedded_kgco2e=direct,
-        indirect_embedded_kgco2e=indirect,
-        data_quality_score=inputs.data_quality_score,
-        notes=notes,
-        version=int(next_version),
-    )
-    session.add(emission)
-    return emission

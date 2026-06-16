@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from datetime import date
 from decimal import Decimal
 from enum import Enum
@@ -11,13 +10,6 @@ from pydantic import BaseModel, Field
 
 ALLOWED_EMISSIONS_METHODS = ("actual", "default", "estimated")
 CBAM_STORAGE_ROOT = Path("storage") / "cbam"
-ENABLE_GEMINI_FALLBACK = os.getenv("ENABLE_GEMINI_FALLBACK", "false").strip().lower() in {
-    "1", "true", "yes", "on",
-}
-try:
-    GEMINI_MATCH_THRESHOLD = float(os.getenv("GEMINI_MATCH_THRESHOLD", "0.4"))
-except ValueError:
-    GEMINI_MATCH_THRESHOLD = 0.4
 
 
 class EmissionsMethod(str, Enum):
