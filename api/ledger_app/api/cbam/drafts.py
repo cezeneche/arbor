@@ -10,7 +10,7 @@ import datetime
 import logging
 import threading
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 
 _log = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ from ledger_app.services.cbam_arbiter import validate_consignment_consistency
 from ledger_app.services.cbam_emissions_selector import select_and_calculate
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
+from shared_auth import require_scopes
 
 from . import _shared
 
@@ -501,7 +502,11 @@ def _create_cbam_draft_from_parsed_invoice_payload(
         }
 
 
-@router.post("/drafts/from-parsed-invoice", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/drafts/from-parsed-invoice",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_scopes(["cbam:write"]))],
+)
 def create_cbam_draft_from_parsed_invoice(
     request: Request,
     payload: _shared.CBAMDraftFromParsedInvoiceRequest,
@@ -925,7 +930,11 @@ def _run_document_pipeline_inner(
     _log.info("[pipeline] case %s completed — %d goods lines", case_id, len(created.get("goods_line_ids", [])))
 
 
-@router.post("/drafts/from-document", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/drafts/from-document",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_scopes(["cbam:write"]))],
+)
 async def create_cbam_draft_from_document(
     request: Request,
     background_tasks: BackgroundTasks,

@@ -327,13 +327,29 @@ class SQLSnapshotStore:
         created_at = datetime.now(timezone.utc).isoformat()
 
         with self._engine.begin() as conn:
-            row = conn.execute(
-                self._text(
-                    f"SELECT payload_hash, stage, id FROM {self._table}"
-                    f" WHERE case_id = :case_id ORDER BY created_at DESC LIMIT 1"
-                ),
-                {"case_id": case_id},
-            ).mappings().one_or_none()
+            # Lock the predecessor row so two concurrent writes for the same case
+            # cannot both read it before either commits — without this, both
+            # writes would claim the same parent_hash and the chain would have
+            # two nodes pointing at the same predecessor. SQLite has no row
+            # locking and raises on FOR UPDATE, so tests fall back to the
+            # unlocked read (acceptable there: SQLite serializes writers anyway).
+            try:
+                row = conn.execute(
+                    self._text(
+                        f"SELECT payload_hash, stage, id FROM {self._table}"
+                        f" WHERE case_id = :case_id ORDER BY created_at DESC LIMIT 1"
+                        f" FOR UPDATE"
+                    ),
+                    {"case_id": case_id},
+                ).mappings().one_or_none()
+            except Exception:
+                row = conn.execute(
+                    self._text(
+                        f"SELECT payload_hash, stage, id FROM {self._table}"
+                        f" WHERE case_id = :case_id ORDER BY created_at DESC LIMIT 1"
+                    ),
+                    {"case_id": case_id},
+                ).mappings().one_or_none()
 
             stored_predecessor_hash = row["payload_hash"] if row else None
 

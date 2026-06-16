@@ -34,9 +34,6 @@ from typing import Any
 
 log = logging.getLogger("nucleos.report_validator")
 
-# ── Tolerance ─────────────────────────────────────────────────────────────────
-_NUMERIC_TOLERANCE = Decimal("0.001")   # kg CO₂e — sub-gram tolerance for ledger totals
-
 # ── Warning tag prefixes that must appear in narrative.limitations ─────────────
 # Any data_quality.warnings entry whose text contains one of these prefixes
 # must be referenced (as a substring) in the narrative limitations field.
@@ -115,71 +112,6 @@ def _to_decimal(value: Any) -> Decimal | None:
         return None
 
 
-def _numeric_check(
-    checks: list[CheckResult],
-    failures: list[str],
-    check_id: str,
-    description: str,
-    expected: Any,
-    actual: Any,
-    *,
-    tolerance: Decimal = _NUMERIC_TOLERANCE,
-) -> bool:
-    """
-    Assert |expected - actual| <= tolerance.
-
-    Both values are coerced to Decimal. Returns True if the check passes.
-    None on either side is treated as a missing-value failure.
-    """
-    exp = _to_decimal(expected)
-    act = _to_decimal(actual)
-
-    if exp is None and act is None:
-        # Both absent — treat as pass (nothing to cross-check)
-        checks.append(CheckResult(check_id, description, passed=True, detail="both absent"))
-        return True
-
-    if exp is None or act is None:
-        missing_side = "expected (report_package)" if exp is None else "narrative"
-        detail = f"{missing_side} value is absent"
-        checks.append(CheckResult(check_id, description, passed=False, detail=detail))
-        failures.append(f"{description}: {detail}")
-        return False
-
-    diff = abs(exp - act)
-    passed = diff <= tolerance
-    detail = "" if passed else (
-        f"report_package={exp}, narrative={act}, |diff|={diff} > tolerance={tolerance}"
-    )
-    checks.append(CheckResult(check_id, description, passed=passed, detail=detail))
-    if not passed:
-        failures.append(f"{description}: {detail}")
-    return passed
-
-
-def _exact_int_check(
-    checks: list[CheckResult],
-    failures: list[str],
-    check_id: str,
-    description: str,
-    expected: Any,
-    actual: Any,
-) -> bool:
-    """Assert expected == actual for integer fields."""
-    try:
-        exp_int = int(expected) if expected is not None else None
-        act_int = int(actual) if actual is not None else None
-    except (TypeError, ValueError):
-        exp_int, act_int = None, None
-
-    passed = exp_int == act_int
-    detail = "" if passed else f"report_package={exp_int}, narrative={act_int}"
-    checks.append(CheckResult(check_id, description, passed=passed, detail=detail))
-    if not passed:
-        failures.append(f"{description}: {detail}")
-    return passed
-
-
 def _iter_goods_lines(report_package: dict):
     """
     Yield (shipment, goods_line_dict, latest_emissions_dict | None) for every
@@ -238,80 +170,74 @@ def _check_numeric_totals(
     failures: list[str],
 ) -> bool:
     """
-    Cross-check narrative.results against report_package.summary totals.
+    Verify the authoritative numeric fields required for the return are present.
 
-    For CBAM packets (type=cbam_report_package_v1), the authoritative totals
-    live in summary.total_*_emissions_kgco2e.
+    narrative["results"] is hard-overridden from report_package.summary before
+    this validator runs (narrative.py Step 4, CLAUDE.md "Narrative Engine" rule),
+    so comparing narrative.results against report_package.summary is comparing
+    a value to the source it was copied from — it can never fail and catches no
+    real defect. What IS worth catching: the *source* summary itself missing a
+    required field, which would silently propagate a gap into the narrative and
+    ultimately the HMRC return.
 
-    For legacy packets, totals live in report_package.results.
+    For CBAM packets (type=cbam_report_package_v1), required fields live in
+    summary.total_*_emissions_kgco2e.  For legacy packets, in report_package.results.
 
-    Returns True if all numeric checks pass.
+    Returns True if all required fields are present and non-null.
     """
     all_passed = True
     is_cbam = report_package.get("type") == "cbam_report_package_v1"
     summary = report_package.get("summary") or {}
     rp_results = report_package.get("results") or {}
-    narr_results = narrative.get("results") or {}
 
     if is_cbam:
-        all_passed &= _numeric_check(
-            checks, failures,
-            "numeric.total_direct_kgco2e",
-            "Total direct embedded emissions (kgCO₂e)",
-            expected=summary.get("total_direct_emissions_kgco2e"),
-            actual=narr_results.get("total_direct_embedded_kgco2e"),
-        )
-        all_passed &= _numeric_check(
-            checks, failures,
-            "numeric.total_indirect_kgco2e",
-            "Total indirect embedded emissions (kgCO₂e)",
-            expected=summary.get("total_indirect_emissions_kgco2e"),
-            actual=narr_results.get("total_indirect_embedded_kgco2e"),
-        )
-        all_passed &= _numeric_check(
-            checks, failures,
-            "numeric.total_embedded_kgco2e",
-            "Total embedded emissions (kgCO₂e)",
-            expected=summary.get("total_embedded_emissions_kgco2e"),
-            actual=narr_results.get("total_embedded_kgco2e"),
-        )
-        all_passed &= _exact_int_check(
-            checks, failures,
-            "numeric.goods_lines_count",
-            "Goods lines count",
-            expected=summary.get("total_goods_lines"),
-            actual=narr_results.get("goods_lines_count"),
-        )
+        required: dict[str, Any] = {
+            "numeric.total_direct_kgco2e": (
+                "Total direct embedded emissions (kgCO₂e)",
+                summary.get("total_direct_emissions_kgco2e"),
+            ),
+            "numeric.total_indirect_kgco2e": (
+                "Total indirect embedded emissions (kgCO₂e)",
+                summary.get("total_indirect_emissions_kgco2e"),
+            ),
+            "numeric.total_embedded_kgco2e": (
+                "Total embedded emissions (kgCO₂e)",
+                summary.get("total_embedded_emissions_kgco2e"),
+            ),
+            "numeric.goods_lines_count": (
+                "Goods lines count",
+                summary.get("total_goods_lines"),
+            ),
+        }
     else:
-        # Legacy packet — scope-1/scope-2 totals
-        all_passed &= _numeric_check(
-            checks, failures,
-            "numeric.total_emissions_kgco2e",
-            "Total emissions (kgCO₂e)",
-            expected=rp_results.get("total_kgco2e"),
-            actual=narr_results.get("total_emissions_kgco2e"),
-        )
-        all_passed &= _numeric_check(
-            checks, failures,
-            "numeric.scope_1_kgco2e",
-            "Scope 1 emissions (kgCO₂e)",
-            expected=rp_results.get("scope_1_natural_gas_kgco2e"),
-            actual=narr_results.get("scope_1_kgco2e"),
-        )
-        all_passed &= _numeric_check(
-            checks, failures,
-            "numeric.scope_2_kgco2e",
-            "Scope 2 emissions (kgCO₂e)",
-            expected=rp_results.get("scope_2_electricity_kgco2e"),
-            actual=narr_results.get("scope_2_kgco2e"),
-        )
-        all_passed &= _numeric_check(
-            checks, failures,
-            "numeric.intensity_kgco2e_per_unit",
-            "Emission intensity (kgCO₂e per unit)",
-            expected=rp_results.get("kgco2e_per_unit"),
-            actual=narr_results.get("intensity_kgco2e_per_unit"),
-        )
+        required = {
+            "numeric.total_emissions_kgco2e": (
+                "Total emissions (kgCO₂e)",
+                rp_results.get("total_kgco2e"),
+            ),
+            "numeric.scope_1_kgco2e": (
+                "Scope 1 emissions (kgCO₂e)",
+                rp_results.get("scope_1_natural_gas_kgco2e"),
+            ),
+            "numeric.scope_2_kgco2e": (
+                "Scope 2 emissions (kgCO₂e)",
+                rp_results.get("scope_2_electricity_kgco2e"),
+            ),
+            "numeric.intensity_kgco2e_per_unit": (
+                "Emission intensity (kgCO₂e per unit)",
+                rp_results.get("kgco2e_per_unit"),
+            ),
+        }
+
+    for check_id, (description, value) in required.items():
+        passed = value is not None
+        checks.append(CheckResult(
+            check_id, description, passed=passed,
+            detail="present" if passed else "missing from report_package",
+        ))
+        if not passed:
+            failures.append(f"{description}: missing from report_package")
+        all_passed &= passed
 
     return all_passed
 
@@ -533,8 +459,13 @@ def _check_cpr_verifier(
     reference must be present (EU 2023/956 Art. 9).
 
     Detection: look for non-zero carbon_price_paid_eur or carbon_price_recognised
-    flags in emissions data or extraction_evidence. If found, the narrative
-    limitations or executive_summary must reference a verifier document.
+    flags in emissions data, set by the arbiter/repair layers. If found, the
+    narrative limitations or executive_summary must reference a verifier document.
+
+    extraction_evidence is deliberately NOT searched here: it is free-text OCR
+    output, and a substring match on "carbon_price" or "cpr" fires on negative
+    mentions too (e.g. "no carbon price scheme applies"), producing a spurious
+    human-review flag on cases with no CPR claim at all.
     """
     cpr_claimed = False
 
@@ -549,13 +480,6 @@ def _check_cpr_verifier(
         if emissions.get("carbon_price_recognised"):
             cpr_claimed = True
             break
-
-    # Also check extraction_evidence for CPR mentions
-    if not cpr_claimed:
-        evidence = report_package.get("extraction_evidence") or {}
-        evidence_str = str(evidence).lower()
-        if "carbon_price" in evidence_str or "cpr" in evidence_str:
-            cpr_claimed = True
 
     if not cpr_claimed:
         checks.append(CheckResult(

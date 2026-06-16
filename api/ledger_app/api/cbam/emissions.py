@@ -4,9 +4,11 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
+
+from shared_auth import require_scopes
 
 from . import _shared
 
@@ -24,7 +26,7 @@ _VALID_PRODUCTION_ROUTES: dict[str, frozenset[str]] = {
 }
 
 
-@router.post("/shipments", status_code=status.HTTP_201_CREATED)
+@router.post("/shipments", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_scopes(["cbam:write"]))])
 def create_cbam_shipment(request: Request, payload: _shared.CBAMShipmentCreate):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
@@ -61,7 +63,7 @@ def create_cbam_shipment(request: Request, payload: _shared.CBAMShipmentCreate):
         return created
 
 
-@router.post("/goods-lines", status_code=status.HTTP_201_CREATED)
+@router.post("/goods-lines", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_scopes(["cbam:write"]))])
 def create_cbam_goods_line(request: Request, payload: _shared.CBAMGoodsLineCreate):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
@@ -106,7 +108,7 @@ def create_cbam_goods_line(request: Request, payload: _shared.CBAMGoodsLineCreat
         return created
 
 
-@router.post("/emissions", status_code=status.HTTP_201_CREATED)
+@router.post("/emissions", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_scopes(["cbam:write"]))])
 def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     try:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, Request, status
@@ -8,6 +9,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from shared_auth.jwt import decode_access_token
 from shared_auth.models import AuthContext
 from shared_auth.roles import roles_to_scopes
+
+_log = logging.getLogger("nucleos.auth")
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -36,8 +39,14 @@ def get_auth_context(
             oidc_ctx.scopes = list(set(oidc_ctx.scopes) | roles_to_scopes(oidc_ctx.roles))
             request.state.auth_context = oidc_ctx
             return oidc_ctx
-    except Exception:
-        pass  # OIDC module import failed or not configured — fall through
+    except ImportError:
+        pass  # OIDC module not installed / not configured — fall through to HS256
+    except Exception as exc:
+        # A revoked token, untrusted signing key, expired token, or JWKS fetch
+        # failure all land here. The request still falls through to HS256 (and
+        # will end up 401 if that also fails), but the security event must not
+        # be silently discarded — without this log, revocations are invisible.
+        _log.warning("OIDC token validation failed, falling through to HS256: %s", exc)
 
     # ── Fall back to internal HS256 JWT ───────────────────────────────────────
     try:

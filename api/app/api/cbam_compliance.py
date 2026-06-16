@@ -51,12 +51,14 @@ def create_cbam_compliance_pack(
             },
         )
 
-    # Run the consolidated single-Claude pipeline
+    # Run the consolidated single-Claude pipeline — pass the already-fetched
+    # report_package so run_pipeline_stages doesn't fetch (and snapshot) it again.
     pipeline_result = run_pipeline_stages(
         case_id=case_id,
         packet_kind="cbam",
         request=request,
         background_tasks=background_tasks,
+        packet=report_package,
     )
 
     if pipeline_result.get("blocked"):

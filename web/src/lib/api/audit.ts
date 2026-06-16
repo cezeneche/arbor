@@ -12,11 +12,26 @@ import type { AuditEvent } from "@/lib/types";
 
 /* ── Log ──────────────────────────────────────────────────────────────────────── */
 
-export async function getAuditLog(caseId: string): Promise<AuditEvent[]> {
-  const res = await ledgerFetch<AuditEvent[] | { events: AuditEvent[] }>(
+export interface AuditLogResult {
+  events: AuditEvent[];
+  /** Server-verified chain integrity — includes HMAC verification, not just hash
+   *  linkage, which the client cannot reproduce without AUDIT_SIGNING_KEY. Always
+   *  use this rather than re-deriving validity from event fields client-side. */
+  chainValid: boolean;
+}
+
+export async function getAuditLog(caseId: string): Promise<AuditLogResult> {
+  const res = await ledgerFetch<AuditEvent[] | { events: AuditEvent[]; chain_valid?: boolean }>(
     `/api/cases/${encodeURIComponent(caseId)}/audit-log`
   );
-  return Array.isArray(res) ? res : (res as { events: AuditEvent[] }).events ?? [];
+  if (Array.isArray(res)) {
+    // Legacy/non-CBAM route shape — no server-computed chain_valid available.
+    return { events: res, chainValid: true };
+  }
+  return {
+    events:     res.events ?? [],
+    chainValid: res.chain_valid ?? true,
+  };
 }
 
 /* ── Export ───────────────────────────────────────────────────────────────────── *

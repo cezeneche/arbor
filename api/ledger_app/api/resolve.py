@@ -1,10 +1,11 @@
 import json
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
+from shared_auth import require_scopes
 
 router = APIRouter(tags=["cases"])
 
@@ -20,7 +21,7 @@ def _recompute_overall_conf(field_conf: dict) -> float:
         return 0.0
     return round((sum(float(v) for v in field_conf.values()) / len(field_conf)) * 100.0, 2)
 
-@router.post("/cases/{case_id}/resolve-conflict")
+@router.post("/cases/{case_id}/resolve-conflict", dependencies=[Depends(require_scopes(["cbam:write"]))])
 def resolve_conflict(case_id: str, payload: ConflictResolution):
     with engine.begin() as conn:
         # latest extraction

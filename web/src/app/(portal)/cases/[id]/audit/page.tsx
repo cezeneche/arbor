@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getAuditLog } from "@/lib/api/audit";
-import type { AuditEvent } from "@/lib/types";
+import { getAuditLog, type AuditLogResult } from "@/lib/api/audit";
 
 const MONO: React.CSSProperties = { fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace" };
 
@@ -48,11 +47,13 @@ function safePayload(raw: unknown): Record<string, unknown> | null {
 export default function AuditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
-  const { data: events = [], isLoading, error } = useQuery<AuditEvent[]>({
+  const { data, isLoading, error } = useQuery<AuditLogResult>({
     queryKey:  ["audit-log", id],
     queryFn:   () => getAuditLog(id),
     staleTime: 30_000,
   });
+  const events = data?.events ?? [];
+  const chainValid = data?.chainValid ?? true;
 
   return (
     <div className="page-content">
@@ -86,6 +87,14 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
           </span>
         )}
       </div>
+
+      {!isLoading && !chainValid && (
+        <div style={{ padding: "var(--space-16) var(--space-24)", marginBottom: "var(--space-24)", backgroundColor: "var(--color-red-bg)", border: "var(--border-width) solid var(--color-red)", borderRadius: "6px" }}>
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", margin: 0 }}>
+            Chain integrity check failed — this case requires manual verification before submission.
+          </p>
+        </div>
+      )}
 
       {isLoading && (
         <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>Loading…</p>

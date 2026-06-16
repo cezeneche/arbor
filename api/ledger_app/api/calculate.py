@@ -1,14 +1,15 @@
 import json
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.calculation_service import calculate_from_extraction, load_factor_set, FACTOR_SET_PATH_DEFAULT
+from shared_auth import require_scopes
 
 router = APIRouter(tags=["cases"])
 
-@router.post("/cases/{case_id}/calculate")
+@router.post("/cases/{case_id}/calculate", dependencies=[Depends(require_scopes(["cbam:write"]))])
 def calculate_case(case_id: str):
     factor_set_path = FACTOR_SET_PATH_DEFAULT
     factor_set, factor_set_hash = load_factor_set(Path(factor_set_path))

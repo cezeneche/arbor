@@ -1196,22 +1196,27 @@ class TestValidationFailure:
             build_hmrc_return(pkg, _make_hmrc_input(accuracy_declaration=False))
         assert any("accuracy_declaration" in f for f in exc_info.value.failures)
 
-    def test_numeric_mismatch_triggers_human_review(self):
+    def test_missing_summary_total_triggers_human_review(self):
         """
-        Narrative total deviating from report_package summary by > 0.001 kgCO₂e
-        sets human_review_required=True.
+        narrative["results"] is hard-overridden from report_package.summary before
+        validation runs (narrative.py Step 4) — comparing narrative.results against
+        summary is therefore comparing a value to the source it was copied from and
+        can never catch a real defect. The numeric check instead verifies that the
+        *source* summary itself has the fields required for the HMRC return; a gap
+        there would otherwise propagate silently into the narrative and the return.
         """
         pkg = _make_report_package(direct_kgco2e=850_000, indirect_kgco2e=150_000)
-        bad_narrative = _make_narrative(
-            total_direct_kgco2e=840_000,       # 10,000 kgCO₂e below — well above tolerance
+        pkg["summary"]["total_direct_emissions_kgco2e"] = None
+        narrative = _make_narrative(
+            total_direct_kgco2e=850_000,
             total_indirect_kgco2e=150_000,
-            total_embedded_kgco2e=990_000,
+            total_embedded_kgco2e=1_000_000,
         )
-        result = validate_report_package_integrity(pkg, bad_narrative)
+        result = validate_report_package_integrity(pkg, narrative)
 
         assert result.human_review_required is True
         assert any("direct" in f.lower() for f in result.failures), (
-            f"Expected a failure about direct emissions mismatch: {result.failures}"
+            f"Expected a failure about the missing direct emissions total: {result.failures}"
         )
 
     def test_sub_tolerance_difference_does_not_trigger_review(self):

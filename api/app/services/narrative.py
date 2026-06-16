@@ -357,12 +357,18 @@ def run_pipeline_stages(
     packet_kind: str = "legacy",
     request: Request,
     background_tasks: BackgroundTasks | None = None,
+    packet: dict | None = None,
 ) -> dict:
     """
     Execute the narrative pipeline: one Claude call, results hard-overridden.
 
     Steps:
-      1. Fetch report package (direct in-process call, no HTTP)
+      1. Fetch report package (direct in-process call, no HTTP) — skipped when
+         the caller already fetched it and passes it via `packet`, so callers
+         that need the packet both before and after this call (e.g. the
+         compliance-pack endpoint) don't fetch it twice. Each fetch writes a
+         report_package_v1 snapshot, so a duplicate fetch also means a
+         duplicate snapshot in the audit chain.
       2. Block if data_quality.blocking is true
       3. Call Claude once to generate prose narrative
       4. Hard override results{} with values from the report package
@@ -371,18 +377,19 @@ def run_pipeline_stages(
     Used by both the sync endpoint (/api/cases/{id}/narrative/pipeline) and
     the ARQ background job. Returns a result dict in all cases — never raises.
     """
-    # Step 1 — fetch packet
-    try:
-        packet = fetch_report_packet(case_id, packet_kind, request)
-    except HTTPException:
-        raise  # propagate 404/500 to the router
-    except Exception as exc:
-        return {
-            "case_id": case_id,
-            "final_narrative_json": None,
-            "human_review_required": True,
-            "stage_errors": [{"stage": "fetch_packet", "error": str(exc)}],
-        }
+    # Step 1 — fetch packet (unless already supplied by the caller)
+    if packet is None:
+        try:
+            packet = fetch_report_packet(case_id, packet_kind, request)
+        except HTTPException:
+            raise  # propagate 404/500 to the router
+        except Exception as exc:
+            return {
+                "case_id": case_id,
+                "final_narrative_json": None,
+                "human_review_required": True,
+                "stage_errors": [{"stage": "fetch_packet", "error": str(exc)}],
+            }
 
     # Step 2 — data quality gate
     data_quality = packet.get("data_quality") or {}

@@ -40,17 +40,6 @@ export function fmtMass(kg?: number | null): string {
   return `${kg.toLocaleString("en-GB", { maximumFractionDigits: 1 })} kg`;
 }
 
-export function isChainValid(events: AuditEvent[]): boolean {
-  for (let i = 1; i < events.length; i++) {
-    const cur  = events[i];
-    const prev = events[i - 1];
-    const a = cur.prev_hmac  ?? cur.chain_hash;
-    const b = prev.hmac_sha256 ?? prev.signature;
-    if (a && b && a !== b) return false;
-  }
-  return true;
-}
-
 export function actorLabel(ev: AuditEvent): string {
   return ev.actor ?? ev.actor_sub ?? "system";
 }

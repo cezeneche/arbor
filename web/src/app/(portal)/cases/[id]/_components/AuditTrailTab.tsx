@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getAuditLog } from "@/lib/api/audit";
-import { MONO, fmtTime, isChainValid, actorLabel } from "./shared";
+import { getAuditLog, type AuditLogResult } from "@/lib/api/audit";
+import { MONO, fmtTime, actorLabel } from "./shared";
 import type { AuditEvent } from "@/lib/types";
 
 const AUDIT_EVENT_LABELS: Record<string, string> = {
@@ -39,7 +39,7 @@ function eventActor(ev: AuditEvent): string {
 }
 
 export function AuditTrailTab({ caseId, onNewSupplierEvent }: { caseId: string; onNewSupplierEvent?: () => void }) {
-  const { data: raw = [] } = useQuery<AuditEvent[]>({
+  const { data } = useQuery<AuditLogResult>({
     queryKey:       ["audit-log", caseId],
     queryFn:        () => getAuditLog(caseId),
     staleTime:      0,
@@ -47,11 +47,13 @@ export function AuditTrailTab({ caseId, onNewSupplierEvent }: { caseId: string; 
     refetchInterval: 30_000,
   });
 
+  const auditEvents: AuditEvent[] = data?.events ?? [];
+  const chainValid = data?.chainValid ?? true;
+
   // Track supplier submission events seen so far; fire callback for new ones.
   const seenSupplierEventIds = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const events: AuditEvent[] = Array.isArray(raw) ? raw : ((raw as { events?: AuditEvent[] }).events ?? []);
-    events
+    auditEvents
       .filter(ev => ev.event_type === "supplier_emissions_submitted")
       .forEach(ev => {
         if (!seenSupplierEventIds.current.has(ev.id)) {
@@ -60,13 +62,7 @@ export function AuditTrailTab({ caseId, onNewSupplierEvent }: { caseId: string; 
         }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [raw]);
-
-  const auditEvents: AuditEvent[] = Array.isArray(raw)
-    ? raw
-    : ((raw as { events?: AuditEvent[] }).events ?? []);
-
-  const chainValid = auditEvents.length === 0 || isChainValid(auditEvents);
+  }, [auditEvents]);
 
   const [filterActor, setFilterActor] = useState("");
   const [filterType,  setFilterType]  = useState("");

@@ -140,6 +140,13 @@ class FakeConnection:
             ]
             return _Result(rows=rows)
 
+        # _require_case_tenant: SELECT 1 FROM cbam.cbam_cases WHERE id = :id AND tenant_id = :tid LIMIT 1
+        # (checked before the generic FK-check block below, since this is a more specific match)
+        if "FROM cbam.cbam_cases" in sql and "tenant_id = :tid" in sql:
+            row = self.cases.get(params.get("id"))
+            exists = 1 if row and row.get("tenant_id") == params.get("tenant_id") else None
+            return _Result(scalar=exists)
+
         if sql.startswith("SELECT 1 FROM cbam.") and "WHERE id = :id" in sql:
             if "cbam_cases" in sql:
                 exists = 1 if params["id"] in self.cases else None
@@ -150,6 +157,28 @@ class FakeConnection:
             else:
                 raise AssertionError(f"Unexpected FK check SQL: {sql}")
             return _Result(scalar=exists)
+
+        # _resolve_case_for_shipment: SELECT <col> AS case_id FROM cbam.cbam_shipments WHERE id = :id LIMIT 1
+        if (
+            "AS case_id" in sql
+            and "FROM cbam.cbam_shipments" in sql
+            and "JOIN" not in sql
+        ):
+            row = self.shipments.get(params.get("id"))
+            case_id = row.get("case_id") if row else None
+            return _Result(rows=[{"case_id": case_id}] if case_id else [])
+
+        # _resolve_case_for_goods_line: SELECT s.<col> AS case_id FROM cbam.cbam_goods_lines gl
+        # JOIN cbam.cbam_shipments s ON gl.shipment_id = s.id WHERE gl.id = :id
+        if (
+            "AS case_id" in sql
+            and "FROM cbam.cbam_goods_lines" in sql
+            and "JOIN cbam.cbam_shipments" in sql
+        ):
+            gl = self.goods_lines.get(params.get("id"))
+            ship = self.shipments.get(gl.get("shipment_id")) if gl else None
+            case_id = ship.get("case_id") if ship else None
+            return _Result(rows=[{"case_id": case_id}] if case_id else [])
 
         # Goods-line factor lookup: SELECT cn_code, <mass_col> FROM cbam.cbam_goods_lines WHERE id = :id LIMIT 1
         if (

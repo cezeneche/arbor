@@ -144,14 +144,20 @@ export function ScopeCheckerTool() {
 
     setLoading(true);
     try {
+      const tonnes = parseFloat(importTonnes.replace(/[^0-9.]/g, ""));
+      const scopeBody: Record<string, unknown> = {
+        cn8_code: digits,
+        annual_import_value_gbp: value,
+        regime,
+      };
+      if (!isNaN(tonnes) && tonnes > 0) {
+        scopeBody.annual_import_tonnes = tonnes;
+      }
+
       const scopeRes = await fetch(`${API_URL}/api/public/cbam-scope-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cn8_code: digits,
-          annual_import_value_gbp: value,
-          regime,
-        }),
+        body: JSON.stringify(scopeBody),
       });
       if (!scopeRes.ok) {
         const detail = await scopeRes.json().catch(() => ({}));
@@ -160,7 +166,6 @@ export function ScopeCheckerTool() {
       const scope: ScopeResult = await scopeRes.json();
       setScopeResult(scope);
 
-      const tonnes = parseFloat(importTonnes.replace(/[^0-9.]/g, ""));
       if (scope.in_scope && !isNaN(tonnes) && tonnes > 0) {
         const liabRes = await fetch(
           `${API_URL}/api/public/cbam-liability-estimate`,

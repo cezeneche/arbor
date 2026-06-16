@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
+from shared_auth import require_scopes
+
 from . import _shared
 from ledger_app.db.rls import set_tenant_context
+
+_log = logging.getLogger("nucleos.report")
 
 router = APIRouter()
 
@@ -53,7 +58,9 @@ def get_cbam_case_summary(request: Request, case_id: UUID):
                 """
             ),
             {"id": str(case_id), "tenant_id": tenant_id},
-        ).mappings().one()
+        ).mappings().one_or_none()
+        if case_row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
         shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
         summary = _shared._build_case_summary(conn, case_id)
         summary["data_quality"] = _shared.evaluate_cbam_data_quality(dict(case_row), shipments_payload)
@@ -164,8 +171,25 @@ def get_cbam_report_package(
             parent_hash = snapshot.parent_hash
             algo_versions = dict(snapshot.algo_versions)
             model_versions = dict(snapshot.model_versions)
-        except Exception:
-            pass
+        except Exception as exc:
+            # A swallowed failure here would leave snapshot_hash=None on a
+            # non-first record — the chain verifier then raises
+            # ChainIntegrityError on every subsequent read, turning a
+            # transient error into a permanent human_review_required flag
+            # (CLAUDE.md Rule 5). Fail the request instead so the caller can
+            # retry before any output is generated.
+            _log.error(
+                "Snapshot write failed for case_id=%s stage=report_package_v1: %s",
+                case_id, exc,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Audit chain snapshot could not be written. The report package "
+                    "has not been generated, to avoid corrupting the audit chain. "
+                    "Please retry."
+                ),
+            ) from exc
 
         report_package["audit"] = _shared._report_package_audit_block(
             case_id=str(case_id),
@@ -204,7 +228,7 @@ def get_cbam_report_package(
         )
 
 
-@router.post("/cases/{case_id}/liability")
+@router.post("/cases/{case_id}/liability", dependencies=[Depends(require_scopes(["cbam:write"]))])
 def compute_case_liability(request: Request, case_id: UUID, payload: _shared.CBAMLiabilityRequest):
     """Compute CBAM liability (SEE formula + certificate count) for a case.
 
@@ -460,7 +484,10 @@ def get_regulatory_tables():
     }
 
 
-@router.post("/cases/{case_id}/hmrc-return")
+@router.post(
+    "/cases/{case_id}/hmrc-return",
+    dependencies=[Depends(require_scopes(["cbam:write"]))],
+)
 def build_case_hmrc_return(
     request: Request,
     case_id: UUID,

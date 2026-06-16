@@ -177,9 +177,15 @@ def _make_client(monkeypatch) -> tuple[TestClient, list]:
     monkeypatch.setattr(doc_module, "sign_event", lambda *a, **kw: "fake-sig")
     monkeypatch.setattr(doc_module, "get_prev_chain_hmac", lambda *a, **kw: None)
 
+    from shared_auth.testing import make_test_token
+
+    token = make_test_token(scopes=["cbam:read", "cbam:write"])
+
     app = FastAPI()
     app.include_router(doc_module.router)
-    return TestClient(app, raise_server_exceptions=False), uploads
+    return TestClient(
+        app, raise_server_exceptions=False, headers={"Authorization": f"Bearer {token}"}
+    ), uploads
 
 
 class TestSingleUploadHTTP:

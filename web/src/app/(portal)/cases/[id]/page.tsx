@@ -3,14 +3,16 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCase } from "@/lib/hooks/useCases";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useRole } from "@/lib/auth/useRole";
 import { approveCase, rejectCase } from "@/lib/api/cases";
+import { ledgerFetch } from "@/lib/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import AlertBanner from "@/components/ui/AlertBanner";
 import { formatCurrency, toStatusVariant, statusLabel } from "@/lib/design-system";
 import { sectorLabel } from "@/lib/constants";
 import { DocumentFieldsForm } from "./_components/DocumentFieldsForm";
@@ -32,12 +34,29 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
 
   const { case_, isLoading, error } = useCase(id);
 
+  const goodsLineIds = (case_?.goods_lines ?? []).map(gl => gl.id);
+  const { data: cprClaimsByLine } = useQuery({
+    queryKey: ["cpr-claims", id, goodsLineIds.join(",")],
+    queryFn: () => Promise.all(
+      goodsLineIds.map(glId =>
+        ledgerFetch<{ claims: Array<{ cpr_amount_gbp: string }> }>(
+          `/api/cbam/cpr/claims/${glId}`
+        ).catch(() => ({ claims: [] }))
+      )
+    ),
+    enabled: goodsLineIds.length > 0,
+    staleTime: 30_000,
+  });
+
   const [activeTab,        setActiveTab]        = useState<ActiveTab>("details");
   const [actionDone,       setActionDone]        = useState<"approved" | "flagged" | null>(null);
   const [showFlagForm,     setShowFlagForm]      = useState(false);
   const [flagText,         setFlagText]          = useState("");
   const [actioning,        setActioning]         = useState(false);
   const [unseenAuditCount, setUnseenAuditCount]  = useState(0);
+  const [downloadingReturn, setDownloadingReturn] = useState(false);
+  const [downloadError,     setDownloadError]     = useState<string | null>(null);
+  const [actionError,       setActionError]       = useState<string | null>(null);
 
   const actorName = user?.name ?? user?.sub ?? "unknown";
 
@@ -109,7 +128,11 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     const rate     = UK_CBAM_RATES[gl.sector ?? ""] ?? UK_CBAM_RATES["iron_steel"];
     return sum + (directKg / 1000) * rate;
   }, 0);
-  const netLiability = cbamCharge;
+  const totalCpr = (cprClaimsByLine ?? []).reduce((sum, r) => {
+    const latest = r.claims[0];
+    return sum + (latest ? parseFloat(latest.cpr_amount_gbp) : 0);
+  }, 0);
+  const netLiability = Math.max(cbamCharge - totalCpr, 0);
 
   const isProcessing = case_.status === "processing";
   const isError      = case_.status === "error";
@@ -139,25 +162,68 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     }, 1000);
   }
 
+  async function handleDownloadHmrcReturn() {
+    setDownloadingReturn(true);
+    setDownloadError(null);
+    try {
+      const tokenMatch = document.cookie.match(/(?:^|;\s*)cbam_token=([^;]+)/);
+      const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : (localStorage.getItem("cbam_token") ?? "");
+      const res = await fetch(`/api-proxy/ledger/api/cases/${id}/hmrc-return`, {
+        method:  "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          importer_vat_number: (case_ as { importer_vat_number?: string })?.importer_vat_number ?? "",
+          importer_address:    (case_ as { importer_address?: Record<string, string> })?.importer_address ?? { line1: "", city: "", postcode: "" },
+          accuracy_declaration: true,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(`Download failed (${res.status}). Confirm the importer VAT number and address are set before downloading.`);
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `hmrc-return-${id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Download failed. Please try again.");
+    } finally {
+      setDownloadingReturn(false);
+    }
+  }
+
   async function handleApprove() {
     setActioning(true);
+    setActionError(null);
     try {
       await approveCase(id, { reviewer_name: user?.sub ?? "reviewer", reviewer_email: user?.sub ?? "reviewer@nucleos", comments: "Approved via case detail" });
       setActionDone("approved");
       refreshAll();
-    } catch { /* unchanged */ }
-    setActioning(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Approve failed. Please try again.");
+    } finally {
+      setActioning(false);
+    }
   }
 
   async function handleSendFlag() {
     if (!flagText.trim()) return;
     setActioning(true);
+    setActionError(null);
     try {
       await rejectCase(id, { reviewer_name: user?.sub ?? "reviewer", reviewer_email: user?.sub ?? "reviewer@nucleos", comments: flagText.trim() });
       setActionDone("flagged");
       refreshAll();
-    } catch { /* ignore */ }
-    setActioning(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Flagging the case failed. Please try again.");
+    } finally {
+      setActioning(false);
+    }
   }
 
   const TABS: { key: ActiveTab; label: string }[] = [
@@ -170,6 +236,10 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
   return (
     <div className="page-content" style={{ paddingTop: "var(--space-48)", paddingBottom: "var(--space-80)" }}>
       <div>
+
+        {case_.load_error && (
+          <AlertBanner variant="amber" message={case_.load_error} />
+        )}
 
         {/* ══ HEADER ══ */}
         <div style={{ paddingBottom: "var(--space-40)", borderBottom: "var(--border-width) solid var(--color-border)", marginBottom: "var(--space-40)" }}>
@@ -206,11 +276,16 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
               {!isProcessing && goods_lines.some(gl => gl.direct_kgco2e == null) && (
                 <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginTop: "4px" }}>Annex VI default</p>
               )}
+              {!isProcessing && (
+                <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginTop: "4px" }}>
+                  Rate: engineering estimate — HMRC has not yet published Q1 2027 operative rates
+                </p>
+              )}
             </div>
             <div>
               <SectionLabel>Carbon price relief</SectionLabel>
               <p style={{ marginTop: "var(--space-8)", fontSize: "var(--text-lg)", fontWeight: "var(--font-focal)", color: "var(--color-text-tertiary)", fontVariantNumeric: "tabular-nums" }}>
-                {isProcessing ? "—" : "£0.00"}
+                {isProcessing ? "—" : formatCurrency(totalCpr)}
               </p>
             </div>
             <div>
@@ -309,6 +384,11 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
                     <Button variant="primary" loading={actioning && !showFlagForm} onClick={handleApprove}>Approve case</Button>
                     <Button variant="secondary" onClick={() => setShowFlagForm(v => !v)}>Flag for review</Button>
                   </div>
+                  {actionError && (
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--color-red)", marginTop: "var(--space-16)" }}>
+                      {actionError}
+                    </p>
+                  )}
                   {showFlagForm && (
                     <div style={{ marginTop: "var(--space-24)" }}>
                       <textarea
@@ -325,9 +405,14 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
               )}
               {!actionDone && isAdmin && isApproved && (
                 <div>
-                  <Button variant="secondary" onClick={() => { window.location.href = `/api-proxy/ledger/api/cases/${id}/hmrc-return`; }}>
+                  <Button variant="secondary" loading={downloadingReturn} onClick={handleDownloadHmrcReturn}>
                     Download HMRC return (PDF)
                   </Button>
+                  {downloadError && (
+                    <p style={{ fontSize: "var(--text-sm)", color: "var(--color-signal)", marginTop: "var(--space-8)" }}>
+                      {downloadError}
+                    </p>
+                  )}
                   <p style={{ marginTop: "var(--space-16)" }}>
                     <a href={`/api-proxy/ledger/api/cases/${id}/eu-xml`} style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", textDecoration: "underline" }}>
                       Download EU XML declaration

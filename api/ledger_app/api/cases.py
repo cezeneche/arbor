@@ -1,10 +1,11 @@
 import json
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from datetime import date
 from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
+from shared_auth import require_scopes
 
 router = APIRouter(tags=["cases"])
 
@@ -62,7 +63,7 @@ def _check_case_access(conn, case_id: str, auth) -> None:
     raise HTTPException(status_code=403, detail="Forbidden")
 
 
-@router.post("/cases")
+@router.post("/cases", dependencies=[Depends(require_scopes(["cbam:write"]))])
 def create_case(request: Request, payload: CaseCreate):
     auth = _get_auth(request)
     actor_sub = auth.sub if auth else "system"

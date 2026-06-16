@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 from typing import Any
 from uuid import uuid4
@@ -11,6 +12,8 @@ from sqlalchemy import bindparam, text
 from ledger_app.services.cbam_data_quality import evaluate_cbam_data_quality
 from shared_auth import require_scopes
 from . import _shared
+
+_log = logging.getLogger("nucleos.cases")
 
 
 class CBAMCasePatch(BaseModel):
@@ -77,6 +80,10 @@ def _enrich_cases_with_liability(
     if not case_fk_col or not direct_col:
         return
 
+    # mass_expr must be a column reference or a numeric literal — never a quoted
+    # string ('0'), which Postgres would otherwise sum as text and reject.
+    mass_expr = f"gl.{mass_col}" if mass_col else "0"
+
     # ── Query 1: latest direct emissions + net mass per (case_id, sector) ────
     emission_rows = conn.execute(
         text(
@@ -95,7 +102,7 @@ def _enrich_cases_with_liability(
                 s.{case_fk_col}                              AS case_id,
                 gl.sector,
                 COALESCE(SUM(le.direct_kgco2e), 0)           AS sector_kgco2e,
-                COALESCE(SUM(gl.{mass_col if mass_col else '0'}), 0) AS sector_net_mass_kg
+                COALESCE(SUM({mass_expr}), 0)                AS sector_net_mass_kg
             FROM cbam.cbam_shipments s
             JOIN cbam.cbam_goods_lines gl ON gl.shipment_id = s.id
             LEFT JOIN latest_emissions le ON le.goods_line_id = gl.id
@@ -362,10 +369,12 @@ def get_cbam_case(request: Request, case_id: str):
             except Exception:
                 result["open_gaps"] = None
 
-        except Exception:
+        except Exception as exc:
+            _log.warning("Case detail enrichment failed for case_id=%s: %s", case_id, exc)
             result.setdefault("shipments", [])
             result.setdefault("goods_lines", [])
             result.setdefault("open_gaps", None)
+            result["load_error"] = "Case detail could not be fully loaded. Please try again."
 
         return result
 
@@ -576,9 +585,6 @@ def list_cbam_cases(
         if "tenant_id" in columns:
             filters.append("tenant_id = :tenant_id")
             params["tenant_id"] = tenant_id
-        if importer_eori is not None:
-            filters.append("importer_eori = :importer_eori")
-            params["importer_eori"] = importer_eori
         if reporting_year is not None:
             filters.append("reporting_year = :reporting_year")
             params["reporting_year"] = reporting_year
@@ -587,27 +593,45 @@ def list_cbam_cases(
             params["reporting_quarter"] = reporting_quarter
 
         where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
-        params["limit"] = limit
-        params["offset"] = offset
-        rows = conn.execute(
-            text(
-                f"""
-                SELECT *
-                FROM cbam.cbam_cases
-                {where_sql}
-                ORDER BY {order_by}
-                LIMIT :limit OFFSET :offset
-                """
-            ),
-            params,
-        ).mappings().all()
 
-        items = []
-        for row in rows:
-            r = dict(row)
-            if "importer_eori" in r:
-                r["importer_eori"] = _shared.decrypt_field(r["importer_eori"])
-            items.append(r)
+        # importer_eori is Fernet-encrypted (non-deterministic ciphertext per call) —
+        # an equality filter in SQL can never match. Decrypt and filter in Python
+        # instead, so LIMIT/OFFSET are applied after the EORI filter, not before it.
+        if importer_eori is not None:
+            rows = conn.execute(
+                text(f"SELECT * FROM cbam.cbam_cases {where_sql} ORDER BY {order_by}"),
+                params,
+            ).mappings().all()
+            matched = []
+            for row in rows:
+                r = dict(row)
+                if "importer_eori" in r:
+                    r["importer_eori"] = _shared.decrypt_field(r["importer_eori"])
+                if r.get("importer_eori") == importer_eori:
+                    matched.append(r)
+            items = matched[offset:offset + limit]
+        else:
+            params["limit"] = limit
+            params["offset"] = offset
+            rows = conn.execute(
+                text(
+                    f"""
+                    SELECT *
+                    FROM cbam.cbam_cases
+                    {where_sql}
+                    ORDER BY {order_by}
+                    LIMIT :limit OFFSET :offset
+                    """
+                ),
+                params,
+            ).mappings().all()
+
+            items = []
+            for row in rows:
+                r = dict(row)
+                if "importer_eori" in r:
+                    r["importer_eori"] = _shared.decrypt_field(r["importer_eori"])
+                items.append(r)
 
         _enrich_cases_with_liability(conn, items)
         return {"items": items, "offset": offset, "limit": limit, "count": len(items)}

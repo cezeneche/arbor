@@ -103,6 +103,9 @@ export interface CaseDetail extends Case {
   shipments:   import("@/lib/types").CBAMShipment[];
   goods_lines: RichGoodsLine[];
   open_gaps:   OpenGaps | null;
+  /** Set when shipment/goods-line enrichment failed server-side — shipments and
+   *  goods_lines above are empty placeholders, not an accurate empty case. */
+  load_error?: string | null;
 }
 
 // ── Documents ─────────────────────────────────────────────────────────────────

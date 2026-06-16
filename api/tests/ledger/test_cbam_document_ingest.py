@@ -80,14 +80,18 @@ class FakeEngine:
 
 
 def _client_with_fake_engine(storage_root: Path, case_id: str) -> TestClient:
+    from shared_auth.testing import make_test_token
+
     conn = FakeConnection()
     conn.case_ids.add(case_id)
     cbam_api.engine = FakeEngine(conn)
     cbam_api.CBAM_STORAGE_ROOT = storage_root
 
+    token = make_test_token(scopes=["cbam:read", "cbam:write"])
+
     app = FastAPI()
     app.include_router(cbam_api.router, prefix="/api")
-    return TestClient(app)
+    return TestClient(app, headers={"Authorization": f"Bearer {token}"})
 
 
 def test_cbam_document_ingest_upload_returns_expected_keys(tmp_path: Path, monkeypatch):

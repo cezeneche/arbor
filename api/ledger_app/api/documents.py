@@ -1,12 +1,13 @@
 import hashlib
 import json
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.storage import atomic_upload_document
 from ledger_app.services.audit_signer import get_prev_chain_hmac, sign_event
 from ledger_app.services.document_validator import validate_upload, MAX_BATCH_FILES
+from shared_auth import require_scopes
 
 router = APIRouter(tags=["documents"])
 
@@ -44,7 +45,7 @@ def _verify_case_access(conn, case_id: str, auth) -> None:
     raise HTTPException(status_code=403, detail="Forbidden")
 
 
-@router.post("/cases/{case_id}/documents/upload")
+@router.post("/cases/{case_id}/documents/upload", dependencies=[Depends(require_scopes(["cbam:write"]))])
 async def upload_document(
     request: Request,
     case_id: str,
@@ -176,7 +177,7 @@ async def _upload_single_file(
     return dict(row)
 
 
-@router.post("/cases/{case_id}/documents/upload/batch")
+@router.post("/cases/{case_id}/documents/upload/batch", dependencies=[Depends(require_scopes(["cbam:write"]))])
 async def batch_upload_documents(
     request: Request,
     case_id: str,

@@ -37,6 +37,11 @@ services:
     dockerContext: ./web
     plan: free
     envVars:
+      # Render automatically passes a docker-runtime service's envVars as Docker
+      # build ARGs (matching ARG name in the Dockerfile) in addition to runtime
+      # env vars — unlike docker-compose, which requires an explicit build `args:`
+      # block. This single declaration is sufficient for LEDGER_URL to be baked
+      # into next.config.mjs's rewrites() at build time.
       - key: LEDGER_URL
         value: https://nucleos-api-vj36.onrender.com
       - key: NEXT_PUBLIC_ENVIRONMENT

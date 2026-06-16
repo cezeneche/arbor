@@ -11,6 +11,8 @@ Single Claude call replaces the former 3-stage OpenAI → Claude → Gemini pipe
 All processing is synchronous — completes within the HTTP request cycle.
 Response shape: {case_id, final_narrative_json, human_review_required, stage_errors}
 """
+import asyncio
+import functools
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
@@ -70,16 +72,22 @@ async def run_pipeline_async(
     auth_context: AuthContext = Depends(require_scopes(["narrative:run"])),
 ):
     """
-    Synchronous execution under the /async path for API compatibility.
+    Runs the same pipeline as the sync endpoint, offloaded to a worker thread
+    so the blocking Claude call does not stall the event loop (this handler is
+    `async def`, so unlike the plain `def` sync endpoint above, Starlette does
+    not dispatch it to a threadpool automatically).
 
     Returns the same shape as the sync endpoint, with job_id=None and
     status="done" so callers that poll the job result get an immediate answer.
     """
-    result = run_pipeline_stages(
-        case_id=case_id,
-        packet_kind=packet_kind,
-        request=request,
-        background_tasks=background_tasks,
+    result = await asyncio.to_thread(
+        functools.partial(
+            run_pipeline_stages,
+            case_id=case_id,
+            packet_kind=packet_kind,
+            request=request,
+            background_tasks=background_tasks,
+        )
     )
     if result.get("blocked"):
         return _blocking_response(case_id, result.get("data_quality", {}))

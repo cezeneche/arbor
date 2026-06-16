@@ -436,14 +436,19 @@ def list_cpr_claims(
         columns = _table_columns(conn, "cbam_cpr_claims")
         set_tenant_context(conn, tenant_id)
 
-        tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
+        # Tenant isolation is mandatory, not conditional — if the schema has no
+        # tenant_id column yet (migration gap), refuse to return rows rather than
+        # risk leaking another tenant's CPR claims.
+        if "tenant_id" not in columns:
+            return {"goods_line_id": goods_line_id, "claims": [], "count": 0}
+
         rows = conn.execute(
             text(
-                f"""
+                """
                 SELECT *
                 FROM   cbam.cbam_cpr_claims
                 WHERE  goods_line_id = :goods_line_id
-                {tenant_filter}
+                AND    tenant_id = :tenant_id
                 ORDER  BY created_at DESC
                 """
             ),
@@ -508,8 +513,6 @@ async def upload_verification_document(
     # Upload to Supabase Storage
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     filename = f"verification_{ts}.pdf"
-    storage_path: str | None = None
-    storage_uri: str | None = None
 
     try:
         from ledger_app.services.storage import upload_document_async
@@ -527,29 +530,37 @@ async def upload_verification_document(
             storage_path, sha256_hex, len(data),
         )
     except Exception as exc:
-        _log.warning("Supabase Storage upload failed (non-fatal): %s", exc)
-        # Record the hash even if storage is unavailable; the document can be
-        # re-uploaded later.  Do not fail the request — the hash provides
-        # tamper evidence independently of storage.
-        storage_path = f"{tenant_id}/cpr/{goods_line_id}/{filename}"
-        storage_uri  = None
+        _log.error("Supabase Storage upload failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Verification document could not be stored — Supabase Storage is "
+                "unavailable. Please retry. No record was created."
+            ),
+        ) from exc
 
     # Update all CPR claims for this goods line that lack a verification document
     with engine.begin() as conn:
         columns = _table_columns(conn, "cbam_cpr_claims")
         set_tenant_context(conn, tenant_id)
 
-        tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
+        # Tenant isolation is mandatory, not conditional — without it this UPDATE
+        # would write verification documents onto another tenant's CPR claims.
+        if "tenant_id" not in columns:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="CPR claims table is missing tenant isolation. Contact support.",
+            )
 
         result = conn.execute(
             text(
-                f"""
+                """
                 UPDATE cbam.cbam_cpr_claims
                 SET    verification_document_path = :path,
                        verification_document_hash = :hash
                 WHERE  goods_line_id = :goods_line_id
                   AND  verification_document_hash IS NULL
-                {tenant_filter}
+                  AND  tenant_id = :tenant_id
                 RETURNING id, goods_line_id, cpr_amount_gbp,
                           verification_document_path, verification_document_hash
                 """

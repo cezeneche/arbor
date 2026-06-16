@@ -1,10 +1,11 @@
 import os
 import tempfile
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from ledger_app.db.session import engine
 from ledger_app.services.storage import download_bytes
 from ledger_app.services.llamaindex_service import index_directory, retrieve
+from shared_auth import require_scopes
 
 router = APIRouter(tags=["cases"])
 
@@ -19,7 +20,7 @@ def _key_from_storage_uri(storage_uri: str) -> str:
     # parts[0]=s3:, parts[1]=, parts[2]=bucket, parts[3]=key...
     return parts[3]
 
-@router.post("/cases/{case_id}/index")
+@router.post("/cases/{case_id}/index", dependencies=[Depends(require_scopes(["cbam:write"]))])
 def index_case(case_id: str):
     # 1) fetch documents for case
     with engine.begin() as conn:

@@ -3,14 +3,20 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+
+from shared_auth import require_scopes
 
 from . import _shared
 
 router = APIRouter()
 
 
-@router.post("/cases/{case_id}/documents", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/cases/{case_id}/documents",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_scopes(["cbam:write"]))],
+)
 async def create_cbam_document(request: Request, case_id: UUID, file: UploadFile = File(...)):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:

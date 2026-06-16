@@ -439,8 +439,6 @@ def build_hmrc_return(
                 )
 
             charge  = _gbp(direct_tco2e * input_data.cbam_rate_gbp_per_tco2e)
-            cpr     = _gbp(cpr_for_consignment)          # CPR applied at consignment level
-            liability = _gbp(max(charge - cpr, Decimal("0")))
 
             cn8, disambiguated = _normalise_cn8(
                 str(gl.get("cn_code") or ""), gid, input_data.cn8_overrides
@@ -455,9 +453,12 @@ def build_hmrc_return(
             if disambiguated:
                 warnings.append(
                     f"cn8_padded:goods_line_id={gid}:cn_code={gl.get('cn_code')}"
-                    "→cn8={cn8}:manual_cn8_disambiguation_recommended"
+                    f"→cn8={cn8}:manual_cn8_disambiguation_recommended"
                 )
 
+            # cpr_gbp / cbam_liability_gbp are placeholders here — CPR is claimed
+            # at consignment level and is distributed proportionally across this
+            # consignment's goods lines once every line's charge is known (below).
             goods_lines.append(HMRCGoodsLine(
                 cn8_code                = cn8,
                 cn_description          = str(
@@ -468,15 +469,36 @@ def build_hmrc_return(
                 direct_embedded_tco2e   = direct_tco2e,
                 cbam_rate_gbp_per_tco2e = input_data.cbam_rate_gbp_per_tco2e,
                 cbam_charge_gbp         = charge,
-                cpr_gbp                 = cpr,
-                cbam_liability_gbp      = liability,
+                cpr_gbp                 = Decimal("0"),
+                cbam_liability_gbp      = charge,
                 verification_reference  = vref,
                 default_value_used      = hmrc_method == "default",
                 cn8_disambiguated       = disambiguated,
             ))
 
             total_charge += charge
-            total_cpr    += cpr
+
+        # CPR is claimed once per consignment (CLAUDE.md Rule 7) but reported
+        # per goods line — distribute proportionally by each line's charge
+        # weight so cpr_gbp never exceeds that line's own cbam_charge_gbp.
+        if goods_lines and cpr_for_consignment > Decimal("0"):
+            consignment_charge = sum(gl.cbam_charge_gbp for gl in goods_lines)
+            allocated = Decimal("0")
+            for gl in goods_lines[:-1]:
+                gl_cpr = (
+                    _gbp(cpr_for_consignment * gl.cbam_charge_gbp / consignment_charge)
+                    if consignment_charge > Decimal("0")
+                    else Decimal("0")
+                )
+                gl.cpr_gbp = gl_cpr
+                gl.cbam_liability_gbp = _gbp(max(gl.cbam_charge_gbp - gl_cpr, Decimal("0")))
+                allocated += gl_cpr
+            last = goods_lines[-1]
+            last_cpr = _gbp(max(cpr_for_consignment - allocated, Decimal("0")))
+            last.cpr_gbp = last_cpr
+            last.cbam_liability_gbp = _gbp(max(last.cbam_charge_gbp - last_cpr, Decimal("0")))
+
+        total_cpr += cpr_for_consignment
 
         if goods_lines:
             consignments.append(HMRCConsignment(
