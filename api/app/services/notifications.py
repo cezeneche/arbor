@@ -1,17 +1,21 @@
 """Fire-and-forget notification service for the Nucleos CBAM platform.
 
-Flow 1 — notify_review_required
+Flow 1 — notify_pipeline_error  (sync)
+    Slack Block Kit POST to SLACK_WEBHOOK_URL when document parsing, ingestion,
+    or a post-calculation step fails.  Called from sync background threads
+    (drafts._mark_error, emissions 500 paths) via a plain httpx.Client.
+
+Flow 2 — notify_review_required  (async)
     Slack Block Kit POST to SLACK_WEBHOOK_URL when a narrative validation
     sets human_review_required = True.  Called via FastAPI BackgroundTasks from the
     narrative pipeline route so the HTTP response is returned first.
 
-Flow 2 — notify_report_ready
+Flow 3 — notify_report_ready  (async)
     Transactional email via the Resend API (api.resend.com/emails) when a case is
     approved and the compliance_pack_v1 snapshot is finalised.  Also dispatched via
     BackgroundTasks from the review approval endpoint.
 
-Design contract (both functions):
-  - async — single httpx.AsyncClient POST per call
+Design contract:
   - fire-and-forget: NEVER raise.  All errors are logged at ERROR level and swallowed.
   - no-op when the required env var is absent (SLACK_WEBHOOK_URL / RESEND_API_KEY)
   - no database access — callers are responsible for supplying context data
@@ -43,7 +47,91 @@ def _base_url() -> str:
     return os.getenv("BASE_URL", "").rstrip("/")
 
 
-# ── Flow 1: internal Slack alert ───────────────────────────────────────────────
+def _slack_post_sync(payload: dict) -> None:
+    """Synchronous Slack webhook POST. Used from non-async callers (background threads)."""
+    webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+    if not webhook_url:
+        return
+    try:
+        timeout = httpx.Timeout(connect=_CONNECT_TIMEOUT, read=_READ_TIMEOUT, write=5.0, pool=5.0)
+        with httpx.Client(timeout=timeout) as client:
+            resp = client.post(webhook_url, json=payload)
+        if resp.status_code != 200:
+            log.error("Slack webhook returned status=%s body=%.200s", resp.status_code, resp.text)
+    except Exception as exc:
+        log.error("Slack webhook POST failed: %s", exc)
+
+
+# ── Flow 1: pipeline error alert (sync) ───────────────────────────────────────
+
+def notify_pipeline_error(
+    stage: str,
+    error_message: str,
+    case_id: str | None = None,
+    filename: str | None = None,
+) -> None:
+    """POST a Slack alert when document parsing, ingestion, or post-calculation fails.
+
+    Parameters
+    ----------
+    stage         : Human-readable stage name, e.g. "document_parsing", "ingestion",
+                    "calculation".
+    error_message : The error string (truncated to 500 chars in the alert).
+    case_id       : CBAM case UUID, if known — used to build a deep-link.
+    filename      : Original document filename, if applicable.
+    """
+    webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+    if not webhook_url:
+        log.warning("notify_pipeline_error: SLACK_WEBHOOK_URL not set — skipping")
+        return
+
+    effective_base = _base_url()
+    case_url = (
+        f"{effective_base}/cases/{case_id}" if effective_base and case_id else None
+    )
+    error_display = (error_message or "Unknown error")[:500]
+
+    context_lines = []
+    if filename:
+        context_lines.append(f"*File:* `{filename}`")
+    if case_id:
+        context_lines.append(f"*Case:* `{case_id}`")
+    context_text = "\n".join(context_lines) if context_lines else "_No additional context_"
+
+    blocks: list[dict] = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f":x: *Pipeline error — {stage}*\n```{error_display}```",
+            },
+        },
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": context_text},
+        },
+    ]
+    if case_url:
+        blocks.append({
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Open Case"},
+                    "url": case_url,
+                }
+            ],
+        })
+
+    payload = {
+        "text": f":x: Pipeline error ({stage})" + (f" — case `{case_id}`" if case_id else ""),
+        "attachments": [{"color": "#e01e5a", "blocks": blocks}],
+    }
+    _slack_post_sync(payload)
+    log.info("notify_pipeline_error: sent stage=%s case=%s", stage, case_id)
+
+
+# ── Flow 2: human review alert (async) ────────────────────────────────────────
 
 async def notify_review_required(
     case_id: str,

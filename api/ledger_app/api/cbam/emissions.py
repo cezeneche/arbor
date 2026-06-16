@@ -10,6 +10,8 @@ from sqlalchemy.exc import IntegrityError
 
 from shared_auth import require_scopes
 
+from app.services.notifications import notify_pipeline_error
+
 from . import _shared
 
 router = APIRouter()
@@ -153,6 +155,11 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
 
             goods_line_fk_column = _shared._pick_existing(columns, ["goods_line_id"])
             if not goods_line_fk_column:
+                notify_pipeline_error(
+                    stage="calculation",
+                    error_message="cbam_emissions schema missing goods_line_id FK column",
+                    case_id=str(payload.goods_line_id),
+                )
                 raise HTTPException(status_code=500, detail="Internal server error")
 
             direct_col = _shared._pick_existing(columns, ["direct_kgco2e", "direct_emissions_kgco2e", "direct_embedded_kgco2e"])
@@ -160,6 +167,14 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
             method_col = _shared._pick_existing(columns, ["calculation_method", "method"])
 
             if not direct_col or not indirect_col or not method_col:
+                notify_pipeline_error(
+                    stage="calculation",
+                    error_message=(
+                        f"cbam_emissions schema missing required columns — "
+                        f"direct={direct_col} indirect={indirect_col} method={method_col}"
+                    ),
+                    case_id=str(payload.goods_line_id),
+                )
                 raise HTTPException(status_code=500, detail="Internal server error")
 
             # ── Annex VI factor + installation registry integration ────────────
@@ -275,6 +290,8 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
             if factor_warnings:
                 created["factor_warnings"] = factor_warnings
             return created
+    except HTTPException:
+        raise
     except IntegrityError:
         allowed = ", ".join(_shared.ALLOWED_EMISSIONS_METHODS)
         raise HTTPException(
@@ -284,3 +301,10 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                 "detail": f"method must be one of: {allowed}",
             },
         )
+    except Exception as exc:
+        notify_pipeline_error(
+            stage="calculation",
+            error_message=str(exc),
+            case_id=str(payload.goods_line_id),
+        )
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -637,6 +637,7 @@ def _run_document_pipeline(
 ) -> None:
     """Run extraction + CBAM creation in the background. Updates case_id on success/error."""
     from ledger_app.core.version import APP_GIT_SHA, APP_VERSION
+    from app.services.notifications import notify_pipeline_error
 
     def _mark_error(msg: str) -> None:
         clean = _friendly_error(msg)
@@ -658,6 +659,12 @@ def _run_document_pipeline(
                 )
         except Exception as db_exc:
             _log.error("[pipeline] _mark_error DB write failed for case %s: %s", case_id, db_exc)
+        notify_pipeline_error(
+            stage="document_parsing",
+            error_message=clean,
+            case_id=case_id,
+            filename=filename,
+        )
         _log.error("[pipeline] case %s failed: %s", case_id, msg)
 
     _deadline = threading.Timer(
