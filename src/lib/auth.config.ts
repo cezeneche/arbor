@@ -1,22 +1,32 @@
 import type { NextAuthConfig } from 'next-auth'
 
 // Edge-safe auth config  -  no Prisma, no bcrypt.
-// Used by middleware. The full config (with adapter + provider) lives in auth.ts.
+// Used by middleware (proxy.ts). The full config (with adapter + provider) lives in auth.ts.
 export const authConfig = {
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        token.entityId = (user as unknown as Record<string, unknown>).entityId as string
-        token.role = (user as unknown as Record<string, unknown>).role as string
+        const u = user as unknown as Record<string, unknown>
+        if (u.pending2fa) {
+          token.pending2fa = true
+        } else {
+          token.entityId = u.entityId as string
+          token.role = u.role as string
+          token.tokenVersion = u.tokenVersion as number
+          token.pending2fa = undefined
+        }
       }
       return token
     },
     session({ session, token }) {
       session.user.id = token.sub!
-      ;(session.user as unknown as Record<string, unknown>).entityId = token.entityId
-      ;(session.user as unknown as Record<string, unknown>).role = token.role
+      const u = session.user as unknown as Record<string, unknown>
+      u.entityId = token.entityId
+      u.role = token.role
+      u.tokenVersion = token.tokenVersion
+      u.pending2fa = token.pending2fa ?? false
       return session
     },
   },

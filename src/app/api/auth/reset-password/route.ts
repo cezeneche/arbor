@@ -41,9 +41,12 @@ export async function POST(req: NextRequest) {
   })
   if (consumed.count === 0) return INVALID
 
+  // Bump tokenVersion to invalidate any existing JWT sessions for this user.
+  // The next time those sessions hit a server-side auth() check, the DB version
+  // won't match and callers can treat the mismatch as unauthorised.
   await prisma.user.update({
     where: { id: record.userId },
-    data: { passwordHash },
+    data: { passwordHash, tokenVersion: { increment: 1 } },
   })
 
   return NextResponse.json({ ok: true })
