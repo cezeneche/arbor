@@ -1,17 +1,44 @@
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { evaluateSessionSecurity, type SessionSecurityCode } from '@/lib/auth-helpers-pure'
+
+const unauthorised = (reason: string, code: string) => ({
+  session: null,
+  response: NextResponse.json({ error: reason, code }, { status: 401 }),
+})
+
+const SECURITY_MESSAGES: Record<SessionSecurityCode, string> = {
+  TWO_FACTOR_REQUIRED: 'Two-factor verification required',
+  ACCOUNT_GONE: 'Account no longer exists',
+  SESSION_REVOKED: 'Session has been revoked. Please sign in again.',
+}
 
 export async function requireAuth() {
   const session = await auth()
   if (!session?.user) {
-    return {
-      session: null,
-      response: NextResponse.json(
-        { error: 'Unauthorised', code: 'AUTH_REQUIRED' },
-        { status: 401 }
-      ),
-    }
+    return unauthorised('Unauthorised', 'AUTH_REQUIRED')
   }
+
+  const user = session.user as Record<string, unknown>
+  const userId = user.id as string | undefined
+
+  // Look up the live tokenVersion so a password reset / forced logout actually
+  // invalidates old JWTs, and re-check the 2FA gate server-side (defence in depth:
+  // the middleware redirect is bypassed on API routes exempted from it).
+  const dbUser = userId
+    ? await prisma.user.findUnique({ where: { id: userId }, select: { tokenVersion: true } })
+    : { tokenVersion: 0 }
+
+  const verdict = evaluateSessionSecurity(
+    { pending2fa: user.pending2fa as boolean | undefined, tokenVersion: user.tokenVersion as number | undefined },
+    dbUser,
+  )
+
+  if (!verdict.ok) {
+    return unauthorised(SECURITY_MESSAGES[verdict.code], verdict.code)
+  }
+
   return { session, response: null }
 }
 

@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
 import { hash } from 'bcryptjs'
-import { auth } from '@/lib/auth'
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requireAuth, requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
 const createSchema = z.object({ label: z.string().min(1).max(100) })
 
 export async function GET() {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  const { session, response } = await requireAuth()
+  if (!session) return response!
   const entityId = (session.user as Record<string, unknown>).entityId as string
 
   const keys = await prisma.apiKey.findMany({

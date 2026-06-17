@@ -8,6 +8,20 @@ export default async function PortalLayout({ children }: { children: React.React
   const session = await auth()
   if (!session?.user) redirect('/login')
 
+  const userId = (session.user as Record<string, unknown>).id as string | undefined
+  const role = (session.user as Record<string, unknown>).role as string | undefined
+
+  // Mandatory 2FA for administrators: an admin who has not yet enrolled is sent to
+  // the dedicated setup page and cannot use the portal until 2FA is enabled.
+  // Checked against the live DB so it clears the moment they finish enrolling.
+  if (role === 'ADMIN' && userId) {
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorEnabled: true },
+    })
+    if (me && !me.twoFactorEnabled) redirect('/security-setup')
+  }
+
   const entityId = (session.user as Record<string, unknown>).entityId as string | undefined
 
   let entityName = 'Your organisation'

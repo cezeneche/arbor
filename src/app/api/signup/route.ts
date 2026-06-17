@@ -21,7 +21,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
-  const { companyName, sector, country, name, email, password, entityType } = parsed.data
+  const { companyName, sector, country, name, password, entityType } = parsed.data
+  // Normalise email casing so it matches login and password-reset lookups.
+  const email = parsed.data.email.toLowerCase()
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {

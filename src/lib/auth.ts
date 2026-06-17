@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { compare } from 'bcryptjs'
 import { authConfig } from '@/lib/auth.config'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/rate-limit-pure'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -15,7 +17,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const parsed = z.object({
           email: z.string().email(),
           password: z.string().min(8),
@@ -23,8 +25,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!parsed.success) return null
 
+        // Anti-brute-force: cap login attempts per source IP. Returns null on
+        // exceed so the attacker can't distinguish rate-limiting from a bad password.
+        const ip = getClientIp(
+          request?.headers?.get('x-forwarded-for') ?? null,
+          request?.headers?.get('x-real-ip') ?? null,
+        )
+        const { allowed } = await checkRateLimit(RATE_LIMITS.login, ip)
+        if (!allowed) return null
+
         const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
+          where: { email: parsed.data.email.toLowerCase() },
           include: { entity: true },
         })
 
