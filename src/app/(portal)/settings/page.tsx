@@ -6,6 +6,7 @@ import { colours, typography, spacing } from '@/lib/design-system'
 import { ProfileEditor } from './ProfileEditor'
 import { OrganisationEditor } from './OrganisationEditor'
 import { BenchmarkConsentToggle } from './api-keys/BenchmarkConsentToggle'
+import { TwoFactorSetup } from './TwoFactorSetup'
 
 export default async function SettingsPage() {
   const session = await auth()
@@ -18,7 +19,7 @@ export default async function SettingsPage() {
   const [user, entity] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, email: true, role: true },
+      select: { name: true, email: true, role: true, twoFactorEnabled: true },
     }),
     prisma.entity.findUnique({
       where: { id: entityId },
@@ -109,6 +110,14 @@ export default async function SettingsPage() {
             <a href="mailto:support@arbor.uk" style={{ color: colours.textSecondary, textDecoration: 'underline' }}>support@arbor.uk</a>.
             Your certified records will be retained for audit chain integrity until the request is processed.
           </p>
+        </div>
+
+        {/* Security */}
+        <div style={sectionStyle}>
+          <TwoFactorSetup
+            enabled={user.twoFactorEnabled}
+            isAdmin={sessionRole === 'ADMIN'}
+          />
         </div>
 
         {/* Integrations */}

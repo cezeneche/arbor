@@ -16,6 +16,7 @@ export default auth((req) => {
     req.nextUrl.pathname.startsWith('/signup') ||
     req.nextUrl.pathname.startsWith('/forgot-password') ||
     req.nextUrl.pathname.startsWith('/reset-password') ||
+    req.nextUrl.pathname.startsWith('/2fa-verify') ||
     req.nextUrl.pathname.startsWith('/about') ||
     req.nextUrl.pathname.startsWith('/how-it-works') ||
     req.nextUrl.pathname.startsWith('/institutional') ||
@@ -31,6 +32,16 @@ export default auth((req) => {
 
   if (!isAuthed && !isPublic) {
     return NextResponse.redirect(new URL('/login', req.url))
+  }
+
+  // If authenticated but 2FA challenge is pending, keep the user on /2fa-verify.
+  // Allow public routes and /2fa-verify itself through so the challenge page renders.
+  const pending2fa = (req.auth as unknown as Record<string, unknown> | null)?.user
+    ? ((req.auth as unknown as { user: Record<string, unknown> }).user.pending2fa as boolean)
+    : false
+
+  if (isAuthed && pending2fa && !req.nextUrl.pathname.startsWith('/2fa-verify') && !isPublic) {
+    return NextResponse.redirect(new URL('/2fa-verify', req.url))
   }
 })
 

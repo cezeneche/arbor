@@ -75,20 +75,37 @@ model Entity {
 // ── USER ──────────────────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String?
-  role         UserRole @default(CONTRIBUTOR)
-  entityId     String
-  entity       Entity   @relation(fields: [entityId], references: [id])
-  createdAt    DateTime @default(now())
+  id                String   @id @default(cuid())
+  email             String   @unique
+  name              String
+  passwordHash      String?
+  role              UserRole @default(CONTRIBUTOR)
+  entityId          String
+  entity            Entity   @relation(fields: [entityId], references: [id])
+  createdAt         DateTime @default(now())
+  twoFactorSecret   String?  // AES-256-GCM encrypted TOTP secret
+  twoFactorEnabled  Boolean  @default(false)
+  tokenVersion      Int      @default(0)
 
   accounts            Account[]
   sessions            Session[]
   submissions         DataRecord[]
   requests            DataRequest[]
   passwordResetTokens PasswordResetToken[]
+  totpRecoveryCodes   TotpRecoveryCode[]
+}
+
+// ── TOTP RECOVERY CODES ───────────────────────────────────────────────────────
+
+model TotpRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    @unique // SHA-256 of the plaintext recovery code
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ── PASSWORD RESET ────────────────────────────────────────────────────────────
