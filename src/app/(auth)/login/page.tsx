@@ -185,6 +185,23 @@ export default function LoginPage() {
           margin: `${spacing[3]} 0 0`,
         }}
       >
+        <Link
+          href="/forgot-password"
+          style={{ color: colours.navy, textDecoration: 'none', fontWeight: typography.weights.medium }}
+        >
+          Forgot your password?
+        </Link>
+      </p>
+
+      <p
+        style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.light,
+          color: colours.textSecondary,
+          textAlign: 'center',
+          margin: `${spacing[2]} 0 0`,
+        }}
+      >
         No account?{' '}
         <Link
           href="/signup"

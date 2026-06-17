@@ -14,6 +14,8 @@ export default auth((req) => {
     req.nextUrl.pathname.startsWith('/legal') ||
     req.nextUrl.pathname.startsWith('/login') ||
     req.nextUrl.pathname.startsWith('/signup') ||
+    req.nextUrl.pathname.startsWith('/forgot-password') ||
+    req.nextUrl.pathname.startsWith('/reset-password') ||
     req.nextUrl.pathname.startsWith('/about') ||
     req.nextUrl.pathname.startsWith('/how-it-works') ||
     req.nextUrl.pathname.startsWith('/institutional') ||
