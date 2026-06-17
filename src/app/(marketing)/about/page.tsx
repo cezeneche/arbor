@@ -182,12 +182,10 @@ export default function AboutPage() {
           >
             The data burden on manufacturers is accelerating.
           </h2>
-          <div style={{ columnCount: 2, columnGap: '40px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {[
-              'The Carbon Border Adjustment Mechanism (CBAM) requires importers to report embedded emissions data for goods entering the EU. Suppliers to those importers need to provide that data. It must be verifiable.',
-              'Corporate Sustainability Reporting Directive (CSRD) and related Scope 3 obligations mean large buyers need certified emissions and activity data from their entire supply chain, not estimates, but documented figures.',
-              'Procurement due diligence requirements are extending further down supply chains. Buyers are asking for more, and expecting it faster.',
-              'Each of these obligations requires the same underlying operational data. A manufacturer answering a CBAM request, a customer ESG questionnaire, and a procurement audit is answering different questions with the same figures, but currently has to reconstruct those figures from scratch each time.',
+              'CBAM requires verified emissions data for every good entering the EU. CSRD means large buyers now need documented figures from their entire supply chain. Procurement due diligence is pushing those same expectations further down the chain, faster.',
+              'Every one of these obligations draws on the same underlying operational data. But today, manufacturers reconstruct those figures from scratch every time a new request lands.',
               'arbor exists to change that. Submit your documents once. Answer every request from the same certified record.',
             ].map((para, i) => (
               <p
@@ -197,8 +195,7 @@ export default function AboutPage() {
                   fontWeight: typography.weights.light,
                   color: colours.textSecondary,
                   lineHeight: typography.lineHeight.body,
-                  margin: '0 0 20px',
-                  breakInside: 'avoid',
+                  margin: 0,
                 }}
               >
                 {para}
