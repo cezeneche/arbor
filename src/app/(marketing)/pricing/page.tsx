@@ -419,7 +419,7 @@ export default function PricingPage() {
           borderTop: `1px solid ${colours.border}`,
         }}
       >
-        <div style={{ ...container, maxWidth: '720px' }}>
+        <div style={container}>
           <h3
             style={{
               fontSize: typography.sizes.base,

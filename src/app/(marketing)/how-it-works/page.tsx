@@ -7,12 +7,6 @@ const container = {
   padding: '0 40px',
 }
 
-const narrow = {
-  maxWidth: '720px',
-  margin: '0 auto',
-  padding: '0 40px',
-}
-
 const eyebrow = {
   fontSize: typography.sizes.xs,
   fontWeight: typography.weights.medium,
@@ -390,7 +384,7 @@ export default function HowItWorksPage() {
 
       {/* Audit chain */}
       <section style={{ backgroundColor: colours.surface, padding: '80px 0' }}>
-        <div style={narrow}>
+        <div style={container}>
           <span style={eyebrow}>Audit chain</span>
           <h2 style={sectionHeading}>Every record is cryptographically linked.</h2>
           <p

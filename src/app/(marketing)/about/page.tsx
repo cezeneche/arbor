@@ -7,12 +7,6 @@ const container = {
   padding: '0 40px',
 }
 
-const narrow = {
-  maxWidth: '720px',
-  margin: '0 auto',
-  padding: '0 40px',
-}
-
 const eyebrow = {
   fontSize: typography.sizes.xs,
   fontWeight: typography.weights.medium,
@@ -75,7 +69,7 @@ export default function AboutPage() {
 
       {/* What arbor is */}
       <section style={{ backgroundColor: colours.surface, padding: '80px 0' }}>
-        <div style={narrow}>
+        <div style={container}>
           <span style={eyebrow}>What arbor is</span>
           <h2
             style={{
@@ -176,7 +170,7 @@ export default function AboutPage() {
 
       {/* Why now */}
       <section style={{ backgroundColor: colours.surface, padding: '80px 0' }}>
-        <div style={narrow}>
+        <div style={container}>
           <span style={eyebrow}>Why now</span>
           <h2
             style={{
@@ -289,7 +283,7 @@ export default function AboutPage() {
 
       {/* Contact */}
       <section style={{ backgroundColor: colours.surface, padding: '80px 0', borderTop: `1px solid ${colours.border}` }}>
-        <div style={narrow}>
+        <div style={container}>
           <span style={eyebrow}>Contact</span>
           <h2
             style={{
