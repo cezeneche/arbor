@@ -157,7 +157,7 @@ function PlanCard({ plan }: { plan: Plan }) {
             fontSize: typography.sizes.xs,
             fontWeight: typography.weights.medium,
             color: plan.highlighted ? 'rgba(255,255,255,0.5)' : colours.textTertiary,
-            letterSpacing: '0.14em',
+            letterSpacing: typography.tracking.wider,
             textTransform: 'uppercase' as const,
             margin: '0 0 8px',
           }}
@@ -294,7 +294,7 @@ export default function PricingPage() {
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.medium,
               color: colours.textTertiary,
-              letterSpacing: '0.18em',
+              letterSpacing: typography.tracking.wider,
               textTransform: 'uppercase' as const,
               display: 'block',
               marginBottom: '16px',
@@ -304,11 +304,11 @@ export default function PricingPage() {
           </span>
           <h1
             style={{
-              fontSize: '40px',
+              fontSize: '44px',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
               letterSpacing: typography.tracking.tight,
-              lineHeight: '1.15',
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 16px',
             }}
           >
@@ -316,10 +316,10 @@ export default function PricingPage() {
           </h1>
           <p
             style={{
-              fontSize: '17px',
+              fontSize: typography.sizes.base,
               fontWeight: typography.weights.light,
               color: colours.textSecondary,
-              lineHeight: '1.65',
+              lineHeight: typography.lineHeight.body,
               margin: '0',
             }}
           >

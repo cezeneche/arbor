@@ -597,11 +597,11 @@ export default function HomePage() {
         <div style={{ ...container, textAlign: 'center' }}>
           <h2
             style={{
-              fontSize: '36px',
+              fontSize: '32px',
               fontWeight: typography.weights.medium,
               color: '#FFFFFF',
               letterSpacing: typography.tracking.tight,
-              lineHeight: '1.2',
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 16px',
             }}
           >
@@ -609,7 +609,7 @@ export default function HomePage() {
           </h2>
           <p
             style={{
-              fontSize: '17px',
+              fontSize: typography.sizes.base,
               fontWeight: typography.weights.light,
               color: 'rgba(255,255,255,0.55)',
               margin: '0 0 40px',

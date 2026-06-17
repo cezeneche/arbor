@@ -42,12 +42,12 @@ export default function AboutPage() {
               fontSize: '44px',
               fontWeight: typography.weights.medium,
               color: '#FFFFFF',
-              letterSpacing: typography.tracking.heading,
+              letterSpacing: typography.tracking.tight,
               lineHeight: typography.lineHeight.display,
               margin: '0 0 24px',
             }}
           >
-            Built for the data obligations manufacturers didn&apos;t ask for.
+            Robust, Verified Data Record.
           </h1>
           <p
             style={{

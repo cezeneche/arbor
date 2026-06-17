@@ -103,7 +103,7 @@ export default function HowItWorksPage() {
                       fontSize: typography.sizes.xs,
                       fontWeight: typography.weights.medium,
                       color: colours.textTertiary,
-                      letterSpacing: '0.12em',
+                      letterSpacing: typography.tracking.wider,
                     }}
                   >
                     {num}
@@ -413,7 +413,7 @@ export default function HowItWorksPage() {
                     fontSize: typography.sizes.xs,
                     fontWeight: typography.weights.medium,
                     color: colours.textTertiary,
-                    letterSpacing: '0.1em',
+                    letterSpacing: typography.tracking.wider,
                     paddingTop: '1px',
                   }}
                 >

@@ -52,7 +52,7 @@ export default function PrivacyPolicyPage() {
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.medium,
               color: colours.textTertiary,
-              letterSpacing: '0.18em',
+              letterSpacing: typography.tracking.wider,
               textTransform: 'uppercase' as const,
               display: 'block',
               marginBottom: '16px',
@@ -62,10 +62,11 @@ export default function PrivacyPolicyPage() {
           </span>
           <h1
             style={{
-              fontSize: '36px',
+              fontSize: '44px',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
               letterSpacing: typography.tracking.tight,
+              lineHeight: typography.lineHeight.display,
               margin: '0 0 16px',
             }}
           >
