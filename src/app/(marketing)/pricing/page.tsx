@@ -321,7 +321,6 @@ export default function PricingPage() {
               color: colours.textSecondary,
               lineHeight: '1.65',
               margin: '0',
-              maxWidth: '520px',
             }}
           >
             All plans include the free tier for responding to data requests.

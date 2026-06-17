@@ -3,7 +3,7 @@ import { colours, typography } from '@/lib/design-system'
 // IMPORTANT: This document must be reviewed by a qualified solicitor before publication.
 
 const container = {
-  maxWidth: '720px',
+  maxWidth: '1140px',
   margin: '0 auto',
   padding: '0 40px',
 }

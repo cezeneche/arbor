@@ -70,7 +70,6 @@ export default function HomePage() {
               letterSpacing: typography.tracking.tight,
               lineHeight: typography.lineHeight.display,
               margin: '0 0 28px',
-              maxWidth: '600px',
             }}
           >
             Operational data, all in one verified data record.
@@ -82,7 +81,6 @@ export default function HomePage() {
               color: 'rgba(255,255,255,0.65)',
               lineHeight: typography.lineHeight.body,
               margin: '0 0 40px',
-              maxWidth: '520px',
             }}
           >
             arbor reads your operational data, certifies the data, and stores it permanently.
@@ -179,10 +177,10 @@ export default function HomePage() {
       <section style={{ backgroundColor: colours.background, padding: '88px 0' }}>
         <div style={container}>
           <span style={sectionEyebrow}>The problem</span>
-          <h2 style={{ ...sectionHeading, maxWidth: '600px' }}>
+          <h2 style={sectionHeading}>
             The same data, rebuilt from scratch, every time.
           </h2>
-          <p style={{ ...sectionBody, maxWidth: '560px', marginBottom: '56px' }}>
+          <p style={{ ...sectionBody, marginBottom: '56px' }}>
             Manufacturers receive increasing requests for operational data from customers,
             auditors, and regulators. Each request triggers the same process: find the documents,
             extract the figures, format the output. Hours spent. Same data arrived at differently.
@@ -191,7 +189,7 @@ export default function HomePage() {
             {[
               {
                 heading: 'Rebuilt every time',
-                body: 'Every data request means reconstructing the same figures from different sources. Supplier questionnaires, customs declarations, audit requests — each answered from scratch.',
+                body: 'Every data request means reconstructing the same figures from different sources. Supplier questionnaires, customs declarations, audit requests, each answered from scratch.',
               },
               {
                 heading: 'No audit trail',
@@ -315,10 +313,10 @@ export default function HomePage() {
       <section style={{ backgroundColor: colours.background, padding: '88px 0' }}>
         <div style={container}>
           <span style={sectionEyebrow}>Data certification</span>
-          <h2 style={{ ...sectionHeading, maxWidth: '560px' }}>
+          <h2 style={sectionHeading}>
             Every record carries a certification label, permanently.
           </h2>
-          <p style={{ ...sectionBody, maxWidth: '520px', marginBottom: '48px' }}>
+          <p style={{ ...sectionBody, marginBottom: '48px' }}>
             Trust tiers are assigned automatically from the quality of the source. They travel
             with the data in every output and cannot be removed or hidden.
           </p>
@@ -543,7 +541,7 @@ export default function HomePage() {
         <div style={container}>
           <span style={sectionEyebrow}>Data domains</span>
           <h2 style={sectionHeading}>Eight certified operational data domains.</h2>
-          <p style={{ ...sectionBody, maxWidth: '520px', marginBottom: '48px' }}>
+          <p style={{ ...sectionBody, marginBottom: '48px' }}>
             Every data record is classified into one of eight operational domains.
             Domain classification travels with every export.
           </p>

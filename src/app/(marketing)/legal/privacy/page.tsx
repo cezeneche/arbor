@@ -4,7 +4,7 @@ import { colours, typography } from '@/lib/design-system'
 // Placeholder company details (marked with []) must be replaced before going live.
 
 const container = {
-  maxWidth: '720px',
+  maxWidth: '1140px',
   margin: '0 auto',
   padding: '0 40px',
 }

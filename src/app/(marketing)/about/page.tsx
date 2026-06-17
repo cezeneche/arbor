@@ -45,7 +45,6 @@ export default function AboutPage() {
               letterSpacing: typography.tracking.heading,
               lineHeight: typography.lineHeight.display,
               margin: '0 0 24px',
-              maxWidth: '640px',
             }}
           >
             Built for the data obligations manufacturers didn&apos;t ask for.
@@ -56,7 +55,6 @@ export default function AboutPage() {
               fontWeight: typography.weights.light,
               color: 'rgba(255,255,255,0.6)',
               lineHeight: typography.lineHeight.body,
-              maxWidth: '560px',
               margin: 0,
             }}
           >
@@ -85,10 +83,10 @@ export default function AboutPage() {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {[
-              'Manufacturers, suppliers, and producers upload the documents their business already produces — energy bills, production logs, delivery notes, freight invoices, customs declarations, certificates.',
+              'Manufacturers, suppliers, and producers upload the documents their business already produces: energy bills, production logs, delivery notes, freight invoices, customs declarations, certificates.',
               'arbor reads each document, extracts the structured data it contains, and asks the user to review anything it is not confident about.',
               'Once confirmed, the data is written as a permanent, immutable record. Source text is recorded. Trust tier is assigned. An HMAC audit chain links every record to its predecessors.',
-              'Those certified records can then be shared with any authorised party — a customer, an auditor, a regulator — instantly and in a consistent format.',
+              'Those certified records can then be shared with any authorised party (a customer, an auditor, a regulator) instantly and in a consistent format.',
               'The data does not change between submissions. The same record answers every request.',
             ].map((para, i) => (
               <p
@@ -187,9 +185,9 @@ export default function AboutPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {[
               'The Carbon Border Adjustment Mechanism (CBAM) requires importers to report embedded emissions data for goods entering the EU. Suppliers to those importers need to provide that data. It must be verifiable.',
-              'Corporate Sustainability Reporting Directive (CSRD) and related Scope 3 obligations mean large buyers need certified emissions and activity data from their entire supply chain — not estimates, but documented figures.',
+              'Corporate Sustainability Reporting Directive (CSRD) and related Scope 3 obligations mean large buyers need certified emissions and activity data from their entire supply chain, not estimates, but documented figures.',
               'Procurement due diligence requirements are extending further down supply chains. Buyers are asking for more, and expecting it faster.',
-              'Each of these obligations requires the same underlying operational data. A manufacturer answering a CBAM request, a customer ESG questionnaire, and a procurement audit is answering different questions with the same figures — but currently has to reconstruct those figures from scratch each time.',
+              'Each of these obligations requires the same underlying operational data. A manufacturer answering a CBAM request, a customer ESG questionnaire, and a procurement audit is answering different questions with the same figures, but currently has to reconstruct those figures from scratch each time.',
               'arbor exists to change that. Submit your documents once. Answer every request from the same certified record.',
             ].map((para, i) => (
               <p
@@ -233,7 +231,7 @@ export default function AboutPage() {
               },
               {
                 heading: 'Provenance is non-negotiable',
-                body: 'Every data point carries its source. Confidence below threshold is flagged — never silently accepted. Users always know the quality of the data they are looking at.',
+                body: 'Every data point carries its source. Confidence below threshold is flagged, never silently accepted. Users always know the quality of the data they are looking at.',
               },
               {
                 heading: 'Immutability by design',
@@ -245,7 +243,7 @@ export default function AboutPage() {
               },
               {
                 heading: 'Separation of concerns',
-                body: 'AI belongs in ingestion only. Storage is deterministic. Access is read-only. These boundaries are not guidelines — they are enforced in the architecture.',
+                body: 'AI belongs in ingestion only. Storage is deterministic. Access is read-only. These boundaries are not guidelines; they are enforced in the architecture.',
               },
               {
                 heading: 'Owned by the submitter',

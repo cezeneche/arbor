@@ -48,7 +48,6 @@ export default function HowItWorksPage() {
               letterSpacing: typography.tracking.tight,
               lineHeight: typography.lineHeight.display,
               margin: '0 0 20px',
-              maxWidth: '640px',
             }}
           >
             Document in. Certified record out.
@@ -60,7 +59,6 @@ export default function HowItWorksPage() {
               color: colours.textSecondary,
               lineHeight: typography.lineHeight.body,
               margin: 0,
-              maxWidth: '560px',
             }}
           >
             arbor takes the operational documents your business already produces and turns
@@ -74,7 +72,7 @@ export default function HowItWorksPage() {
       <section style={{ backgroundColor: colours.background, padding: '80px 0' }}>
         <div style={container}>
           <span style={eyebrow}>The three layers</span>
-          <h2 style={{ ...sectionHeading, maxWidth: '540px' }}>
+          <h2 style={sectionHeading}>
             Three separate layers. Each with a single job.
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: colours.border, marginTop: '40px' }}>
@@ -163,7 +161,7 @@ export default function HowItWorksPage() {
                 heading: 'Upload your document',
                 detail: [
                   'Accepted formats: PDF, JPEG, PNG.',
-                  'Select the document type — electricity bill, freight invoice, production log, customs declaration, and more.',
+                  'Select the document type: electricity bill, freight invoice, production log, customs declaration, and more.',
                   'Optionally set the reporting period end date, used for certificate expiry validation.',
                   'Drag and drop or click to browse. Maximum file size 50 MB.',
                 ],
@@ -174,7 +172,7 @@ export default function HowItWorksPage() {
                 detail: [
                   'arbor reads the document and identifies the data fields that belong to that document type.',
                   'Each field is assigned a confidence score between 0 and 1, based on how clearly it can be read from the source.',
-                  'The source text — the exact words from the document — is recorded alongside each extracted value.',
+                  'The source text (the exact words from the document) is recorded alongside each extracted value.',
                   'Fields with a confidence score below 0.85 are automatically flagged for your review.',
                 ],
               },
@@ -184,7 +182,7 @@ export default function HowItWorksPage() {
                 detail: [
                   'You see the extracted value, the confidence score, and the source text side by side.',
                   'You can confirm the value, correct it, or reject it entirely.',
-                  'A field you confirm manually is treated as Verified — the same as a high-confidence extraction.',
+                  'A field you confirm manually is treated as Verified, the same as a high-confidence extraction.',
                   'If you reject a field, it is not written to the database.',
                 ],
               },
@@ -205,7 +203,7 @@ export default function HowItWorksPage() {
                   'Certified records are immediately queryable from your data portal.',
                   'You can share records directly with authorised buyers via the access control panel.',
                   'Buyers can query your data through the arbor interface or pull it directly via the API.',
-                  'Every export includes the trust tier and certification label — there is no way to share a record without disclosing its provenance.',
+                  'Every export includes the trust tier and certification label. There is no way to share a record without disclosing its provenance.',
                 ],
               },
             ].map(({ n, heading, detail }) => (
@@ -282,8 +280,8 @@ export default function HowItWorksPage() {
       <section style={{ backgroundColor: colours.background, padding: '80px 0' }}>
         <div style={container}>
           <span style={eyebrow}>Trust tiers</span>
-          <h2 style={{ ...sectionHeading, maxWidth: '560px' }}>
-            How trust tier is determined — and why it cannot be changed.
+          <h2 style={sectionHeading}>
+            How trust tier is determined, and why it cannot be changed.
           </h2>
           <p
             style={{
@@ -291,12 +289,11 @@ export default function HowItWorksPage() {
               fontWeight: typography.weights.light,
               color: colours.textSecondary,
               lineHeight: typography.lineHeight.body,
-              maxWidth: '600px',
               margin: '0 0 48px',
             }}
           >
             Trust tier is assigned automatically at the time a record is written. It reflects
-            the quality of evidence behind the data point. It is not a user setting — it
+            the quality of evidence behind the data point. It is not a user setting; it
             is a property of the record, computed from facts.
           </p>
 
@@ -314,13 +311,13 @@ export default function HowItWorksPage() {
                 colour: colours.amber,
                 bg: colours.amberBg,
                 rule: 'Entered directly by the user without an attached supporting document, or the submitted document failed one or more quality checks that did not prevent submission.',
-                note: 'Declared data is not untrustworthy — it is self-reported. Many regulatory frameworks accept declared data. The label makes that clear.',
+                note: 'Declared data is not untrustworthy; it is self-reported. Many regulatory frameworks accept declared data. The label makes that clear.',
               },
               {
                 tier: 'Estimated',
                 colour: colours.textTertiary,
                 bg: colours.background,
-                rule: 'No company-specific data is available. A published default reference value has been applied. The source is always cited — typically a regulatory or industry database.',
+                rule: 'No company-specific data is available. A published default reference value has been applied. The source is always cited, typically a regulatory or industry database.',
                 note: 'Estimated records are never presented as actual activity data. They fill gaps in completeness reporting only.',
               },
             ].map(({ tier, colour, bg, rule, note }) => (
@@ -407,7 +404,7 @@ export default function HowItWorksPage() {
               'The HMAC is computed over the full record content using a server-side key.',
               'The chain links each record to the hash of its predecessor for that entity.',
               'The chain can be independently verified by downloading the full audit package from your data portal.',
-              'Corrections create new records that supersede — they do not modify or delete existing records.',
+              'Corrections create new records that supersede; they do not modify or delete existing records.',
             ].map((line, i) => (
               <div key={i} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                 <span
