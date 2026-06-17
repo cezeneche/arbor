@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
 const schema = z.object({ allow: z.boolean() })
@@ -9,8 +9,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ entityId: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  const { session, response } = await requireAuth()
+  if (!session) return response!
   const sessionEntityId = (session.user as Record<string, unknown>).entityId as string
   const { entityId } = await params
 

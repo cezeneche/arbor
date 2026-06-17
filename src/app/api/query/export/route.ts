@@ -2,7 +2,7 @@
 // Auth: session only (buyers). Validates grants before returning any supplier data.
 // Trust tier and provenance travel with every record — cannot be removed (PRD §21.2).
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
 import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
@@ -10,8 +10,8 @@ import { domainSchema } from '@/lib/constants'
 import type { DataDomain } from '@prisma/client'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  const { session, response } = await requireAuth()
+  if (!session) return response!
 
   const buyerEntityId = (session.user as Record<string, unknown>).entityId as string
 

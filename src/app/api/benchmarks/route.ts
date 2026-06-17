@@ -2,7 +2,7 @@
 // Only includes entities with allowBenchmarkAggregation=true.
 // Population floor: 10 distinct entities required before any figure is shown (PRD §16.3).
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
 export interface BenchmarkPoint {
@@ -39,8 +39,8 @@ function computeStats(values: number[]): { min: number; q1: number; median: numb
 const POPULATION_FLOOR = 10
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  const { session, response } = await requireAuth()
+  if (!session) return response!
 
   const sp = req.nextUrl.searchParams
   const filterSector = sp.get('sector') ?? undefined

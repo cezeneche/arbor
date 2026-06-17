@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
 const schema = z.object({
@@ -11,13 +11,8 @@ const schema = z.object({
 })
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-
-  const role = (session.user as Record<string, unknown>).role as string
-  if (role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Only administrators can update organisation details' }, { status: 403 })
-  }
+  const { session, response } = await requireAdmin()
+  if (!session) return response!
 
   const entityId = (session.user as Record<string, unknown>).entityId as string
 
