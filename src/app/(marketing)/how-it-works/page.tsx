@@ -315,8 +315,8 @@ export default function HowItWorksPage() {
               },
               {
                 tier: 'Estimated',
-                colour: colours.textTertiary,
-                bg: colours.background,
+                colour: colours.slate,
+                bg: colours.slateBg,
                 rule: 'No company-specific data is available. A published default reference value has been applied. The source is always cited, typically a regulatory or industry database.',
                 note: 'Estimated records are never presented as actual activity data. They fill gaps in completeness reporting only.',
               },

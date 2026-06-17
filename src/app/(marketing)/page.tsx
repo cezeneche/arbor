@@ -336,8 +336,8 @@ export default function HomePage() {
               },
               {
                 tier: 'Estimated',
-                colour: colours.textTertiary,
-                bg: colours.surface,
+                colour: colours.slate,
+                bg: colours.slateBg,
                 body: 'A published default reference value has been applied. Source always cited. Never presented as actual activity data from your operations.',
               },
             ].map(({ tier, colour, bg, body }) => (

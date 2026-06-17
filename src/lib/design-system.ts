@@ -13,6 +13,8 @@ export const colours = {
   amberBg: '#FDF8EE',
   red: '#8F1A1A',
   redBg: '#FDF1F1',
+  slate: '#54534C',
+  slateBg: '#EFEEE9',
 } as const
 
 export const typography = {
@@ -67,8 +69,8 @@ export const trustTierConfig = {
   },
   C: {
     label: 'Estimated',
-    colour: colours.textTertiary,
-    bg: colours.background,
+    colour: colours.slate,
+    bg: colours.slateBg,
     description: 'Published default factor applied. Not actual activity data.',
   },
 } as const
