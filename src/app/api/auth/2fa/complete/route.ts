@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decryptTotpSecret, verifyTotpCode, verifyRecoveryCode, hashRecoveryCode } from '@/lib/auth/totp'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 const bodySchema = z.object({
   code: z.string().min(1),
@@ -21,6 +22,15 @@ export async function POST(req: NextRequest) {
   }
   if (!user.pending2fa) {
     return NextResponse.json({ error: 'No 2FA challenge is active.' }, { status: 400 })
+  }
+
+  // Anti-brute-force: cap verification attempts per user (6-digit TOTP / recovery codes).
+  const { allowed } = await checkRateLimit(RATE_LIMITS.twoFactor, user.id as string)
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait a few minutes and try again.' },
+      { status: 429 },
+    )
   }
 
   const body = bodySchema.safeParse(await req.json().catch(() => null))

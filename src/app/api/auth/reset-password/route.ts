@@ -3,18 +3,26 @@ import { z } from 'zod'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { hashResetToken, isResetTokenUsable } from '@/lib/auth/password-reset'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/rate-limit-pure'
 
 const schema = z.object({
   token: z.string().min(1),
   password: z.string().min(8).max(200),
 })
 
-const INVALID = NextResponse.json(
+const INVALID = () => NextResponse.json(
   { error: 'This reset link is invalid or has expired. Please request a new one.' },
   { status: 400 },
 )
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'))
+  const { allowed } = await checkRateLimit(RATE_LIMITS.resetPassword, ip)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
+
   const body = await req.json().catch(() => null)
   const parsed = schema.safeParse(body)
   if (!parsed.success) {
@@ -29,7 +37,7 @@ export async function POST(req: NextRequest) {
     select: { id: true, userId: true, expiresAt: true, usedAt: true },
   })
 
-  if (!record || !isResetTokenUsable(record)) return INVALID
+  if (!record || !isResetTokenUsable(record)) return INVALID()
 
   const passwordHash = await hash(password, 12)
 
@@ -39,7 +47,7 @@ export async function POST(req: NextRequest) {
     where: { id: record.id, usedAt: null },
     data: { usedAt: new Date() },
   })
-  if (consumed.count === 0) return INVALID
+  if (consumed.count === 0) return INVALID()
 
   // Bump tokenVersion to invalidate any existing JWT sessions for this user.
   // The next time those sessions hit a server-side auth() check, the DB version
