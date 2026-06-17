@@ -182,7 +182,7 @@ export default function AboutPage() {
           >
             The data burden on manufacturers is accelerating.
           </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ columnCount: 2, columnGap: '40px' }}>
             {[
               'The Carbon Border Adjustment Mechanism (CBAM) requires importers to report embedded emissions data for goods entering the EU. Suppliers to those importers need to provide that data. It must be verifiable.',
               'Corporate Sustainability Reporting Directive (CSRD) and related Scope 3 obligations mean large buyers need certified emissions and activity data from their entire supply chain, not estimates, but documented figures.',
@@ -197,7 +197,8 @@ export default function AboutPage() {
                   fontWeight: typography.weights.light,
                   color: colours.textSecondary,
                   lineHeight: typography.lineHeight.body,
-                  margin: 0,
+                  margin: '0 0 20px',
+                  breakInside: 'avoid',
                 }}
               >
                 {para}

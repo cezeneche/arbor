@@ -297,7 +297,7 @@ export default function HowItWorksPage() {
             is a property of the record, computed from facts.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: colours.border }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: colours.border }}>
             {[
               {
                 tier: 'Verified',
@@ -326,10 +326,6 @@ export default function HowItWorksPage() {
                 style={{
                   backgroundColor: colours.surface,
                   padding: '32px',
-                  display: 'grid',
-                  gridTemplateColumns: '160px 1fr',
-                  gap: '32px',
-                  alignItems: 'flex-start',
                 }}
               >
                 <div
@@ -344,35 +340,33 @@ export default function HowItWorksPage() {
                     borderRadius: '3px',
                     letterSpacing: typography.tracking.wide,
                     textTransform: 'uppercase' as const,
-                    alignSelf: 'flex-start',
+                    marginBottom: '20px',
                   }}
                 >
                   {tier}
                 </div>
-                <div>
-                  <p
-                    style={{
-                      fontSize: typography.sizes.sm,
-                      fontWeight: typography.weights.light,
-                      color: colours.textPrimary,
-                      lineHeight: typography.lineHeight.body,
-                      margin: '0 0 10px',
-                    }}
-                  >
-                    {rule}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: typography.sizes.xs,
-                      fontWeight: typography.weights.light,
-                      color: colours.textTertiary,
-                      lineHeight: typography.lineHeight.body,
-                      margin: 0,
-                    }}
-                  >
-                    {note}
-                  </p>
-                </div>
+                <p
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.light,
+                    color: colours.textPrimary,
+                    lineHeight: typography.lineHeight.body,
+                    margin: '0 0 10px',
+                  }}
+                >
+                  {rule}
+                </p>
+                <p
+                  style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.light,
+                    color: colours.textTertiary,
+                    lineHeight: typography.lineHeight.body,
+                    margin: 0,
+                  }}
+                >
+                  {note}
+                </p>
               </div>
             ))}
           </div>
