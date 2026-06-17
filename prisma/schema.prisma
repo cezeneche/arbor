@@ -84,10 +84,25 @@ model User {
   entity       Entity   @relation(fields: [entityId], references: [id])
   createdAt    DateTime @default(now())
 
-  accounts    Account[]
-  sessions    Session[]
-  submissions DataRecord[]
-  requests    DataRequest[]
+  accounts            Account[]
+  sessions            Session[]
+  submissions         DataRecord[]
+  requests            DataRequest[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+// ── PASSWORD RESET ────────────────────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique // SHA-256 of the high-entropy token sent by email
+  expiresAt DateTime
+  usedAt    DateTime? // set when the token is consumed; single-use
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum UserRole {
