@@ -4,11 +4,18 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-export default async function SupplyChainPage() {
+export default async function SupplyChainPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}) {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
   const entityId = (session.user as Record<string, unknown>).entityId as string
+  const sp = await searchParams
+  const expiringOnly = sp.expiring === '1'
+  const now = new Date()
 
   const grants = await prisma.dataAccessGrant.findMany({
     where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
@@ -24,7 +31,7 @@ export default async function SupplyChainPage() {
           sector: true,
           dataRecords: {
             where: { isActive: true },
-            select: { domain: true, trustTier: true, periodEnd: true, periodStart: true },
+            select: { domain: true, trustTier: true, periodEnd: true, periodStart: true, staleAfterDate: true },
           },
           documents: {
             orderBy: { submittedAt: 'desc' },
@@ -55,8 +62,15 @@ export default async function SupplyChainPage() {
         return domainMatch && startMatch && endMatch
       })
     )
-    return { grantorEntityId, grantorEntity: { ...first.grantorEntity, dataRecords: allRecords } }
+    const expiringCount = allRecords.filter(
+      (r) => r.staleAfterDate && new Date(r.staleAfterDate) < now,
+    ).length
+    return { grantorEntityId, grantorEntity: { ...first.grantorEntity, dataRecords: allRecords }, expiringCount }
   })
+
+  // Gap 2 — buyer filter: show only suppliers with expiring/stale records.
+  const visibleSuppliers = expiringOnly ? suppliers.filter((s) => s.expiringCount > 0) : suppliers
+  const suppliersWithExpiring = suppliers.filter((s) => s.expiringCount > 0).length
 
   const sectionLabel = {
     fontSize: typography.sizes.xs,
@@ -104,6 +118,34 @@ export default async function SupplyChainPage() {
         </div>
       </div>
 
+      {/* Gap 2 — filter to suppliers with expiring/stale records */}
+      {suppliersWithExpiring > 0 && (
+        <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[3] }}>
+          <Link
+            href="/supply-chain"
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: expiringOnly ? typography.weights.light : typography.weights.medium,
+              color: expiringOnly ? colours.textSecondary : colours.navy,
+              textDecoration: 'none',
+            }}
+          >
+            All suppliers
+          </Link>
+          <Link
+            href="/supply-chain?expiring=1"
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: expiringOnly ? typography.weights.medium : typography.weights.light,
+              color: expiringOnly ? colours.amber : colours.textSecondary,
+              textDecoration: 'none',
+            }}
+          >
+            Expiring records ({suppliersWithExpiring})
+          </Link>
+        </div>
+      )}
+
       {suppliers.length === 0 ? (
         <div
           style={{
@@ -137,7 +179,7 @@ export default async function SupplyChainPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {suppliers.map(grant => {
+          {visibleSuppliers.map(grant => {
             const supplier = grant.grantorEntity
             const records = supplier.dataRecords
             const lastDoc = supplier.documents[0]
@@ -183,9 +225,28 @@ export default async function SupplyChainPage() {
                         fontWeight: typography.weights.medium,
                         color: colours.textPrimary,
                         margin: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing[1],
                       }}
                     >
                       {supplier.legalName}
+                      {grant.expiringCount > 0 && (
+                        <span
+                          style={{
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.medium,
+                            color: colours.amber,
+                            backgroundColor: colours.amberBg,
+                            border: `1px solid ${colours.amber}`,
+                            borderRadius: '10px',
+                            padding: '1px 8px',
+                            letterSpacing: typography.tracking.normal,
+                          }}
+                        >
+                          {grant.expiringCount} expiring
+                        </span>
+                      )}
                     </p>
                     <p
                       style={{

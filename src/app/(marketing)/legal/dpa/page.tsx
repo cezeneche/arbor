@@ -1,4 +1,5 @@
 import { colours, typography } from '@/lib/design-system'
+import { SUB_PROCESSORS, DPA_LAST_UPDATED } from '@/lib/legal/subprocessors'
 
 // IMPORTANT: This document must be reviewed by a qualified solicitor before publication.
 
@@ -80,6 +81,23 @@ export default function DpaPage() {
             (&quot;Customer&quot;, &quot;Controller&quot;). It applies where arbor processes personal data on behalf
             of the Customer in the course of providing the arbor platform service.
           </p>
+          <a
+            href="/api/legal/dpa"
+            style={{
+              display: 'inline-block',
+              marginTop: '20px',
+              padding: '10px 20px',
+              backgroundColor: colours.navy,
+              color: colours.surface,
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.medium,
+              borderRadius: '4px',
+              textDecoration: 'none',
+              letterSpacing: typography.tracking.wide,
+            }}
+          >
+            Download DPA (v1)
+          </a>
         </div>
       </div>
 
@@ -306,6 +324,21 @@ export default function DpaPage() {
             conflict with confidentiality obligations to other customers) and in such case shall work with
             the Customer to agree an alternative approach that satisfies the Customer&apos;s compliance needs.
           </p>
+
+          <h2 style={h2Style}>Appendix A — Sub-processors</h2>
+          <p style={pStyle}>
+            arbor engages the following sub-processors to provide the Services. This
+            list is current as of {DPA_LAST_UPDATED}. The Customer will be notified of
+            changes in advance.
+          </p>
+          <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
+            {SUB_PROCESSORS.map((s) => (
+              <li key={s.name} style={liStyle}>
+                <strong style={{ fontWeight: typography.weights.medium, color: colours.textPrimary }}>{s.name}</strong>
+                {' '}— {s.activity}. Location: {s.location}.
+              </li>
+            ))}
+          </ul>
 
           <h2 style={h2Style}>13. Governing law</h2>
           <p style={pStyle}>

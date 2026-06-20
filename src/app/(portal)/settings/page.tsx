@@ -150,6 +150,35 @@ export default async function SettingsPage() {
             </Link>
           </div>
         </div>
+
+        {/* Admin-only: connectors, webhooks, SSO */}
+        {sessionRole === 'ADMIN' && (
+          <div style={sectionStyle}>
+            <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[2]}` }}>
+              Administration
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { href: '/settings/integrations', label: 'ERP & customs integrations', desc: 'Connect CDS, SAP, or NetSuite to pull data automatically.' },
+                { href: '/settings/webhooks', label: 'Webhooks', desc: 'Receive signed callbacks on certified records and access changes.' },
+                { href: '/settings/sso', label: 'Single sign-on', desc: 'Connect your identity provider via WorkOS.' },
+              ].map((row) => (
+                <div key={row.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] }}>
+                  <div>
+                    <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>{row.label}</p>
+                    <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>{row.desc}</p>
+                  </div>
+                  <Link
+                    href={row.href}
+                    style={{ padding: '6px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.navy, border: `1px solid ${colours.border}`, borderRadius: '4px', textDecoration: 'none', letterSpacing: typography.tracking.wide, whiteSpace: 'nowrap' as const }}
+                  >
+                    Manage
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

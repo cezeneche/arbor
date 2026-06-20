@@ -198,7 +198,7 @@ export default function SubmitPage() {
             {request.buyerName} needs some data from you
           </h1>
           <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[3]}`, lineHeight: '1.6' }}>
-            They need your {DOMAIN_LABELS[request.domain] ?? request.domain} figures for {periodLabel}. Enter the values below. It should take about five minutes.
+            They need your {DOMAIN_LABELS[request.domain] ?? request.domain} figures for {periodLabel}. Enter the values below — leave blank any figures you don&apos;t have. It should take about five minutes.
           </p>
 
           {request.notes && (
@@ -225,7 +225,6 @@ export default function SubmitPage() {
                     <input
                       type="number"
                       step="any"
-                      required
                       placeholder="0"
                       value={values[field] ?? ''}
                       onChange={e => setValues(v => ({ ...v, [field]: e.target.value }))}
@@ -243,7 +242,6 @@ export default function SubmitPage() {
                     />
                     <input
                       type="text"
-                      required
                       placeholder="unit (e.g. kWh)"
                       value={units[field] ?? ''}
                       onChange={e => setUnits(u => ({ ...u, [field]: e.target.value }))}

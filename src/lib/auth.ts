@@ -7,11 +7,35 @@ import { compare } from 'bcryptjs'
 import { authConfig } from '@/lib/auth.config'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
+import { verifySsoToken } from '@/lib/sso/sso-token'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
+    // Gap 10 — SSO sign-in: a one-time signed token minted by the WorkOS callback.
+    Credentials({
+      id: 'workos',
+      name: 'WorkOS SSO',
+      credentials: { token: { label: 'Token', type: 'text' } },
+      async authorize(credentials) {
+        const token = typeof credentials?.token === 'string' ? credentials.token : null
+        if (!token) return null
+        const userId = verifySsoToken(token)
+        if (!userId) return null
+        const user = await prisma.user.findUnique({ where: { id: userId } })
+        // SSO users skip TOTP (their IdP enforces MFA), but must be active.
+        if (!user || !user.isActive) return null
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          entityId: user.entityId,
+          role: user.role,
+          tokenVersion: user.tokenVersion,
+        }
+      },
+    }),
     Credentials({
       credentials: {
         email: { label: 'Email', type: 'email' },
@@ -40,6 +64,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         })
 
         if (!user || !user.passwordHash) return null
+        // Gap 10 — deprovisioned (SCIM-disabled) accounts cannot sign in.
+        if (!user.isActive) return null
         const valid = await compare(parsed.data.password, user.passwordHash)
         if (!valid) return null
 

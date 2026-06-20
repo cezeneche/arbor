@@ -80,7 +80,8 @@ export default async function DashboardPage({
   const sp = await searchParams
   const reqPage = Math.max(1, parseInt(sp.reqPage ?? '1', 10))
 
-  const [recentDocuments, [pendingRequests, totalPending], allRecords] = await Promise.all([
+  const now = new Date()
+  const [recentDocuments, [pendingRequests, totalPending], allRecords, expiringDocs, staleRecords] = await Promise.all([
     prisma.document.findMany({
       where: { entityId },
       orderBy: { submittedAt: 'desc' },
@@ -100,7 +101,61 @@ export default async function DashboardPage({
       where: { entityId, isActive: true },
       select: { domain: true, trustTier: true },
     }),
+    // Gap 2 — documents with a flagged expiry_date field (certificate expiry).
+    prisma.document.findMany({
+      where: {
+        entityId,
+        status: 'ACCEPTED',
+        extractionJobs: { some: { extractedFields: { some: { fieldName: 'expiry_date', flagged: true } } } },
+      },
+      include: {
+        extractionJobs: {
+          orderBy: { completedAt: 'desc' },
+          take: 1,
+          include: { extractedFields: { where: { fieldName: 'expiry_date', flagged: true } } },
+        },
+      },
+      take: 20,
+    }),
+    // Gap 2 — batch/mill records past their staleness horizon.
+    prisma.dataRecord.findMany({
+      where: { entityId, isActive: true, staleAfterDate: { not: null, lt: now } },
+      include: { document: { select: { documentType: true, fileName: true, id: true } } },
+      orderBy: { staleAfterDate: 'asc' },
+      take: 20,
+    }),
   ])
+
+  // Gap 2 — build a plain-English "needs attention" list (certificate expiry + staleness).
+  const readableDocType = (t: string) =>
+    t.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  type AttentionItem = { key: string; text: string; docType: string }
+  const attentionItems: AttentionItem[] = []
+  for (const doc of expiringDocs) {
+    const field = doc.extractionJobs[0]?.extractedFields[0]
+    if (!field) continue
+    const expiry = field.rawValue ? new Date(field.rawValue) : null
+    const label = readableDocType(doc.documentType)
+    if (expiry && !isNaN(expiry.getTime())) {
+      const expired = expiry < now
+      const dateStr = expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      attentionItems.push({
+        key: `cert-${doc.id}`,
+        docType: doc.documentType,
+        text: expired
+          ? `Your ${label} expired ${dateStr} — upload a renewal to restore Verified status.`
+          : `Your ${label} expires ${dateStr} — upload a renewal to keep this record Verified.`,
+      })
+    }
+  }
+  for (const rec of staleRecords) {
+    const label = rec.document ? readableDocType(rec.document.documentType) : 'record'
+    attentionItems.push({
+      key: `stale-${rec.id}`,
+      docType: rec.document?.documentType ?? '',
+      text: `Your ${label} for the period ending ${rec.staleAfterDate ? new Date(rec.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} is now stale — upload a current document to refresh it.`,
+    })
+  }
 
   const reqTotalPages = Math.ceil(totalPending / PAGE_SIZE)
 
@@ -120,6 +175,17 @@ export default async function DashboardPage({
   const verifiedPct = totalRecords > 0 ? Math.round((verifiedCount / totalRecords) * 100) : 0
   const openRequestsCount = totalPending
   const reviewCount = recentDocuments.filter(d => d.status === 'REVIEW_REQUIRED').length
+
+  // Gap 8.3 — onboarding progress. Shown until the first document is uploaded and
+  // its data confirmed (a record written). Removed permanently thereafter.
+  const step1Done = recentDocuments.length > 0
+  const step2Done = totalRecords > 0
+  const onboardingComplete = step1Done && step2Done
+  const onboardingSteps = [
+    { n: 1, label: 'Upload your first document', done: step1Done },
+    { n: 2, label: 'Check what was found', done: step2Done },
+    { n: 3, label: 'Share when a customer asks', done: false, ready: true },
+  ]
 
   return (
     <div>
@@ -158,6 +224,122 @@ export default async function DashboardPage({
           Upload documents
         </Link>
       </div>
+
+      {/* Gap 8.3 — onboarding progress, removed once the first record is confirmed. */}
+      {!onboardingComplete && (
+        <section style={{ marginBottom: spacing[4] }}>
+          <div
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '8px',
+              padding: spacing[3],
+              display: 'flex',
+              gap: spacing[4],
+              flexWrap: 'wrap' as const,
+            }}
+          >
+            {onboardingSteps.map((step) => (
+              <div key={step.n} style={{ display: 'flex', gap: spacing[1], alignItems: 'center' }}>
+                <span
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    backgroundColor: step.done ? colours.green : colours.background,
+                    border: `1px solid ${step.done ? colours.green : colours.border}`,
+                    color: step.done ? colours.surface : colours.textTertiary,
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.medium,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {step.done ? '✓' : step.n}
+                </span>
+                <span
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: step.done ? typography.weights.light : typography.weights.medium,
+                    color: step.done ? colours.textTertiary : colours.textPrimary,
+                  }}
+                >
+                  {step.label}
+                  {step.ready && (
+                    <span style={{ color: colours.green, fontWeight: typography.weights.light, marginLeft: '6px' }}>Ready</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Gap 2 — Needs attention: certificate expiry + batch staleness. Shown only when non-empty. */}
+      {attentionItems.length > 0 && (
+        <section style={{ marginBottom: spacing[4] }}>
+          <span
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.medium,
+              color: colours.amber,
+              letterSpacing: typography.tracking.wider,
+              textTransform: 'uppercase' as const,
+              display: 'block',
+              marginBottom: spacing[1],
+            }}
+          >
+            Needs attention
+          </span>
+          <div
+            style={{
+              backgroundColor: colours.amberBg,
+              border: `1px solid ${colours.amber}`,
+              borderLeft: `3px solid ${colours.amber}`,
+              borderRadius: '4px',
+              overflow: 'hidden',
+            }}
+          >
+            {attentionItems.map((item, i) => (
+              <div
+                key={item.key}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  padding: `12px 14px`,
+                  borderBottom: i < attentionItems.length - 1 ? `1px solid ${colours.amber}22` : 'none',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.light,
+                    color: colours.textPrimary,
+                  }}
+                >
+                  {item.text}
+                </span>
+                <Link
+                  href={`/upload${item.docType ? `?type=${item.docType}` : ''}`}
+                  style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.medium,
+                    color: colours.navy,
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap' as const,
+                  }}
+                >
+                  Upload renewal →
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Stats row */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: spacing[4], flexWrap: 'wrap' as const }}>

@@ -1,7 +1,17 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { MessageParam } from '@anthropic-ai/sdk/resources/messages'
-import type { ExtractionInput, ExtractionResult } from './types'
-import { EXTRACTION_SYSTEM_PROMPT, buildExtractionPrompt } from './prompts'
+import type { ContentBlockParam, MessageParam } from '@anthropic-ai/sdk/resources/messages'
+import type {
+  ExtractionInput,
+  ExtractionResult,
+  LanguageDetectionResult,
+  QualityAssessmentResult,
+} from './types'
+import {
+  EXTRACTION_SYSTEM_PROMPT,
+  buildExtractionPrompt,
+  buildLanguageDetectionPrompt,
+  buildQualityAssessmentPrompt,
+} from './prompts'
 import { DOCUMENT_FIELD_DEFINITIONS } from './field-definitions'
 
 // Lazily instantiated so importing this module (e.g. during `next build` page
@@ -12,37 +22,106 @@ function getClient(): Anthropic {
   return _client
 }
 
+const EXTRACTION_MODEL = 'claude-sonnet-4-6'
+
+// Build the document content block once — shared by all three Layer 1 calls.
+function documentContentBlock(
+  base64: string,
+  mediaType: ExtractionInput['mediaType'],
+): ContentBlockParam {
+  return mediaType === 'application/pdf'
+    ? {
+        type: 'document' as const,
+        source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: base64 },
+      }
+    : {
+        type: 'image' as const,
+        source: { type: 'base64' as const, media_type: mediaType, data: base64 },
+      }
+}
+
+function textFromResponse(response: Anthropic.Message): string {
+  return response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
+}
+
+// Gap 1 — cheap language-detection pre-call. Returns 'unknown' on any failure;
+// language detection must never block the extraction pipeline.
+export async function detectLanguage(
+  base64: string,
+  mediaType: ExtractionInput['mediaType'],
+): Promise<LanguageDetectionResult> {
+  try {
+    const response = await getClient().messages.create({
+      model: EXTRACTION_MODEL,
+      max_tokens: 16,
+      messages: [
+        {
+          role: 'user',
+          content: [documentContentBlock(base64, mediaType), { type: 'text', text: buildLanguageDetectionPrompt() }],
+        },
+      ],
+    })
+    const raw = textFromResponse(response).trim().toLowerCase()
+    // The prompt asks for the bare code, but tolerate trailing prose: take the
+    // last isolated two-letter token (codes conventionally appear at the end).
+    const tokens = raw.match(/\b[a-z]{2}\b/g)
+    return { language: tokens && tokens.length > 0 ? tokens[tokens.length - 1] : 'unknown' }
+  } catch {
+    return { language: 'unknown' }
+  }
+}
+
+// Gap 1 — image quality pre-call (images only; PDFs are vector/text and skip this).
+// Returns quality 5 on any failure so a transient error never blocks a good document.
+export async function assessImageQuality(
+  base64: string,
+  mediaType: ExtractionInput['mediaType'],
+): Promise<QualityAssessmentResult> {
+  if (mediaType === 'application/pdf') return { quality: 5, issues: [] }
+  try {
+    const response = await getClient().messages.create({
+      model: EXTRACTION_MODEL,
+      max_tokens: 128,
+      messages: [
+        {
+          role: 'user',
+          content: [documentContentBlock(base64, mediaType), { type: 'text', text: buildQualityAssessmentPrompt() }],
+        },
+      ],
+    })
+    const parsed = JSON.parse(textFromResponse(response).trim()) as Partial<QualityAssessmentResult>
+    const quality = typeof parsed.quality === 'number' ? parsed.quality : 5
+    return { quality, issues: Array.isArray(parsed.issues) ? parsed.issues : [] }
+  } catch {
+    return { quality: 5, issues: [] }
+  }
+}
+
 export async function extractDocument(input: ExtractionInput): Promise<ExtractionResult> {
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[input.documentType] ?? []
   const requiredFields = fieldDefs.map((f) => f.name)
-  const userPrompt = buildExtractionPrompt(input.documentType, requiredFields)
+  const userPrompt = buildExtractionPrompt(input.documentType, requiredFields, input.detectedLanguage)
 
-  // PDFs use type:'document'; images use type:'image'  -  distinct API content block types
-  const documentBlock =
-    input.mediaType === 'application/pdf'
-      ? ({
-          type: 'document' as const,
-          source: {
-            type: 'base64' as const,
-            media_type: 'application/pdf' as const,
-            data: input.documentBase64,
-          },
-        })
-      : ({
-          type: 'image' as const,
-          source: {
-            type: 'base64' as const,
-            media_type: input.mediaType,
-            data: input.documentBase64,
-          },
-        })
+  const isForeign =
+    !!input.detectedLanguage &&
+    input.detectedLanguage !== 'en' &&
+    input.detectedLanguage !== 'unknown'
+  const languageNote = isForeign
+    ? `This document appears to be in ${input.detectedLanguage}. Values have been extracted as written — check numeric fields and units carefully.`
+    : null
 
   const messages: MessageParam[] = [
-    { role: 'user', content: [documentBlock, { type: 'text', text: userPrompt }] },
+    {
+      role: 'user',
+      content: [documentContentBlock(input.documentBase64, input.mediaType), { type: 'text', text: userPrompt }],
+    },
   ]
 
   const response = await getClient().messages.create({
-    model: 'claude-sonnet-4-6',
+    model: EXTRACTION_MODEL,
     max_tokens: 4096,
     system: [
       {
@@ -54,10 +133,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
     messages,
   })
 
-  const rawText = response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
-    .join('')
+  const rawText = textFromResponse(response)
 
   try {
     const parsed = JSON.parse(rawText) as {
@@ -71,6 +147,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
       documentTypeConfirmed: parsed.documentTypeConfirmed ?? input.documentType,
       extractionNotes: parsed.extractionNotes ?? '',
       rawResponse: rawText,
+      languageNote,
     }
   } catch {
     return {
@@ -79,6 +156,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
       documentTypeConfirmed: input.documentType,
       extractionNotes: 'Extraction failed : could not parse Claude response as JSON',
       rawResponse: rawText,
+      languageNote,
     }
   }
 }

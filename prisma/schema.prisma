@@ -57,6 +57,10 @@ model Entity {
   sector                     String
   entityType                 EntityType @default(SUPPLIER)
   allowBenchmarkAggregation  Boolean    @default(false)
+  // Gap 8.4 — unique token for the entity's email-to-upload address.
+  uploadEmailToken           String?    @unique
+  // Gap 10 — WorkOS SSO organisation binding.
+  workosOrganisationId       String?    @unique
   createdAt                  DateTime   @default(now())
   updatedAt                  DateTime   @updatedAt
 
@@ -70,6 +74,11 @@ model Entity {
   dataAccess       DataAccessGrant[] @relation("GrantorEntity")
   receivedAccess   DataAccessGrant[] @relation("GranteeEntity")
   apiKeys          ApiKey[]
+  verificationAssignments VerificationAssignment[]
+  auditPackageLogs        AuditPackageLog[]
+  auditorAccess           AuditorAccess[]
+  webhookSubscriptions    WebhookSubscription[]
+  integrationCredentials  IntegrationCredential[]
 }
 
 // ── USER ──────────────────────────────────────────────────────────────────────
@@ -80,19 +89,24 @@ model User {
   name              String
   passwordHash      String?
   role              UserRole @default(CONTRIBUTOR)
-  entityId          String
-  entity            Entity   @relation(fields: [entityId], references: [id])
+  // Nullable for platform-level roles (VERIFIER, AUDITOR) that belong to no entity.
+  entityId          String?
+  entity            Entity?  @relation(fields: [entityId], references: [id])
   createdAt         DateTime @default(now())
   twoFactorSecret   String?  // AES-256-GCM encrypted TOTP secret
   twoFactorEnabled  Boolean  @default(false)
   tokenVersion      Int      @default(0)
+  // Gap 10 — set false by SCIM deprovision; all auth checks require true.
+  isActive          Boolean  @default(true)
 
-  accounts            Account[]
-  sessions            Session[]
-  submissions         DataRecord[]
-  requests            DataRequest[]
-  passwordResetTokens PasswordResetToken[]
-  totpRecoveryCodes   TotpRecoveryCode[]
+  accounts                Account[]
+  sessions                Session[]
+  submissions             DataRecord[]
+  requests                DataRequest[]
+  passwordResetTokens     PasswordResetToken[]
+  totpRecoveryCodes       TotpRecoveryCode[]
+  verificationAssignments VerificationAssignment[]
+  auditorAccess           AuditorAccess[]
 }
 
 // ── TOTP RECOVERY CODES ───────────────────────────────────────────────────────
@@ -127,6 +141,8 @@ enum UserRole {
   CONTRIBUTOR
   VIEWER
   SYSTEM
+  VERIFIER
+  AUDITOR
 }
 
 // ── DOCUMENT ──────────────────────────────────────────────────────────────────
@@ -202,6 +218,10 @@ model ExtractionJob {
   completedAt  DateTime?
   errorMessage String?          @db.Text
   rawOutput    Json?
+  // Gap 1 — Layer 1 multilingual + degraded-document metadata.
+  detectedLanguage  String? // ISO 639-1 code, or 'unknown'
+  imageQualityScore Float? // 1 (unreadable) to 5 (clear); null for PDFs
+  imageQualityIssues Json? // string[] of detected issues e.g. ["blurry","skewed"]
 
   extractedFields ExtractedField[]
 }
@@ -267,14 +287,38 @@ model DataRecord {
   supersededByThis DataRecord[]     @relation("Supersession")
   isActive         Boolean          @default(true)
   auditHash        String
+  // Gap 2 — batch/mill records go stale after this date (null for non-batch records).
+  staleAfterDate   DateTime?
 
   validationFlags ValidationFlag[]
+  accessLogs      RecordAccessLog[]
 
   @@index([entityId, isActive])
   @@index([entityId, domain, isActive])
   @@index([entityId, trustTier, isActive])
   @@index([entityId, submittedAt])
   @@index([documentId])
+  @@index([entityId, staleAfterDate])
+}
+
+// ── RECORD ACCESS LOG (Gap 5 — who viewed which record, when, how) ────────────
+
+model RecordAccessLog {
+  id              String       @id @default(cuid())
+  recordId        String
+  dataRecord      DataRecord   @relation(fields: [recordId], references: [id])
+  granteeEntityId String
+  accessedAt      DateTime     @default(now())
+  accessMethod    AccessMethod
+
+  @@index([recordId])
+  @@index([granteeEntityId, accessedAt])
+}
+
+enum AccessMethod {
+  API
+  PORTAL
+  EXPORT
 }
 
 enum DataDomain {
@@ -327,6 +371,7 @@ enum FlagType {
   EXPIRED_CERTIFICATE
   DOUBLE_COUNTING
   MISSING_CONDITIONAL_FIELD
+  STALE_RECORD
 }
 
 enum Severity {
@@ -427,6 +472,9 @@ enum NotificationType {
   TIER_UPGRADED
   ACCESS_GRANTED
   ACCESS_REVOKED
+  CERTIFICATE_EXPIRING
+  CERTIFICATE_EXPIRED
+  RECORD_SUPERSEDED
 }
 
 // ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────
@@ -483,6 +531,114 @@ model ApiKey {
   isActive  Boolean   @default(true)
 
   @@index([entityId, isActive])
+}
+
+// ── VERIFICATION ASSIGNMENT (Gap 3 — third-party verifier sign-off) ───────────
+
+model VerificationAssignment {
+  id            String             @id @default(cuid())
+  entityId      String
+  entity        Entity             @relation(fields: [entityId], references: [id])
+  verifierId    String
+  verifier      User               @relation(fields: [verifierId], references: [id])
+  periodStart   DateTime
+  periodEnd     DateTime
+  assignedAt    DateTime           @default(now())
+  status        VerificationStatus @default(PENDING)
+  verifierNote  String?            @db.Text
+  verifiedAt    DateTime?
+  // HMAC of package contents + verifierId + timestamp — the signed verification artefact.
+  signatureHash String?
+
+  @@index([verifierId, status])
+  @@index([entityId, status])
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+// ── AUDIT PACKAGE LOG (Gap 4 — packageHash for public verification) ───────────
+
+model AuditPackageLog {
+  id            String   @id @default(cuid())
+  entityId      String
+  entity        Entity   @relation(fields: [entityId], references: [id])
+  periodStart   DateTime
+  periodEnd     DateTime
+  generatedAt   DateTime @default(now())
+  packageHash   String
+  requestedById String
+
+  @@index([entityId, packageHash])
+}
+
+// ── AUDITOR ACCESS (Gap 4 — scoped external auditor read access) ──────────────
+
+model AuditorAccess {
+  id            String   @id @default(cuid())
+  auditorUserId String
+  auditor       User     @relation(fields: [auditorUserId], references: [id])
+  entityId      String
+  entity        Entity   @relation(fields: [entityId], references: [id])
+  periodStart   DateTime
+  periodEnd     DateTime
+  grantedAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  @@index([auditorUserId, entityId])
+}
+
+// ── WEBHOOK SUBSCRIPTION (Gap 6 — buyer-facing event delivery) ────────────────
+
+model WebhookSubscription {
+  id                 String   @id @default(cuid())
+  entityId           String
+  entity             Entity   @relation(fields: [entityId], references: [id])
+  url                String
+  events             Json // WebhookEventType[]
+  secretEncrypted    String // AES-256-GCM encrypted signing secret (needed to sign deliveries)
+  secretPrefix       String // first chars, shown in the UI for identification
+  createdAt          DateTime  @default(now())
+  isActive           Boolean   @default(true)
+  lastDeliveryAt     DateTime?
+  lastDeliveryStatus String?
+
+  @@index([entityId, isActive])
+}
+
+enum WebhookEventType {
+  RECORD_CERTIFIED
+  RECORD_SUPERSEDED
+  ACCESS_GRANTED
+  ACCESS_REVOKED
+}
+
+// ── INTEGRATION CREDENTIAL (Gap 9 — ERP / customs connectors) ─────────────────
+
+model IntegrationCredential {
+  id                   String              @id @default(cuid())
+  entityId             String
+  entity               Entity              @relation(fields: [entityId], references: [id])
+  provider             IntegrationProvider
+  encryptedCredentials String              @db.Text // AES-256-GCM encrypted JSON blob
+  createdAt            DateTime            @default(now())
+  lastSyncAt           DateTime?
+  lastSyncStatus       String?
+  isActive             Boolean             @default(true)
+
+  @@unique([entityId, provider])
+  @@index([provider, isActive])
+}
+
+enum IntegrationProvider {
+  CDS
+  SAP
+  NETSUITE
+  ORACLE
 }
 
 // ── INSTITUTIONAL ENQUIRY ────────────────────────────────────────────────────

@@ -1,0 +1,17 @@
+import { requireAdmin } from '@/lib/auth-helpers'
+import { ok } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+
+// Gap 9.6 — list the caller entity's integration status. Never returns credentials.
+export async function GET() {
+  const { session, response } = await requireAdmin()
+  if (!session) return response!
+  const entityId = (session.user as Record<string, unknown>).entityId as string
+
+  const creds = await prisma.integrationCredential.findMany({
+    where: { entityId },
+    select: { provider: true, isActive: true, createdAt: true, lastSyncAt: true, lastSyncStatus: true },
+  })
+
+  return ok({ integrations: creds })
+}

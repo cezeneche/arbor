@@ -87,6 +87,7 @@ export function PublicFooter() {
             <Link href="/legal/terms" style={linkStyle}>Terms of service</Link>
             <Link href="/legal/privacy" style={linkStyle}>Privacy policy</Link>
             <Link href="/legal/dpa" style={linkStyle}>Data processing agreement</Link>
+            <Link href="/security" style={linkStyle}>Security</Link>
           </div>
 
           {/* Contact */}

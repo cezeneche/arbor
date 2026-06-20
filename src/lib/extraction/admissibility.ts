@@ -26,11 +26,38 @@ export interface AdmissibilityResult {
   criticalCount: number
 }
 
+// Gap 1 — Layer 1 calibration inputs. Claude reports systematically higher
+// confidence on English, clean documents than its true accuracy warrants on
+// foreign-language or degraded scans. We subtract a small penalty before the
+// threshold comparison so borderline fields are routed to human review. The
+// penalty affects the comparison ONLY — stored confidenceScore stays raw.
+export interface CalibrationInput {
+  detectedLanguage?: string | null
+  imageQualityScore?: number | null
+}
+
+const NON_ENGLISH_CONFIDENCE_PENALTY = 0.05
+const LOW_QUALITY_CONFIDENCE_PENALTY = 0.05
+const LOW_QUALITY_THRESHOLD = 4
+
+function confidencePenalty(calibration?: CalibrationInput): number {
+  if (!calibration) return 0
+  let penalty = 0
+  const lang = calibration.detectedLanguage
+  if (lang && lang !== 'en' && lang !== 'unknown') penalty += NON_ENGLISH_CONFIDENCE_PENALTY
+  const quality = calibration.imageQualityScore
+  if (typeof quality === 'number' && quality < LOW_QUALITY_THRESHOLD) {
+    penalty += LOW_QUALITY_CONFIDENCE_PENALTY
+  }
+  return penalty
+}
+
 export function evaluateAdmissibility(
   documentType: string,
   extractedFields: ExtractedFieldResult[],
   entityName: string,
   reportingPeriodEnd?: Date,
+  calibration?: CalibrationInput,
 ): AdmissibilityResult {
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[documentType] ?? []
   const flags: AdmissibilityFlag[] = []
@@ -72,13 +99,19 @@ export function evaluateAdmissibility(
     }
   }
 
-  // Low confidence
+  // Low confidence — with Gap 1 calibration penalty applied to the comparison only.
+  const penalty = confidencePenalty(calibration)
   for (const f of extractedFields) {
-    if (f.confidenceScore < confidenceThreshold && f.rawValue !== null) {
+    const adjusted = f.confidenceScore - penalty
+    if (adjusted < confidenceThreshold && f.rawValue !== null) {
+      const penaltyNote =
+        penalty > 0
+          ? ` (raw ${f.confidenceScore.toFixed(2)}, adjusted ${adjusted.toFixed(2)} for document quality)`
+          : ''
       flags.push({
         fieldName: f.fieldName,
         flagType: 'LOW_CONFIDENCE',
-        message: `Confidence ${f.confidenceScore.toFixed(2)} below ${confidenceThreshold} threshold for '${f.fieldName}'.`,
+        message: `Confidence ${adjusted.toFixed(2)} below ${confidenceThreshold} threshold for '${f.fieldName}'${penaltyNote}.`,
         severity: 'WARNING',
       })
     }

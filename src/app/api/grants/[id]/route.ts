@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
+import { dispatchWebhook } from '@/lib/webhooks/dispatch'
 
 export async function DELETE(
   _req: NextRequest,
@@ -29,6 +30,8 @@ export async function DELETE(
     type: 'ACCESS_REVOKED',
     payload: { grantId: id, grantorEntityId: entityId },
   }).catch(e => console.error('[grants] sendNotification failed:', e))
+
+  await dispatchWebhook(grant.granteeEntityId, 'access.revoked', { grantId: id, grantorEntityId: entityId })
 
   return NextResponse.json({ ok: true })
 }

@@ -40,6 +40,20 @@ export interface NotificationPayloads {
     grantId: string
     grantorEntityId: string
   }
+  CERTIFICATE_EXPIRING: {
+    count: number
+    soonest: string // plain English, e.g. "ISO 14001 certificate expires in 25 days"
+  }
+  CERTIFICATE_EXPIRED: {
+    count: number
+    detail: string
+  }
+  RECORD_SUPERSEDED: {
+    supplierName: string
+    domain: string
+    periodStart: string
+    periodEnd: string
+  }
 }
 
 export type NotificationInput<T extends NotificationType = NotificationType> = {
@@ -115,6 +129,12 @@ function notificationSubject(type: NotificationType, payload: NotificationPayloa
       return `Data access granted`
     case 'ACCESS_REVOKED':
       return `Data access revoked`
+    case 'CERTIFICATE_EXPIRING':
+      return `Some of your records are expiring soon`
+    case 'CERTIFICATE_EXPIRED':
+      return `Some of your records have expired`
+    case 'RECORD_SUPERSEDED':
+      return `A supplier record has been updated`
     default:
       return `arbor notification`
   }
@@ -151,6 +171,18 @@ function notificationHtml(
       return `<p>A data record has been upgraded to <strong>Verified</strong>.<br><a href="${appUrl}/records">View records</a></p>`
     case 'FLAG_RAISED':
       return `<p>A validation flag has been raised on your data.<br><a href="${appUrl}/records">Review records</a></p>`
+    case 'CERTIFICATE_EXPIRING': {
+      const p = payload as NotificationPayloads['CERTIFICATE_EXPIRING']
+      return `<p>${escapeHtml(p.soonest)}. Upload a renewal to keep ${p.count > 1 ? 'these records' : 'this record'} Verified.<br><a href="${appUrl}/dashboard">View what needs attention</a></p>`
+    }
+    case 'CERTIFICATE_EXPIRED': {
+      const p = payload as NotificationPayloads['CERTIFICATE_EXPIRED']
+      return `<p>${escapeHtml(p.detail)} Upload a renewal to restore Verified status.<br><a href="${appUrl}/dashboard">View what needs attention</a></p>`
+    }
+    case 'RECORD_SUPERSEDED': {
+      const p = payload as NotificationPayloads['RECORD_SUPERSEDED']
+      return `<p>A record from <strong>${escapeHtml(p.supplierName)}</strong> for ${escapeHtml(p.domain)}, ${escapeHtml(p.periodStart)} – ${escapeHtml(p.periodEnd)} has been updated. The original is preserved.<br><a href="${appUrl}/supply-chain">Review the updated record</a></p>`
+    }
     default:
       return `<p><a href="${appUrl}">Log in to arbor</a></p>`
   }

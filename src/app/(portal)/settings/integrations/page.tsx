@@ -1,0 +1,41 @@
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { colours, typography, spacing } from '@/lib/design-system'
+import { IntegrationManager } from './IntegrationManager'
+
+export default async function IntegrationsPage() {
+  const session = await auth()
+  if (!session?.user) redirect('/login')
+  const role = (session.user as Record<string, unknown>).role as string
+  if (role !== 'ADMIN') redirect('/settings')
+  const entityId = (session.user as Record<string, unknown>).entityId as string
+
+  const creds = await prisma.integrationCredential.findMany({
+    where: { entityId },
+    select: { provider: true, isActive: true, lastSyncAt: true, lastSyncStatus: true },
+  })
+
+  const status = Object.fromEntries(
+    creds.map((c) => [c.provider, {
+      connected: c.isActive,
+      lastSyncAt: c.lastSyncAt?.toISOString() ?? null,
+      lastSyncStatus: c.lastSyncStatus,
+    }]),
+  )
+
+  return (
+    <div>
+      <div style={{ marginBottom: spacing[5] }}>
+        <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
+          ERP &amp; customs integrations
+        </h1>
+        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+          Connect your customs or ERP system to pull operational data automatically. Records arrive as Declared (Tier B); submit the source documents to upgrade them to Verified.
+        </p>
+      </div>
+
+      <IntegrationManager initialStatus={status} />
+    </div>
+  )
+}

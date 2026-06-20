@@ -1,58 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-helpers'
-import { prisma } from '@/lib/prisma'
-import { verifyChain } from '@/lib/layer2/audit-chain'
-import type { AuditPayload } from '@/lib/layer2/audit-chain'
+import { assembleAuditPackage } from '@/lib/audit-package/assemble'
 
+// Layer 3 — generate the caller's own audit package, including (Gap 3) any
+// third-party verification block and (Gap 4) the integrity hash + public
+// verification instructions. Generation is logged for later public verification.
 export async function GET(req: NextRequest) {
   const { session, response } = await requireAuth()
   if (!session) return response!
   const entityId = (session.user as Record<string, unknown>).entityId as string
+  const userId = (session.user as Record<string, unknown>).id as string
 
   const sp = req.nextUrl.searchParams
   const periodStart = sp.get('periodStart')
   const periodEnd = sp.get('periodEnd')
 
-  const [records, auditEntries, crossValidations] = await Promise.all([
-    prisma.dataRecord.findMany({
-      where: {
-        entityId,
-        isActive: true,
-        ...(periodStart ? { periodStart: { gte: new Date(periodStart) } } : {}),
-        ...(periodEnd ? { periodEnd: { lte: new Date(periodEnd) } } : {}),
-      },
-      include: {
-        document: { select: { fileName: true, documentType: true } },
-        validationFlags: true,
-      },
-      orderBy: { submittedAt: 'asc' },
-    }),
-    prisma.auditEntry.findMany({
-      where: { entityId },
-      orderBy: { createdAt: 'asc' },
-    }),
-    prisma.crossValidationResult.findMany({
-      where: { entityId },
-      orderBy: { createdAt: 'asc' },
-    }),
-  ])
-
-  const chainEntries = auditEntries.map(e => ({
-    hash: e.hash,
-    previousHash: e.previousHash,
-    payload: e.payload as unknown as AuditPayload,
-  }))
-
-  const chainIntegrityVerified = verifyChain(chainEntries)
+  const { package: pkg, chainIntegrityVerified, auditEntryCount } = await assembleAuditPackage({
+    entityId,
+    periodStart: periodStart ? new Date(periodStart) : null,
+    periodEnd: periodEnd ? new Date(periodEnd) : null,
+    logRequestedById: userId,
+  })
 
   return NextResponse.json({
-    generatedAt: new Date().toISOString(),
+    generatedAt: pkg.generatedAt.toISOString(),
     entityId,
+    entityName: pkg.entityName,
     periodStart,
     periodEnd,
-    recordCount: records.length,
-    records,
-    auditChain: { entryCount: auditEntries.length, chainIntegrityVerified },
-    crossValidations,
+    recordCount: pkg.summary.totalRecords,
+    summary: pkg.summary,
+    records: pkg.dataRecords,
+    sourceDocuments: pkg.sourceDocuments,
+    crossValidations: pkg.crossValidationResults,
+    auditChain: { entryCount: auditEntryCount, chainIntegrityVerified },
+    verification: pkg.verification,
+    packageIntegrityHash: pkg.packageIntegrityHash,
+    verificationInstructions: pkg.verificationInstructions,
   })
 }

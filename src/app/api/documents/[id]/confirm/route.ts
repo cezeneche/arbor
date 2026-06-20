@@ -8,6 +8,10 @@ import { runCrossValidation } from '@/lib/validation/cross-validation'
 import { ExtractionMethod, TrustTier } from '@prisma/client'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
 import { DOCUMENT_FIELD_DEFINITIONS } from '@/lib/extraction/field-definitions'
+import { computeStaleAfterDate } from '@/lib/layer2/staleness'
+import { findActiveGranteeEntityIds } from '@/lib/layer3/grant-access'
+import { sendNotification } from '@/lib/notifications'
+import { dispatchWebhook } from '@/lib/webhooks/dispatch'
 
 const fieldSchema = z.object({
   fieldName: z.string(),
@@ -101,6 +105,9 @@ export async function POST(
 
   // Single serializable transaction: all records + supersessions + document status.
   // If any field write fails the entire confirmation rolls back — no partial state.
+  // Gap 5 — scopes whose prior records were superseded, so we can notify buyers.
+  const supersededScopes: { domain: string; periodStart: Date; periodEnd: Date }[] = []
+
   const createdRecords = await prisma.$transaction(async (tx) => {
     const recordIds: string[] = []
 
@@ -129,6 +136,7 @@ export async function POST(
           documentId,
           sourceText: field.sourceText,
           confidenceScore: field.confidenceScore,
+          staleAfterDate: computeStaleAfterDate(document.documentType, periodEnd),
         },
         'CREATED',
       )
@@ -138,6 +146,7 @@ export async function POST(
           where: { id: { in: prior.map(p => p.id) } },
           data: { isActive: false, supersededById: result.recordId },
         })
+        supersededScopes.push({ domain: field.domain, periodStart, periodEnd })
       }
 
       recordIds.push(result.recordId)
@@ -157,6 +166,75 @@ export async function POST(
   await runCrossValidation(entityId, documentId, document.documentType).catch(
     (e) => console.error('[confirm] runCrossValidation failed:', e)
   )
+
+  // Gap 5 — notify any buyer with active access that a record they can see was
+  // corrected. Deduplicated per grantee+domain. Non-fatal.
+  if (supersededScopes.length > 0) {
+    try {
+      const supplier = await prisma.entity.findUnique({ where: { id: entityId }, select: { legalName: true } })
+      const notified = new Set<string>()
+      for (const scope of supersededScopes) {
+        const grantees = await findActiveGranteeEntityIds(entityId, scope.domain, scope.periodStart, scope.periodEnd)
+        for (const granteeEntityId of grantees) {
+          const dedupKey = `${granteeEntityId}:${scope.domain}`
+          if (notified.has(dedupKey)) continue
+          notified.add(dedupKey)
+          await sendNotification({
+            entityId: granteeEntityId,
+            type: 'RECORD_SUPERSEDED',
+            payload: {
+              supplierName: supplier?.legalName ?? 'A supplier',
+              domain: scope.domain,
+              periodStart: scope.periodStart.toISOString().slice(0, 10),
+              periodEnd: scope.periodEnd.toISOString().slice(0, 10),
+            },
+          })
+          // Gap 6 — webhook to the buyer for the supersession.
+          await dispatchWebhook(granteeEntityId, 'record.superseded', {
+            supplierEntityId: entityId,
+            domain: scope.domain,
+            periodStart: scope.periodStart.toISOString(),
+            periodEnd: scope.periodEnd.toISOString(),
+          })
+        }
+      }
+    } catch (e) {
+      console.error('[confirm] supersession notification failed:', e)
+    }
+  }
+
+  // Gap 6 — fire record.certified webhooks for newly written Tier A records to
+  // any buyer with active access covering that scope.
+  if (trustTier === 'A' && preparedFields.length > 0) {
+    try {
+      const certifiedScopes = new Map<string, { domain: string; periodStart: Date; periodEnd: Date }>()
+      for (const { field, periodStart, periodEnd } of preparedFields) {
+        certifiedScopes.set(`${field.domain}:${periodStart.toISOString()}:${periodEnd.toISOString()}`, {
+          domain: field.domain,
+          periodStart,
+          periodEnd,
+        })
+      }
+      const fired = new Set<string>()
+      for (const scope of certifiedScopes.values()) {
+        const grantees = await findActiveGranteeEntityIds(entityId, scope.domain, scope.periodStart, scope.periodEnd)
+        for (const granteeEntityId of grantees) {
+          const key = `${granteeEntityId}:${scope.domain}`
+          if (fired.has(key)) continue
+          fired.add(key)
+          await dispatchWebhook(granteeEntityId, 'record.certified', {
+            supplierEntityId: entityId,
+            domain: scope.domain,
+            trustTier: 'A',
+            periodStart: scope.periodStart.toISOString(),
+            periodEnd: scope.periodEnd.toISOString(),
+          })
+        }
+      }
+    } catch (e) {
+      console.error('[confirm] record.certified webhook failed:', e)
+    }
+  }
 
   return ok({ recordIds: createdRecords, documentStatus: 'ACCEPTED' })
 }

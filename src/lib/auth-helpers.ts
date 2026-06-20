@@ -79,3 +79,52 @@ export async function requireAdmin() {
   }
   return { session, response: null }
 }
+
+/** Gap 3 — requires an authenticated session with the VERIFIER role.
+ *  Verifiers belong to no entity; they act on assigned verification packages.
+ */
+export async function requireVerifier() {
+  const { session, response } = await requireAuth()
+  if (!session) return { session: null, response: response! }
+  const role = (session.user as Record<string, unknown>).role as string
+  if (role !== 'VERIFIER') {
+    return {
+      session: null,
+      response: NextResponse.json(
+        { error: 'Forbidden — VERIFIER role required', code: 'FORBIDDEN' },
+        { status: 403 },
+      ),
+    }
+  }
+  return { session, response: null }
+}
+
+/** Gap 4 — requires an authenticated AUDITOR with non-expired AuditorAccess to the entity. */
+export async function requireAuditorAccess(entityId: string) {
+  const { session, response } = await requireAuth()
+  if (!session) return { session: null, response: response! }
+  const role = (session.user as Record<string, unknown>).role as string
+  if (role !== 'AUDITOR') {
+    return {
+      session: null,
+      response: NextResponse.json(
+        { error: 'Forbidden — AUDITOR role required', code: 'FORBIDDEN' },
+        { status: 403 },
+      ),
+    }
+  }
+  const userId = (session.user as Record<string, unknown>).id as string
+  const access = await prisma.auditorAccess.findFirst({
+    where: { auditorUserId: userId, entityId, expiresAt: { gt: new Date() } },
+  })
+  if (!access) {
+    return {
+      session: null,
+      response: NextResponse.json(
+        { error: 'Forbidden — no active auditor access for this entity', code: 'FORBIDDEN' },
+        { status: 403 },
+      ),
+    }
+  }
+  return { session, response: null, access }
+}
