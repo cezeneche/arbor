@@ -52,6 +52,7 @@ export function PublicNav() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
           <Link href="/how-it-works" style={navLink}>How it works</Link>
           <Link href="/pricing" style={navLink}>Pricing</Link>
+          <Link href="/security" style={navLink}>Security</Link>
           <Link href="/about" style={navLink}>About</Link>
         </div>
 

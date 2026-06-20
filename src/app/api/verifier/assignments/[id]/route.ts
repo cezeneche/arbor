@@ -1,0 +1,126 @@
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
+import { requireVerifier } from '@/lib/auth-helpers'
+import { ok, err } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+import { computeVerificationSignature } from '@/lib/layer2/verification-signature'
+import { computeRecordHash, type AuditPayload } from '@/lib/layer2/audit-chain'
+import { sendNotification } from '@/lib/notifications'
+import type { Prisma } from '@prisma/client'
+
+const bodySchema = z.object({
+  action: z.enum(['verify', 'reject']),
+  note: z.string().max(2000).optional(),
+})
+
+// Gap 3 — a verifier signs off (or rejects) an assigned entity+period.
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { session, response } = await requireVerifier()
+  if (!session) return response!
+
+  const verifierId = (session.user as Record<string, unknown>).id as string
+  const { id } = await params
+
+  const body = await req.json().catch(() => null)
+  const parsed = bodySchema.safeParse(body)
+  if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
+  const { action, note } = parsed.data
+
+  const assignment = await prisma.verificationAssignment.findUnique({ where: { id } })
+  if (!assignment) return err('Assignment not found', 'NOT_FOUND', 404)
+  if (assignment.verifierId !== verifierId) return err('Access denied', 'FORBIDDEN', 403)
+  if (assignment.status === 'VERIFIED' || assignment.status === 'REJECTED') {
+    return err('This assignment has already been completed', 'ALREADY_COMPLETED', 409)
+  }
+
+  if (action === 'reject' && (!note || note.trim() === '')) {
+    return err('A rejection note is required', 'NOTE_REQUIRED', 400)
+  }
+
+  const now = new Date()
+  const nowIso = now.toISOString()
+
+  // Write the audit-chain entry inside a serializable tx so the per-entity chain stays intact.
+  const result = await prisma.$transaction(async (tx) => {
+    const lastEntry = await tx.auditEntry.findFirst({
+      where: { entityId: assignment.entityId },
+      orderBy: { createdAt: 'desc' },
+      select: { hash: true },
+    })
+    const previousHash = lastEntry?.hash ?? null
+
+    let signatureHash: string | null = null
+    let eventType: string
+    if (action === 'verify') {
+      signatureHash = computeVerificationSignature({
+        entityId: assignment.entityId,
+        periodStart: assignment.periodStart.toISOString(),
+        periodEnd: assignment.periodEnd.toISOString(),
+        verifierId,
+        verifiedAt: nowIso,
+      })
+      eventType = 'VERIFIED_BY_THIRD_PARTY'
+    } else {
+      eventType = 'VERIFICATION_REJECTED'
+    }
+
+    // Synthetic audit payload — not a DataRecord, so recordId is namespaced.
+    const payload: AuditPayload = {
+      recordId: `verification_${assignment.id}`,
+      entityId: assignment.entityId,
+      domain: 'COMPLIANCE',
+      fieldName: eventType,
+      value: action === 'verify' ? 1 : 0,
+      unit: 'verification',
+      originalValue: action === 'verify' ? 1 : 0,
+      originalUnit: 'verification',
+      periodStart: assignment.periodStart.toISOString(),
+      periodEnd: assignment.periodEnd.toISOString(),
+      trustTier: 'A',
+      confidenceScore: 1.0,
+      sourceText: note ?? null,
+      documentId: null,
+      extractionMethod: 'MANUAL_ENTRY',
+      submittedAt: nowIso,
+      submittedById: verifierId,
+    }
+    const hash = computeRecordHash(payload, previousHash)
+
+    await tx.auditEntry.create({
+      data: {
+        entityId: assignment.entityId,
+        recordId: payload.recordId,
+        eventType,
+        payload: payload as unknown as Prisma.InputJsonValue,
+        hash,
+        previousHash,
+      },
+    })
+
+    const updated = await tx.verificationAssignment.update({
+      where: { id: assignment.id },
+      data: {
+        status: action === 'verify' ? 'VERIFIED' : 'REJECTED',
+        verifiedAt: now,
+        verifierNote: note ?? null,
+        signatureHash,
+      },
+    })
+    return { updated, signatureHash }
+  }, { isolationLevel: 'Serializable' })
+
+  // Notify the entity (post-commit; non-fatal).
+  if (action === 'verify') {
+    await sendNotification({
+      entityId: assignment.entityId,
+      type: 'TIER_UPGRADED',
+      payload: { recordId: `verification_${assignment.id}`, domain: 'COMPLIANCE' },
+    }).catch((e) => console.error('[verifier] notify failed:', e))
+  }
+
+  return ok({
+    status: result.updated.status,
+    signatureHash: result.signatureHash,
+    verifiedAt: result.updated.verifiedAt?.toISOString() ?? null,
+  })
+}

@@ -28,16 +28,19 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
   const [domain, setDomain] = useState('ENERGY')
   const [periodStart, setPeriodStart] = useState('')
   const [periodEnd, setPeriodEnd] = useState('')
+  const [consent, setConsent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const effectiveBuyerId = customBuyerId.trim() || buyerEntityId
+  const selectedBuyerName = knownBuyers.find((b) => b.id === effectiveBuyerId)?.legalName ?? 'this buyer'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!effectiveBuyerId) { setError('Please select or enter a buyer.'); return }
     if (!periodStart || !periodEnd) { setError('Please enter the period.'); return }
     if (new Date(periodEnd) <= new Date(periodStart)) { setError('Period end must be after period start.'); return }
+    if (!consent) { setError('Please confirm the consent acknowledgement.'); return }
 
     setSubmitting(true)
     setError(null)
@@ -50,6 +53,7 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
         domain,
         periodStart: new Date(periodStart).toISOString(),
         periodEnd: new Date(periodEnd).toISOString(),
+        consent,
       }),
     })
 
@@ -65,6 +69,7 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
     setCustomBuyerId('')
     setPeriodStart('')
     setPeriodEnd('')
+    setConsent(false)
     router.refresh()
   }
 
@@ -202,6 +207,31 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
             </div>
           </div>
         </div>
+
+        <label
+          style={{
+            display: 'flex',
+            gap: spacing[1],
+            alignItems: 'flex-start',
+            marginTop: spacing[3],
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.textSecondary,
+            lineHeight: 1.5,
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            style={{ marginTop: '3px' }}
+          />
+          <span>
+            I understand that {selectedBuyerName} may use this data for their own reporting.
+            Sharing this data does not transfer my liability for its accuracy.
+          </span>
+        </label>
 
         {error && (
           <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, margin: `${spacing[2]} 0 0` }}>

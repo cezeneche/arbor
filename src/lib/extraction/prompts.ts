@@ -214,11 +214,38 @@ Key extraction rules for third-party audit and assurance reports:
 `,
 }
 
-export function buildExtractionPrompt(documentType: string, requiredFields: string[]): string {
+// Gap 1 — Layer 1 pre-call: detect the document language before full extraction.
+// A cheap single-sentence call; the result calibrates downstream confidence checks.
+export function buildLanguageDetectionPrompt(): string {
+  return `What language is this document written in? Respond with the ISO 639-1 language code only (for example: en, de, fr, es, zh, nl, pl). Return the code only — no other text, no punctuation.`
+}
+
+// Gap 1 — Layer 1 pre-call (images only): rate legibility before committing to extraction.
+// A photographed or scanned paper invoice that scores too low is rejected before the
+// full extraction call, so the user is told to re-upload rather than shown garbage.
+export function buildQualityAssessmentPrompt(): string {
+  return `Rate the quality of this document image on a scale of 1 to 5, where 1 = unreadable, 3 = legible with effort, 5 = clear and sharp. Return only a JSON object with no other text:
+{ "quality": <number 1-5>, "issues": ["blurry" | "rotated" | "low_contrast" | "cropped" | "glare" | "skewed", ...] }`
+}
+
+export function buildExtractionPrompt(
+  documentType: string,
+  requiredFields: string[],
+  detectedLanguage?: string | null,
+): string {
   const typeNotes = DOCUMENT_TYPE_NOTES[documentType] ?? ''
 
-  return `Extract the following fields from this ${documentType.replace(/_/g, ' ').toLowerCase()}.
+  // For non-English documents, instruct the model to preserve values verbatim and
+  // only translate field names. Translating a numeric value or unit would corrupt
+  // the record; the source text must stay in the original language.
+  const isForeign =
+    !!detectedLanguage && detectedLanguage !== 'en' && detectedLanguage !== 'unknown'
+  const languageInstruction = isForeign
+    ? `\nThis document is written in ${detectedLanguage}. Extract all field values exactly as they appear in the source document. Do not translate values, numbers, or units. Translate field names to English only. The sourceText for each field must be the original-language text verbatim.\n`
+    : ''
 
+  return `Extract the following fields from this ${documentType.replace(/_/g, ' ').toLowerCase()}.
+${languageInstruction}
 Required fields: ${requiredFields.join(', ')}
 ${typeNotes}
 Return this exact JSON structure with no other text:

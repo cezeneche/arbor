@@ -1,5 +1,14 @@
 import { generateAuditPackage, type AuditPackageInput } from '../generator'
 
+// The generator computes an HMAC integrity hash (Gap 4), which needs the secret.
+const ORIGINAL_SECRET = process.env.AUDIT_CHAIN_SECRET
+beforeAll(() => {
+  process.env.AUDIT_CHAIN_SECRET = 'test-secret-for-audit-package'
+})
+afterAll(() => {
+  process.env.AUDIT_CHAIN_SECRET = ORIGINAL_SECRET
+})
+
 function makeRecord(
   id: string,
   trustTier: 'A' | 'B' | 'C' = 'A',
@@ -126,5 +135,46 @@ describe('generateAuditPackage', () => {
     const pkg = generateAuditPackage(input)
     expect(pkg.summary.totalRecords).toBe(0)
     expect(pkg.summary.tierACount).toBe(0)
+  })
+
+  // Gap 3 — verification block
+  it('verification is null when no verifier has signed off', () => {
+    const pkg = generateAuditPackage(BASE_INPUT)
+    expect(pkg.verification).toBeNull()
+  })
+
+  it('carries the verification block when present', () => {
+    const pkg = generateAuditPackage({
+      ...BASE_INPUT,
+      verification: {
+        status: 'INDEPENDENTLY_VERIFIED',
+        verifierName: 'Bureau Veritas',
+        verifiedAt: '2026-06-19T10:00:00.000Z',
+        signatureHash: 'abc123',
+      },
+    })
+    expect(pkg.verification?.status).toBe('INDEPENDENTLY_VERIFIED')
+    expect(pkg.verification?.verifierName).toBe('Bureau Veritas')
+  })
+
+  // Gap 4 — integrity hash + verification instructions
+  it('produces a 64-char integrity hash and matching instructions', () => {
+    const pkg = generateAuditPackage(BASE_INPUT)
+    expect(pkg.packageIntegrityHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(pkg.verificationInstructions.params.packageHash).toBe(pkg.packageIntegrityHash)
+    expect(pkg.verificationInstructions.params.entityId).toBe('entity-1')
+    expect(pkg.verificationInstructions.expectedResponse).toEqual({ verified: true })
+  })
+
+  it('integrity hash changes when records change', () => {
+    const a = generateAuditPackage(BASE_INPUT)
+    const b = generateAuditPackage({ ...BASE_INPUT, dataRecords: [makeRecord('r1')] })
+    expect(a.packageIntegrityHash).not.toBe(b.packageIntegrityHash)
+  })
+
+  it('integrity hash is stable for identical inputs', () => {
+    expect(generateAuditPackage(BASE_INPUT).packageIntegrityHash).toBe(
+      generateAuditPackage(BASE_INPUT).packageIntegrityHash,
+    )
   })
 })

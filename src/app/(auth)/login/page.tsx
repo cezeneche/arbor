@@ -176,6 +176,32 @@ export default function LoginPage() {
         </button>
       </form>
 
+      {/* Gap 10 — SSO sign-in. Uses the email entered above to resolve the org. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], margin: `${spacing[3]} 0 ${spacing[2]}` }}>
+        <div style={{ flex: 1, height: '1px', backgroundColor: colours.border }} />
+        <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>or</span>
+        <div style={{ flex: 1, height: '1px', backgroundColor: colours.border }} />
+      </div>
+      <a
+        href={email ? `/api/workos/authorize?email=${encodeURIComponent(email)}` : '#'}
+        onClick={(e) => { if (!email) { e.preventDefault(); setError('Enter your work email above, then use SSO.') } }}
+        style={{
+          display: 'block',
+          textAlign: 'center',
+          padding: '12px',
+          backgroundColor: 'transparent',
+          color: colours.navy,
+          fontSize: typography.sizes.base,
+          fontWeight: typography.weights.medium,
+          border: `1px solid ${colours.border}`,
+          borderRadius: '4px',
+          textDecoration: 'none',
+          letterSpacing: typography.tracking.wide,
+        }}
+      >
+        Sign in with your company account
+      </a>
+
       <p
         style={{
           fontSize: typography.sizes.sm,

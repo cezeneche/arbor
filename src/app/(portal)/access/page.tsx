@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
-import { RevokeGrant } from './RevokeGrant'
 import { GrantAccessForm } from './GrantAccessForm'
+import { RevokeAllForBuyer } from './RevokeAllForBuyer'
 
 const DOMAIN_LABELS: Record<string, string> = {
   ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
@@ -33,6 +33,16 @@ export default async function AccessPage() {
     id: r.buyerEntityId,
     legalName: r.buyerEntity.legalName,
   }))
+
+  // Gap 5.1 — group active grants by buyer so the supplier sees "who can see my data".
+  type Grant = (typeof grants)[number]
+  const byBuyer = new Map<string, { name: string; grants: Grant[] }>()
+  for (const g of grants) {
+    const entry = byBuyer.get(g.granteeEntityId) ?? { name: g.granteeEntity.legalName, grants: [] }
+    entry.grants.push(g)
+    byBuyer.set(g.granteeEntityId, entry)
+  }
+  const buyers = [...byBuyer.entries()]
 
   const sectionLabel = {
     fontSize: typography.sizes.xs,
@@ -65,9 +75,9 @@ export default async function AccessPage() {
             margin: `${spacing[1]} 0 0`,
           }}
         >
-          {grants.length === 0
-            ? 'You have not shared your data with anyone.'
-            : `You are sharing your data with ${grants.length} buyer${grants.length !== 1 ? 's' : ''}.`}
+          {buyers.length === 0
+            ? "You haven't shared your data with anyone yet. When a buyer requests access, you'll see them here."
+            : `You are sharing your data with ${buyers.length} buyer${buyers.length !== 1 ? 's' : ''}.`}
         </p>
       </div>
 
@@ -76,7 +86,7 @@ export default async function AccessPage() {
       <section>
         <p style={sectionLabel}>Active data shares</p>
 
-        {grants.length === 0 ? (
+        {buyers.length === 0 ? (
           <div
             style={{
               backgroundColor: colours.surface,
@@ -98,71 +108,60 @@ export default async function AccessPage() {
             </p>
           </div>
         ) : (
-          <div
-            style={{
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '8px',
-              overflow: 'hidden',
-            }}
-          >
-            {grants.map((grant, i) => {
-              const scopeLabel = [
-                grant.domain ? (DOMAIN_LABELS[grant.domain] ?? grant.domain) : 'All domains',
-                grant.periodStart && grant.periodEnd
-                  ? `${new Date(grant.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} – ${new Date(grant.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`
-                  : 'All periods',
-              ].join(' · ')
-
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {buyers.map(([granteeEntityId, info]) => {
+              const earliest = info.grants.reduce(
+                (min, g) => (g.grantedAt < min ? g.grantedAt : min),
+                info.grants[0].grantedAt,
+              )
               return (
                 <div
-                  key={grant.id}
+                  key={granteeEntityId}
                   style={{
-                    padding: spacing[2],
-                    borderBottom: i < grants.length - 1 ? `1px solid ${colours.border}` : 'none',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    gap: spacing[3],
+                    backgroundColor: colours.surface,
+                    border: `1px solid ${colours.border}`,
+                    borderRadius: '8px',
+                    padding: spacing[3],
                   }}
                 >
-                  <div>
-                    <p
-                      style={{
-                        fontSize: typography.sizes.base,
-                        fontWeight: typography.weights.medium,
-                        color: colours.textPrimary,
-                        margin: 0,
-                      }}
-                    >
-                      {grant.granteeEntity.legalName}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.light,
-                        color: colours.textSecondary,
-                        margin: '2px 0 0',
-                      }}
-                    >
-                      {scopeLabel}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: typography.sizes.xs,
-                        fontWeight: typography.weights.light,
-                        color: colours.textTertiary,
-                        margin: '4px 0 0',
-                      }}
-                    >
-                      Granted {new Date(grant.grantedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3] }}>
+                    <div>
+                      <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+                        {info.name}
+                      </p>
+                      <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0' }}>
+                        First granted {new Date(earliest).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · {info.grants.length} share{info.grants.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <RevokeAllForBuyer granteeEntityId={granteeEntityId} buyerName={info.name} />
                   </div>
-                  <RevokeGrant
-                    grantId={grant.id}
-                    buyerName={grant.granteeEntity.legalName}
-                    scopeLabel={scopeLabel}
-                  />
+
+                  <div style={{ marginTop: spacing[2], display: 'flex', flexWrap: 'wrap' as const, gap: '8px' }}>
+                    {info.grants.map((grant) => {
+                      const scopeLabel = [
+                        grant.domain ? (DOMAIN_LABELS[grant.domain] ?? grant.domain) : 'All domains',
+                        grant.periodStart && grant.periodEnd
+                          ? `${new Date(grant.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} – ${new Date(grant.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`
+                          : 'All periods',
+                      ].join(' · ')
+                      return (
+                        <span
+                          key={grant.id}
+                          style={{
+                            padding: '4px 10px',
+                            backgroundColor: colours.background,
+                            border: `1px solid ${colours.border}`,
+                            borderRadius: '4px',
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.light,
+                            color: colours.textSecondary,
+                          }}
+                        >
+                          {scopeLabel}
+                        </span>
+                      )
+                    })}
+                  </div>
                 </div>
               )
             })}

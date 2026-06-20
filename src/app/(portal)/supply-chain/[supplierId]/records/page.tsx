@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
+import { logRecordAccess } from '@/lib/layer3/grant-access'
 
 const DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
@@ -48,6 +49,9 @@ export default async function SupplierRecordsPage({
       return domainMatch && startMatch && endMatch
     })
   )
+
+  // Gap 5.2 — log this buyer's view of the supplier's records (PORTAL access).
+  await logRecordAccess(records.map((r) => r.id), buyerEntityId, 'PORTAL')
 
   const byDomain = DOMAINS.map(domain => {
     const domainRecords = records.filter(r => r.domain === domain)

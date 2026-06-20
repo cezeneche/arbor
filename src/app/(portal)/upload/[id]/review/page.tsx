@@ -76,6 +76,17 @@ export default async function ReviewPage({
     periodEnd: c.periodEnd.toISOString(),
   }))
 
+  // Gap 1 — surface multilingual + degraded-document warnings before the field list.
+  const detectedLanguage = job?.detectedLanguage ?? null
+  const showLanguageBanner =
+    !!detectedLanguage && detectedLanguage !== 'en' && detectedLanguage !== 'unknown'
+  const qualityScore = job?.imageQualityScore ?? null
+  const showQualityBanner = typeof qualityScore === 'number' && qualityScore < 4
+  const qualityLabel = qualityScore === null ? '' : qualityScore < 2 ? 'Poor' : qualityScore < 4 ? 'Fair' : 'Good'
+  const qualityIssues = Array.isArray(job?.imageQualityIssues)
+    ? (job?.imageQualityIssues as string[]).join(', ').replace(/_/g, ' ')
+    : ''
+
   return (
     <div>
       <div style={{ marginBottom: spacing[5] }}>
@@ -101,6 +112,40 @@ export default async function ReviewPage({
           {document.fileName} · {document.documentType.replace(/_/g, ' ')}
         </p>
       </div>
+
+      {showLanguageBanner && (
+        <div
+          style={{
+            backgroundColor: colours.amberBg,
+            border: `1px solid ${colours.amber}`,
+            borderRadius: '6px',
+            padding: spacing[2],
+            marginBottom: spacing[3],
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.amber,
+          }}
+        >
+          This document appears to be in <strong style={{ fontWeight: typography.weights.medium }}>{detectedLanguage}</strong>. Values are shown as extracted — check numeric fields and units carefully.
+        </div>
+      )}
+
+      {showQualityBanner && (
+        <div
+          style={{
+            backgroundColor: colours.amberBg,
+            border: `1px solid ${colours.amber}`,
+            borderRadius: '6px',
+            padding: spacing[2],
+            marginBottom: spacing[3],
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.amber,
+          }}
+        >
+          This image was flagged as <strong style={{ fontWeight: typography.weights.medium }}>{qualityLabel}</strong> quality{qualityIssues ? ` (${qualityIssues})` : ''}. Some values may have been misread — verify before confirming.
+        </div>
+      )}
 
       {job?.status === 'QUEUED' || job?.status === 'RUNNING' || !job ? (
         <ExtractionPoller documentId={document.id} />

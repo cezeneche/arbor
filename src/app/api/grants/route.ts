@@ -3,12 +3,17 @@ import { z } from 'zod'
 import { requireAuth, requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
+import { computeRecordHash, type AuditPayload } from '@/lib/layer2/audit-chain'
+import { dispatchWebhook } from '@/lib/webhooks/dispatch'
+import type { Prisma } from '@prisma/client'
 
 const createSchema = z.object({
   granteeEntityId: z.string().min(1),
   domain: z.string().optional(),
   periodStart: z.string().datetime().optional(),
   periodEnd: z.string().datetime().optional(),
+  // Gap 5.4 — the supplier must acknowledge the data-use consent statement.
+  consent: z.literal(true),
 })
 
 export async function GET() {
@@ -55,11 +60,62 @@ export async function POST(req: NextRequest) {
     },
   })
 
+  // Gap 5.4 — record the consent acknowledgement in the audit chain. recordId is
+  // namespaced 'consent_' so the chain-verify route treats it as a synthetic entry.
+  try {
+    const nowIso = new Date().toISOString()
+    const lastEntry = await prisma.auditEntry.findFirst({
+      where: { entityId },
+      orderBy: { createdAt: 'desc' },
+      select: { hash: true },
+    })
+    const previousHash = lastEntry?.hash ?? null
+    const payload: AuditPayload = {
+      recordId: `consent_${grant.id}`,
+      entityId,
+      domain: (domain as string) ?? 'COMPLIANCE',
+      fieldName: 'access_granted_with_consent',
+      value: 1,
+      unit: 'grant',
+      originalValue: 1,
+      originalUnit: 'grant',
+      periodStart: periodStart ?? nowIso,
+      periodEnd: periodEnd ?? nowIso,
+      trustTier: 'A',
+      confidenceScore: 1.0,
+      sourceText: `Supplier acknowledged data-use consent when granting access to ${grantee.legalName}.`,
+      documentId: null,
+      extractionMethod: 'MANUAL_ENTRY',
+      submittedAt: nowIso,
+      submittedById: (session.user as Record<string, unknown>).id as string,
+    }
+    const hash = computeRecordHash(payload, previousHash)
+    await prisma.auditEntry.create({
+      data: {
+        entityId,
+        recordId: payload.recordId,
+        eventType: 'ACCESS_GRANTED_WITH_CONSENT',
+        payload: payload as unknown as Prisma.InputJsonValue,
+        hash,
+        previousHash,
+      },
+    })
+  } catch (e) {
+    console.error('[grants] consent audit entry failed:', e)
+  }
+
   await sendNotification({
     entityId: granteeEntityId,
     type: 'ACCESS_GRANTED',
     payload: { grantId: grant.id, grantorEntityId: entityId },
   }).catch(e => console.error('[grants] sendNotification failed:', e))
+
+  // Gap 6 — webhook to the buyer that access was granted.
+  await dispatchWebhook(granteeEntityId, 'access.granted', {
+    grantId: grant.id,
+    grantorEntityId: entityId,
+    domain: domain ?? null,
+  })
 
   return NextResponse.json({ grant })
 }

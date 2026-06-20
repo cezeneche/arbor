@@ -33,15 +33,32 @@ const DOCUMENT_TYPES = [
   { value: 'OTHER', label: 'Other' },
 ]
 
-export function UploadZone() {
+// Gap 8.1 — per-file status while a batch uploads.
+interface QueueItem {
+  file: File
+  status: 'queued' | 'uploading' | 'ready' | 'error'
+  documentId?: string
+  error?: string
+}
+
+const MAX_BATCH = 20
+
+export function UploadZone({ initialType = '' }: { initialType?: string }) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [documentType, setDocumentType] = useState('')
+  const [files, setFiles] = useState<File[]>([])
+  const [documentType, setDocumentType] = useState(initialType)
   const [reportingPeriodEnd, setReportingPeriodEnd] = useState('')
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [queue, setQueue] = useState<QueueItem[]>([])
+
+  function addFiles(list: FileList | null) {
+    if (!list) return
+    const incoming = Array.from(list)
+    setFiles((prev) => [...prev, ...incoming].slice(0, MAX_BATCH))
+  }
 
   function handleDragOver(e: DragEvent) {
     e.preventDefault()
@@ -55,47 +72,52 @@ export function UploadZone() {
   function handleDrop(e: DragEvent) {
     e.preventDefault()
     setDragging(false)
-    const dropped = e.dataTransfer.files[0]
-    if (dropped) setFile(dropped)
+    addFiles(e.dataTransfer.files)
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = e.target.files?.[0]
-    if (selected) setFile(selected)
+    addFiles(e.target.files)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!file || !documentType) return
-
-    setError(null)
-    setUploading(true)
-
+  async function uploadOne(file: File): Promise<QueueItem> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('documentType', documentType)
     if (reportingPeriodEnd) {
       formData.append('reportingPeriodEnd', new Date(reportingPeriodEnd).toISOString())
     }
-
     try {
-      const res = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
+      const res = await fetch('/api/documents/upload', { method: 'POST', body: formData })
       const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error ?? 'Upload failed.')
-        setUploading(false)
-        return
-      }
-
-      router.push(`/upload/${data.documentId}/review`)
+      if (!res.ok) return { file, status: 'error', error: data.error ?? 'Upload failed.' }
+      return { file, status: 'ready', documentId: data.documentId }
     } catch {
-      setError('Upload failed. Check your connection and try again.')
-      setUploading(false)
+      return { file, status: 'error', error: 'Network error.' }
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (files.length === 0 || !documentType) return
+
+    setError(null)
+    setUploading(true)
+    setQueue(files.map((file) => ({ file, status: 'queued' })))
+
+    const results: QueueItem[] = []
+    for (let i = 0; i < files.length; i++) {
+      setQueue((prev) => prev.map((q, idx) => (idx === i ? { ...q, status: 'uploading' } : q)))
+      const result = await uploadOne(files[i])
+      results.push(result)
+      setQueue((prev) => prev.map((q, idx) => (idx === i ? result : q)))
+    }
+
+    setUploading(false)
+
+    // Single successful file: jump straight to its review (unchanged behaviour).
+    const successes = results.filter((r) => r.status === 'ready')
+    if (results.length === 1 && successes.length === 1) {
+      router.push(`/upload/${successes[0].documentId}/review`)
     }
   }
 
@@ -151,26 +173,27 @@ export function UploadZone() {
             ref={fileInputRef}
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
+            multiple
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
 
-          {file ? (
+          {files.length > 0 ? (
             <div>
               <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
-                {file.name}
+                {files.length === 1 ? files[0].name : `${files.length} files selected`}
               </p>
               <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
-                {(file.size / 1024 / 1024).toFixed(2)} MB · Click to change
+                Click to add more · up to {MAX_BATCH}
               </p>
             </div>
           ) : (
             <div>
               <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textSecondary, margin: 0 }}>
-                Drop a file here, or click to browse
+                Drop files here, or click to browse
               </p>
               <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: `${spacing[1]} 0 0` }}>
-                PDF, JPEG, or PNG
+                PDF, JPEG, or PNG · upload several at once
               </p>
             </div>
           )}
@@ -228,24 +251,68 @@ export function UploadZone() {
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'auto' }}>
             <button
               type="submit"
-              disabled={!file || !documentType || uploading}
+              disabled={files.length === 0 || !documentType || uploading}
               style={{
                 padding: '12px 28px',
-                backgroundColor: !file || !documentType || uploading ? colours.textTertiary : colours.navy,
+                backgroundColor: files.length === 0 || !documentType || uploading ? colours.textTertiary : colours.navy,
                 color: colours.surface,
                 fontSize: typography.sizes.sm,
                 fontWeight: typography.weights.medium,
                 border: 'none',
                 borderRadius: '4px',
-                cursor: !file || !documentType || uploading ? 'not-allowed' : 'pointer',
+                cursor: files.length === 0 || !documentType || uploading ? 'not-allowed' : 'pointer',
                 letterSpacing: typography.tracking.wide,
               }}
             >
-              {uploading ? 'Uploading…' : 'Upload and extract'}
+              {uploading ? 'Uploading…' : files.length > 1 ? `Upload ${files.length} and extract` : 'Upload and extract'}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Gap 8.1 — upload queue with per-file status */}
+      {queue.length > 0 && (
+        <div style={{ border: `1px solid ${colours.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+          {queue.map((item, i) => {
+            const statusLabel =
+              item.status === 'queued' ? 'Queued'
+              : item.status === 'uploading' ? 'Reading…'
+              : item.status === 'ready' ? 'Ready'
+              : 'Failed'
+            const statusColour =
+              item.status === 'ready' ? colours.green
+              : item.status === 'error' ? colours.red
+              : item.status === 'uploading' ? colours.navy
+              : colours.textTertiary
+            return (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 14px',
+                  borderBottom: i < queue.length - 1 ? `1px solid ${colours.border}` : 'none',
+                }}
+              >
+                <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, maxWidth: '60%' }}>
+                  {item.file.name}
+                </span>
+                <span style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
+                  {item.status === 'ready' && item.documentId && (
+                    <a href={`/upload/${item.documentId}/review`} style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.navy, textDecoration: 'none' }}>
+                      Review →
+                    </a>
+                  )}
+                  <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: statusColour, letterSpacing: typography.tracking.wide }}>
+                    {statusLabel}
+                  </span>
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </form>
   )
 }

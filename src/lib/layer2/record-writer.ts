@@ -36,6 +36,8 @@ export interface RecordInput {
   sourceText?: string
   documentId?: string
   isActive?: boolean
+  /** Gap 2 — batch/mill staleness horizon. Derived metadata, not part of the audit payload. */
+  staleAfterDate?: Date | null
 }
 
 export interface RecordWriteResult {
@@ -73,6 +75,7 @@ export async function writeRecordWithAuditEntry(
       sourceText: input.sourceText,
       documentId: input.documentId,
       isActive: input.isActive ?? true,
+      staleAfterDate: input.staleAfterDate ?? null,
       auditHash: '',
     },
     select: { id: true },

@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { ExtractionMethod, TrustTier } from '@prisma/client'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/rate-limit-pure'
 
 const entrySchema = z.object({
   fieldName: z.string().min(1),
@@ -18,9 +20,13 @@ const bodySchema = z.object({
 })
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const ip = getClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'))
+  const { allowed } = await checkRateLimit(RATE_LIMITS.submitToken, ip)
+  if (!allowed) return err('Too many requests. Please try again later.', 'RATE_LIMITED', 429)
+
   const { token } = await params
 
   const request = await prisma.dataRequest.findUnique({
@@ -52,6 +58,10 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const ip = getClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'))
+  const { allowed } = await checkRateLimit(RATE_LIMITS.submitToken, ip)
+  if (!allowed) return err('Too many requests. Please try again later.', 'RATE_LIMITED', 429)
+
   const { token } = await params
 
   const request = await prisma.dataRequest.findUnique({

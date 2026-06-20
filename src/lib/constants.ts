@@ -83,6 +83,9 @@ export const ALL_TIERS = Object.values(TrustTier)
 
 export const DOCUMENT_MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 
+// Gap 2 — batch/mill records go stale this many days after the period they cover.
+export const BATCH_RECORD_STALE_DAYS = 90
+
 export const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
   'image/jpeg',

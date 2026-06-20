@@ -1,7 +1,25 @@
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { UploadZone } from '@/components/UploadZone'
 
-export default function UploadPage() {
+export default async function UploadPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}) {
+  const session = await auth()
+  if (!session?.user) redirect('/login')
+  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const sp = await searchParams
+  const initialType = sp.type ?? ''
+
+  const entity = await prisma.entity.findUnique({
+    where: { id: entityId },
+    select: { uploadEmailToken: true },
+  })
+  const uploadEmail = entity?.uploadEmailToken ? `upload-${entity.uploadEmailToken}@arbor.io` : null
   return (
     <div>
       <div style={{ marginBottom: spacing[5] }}>
@@ -37,7 +55,7 @@ export default function UploadPage() {
           padding: spacing[4],
         }}
       >
-        <UploadZone />
+        <UploadZone initialType={initialType} />
       </div>
 
       <div
@@ -61,6 +79,19 @@ export default function UploadPage() {
           Documents are stored securely and only accessible to your organisation
           and buyers you have granted access.
         </p>
+        {uploadEmail && (
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textTertiary,
+              margin: `${spacing[1]} 0 0`,
+            }}
+          >
+            Or email documents as attachments to{' '}
+            <code style={{ color: colours.textSecondary }}>{uploadEmail}</code> — we&apos;ll read them and notify you when they&apos;re ready.
+          </p>
+        )}
       </div>
     </div>
   )
