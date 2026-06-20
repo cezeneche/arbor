@@ -1,0 +1,92 @@
+import { NextRequest } from 'next/server'
+import { randomBytes } from 'crypto'
+import { z } from 'zod'
+import { requireWriteAccess, requireAuth } from '@/lib/auth-helpers'
+import { ok, err } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+import { domainSchema } from '@/lib/constants'
+import { assembleAuditPackage } from '@/lib/audit-package/assemble'
+import { shareState } from '@/lib/shares/share-status'
+
+const bodySchema = z.object({
+  domain: domainSchema.optional(),
+  periodStart: z.string().datetime().optional(),
+  periodEnd: z.string().datetime().optional(),
+  expiresAt: z.string().datetime().optional(),
+})
+
+function shareUrl(req: NextRequest, token: string): string {
+  const origin = req.nextUrl.origin
+  return `${origin}/share/${token}`
+}
+
+// Layer 3 — read-only assembly. Creating a share computes the scope's audit-package
+// integrity hash (and logs it, so /api/audit/verify-public recognises it) and mints
+// an unguessable public token. No stored data is modified.
+export async function POST(req: NextRequest) {
+  const { session, response } = await requireWriteAccess()
+  if (!session) return response!
+
+  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const createdById = (session.user as Record<string, unknown>).id as string
+
+  const body = await req.json().catch(() => null)
+  const parsed = bodySchema.safeParse(body ?? {})
+  if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
+
+  const periodStart = parsed.data.periodStart ? new Date(parsed.data.periodStart) : null
+  const periodEnd = parsed.data.periodEnd ? new Date(parsed.data.periodEnd) : null
+  const expiresAt = parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null
+
+  // Reuse the Gap-4 audit package to derive a verifiable integrity hash for the
+  // scope, and log it so the public verify endpoint will recognise it.
+  const { package: pkg } = await assembleAuditPackage({
+    entityId,
+    periodStart,
+    periodEnd,
+    logRequestedById: createdById,
+  })
+
+  const token = randomBytes(32).toString('base64url')
+
+  const share = await prisma.sharedExport.create({
+    data: {
+      entityId,
+      token,
+      domain: parsed.data.domain ?? null,
+      periodStart,
+      periodEnd,
+      packageHash: pkg.packageIntegrityHash,
+      createdById,
+      expiresAt,
+    },
+  })
+
+  return ok({ id: share.id, token: share.token, url: shareUrl(req, token), packageHash: share.packageHash }, 201)
+}
+
+// Lists the caller entity's own shares with their current lifecycle state.
+export async function GET() {
+  const { session, response } = await requireAuth()
+  if (!session) return response!
+  const entityId = (session.user as Record<string, unknown>).entityId as string
+
+  const shares = await prisma.sharedExport.findMany({
+    where: { entityId },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return ok({
+    shares: shares.map((s) => ({
+      id: s.id,
+      token: s.token,
+      domain: s.domain,
+      periodStart: s.periodStart,
+      periodEnd: s.periodEnd,
+      createdAt: s.createdAt,
+      expiresAt: s.expiresAt,
+      revokedAt: s.revokedAt,
+      state: shareState(s),
+    })),
+  })
+}

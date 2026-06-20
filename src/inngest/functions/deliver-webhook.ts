@@ -6,7 +6,7 @@ import { decryptSecret } from '@/lib/crypto/credential-encryption'
 // Gap 6.3 — deliver a single webhook to one subscription, signed with HMAC.
 // Inngest retries on throw (up to `retries`); final failure marks the subscription.
 export const deliverWebhookFunction = inngest.createFunction(
-  { id: 'deliver-webhook', retries: 3, concurrency: { limit: 10 }, triggers: [{ event: 'webhook/deliver' }] },
+  { id: 'deliver-webhook', retries: 3, concurrency: { limit: 5 }, triggers: [{ event: 'webhook/deliver' }] },
   async ({ event, step }) => {
     const { subscriptionId, payload } = event.data as { subscriptionId: string; payload: Record<string, unknown> }
 

@@ -3,7 +3,6 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { colours, typography, spacing } from '@/lib/design-system'
@@ -42,7 +41,6 @@ const inputStyle = {
 }
 
 export default function TwoFactorVerifyPage() {
-  const router = useRouter()
   const { update } = useSession()
 
   const [code, setCode] = useState('')
@@ -69,13 +67,22 @@ export default function TwoFactorVerifyPage() {
     setLoading(false)
 
     if (res?.ok) {
-      // Upgrade the JWT — the jwt callback rewrites the token with full user data
+      // Upgrade the JWT — the jwt callback rewrites the token with full user data.
       await update({ totpVerified: true })
-      router.push('/dashboard')
-    } else {
-      const data = await res?.json().catch(() => null)
-      setError(data?.error ?? 'Something went wrong. Try again.')
+      // Hard navigation so the middleware sees the upgraded session cookie. A soft
+      // router.push() races the cookie write and gets bounced back to /2fa-verify.
+      window.location.href = '/dashboard'
+      return
     }
+
+    const data = await res?.json().catch(() => null)
+    // If the challenge was already completed (e.g. a double submit after success),
+    // the user is in fact verified — proceed to the dashboard instead of erroring.
+    if (res?.status === 400 && data?.error === 'No 2FA challenge is active.') {
+      window.location.href = '/dashboard'
+      return
+    }
+    setError(data?.error ?? 'Something went wrong. Try again.')
   }
 
   return (

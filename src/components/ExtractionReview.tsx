@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { colours, typography, spacing, confidenceThreshold } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
+import { NUMERIC_FIELDS } from '@/lib/review/review-policy'
 
 interface ExtractedField {
   id: string
@@ -45,15 +46,6 @@ interface Props {
   document: Document
   existingConflicts?: ConflictRecord[]
 }
-
-const NUMERIC_FIELDS = new Set([
-  'total_consumption_kwh', 'total_consumption_m3', 'calorific_value',
-  'quantity', 'quantity_produced', 'area_hectares', 'yield_quantity',
-  'quantity_mwh', 'shipment_weight', 'declared_weight', 'gross_weight',
-  'embedded_emissions_tco2e', 'embedded_emissions_per_tonne', 'quantity_tonnes',
-  'total_value', 'factor_value', 'total_co2e', 'quantity_m3', 'nitrogen_content_percent',
-  'energy_consumption', 'energy_consumption_total', 'average_herd_size',
-])
 
 export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const router = useRouter()
