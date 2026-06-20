@@ -25,6 +25,7 @@ export default auth((req) => {
     req.nextUrl.pathname.startsWith('/how-it-works') ||
     req.nextUrl.pathname.startsWith('/institutional') ||
     req.nextUrl.pathname.startsWith('/submit') ||
+    req.nextUrl.pathname.startsWith('/share') ||
     req.nextUrl.pathname.startsWith('/api/auth') ||
     req.nextUrl.pathname.startsWith('/api/submit') ||
     req.nextUrl.pathname.startsWith('/api/signup') ||

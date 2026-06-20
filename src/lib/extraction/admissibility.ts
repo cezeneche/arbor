@@ -374,8 +374,11 @@ export function evaluateAdmissibility(
   }
 
   const criticalCount = flags.filter((f) => f.severity === 'CRITICAL').length
+  // Core 3 — documents with no admissibility spec (OTHER / unknown / generic) and
+  // supplier questionnaires default to Tier B: there is no spec to verify against.
+  const isGeneric = fieldDefs.length === 0
   const tier: TrustTierResult =
-    documentType === 'SUPPLIER_QUESTIONNAIRE' || criticalCount > 0 ? 'B' : 'A'
+    documentType === 'SUPPLIER_QUESTIONNAIRE' || isGeneric || criticalCount > 0 ? 'B' : 'A'
 
   return { tier, flags, criticalCount }
 }

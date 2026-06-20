@@ -7,6 +7,8 @@ import { sendNotification } from '@/lib/notifications'
 import { DOCUMENT_FIELD_DEFINITIONS } from '@/lib/extraction/field-definitions'
 import { MIN_EXTRACTABLE_QUALITY } from '@/lib/extraction/types'
 import type { ExtractedFieldResult } from '@/lib/extraction/types'
+import { shouldAutoAccept } from '@/lib/review/review-policy'
+import { autoAcceptDocument } from '@/lib/layer2/auto-accept'
 import type { Prisma } from '@prisma/client'
 
 export const extractDocumentFunction = inngest.createFunction(
@@ -107,6 +109,7 @@ export const extractDocumentFunction = inngest.createFunction(
           detectedLanguage,
           imageQualityScore: quality.quality,
           imageQualityIssues: quality.issues as unknown as Prisma.InputJsonValue,
+          documentClass: extractionResult.documentClass ?? null,
           rawOutput: extractionResult as unknown as Prisma.InputJsonValue,
           extractedFields: {
             create: extractionResult.fields.map((f: ExtractedFieldResult) => {
@@ -136,6 +139,17 @@ export const extractDocumentFunction = inngest.createFunction(
       })
     })
 
+    // Core 4 — low-stakes documents with no critical flags are auto-accepted as
+    // Tier B (Declared) so a record exists immediately. High-stakes types and any
+    // document with a critical flag stay in REVIEW_REQUIRED for per-document review.
+    let autoAcceptedCount = 0
+    if (shouldAutoAccept(documentType, admissibility.criticalCount)) {
+      autoAcceptedCount = await step.run('auto-accept-low-stakes', async () => {
+        const ids = await autoAcceptDocument(documentId)
+        return ids.length
+      })
+    }
+
     await step.run('send-notification', async () => {
       await sendNotification({
         entityId,
@@ -143,13 +157,14 @@ export const extractDocumentFunction = inngest.createFunction(
         payload: {
           documentId,
           documentType,
-          tier: admissibility.tier,
+          // Auto-accepted records are written as Tier B (Declared).
+          tier: autoAcceptedCount > 0 ? 'B' : admissibility.tier,
           flagCount: admissibility.flags.length,
           criticalCount: admissibility.criticalCount,
         },
       })
     })
 
-    return { success: true, jobId: job.id, tier: admissibility.tier }
+    return { success: true, jobId: job.id, tier: admissibility.tier, autoAcceptedCount }
   },
 )

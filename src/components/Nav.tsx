@@ -8,8 +8,12 @@ import { colours, typography, spacing } from '@/lib/design-system'
 const SUPPLIER_LINKS = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/upload', label: 'Upload' },
+  { href: '/review', label: 'Review' },
   { href: '/records', label: 'Records' },
+  { href: '/questionnaires', label: 'Questionnaires' },
+  { href: '/shares', label: 'Shared links' },
   { href: '/requests', label: 'Requests' },
+  { href: '/inbound-requests', label: 'Email requests' },
   { href: '/query', label: 'Query' },
   { href: '/analytics', label: 'Data quality' },
   { href: '/activity', label: 'Activity' },
@@ -20,7 +24,10 @@ const SUPPLIER_LINKS = [
 const BUYER_LINKS = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/upload', label: 'Ingest' },
+  { href: '/review', label: 'Review' },
   { href: '/records', label: 'Records' },
+  { href: '/questionnaires', label: 'Questionnaires' },
+  { href: '/shares', label: 'Shared links' },
   { href: '/requests', label: 'Requests' },
   { href: '/supply-chain', label: 'Entity network' },
   { href: '/query', label: 'Query' },

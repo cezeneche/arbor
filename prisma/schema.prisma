@@ -79,6 +79,8 @@ model Entity {
   auditorAccess           AuditorAccess[]
   webhookSubscriptions    WebhookSubscription[]
   integrationCredentials  IntegrationCredential[]
+  sharedExports           SharedExport[]
+  inboundRequests         InboundRequest[]
 }
 
 // ── USER ──────────────────────────────────────────────────────────────────────
@@ -222,6 +224,8 @@ model ExtractionJob {
   detectedLanguage  String? // ISO 639-1 code, or 'unknown'
   imageQualityScore Float? // 1 (unreadable) to 5 (clear); null for PDFs
   imageQualityIssues Json? // string[] of detected issues e.g. ["blurry","skewed"]
+  // Core 3 — best-guess free-text document class for GENERIC (schema-on-read) docs.
+  documentClass     String?
 
   extractedFields ExtractedField[]
 }
@@ -475,6 +479,7 @@ enum NotificationType {
   CERTIFICATE_EXPIRING
   CERTIFICATE_EXPIRED
   RECORD_SUPERSEDED
+  REVIEW_DIGEST
 }
 
 // ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────
@@ -639,6 +644,52 @@ enum IntegrationProvider {
   SAP
   NETSUITE
   ORACLE
+}
+
+// ── SHARED EXPORT (Core 2 — signed public record share) ───────────────────────
+
+model SharedExport {
+  id            String     @id @default(cuid())
+  entityId      String
+  entity        Entity     @relation(fields: [entityId], references: [id])
+  // Unguessable high-entropy token used in the public URL.
+  token         String     @unique
+  // Optional scope. Null domain = all domains; null period bounds = unbounded.
+  domain        DataDomain?
+  periodStart   DateTime?
+  periodEnd     DateTime?
+  // Gap-4 audit-package integrity hash for the scope; verifiable via /api/audit/verify-public.
+  packageHash   String
+  createdById   String
+  createdAt     DateTime   @default(now())
+  expiresAt     DateTime?
+  revokedAt     DateTime?
+
+  @@index([entityId, createdAt])
+}
+
+// ── INBOUND REQUEST (Core 5 — email-forward data request handler) ─────────────
+
+model InboundRequest {
+  id           String               @id @default(cuid())
+  entityId     String
+  entity       Entity               @relation(fields: [entityId], references: [id])
+  fromEmail    String?
+  rawText      String               @db.Text
+  // Parsed {domain, fields, period} plus the assembled answer or missing fields.
+  parsedFields Json?
+  status       InboundRequestStatus @default(NEW)
+  createdAt    DateTime             @default(now())
+  answeredAt   DateTime?
+
+  @@index([entityId, status])
+  @@index([entityId, createdAt])
+}
+
+enum InboundRequestStatus {
+  NEW
+  ANSWERED
+  NEEDS_DATA
 }
 
 // ── INSTITUTIONAL ENQUIRY ────────────────────────────────────────────────────

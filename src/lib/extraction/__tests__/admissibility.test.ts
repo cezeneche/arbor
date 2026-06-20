@@ -33,6 +33,23 @@ function fullElectricityBillFields(overrides: Record<string, string | null> = {}
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
+describe('evaluateAdmissibility  -  generic (Core 3, schema-on-read)', () => {
+  it('OTHER document type with arbitrary fields → Tier B, no critical flags', () => {
+    const result = evaluateAdmissibility(
+      'OTHER',
+      [field('monthly_rent', '4500'), field('landlord_name', 'Estates Ltd')],
+      'Acme Ltd',
+    )
+    expect(result.tier).toBe('B')
+    expect(result.criticalCount).toBe(0)
+  })
+
+  it('an unknown document type (no spec) → Tier B', () => {
+    const result = evaluateAdmissibility('LEASE_AGREEMENT', [field('term_years', '5')], 'Acme Ltd')
+    expect(result.tier).toBe('B')
+  })
+})
+
 describe('evaluateAdmissibility  -  electricity bill', () => {
   it('ACTUAL read with all compulsory fields → Tier A', () => {
     const result = evaluateAdmissibility(

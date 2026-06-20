@@ -13,6 +13,11 @@ import {
   buildQualityAssessmentPrompt,
 } from './prompts'
 import { DOCUMENT_FIELD_DEFINITIONS } from './field-definitions'
+import {
+  isGenericExtraction,
+  buildGenericExtractionPrompt,
+  parseGenericExtractionResponse,
+} from './generic'
 
 // Lazily instantiated so importing this module (e.g. during `next build` page
 // data collection) never requires ANTHROPIC_API_KEY to be present.
@@ -101,6 +106,11 @@ export async function assessImageQuality(
 }
 
 export async function extractDocument(input: ExtractionInput): Promise<ExtractionResult> {
+  // Core 3 — schema-on-read path for documents with no admissibility spec.
+  if (isGenericExtraction(input.documentType)) {
+    return extractGenericDocument(input)
+  }
+
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[input.documentType] ?? []
   const requiredFields = fieldDefs.map((f) => f.name)
   const userPrompt = buildExtractionPrompt(input.documentType, requiredFields, input.detectedLanguage)
@@ -148,6 +158,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
       extractionNotes: parsed.extractionNotes ?? '',
       rawResponse: rawText,
       languageNote,
+      documentClass: null,
     }
   } catch {
     return {
@@ -157,6 +168,48 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
       extractionNotes: 'Extraction failed : could not parse Claude response as JSON',
       rawResponse: rawText,
       languageNote,
+      documentClass: null,
     }
+  }
+}
+
+// Core 3 — GENERIC extraction. No fixed field list: the model returns whatever
+// labelled values it finds, plus a best-guess documentClass. Records produced from
+// these fields default to Tier B (Declared) — there is no spec to verify against.
+async function extractGenericDocument(input: ExtractionInput): Promise<ExtractionResult> {
+  const isForeign =
+    !!input.detectedLanguage && input.detectedLanguage !== 'en' && input.detectedLanguage !== 'unknown'
+  const languageNote = isForeign
+    ? `This document appears to be in ${input.detectedLanguage}. Values have been extracted as written — check numeric fields and units carefully.`
+    : null
+
+  const response = await getClient().messages.create({
+    model: EXTRACTION_MODEL,
+    max_tokens: 4096,
+    system: [
+      { type: 'text', text: EXTRACTION_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+    ],
+    messages: [
+      {
+        role: 'user',
+        content: [
+          documentContentBlock(input.documentBase64, input.mediaType),
+          { type: 'text', text: buildGenericExtractionPrompt() },
+        ],
+      },
+    ],
+  })
+
+  const rawText = textFromResponse(response)
+  const parsed = parseGenericExtractionResponse(rawText)
+
+  return {
+    success: parsed.success,
+    fields: parsed.fields,
+    documentTypeConfirmed: parsed.documentClass ?? 'OTHER',
+    extractionNotes: parsed.notes,
+    rawResponse: rawText,
+    languageNote,
+    documentClass: parsed.documentClass,
   }
 }

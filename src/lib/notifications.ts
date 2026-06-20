@@ -54,6 +54,11 @@ export interface NotificationPayloads {
     periodStart: string
     periodEnd: string
   }
+  REVIEW_DIGEST: {
+    fieldCount: number
+    estimatedMinutes: number
+    documentCount: number
+  }
 }
 
 export type NotificationInput<T extends NotificationType = NotificationType> = {
@@ -135,6 +140,10 @@ function notificationSubject(type: NotificationType, payload: NotificationPayloa
       return `Some of your records have expired`
     case 'RECORD_SUPERSEDED':
       return `A supplier record has been updated`
+    case 'REVIEW_DIGEST': {
+      const p = payload as NotificationPayloads['REVIEW_DIGEST']
+      return `${p.fieldCount} value${p.fieldCount === 1 ? '' : 's'} to check — about ${p.estimatedMinutes} min`
+    }
     default:
       return `arbor notification`
   }
@@ -182,6 +191,10 @@ function notificationHtml(
     case 'RECORD_SUPERSEDED': {
       const p = payload as NotificationPayloads['RECORD_SUPERSEDED']
       return `<p>A record from <strong>${escapeHtml(p.supplierName)}</strong> for ${escapeHtml(p.domain)}, ${escapeHtml(p.periodStart)} – ${escapeHtml(p.periodEnd)} has been updated. The original is preserved.<br><a href="${appUrl}/supply-chain">Review the updated record</a></p>`
+    }
+    case 'REVIEW_DIGEST': {
+      const p = payload as NotificationPayloads['REVIEW_DIGEST']
+      return `<p>You have <strong>${escapeHtml(p.fieldCount)}</strong> value${p.fieldCount === 1 ? '' : 's'} across ${escapeHtml(p.documentCount)} document${p.documentCount === 1 ? '' : 's'} waiting to be checked — about ${escapeHtml(p.estimatedMinutes)} minutes of work. Nothing else needs your attention.<br><a href="${appUrl}/review">Open your review list</a></p>`
     }
     default:
       return `<p><a href="${appUrl}">Log in to arbor</a></p>`

@@ -25,6 +25,8 @@ export interface ExtractionResult {
   rawResponse: string
   /** Set when the document was detected as non-English. Surfaced in the review UI. */
   languageNote: string | null
+  /** Core 3 — best-guess class for GENERIC (schema-on-read) documents; null otherwise. */
+  documentClass?: string | null
 }
 
 // Gap 1 — result of the cheap language-detection pre-call.
