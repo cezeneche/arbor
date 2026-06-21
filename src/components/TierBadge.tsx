@@ -1,10 +1,14 @@
 import { trustTierConfig, typography } from '@/lib/design-system'
+import { tierLabel } from '@/lib/tier-label'
 
-export function TierBadge({ tier }: { tier: 'A' | 'B' | 'C' }) {
+// `plain` (supplier view) shows only the plain-English label — no A/B/C code and
+// no technical tooltip. Buyers get the full technical form. Defaults to full
+// detail so buyer-facing screens stay unchanged.
+export function TierBadge({ tier, plain = false }: { tier: 'A' | 'B' | 'C'; plain?: boolean }) {
   const config = trustTierConfig[tier]
   return (
     <span
-      title={config.description}
+      title={plain ? undefined : config.description}
       style={{
         display: 'inline-block',
         padding: '2px 8px',
@@ -18,7 +22,7 @@ export function TierBadge({ tier }: { tier: 'A' | 'B' | 'C' }) {
         whiteSpace: 'nowrap',
       }}
     >
-      {tier}: {config.label}
+      {tierLabel(tier, { plain })}
     </span>
   )
 }

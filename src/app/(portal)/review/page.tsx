@@ -62,7 +62,7 @@ export default async function ReviewPage() {
   const { estimatedMinutes } = summariseReviewQueue(totalFields)
 
   return (
-    <div style={{ maxWidth: '960px' }}>
+    <div style={{ width: '100%' }}>
       <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
         Review
       </h1>

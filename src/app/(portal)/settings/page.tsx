@@ -112,6 +112,38 @@ export default async function SettingsPage() {
           </p>
         </div>
 
+        {/* Reports & logs — reads-not-fills tools, kept off the primary nav */}
+        <div style={sectionStyle}>
+          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}` }}>
+            Reports &amp; logs
+          </p>
+          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[2]}` }}>
+            Look across your data and review the history of every change.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {[
+              { href: '/benchmarks', label: 'Benchmarks', desc: 'See how your declared data compares to sector reference values.' },
+              { href: '/activity', label: entity.entityType === 'BUYER' ? 'Audit log' : 'Activity', desc: 'A time-ordered log of every action taken on your data.' },
+              ...(entity.entityType === 'BUYER'
+                ? [{ href: '/access', label: 'Access control', desc: 'Manage which buyers can see which of your records.' }]
+                : []),
+            ].map((row) => (
+              <div key={row.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] }}>
+                <div>
+                  <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>{row.label}</p>
+                  <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>{row.desc}</p>
+                </div>
+                <Link
+                  href={row.href}
+                  style={{ padding: '6px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.navy, border: `1px solid ${colours.border}`, borderRadius: '4px', textDecoration: 'none', letterSpacing: typography.tracking.wide, whiteSpace: 'nowrap' as const }}
+                >
+                  Open
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Security */}
         <div style={sectionStyle}>
           <TwoFactorSetup

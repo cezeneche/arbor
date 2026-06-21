@@ -34,7 +34,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
 }
 
-export function RecordsQueryPanel({ children }: { children: React.ReactNode }) {
+export function RecordsQueryPanel({ children, plainTiers = false }: { children: React.ReactNode; plainTiers?: boolean }) {
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
@@ -343,7 +343,7 @@ export function RecordsQueryPanel({ children }: { children: React.ReactNode }) {
                           {DOMAIN_LABELS[r.domain] ?? r.domain}
                         </td>
                         <td style={{ padding: '7px 14px' }}>
-                          <TierBadge tier={r.trustTier} />
+                          <TierBadge tier={r.trustTier} plain={plainTiers} />
                         </td>
                       </tr>
                     ))}

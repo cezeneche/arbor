@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -17,11 +18,12 @@ export default async function UploadPage({
 
   const entity = await prisma.entity.findUnique({
     where: { id: entityId },
-    select: { uploadEmailToken: true },
+    select: { uploadEmailToken: true, entityType: true },
   })
   const uploadEmail = entity?.uploadEmailToken ? `upload-${entity.uploadEmailToken}@arbor.io` : null
+  const isBuyer = entity?.entityType === 'BUYER'
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[5] }}>
         <h1
           style={{
@@ -32,7 +34,7 @@ export default async function UploadPage({
             letterSpacing: typography.tracking.tight,
           }}
         >
-          Upload document
+          {isBuyer ? 'Ingest documents' : 'Upload document'}
         </h1>
         <p
           style={{
@@ -45,6 +47,32 @@ export default async function UploadPage({
           Upload a document to extract and certify its data. Fields below the confidence
           threshold will be flagged for your review before records are written.
         </p>
+
+        {/* Provenance guard — an ingested document becomes the uploader's OWN
+            record (confirm/route writes under the session entity). For buyers,
+            steer supplier data to the request channel so it keeps the supplier's
+            name and trust tier rather than being recorded as the buyer's own. */}
+        {isBuyer && (
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: `${spacing[2]} 0 0`,
+              padding: spacing[2],
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '6px',
+            }}
+          >
+            Documents you ingest are recorded as your organisation&apos;s own data. To obtain a
+            supplier&apos;s certified data — under their name and trust tier —{' '}
+            <Link href="/supply-chain" style={{ color: colours.navy, textDecoration: 'none', fontWeight: typography.weights.medium }}>
+              send a data request
+            </Link>{' '}
+            instead.
+          </p>
+        )}
       </div>
 
       <div
