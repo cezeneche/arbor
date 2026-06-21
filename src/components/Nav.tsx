@@ -4,40 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { colours, typography, spacing } from '@/lib/design-system'
-
-const SUPPLIER_LINKS = [
-  { href: '/dashboard', label: 'Overview' },
-  { href: '/upload', label: 'Upload' },
-  { href: '/review', label: 'Review' },
-  { href: '/records', label: 'Records' },
-  { href: '/questionnaires', label: 'Questionnaires' },
-  { href: '/shares', label: 'Shared links' },
-  { href: '/requests', label: 'Requests' },
-  { href: '/inbound-requests', label: 'Email requests' },
-  { href: '/query', label: 'Query' },
-  { href: '/analytics', label: 'Data quality' },
-  { href: '/activity', label: 'Activity' },
-  { href: '/benchmarks', label: 'Benchmarks' },
-  { href: '/settings', label: 'Settings' },
-]
-
-const BUYER_LINKS = [
-  { href: '/dashboard', label: 'Overview' },
-  { href: '/upload', label: 'Ingest' },
-  { href: '/review', label: 'Review' },
-  { href: '/records', label: 'Records' },
-  { href: '/questionnaires', label: 'Questionnaires' },
-  { href: '/shares', label: 'Shared links' },
-  { href: '/requests', label: 'Requests' },
-  { href: '/supply-chain', label: 'Entity network' },
-  { href: '/query', label: 'Query' },
-  { href: '/analytics', label: 'Data quality' },
-  { href: '/activity', label: 'Audit log' },
-  { href: '/benchmarks', label: 'Benchmarks' },
-  { href: '/export', label: 'Export' },
-  { href: '/access', label: 'Access control' },
-  { href: '/settings', label: 'Settings' },
-]
+import { getNavLinks, isLinkActive } from '@/lib/nav'
 
 export function Nav({
   entityName,
@@ -49,7 +16,7 @@ export function Nav({
   recordCount?: number
 }) {
   const pathname = usePathname()
-  const links = entityType === 'BUYER' ? BUYER_LINKS : SUPPLIER_LINKS
+  const links = getNavLinks(entityType)
 
   return (
     <nav
@@ -97,9 +64,7 @@ export function Nav({
       {/* Navigation links */}
       <div style={{ flex: 1, paddingTop: spacing[1] }}>
         {links.map(link => {
-          const active =
-            pathname === link.href ||
-            (link.href !== '/dashboard' && pathname.startsWith(link.href + '/'))
+          const active = isLinkActive(link, pathname)
           return (
             <Link
               key={link.href}

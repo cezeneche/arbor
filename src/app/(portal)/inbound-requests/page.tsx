@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import Link from 'next/link'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 interface ParsedShape {
@@ -28,7 +29,12 @@ export default async function InboundRequestsPage() {
   const requestsEmail = entity?.uploadEmailToken ? `requests-${entity.uploadEmailToken}@arbor.io` : null
 
   return (
-    <div style={{ maxWidth: '880px' }}>
+    <div style={{ width: '100%' }}>
+      <div style={{ marginBottom: spacing[3] }}>
+        <Link href="/requests" style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, textDecoration: 'none' }}>
+          ← Requests
+        </Link>
+      </div>
       <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
         Email requests
       </h1>

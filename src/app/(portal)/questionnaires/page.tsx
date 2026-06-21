@@ -11,7 +11,12 @@ export default async function QuestionnairesPage() {
   const templates = listTemplates()
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
+      <div style={{ marginBottom: spacing[3] }}>
+        <Link href="/requests" style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, textDecoration: 'none' }}>
+          ← Requests
+        </Link>
+      </div>
       <h1
         style={{
           fontSize: typography.sizes.lg,
@@ -36,7 +41,7 @@ export default async function QuestionnairesPage() {
         so you answer the question once. Each answer shows where it came from and how trustworthy it is.
       </p>
 
-      <div style={{ display: 'grid', gap: spacing[2], maxWidth: '760px' }}>
+      <div style={{ display: 'grid', gap: spacing[2], width: '100%' }}>
         {templates.map((t) => {
           const available = t.status === 'available'
           const card = (
