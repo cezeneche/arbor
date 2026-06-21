@@ -75,7 +75,7 @@ export function WebhookManager({ initialSubscriptions }: { initialSubscriptions:
       {newSecret && (
         <div style={{ backgroundColor: colours.greenBg, border: `1px solid ${colours.green}`, borderRadius: '6px', padding: spacing[2], marginBottom: spacing[3] }}>
           <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.green, margin: `0 0 6px` }}>
-            Signing secret — copy it now. This is the only time it will be shown.
+            Signing secret - copy it now. This is the only time it will be shown.
           </p>
           <code style={{ fontSize: typography.sizes.sm, fontFamily: 'monospace', color: colours.textPrimary, wordBreak: 'break-all' as const }}>
             {newSecret}

@@ -100,7 +100,7 @@ export default async function QuestionnaireDetailPage({
         <PrefillExport templateId={template.id} answers={answers} />
       </div>
 
-      {/* Period filter — inline, no modal. */}
+      {/* Period filter - inline, no modal. */}
       <form
         method="get"
         style={{ display: 'flex', alignItems: 'flex-end', gap: spacing[2], marginBottom: spacing[3], padding: spacing[2], backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px' }}

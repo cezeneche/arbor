@@ -1,7 +1,7 @@
 import { colours, typography, spacing } from '@/lib/design-system'
 import type { AuditPackage } from '@/lib/audit-package/generator'
 
-// Gap 3/4 — read-only presentational view of an assembled audit package.
+// Gap 3/4 - read-only presentational view of an assembled audit package.
 // Shared by the verifier detail page and the external-auditor page. No actions.
 const TIER_COLOUR: Record<string, string> = { A: colours.green, B: colours.amber, C: colours.slate }
 const TIER_LABEL: Record<string, string> = { A: 'Verified', B: 'Declared', C: 'Estimated' }

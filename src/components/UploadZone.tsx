@@ -33,7 +33,7 @@ const DOCUMENT_TYPES = [
   { value: 'OTHER', label: 'Other' },
 ]
 
-// Gap 8.1 — per-file status while a batch uploads.
+// Gap 8.1 - per-file status while a batch uploads.
 interface QueueItem {
   file: File
   status: 'queued' | 'uploading' | 'ready' | 'error'
@@ -247,7 +247,7 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
             </p>
           )}
 
-          {/* Submit — centred in right column */}
+          {/* Submit - centred in right column */}
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'auto' }}>
             <button
               type="submit"
@@ -270,7 +270,7 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
         </div>
       </div>
 
-      {/* Gap 8.1 — upload queue with per-file status */}
+      {/* Gap 8.1 - upload queue with per-file status */}
       {queue.length > 0 && (
         <div style={{ border: `1px solid ${colours.border}`, borderRadius: '8px', overflow: 'hidden' }}>
           {queue.map((item, i) => {

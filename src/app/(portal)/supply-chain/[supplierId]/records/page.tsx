@@ -50,7 +50,7 @@ export default async function SupplierRecordsPage({
     })
   )
 
-  // Gap 5.2 — log this buyer's view of the supplier's records (PORTAL access).
+  // Gap 5.2 - log this buyer's view of the supplier's records (PORTAL access).
   await logRecordAccess(records.map((r) => r.id), buyerEntityId, 'PORTAL')
 
   const byDomain = DOMAINS.map(domain => {

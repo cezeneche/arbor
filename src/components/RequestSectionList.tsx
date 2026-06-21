@@ -26,11 +26,10 @@ export function RequestSectionList({
       <div style={{ display: 'flex', alignItems: 'baseline', gap: spacing[1], marginBottom: spacing[2] }}>
         <p
           style={{
-            fontSize: typography.sizes.xs,
+            fontSize: typography.sizes.sm,
             fontWeight: typography.weights.medium,
-            color: colours.textSecondary,
-            letterSpacing: typography.tracking.wider,
-            textTransform: 'uppercase',
+            color: colours.textPrimary,
+            letterSpacing: typography.tracking.normal,
             margin: 0,
           }}
         >
@@ -51,7 +50,7 @@ export function RequestSectionList({
       </div>
 
       {items.length === 0 ? (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0 }}>
           {emptyText}
         </p>
       ) : (

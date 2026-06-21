@@ -71,7 +71,7 @@ export function SharesManager({ initial, origin }: { initial: ShareRow[]; origin
 
   return (
     <div>
-      {/* Create — one primary action, inline, no modal. */}
+      {/* Create - one primary action, inline, no modal. */}
       <div style={{ padding: spacing[3], backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', marginBottom: spacing[4] }}>
         <p style={{ margin: `0 0 ${spacing[2]}`, fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
           Create a shareable link
@@ -113,7 +113,7 @@ export function SharesManager({ initial, origin }: { initial: ShareRow[]; origin
         {newUrl && (
           <div style={{ marginTop: spacing[2], padding: spacing[2], backgroundColor: colours.greenBg, border: `1px solid ${colours.green}`, borderRadius: '6px' }}>
             <p style={{ margin: 0, fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.green, letterSpacing: typography.tracking.wide, textTransform: 'uppercase' }}>
-              Link ready — anyone with it can view this data
+              Link ready - anyone with it can view this data
             </p>
             <div style={{ display: 'flex', gap: spacing[1], alignItems: 'center', marginTop: '6px' }}>
               <input readOnly value={newUrl} style={{ ...inputStyle, flex: 1, fontFamily: 'monospace' }} onFocus={(e) => e.currentTarget.select()} />
@@ -167,7 +167,7 @@ export function SharesManager({ initial, origin }: { initial: ShareRow[]; origin
                           Copy link
                         </button>
                       ) : (
-                        <span style={{ fontSize: typography.sizes.xs, color: colours.textTertiary }}>—</span>
+                        <span style={{ fontSize: typography.sizes.xs, color: colours.textTertiary }}>-</span>
                       )}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>

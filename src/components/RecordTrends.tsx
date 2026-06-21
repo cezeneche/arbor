@@ -34,7 +34,7 @@ export function RecordTrends({ trends }: { trends: Trends }) {
     return (
       <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[4], textAlign: 'center' }}>
         <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
-          No records yet — trends appear once you have data across more than one quarter.
+          No records yet - trends appear once you have data across more than one quarter.
         </p>
       </div>
     )
@@ -154,7 +154,7 @@ export function RecordTrends({ trends }: { trends: Trends }) {
                                         </span>
                                       </span>
                                     ) : (
-                                      <span style={{ color: colours.textTertiary }}>—</span>
+                                      <span style={{ color: colours.textTertiary }}>-</span>
                                     )}
                                   </td>
                                 )

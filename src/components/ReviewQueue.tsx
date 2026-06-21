@@ -85,7 +85,7 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
     setBusy(null)
     setDocs(remaining)
     router.refresh()
-    if (remaining.length > 0) setError('Some documents could not be confirmed automatically — check their values below.')
+    if (remaining.length > 0) setError('Some documents could not be confirmed automatically - check their values below.')
   }
 
   if (docs.length === 0) {
@@ -143,7 +143,7 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
                       <div style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, textTransform: 'capitalize' }}>{readable(f.fieldName)}</div>
                       {(f.flagged || low) && (
                         <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.amber }}>
-                          {f.flagReason ?? `We weren't sure — please check (${(f.confidenceScore * 100).toFixed(0)}%)`}
+                          {f.flagReason ?? `We weren't sure - please check (${(f.confidenceScore * 100).toFixed(0)}%)`}
                         </div>
                       )}
                     </div>

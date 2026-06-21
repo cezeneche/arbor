@@ -234,7 +234,7 @@ function renderFilterBar(overrides: Partial<FilterState> = {}, onChange = jest.f
   }
 }
 
-describe('FilterBar — default render', () => {
+describe('FilterBar - default render', () => {
   it('renders all filter controls', () => {
     renderFilterBar()
     expect(screen.getByText(/Sector/i)).toBeInTheDocument()
@@ -253,12 +253,12 @@ describe('FilterBar — default render', () => {
 
   it('does not show active tags when in default state', () => {
     renderFilterBar()
-    // Tags render as "[label]: [value] ×" — none should be present
+    // Tags render as "[label]: [value] ×" - none should be present
     expect(screen.queryByLabelText(/^Remove /)).not.toBeInTheDocument()
   })
 })
 
-describe('FilterBar — filter application', () => {
+describe('FilterBar - filter application', () => {
   it('calls onChange when a sector is selected', async () => {
     const user = userEvent.setup()
     const onChange = jest.fn()
@@ -299,7 +299,7 @@ describe('FilterBar — filter application', () => {
   })
 })
 
-describe('FilterBar — clear all', () => {
+describe('FilterBar - clear all', () => {
   it('shows Clear all when any filter is active', () => {
     renderFilterBar({ sectors: ['Steel'] })
     expect(screen.getByText('Clear all')).toBeInTheDocument()
@@ -321,7 +321,7 @@ describe('FilterBar — clear all', () => {
   })
 })
 
-describe('FilterBar — active filter tags', () => {
+describe('FilterBar - active filter tags', () => {
   it('shows a removable tag for each active sector', () => {
     renderFilterBar({ sectors: ['Steel', 'Aluminium'] })
     expect(screen.getByLabelText('Remove Sector: Steel')).toBeInTheDocument()
@@ -353,12 +353,12 @@ describe('FilterBar — active filter tags', () => {
   })
 })
 
-describe('FilterBar — mobile collapse', () => {
+describe('FilterBar - mobile collapse', () => {
   const originalInnerWidth = window.innerWidth
 
   beforeEach(() => {
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 480 })
-    // No resize dispatch needed — component reads innerWidth in useEffect on mount
+    // No resize dispatch needed - component reads innerWidth in useEffect on mount
   })
 
   afterEach(async () => {

@@ -150,7 +150,7 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
         </span>
       </div>
 
-      {/* STEP: idle — not set up */}
+      {/* STEP: idle - not set up */}
       {step === 'idle' && !isEnabled && (
         <div style={{ marginTop: spacing[2] }}>
           <button onClick={startSetup} disabled={loading} style={btnPrimary(loading)}>
@@ -160,7 +160,7 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
         </div>
       )}
 
-      {/* STEP: idle — already enabled */}
+      {/* STEP: idle - already enabled */}
       {step === 'idle' && isEnabled && (
         <div style={{ marginTop: spacing[2] }}>
           {isAdmin ? (
@@ -182,7 +182,7 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
         </div>
       )}
 
-      {/* STEP: scanning — show QR code */}
+      {/* STEP: scanning - show QR code */}
       {step === 'scanning' && (
         <div style={{ marginTop: spacing[2] }}>
           <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[2]}` }}>
@@ -229,7 +229,7 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
         </div>
       )}
 
-      {/* STEP: recovery — show codes once */}
+      {/* STEP: recovery - show codes once */}
       {step === 'recovery' && (
         <div style={{ marginTop: spacing[2] }}>
           <div style={{ backgroundColor: colours.amberBg, border: `1px solid ${colours.amber}`, borderRadius: '4px', padding: spacing[2], marginBottom: spacing[2] }}>

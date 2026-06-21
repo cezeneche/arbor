@@ -101,7 +101,7 @@ export default async function DashboardPage({
       where: { entityId, isActive: true },
       select: { domain: true, trustTier: true },
     }),
-    // Gap 2 — documents with a flagged expiry_date field (certificate expiry).
+    // Gap 2 - documents with a flagged expiry_date field (certificate expiry).
     prisma.document.findMany({
       where: {
         entityId,
@@ -117,7 +117,7 @@ export default async function DashboardPage({
       },
       take: 20,
     }),
-    // Gap 2 — batch/mill records past their staleness horizon.
+    // Gap 2 - batch/mill records past their staleness horizon.
     prisma.dataRecord.findMany({
       where: { entityId, isActive: true, staleAfterDate: { not: null, lt: now } },
       include: { document: { select: { documentType: true, fileName: true, id: true } } },
@@ -126,7 +126,7 @@ export default async function DashboardPage({
     }),
   ])
 
-  // Gap 2 — build a plain-English "needs attention" list (certificate expiry + staleness).
+  // Gap 2 - build a plain-English "needs attention" list (certificate expiry + staleness).
   const readableDocType = (t: string) =>
     t.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
   type AttentionItem = { key: string; text: string; docType: string }
@@ -143,8 +143,8 @@ export default async function DashboardPage({
         key: `cert-${doc.id}`,
         docType: doc.documentType,
         text: expired
-          ? `Your ${label} expired ${dateStr} — upload a renewal to restore Verified status.`
-          : `Your ${label} expires ${dateStr} — upload a renewal to keep this record Verified.`,
+          ? `Your ${label} expired ${dateStr} - upload a renewal to restore Verified status.`
+          : `Your ${label} expires ${dateStr} - upload a renewal to keep this record Verified.`,
       })
     }
   }
@@ -153,7 +153,7 @@ export default async function DashboardPage({
     attentionItems.push({
       key: `stale-${rec.id}`,
       docType: rec.document?.documentType ?? '',
-      text: `Your ${label} for the period ending ${rec.staleAfterDate ? new Date(rec.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} is now stale — upload a current document to refresh it.`,
+      text: `Your ${label} for the period ending ${rec.staleAfterDate ? new Date(rec.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} is now stale - upload a current document to refresh it.`,
     })
   }
 
@@ -176,7 +176,7 @@ export default async function DashboardPage({
   const openRequestsCount = totalPending
   const reviewCount = recentDocuments.filter(d => d.status === 'REVIEW_REQUIRED').length
 
-  // Gap 8.3 — onboarding progress. Shown until the first document is uploaded and
+  // Gap 8.3 - onboarding progress. Shown until the first document is uploaded and
   // its data confirmed (a record written). Removed permanently thereafter.
   const step1Done = recentDocuments.length > 0
   const step2Done = totalRecords > 0
@@ -225,7 +225,7 @@ export default async function DashboardPage({
         </Link>
       </div>
 
-      {/* Gap 8.3 — onboarding progress, removed once the first record is confirmed. */}
+      {/* Gap 8.3 - onboarding progress, removed once the first record is confirmed. */}
       {!onboardingComplete && (
         <section style={{ marginBottom: spacing[4] }}>
           <div
@@ -277,7 +277,7 @@ export default async function DashboardPage({
         </section>
       )}
 
-      {/* Gap 2 — Needs attention: certificate expiry + batch staleness. Shown only when non-empty. */}
+      {/* Gap 2 - Needs attention: certificate expiry + batch staleness. Shown only when non-empty. */}
       {attentionItems.length > 0 && (
         <section style={{ marginBottom: spacing[4] }}>
           <span

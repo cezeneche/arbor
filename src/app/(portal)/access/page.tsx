@@ -34,7 +34,7 @@ export default async function AccessPage() {
     legalName: r.buyerEntity.legalName,
   }))
 
-  // Gap 5.1 — group active grants by buyer so the supplier sees "who can see my data".
+  // Gap 5.1 - group active grants by buyer so the supplier sees "who can see my data".
   type Grant = (typeof grants)[number]
   const byBuyer = new Map<string, { name: string; grants: Grant[] }>()
   for (const g of grants) {

@@ -68,8 +68,8 @@ export default async function ReviewPage() {
       </h1>
       <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[4]}`, maxWidth: '640px' }}>
         {items.length === 0
-          ? 'Everything is up to date — nothing needs checking right now.'
-          : `${totalFields} value${totalFields === 1 ? '' : 's'} across ${items.length} document${items.length === 1 ? '' : 's'} to check — about ${estimatedMinutes} minute${estimatedMinutes === 1 ? '' : 's'}.${flaggedTotal > 0 ? ` ${flaggedTotal} we weren't sure about are highlighted.` : ''}`}
+          ? 'Everything is up to date - nothing needs checking right now.'
+          : `${totalFields} value${totalFields === 1 ? '' : 's'} across ${items.length} document${items.length === 1 ? '' : 's'} to check - about ${estimatedMinutes} minute${estimatedMinutes === 1 ? '' : 's'}.${flaggedTotal > 0 ? ` ${flaggedTotal} we weren't sure about are highlighted.` : ''}`}
       </p>
 
       <ReviewQueue initial={items} />
