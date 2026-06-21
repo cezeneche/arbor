@@ -8,6 +8,7 @@ import { Pagination, PAGE_SIZE } from '@/components/Pagination'
 import { RecordsQueryPanel } from '@/components/RecordsQueryPanel'
 import { RecordQualitySummary } from '@/components/RecordQualitySummary'
 import { RecordTrends } from '@/components/RecordTrends'
+import { BenchmarksView } from '@/components/BenchmarksView'
 import { summariseRecordQuality } from '@/lib/layer3/record-quality'
 import { buildRecordTrends } from '@/lib/layer3/record-trends'
 import { getCompulsoryFieldsByDomain } from '@/lib/layer3/compulsory-fields'
@@ -35,7 +36,7 @@ export default async function RecordsPage({
   const domainFilter = sp.domain ?? null
   const tierFilter = sp.tier ?? null
   const page = Math.max(1, parseInt(sp.page ?? '1', 10))
-  const view = sp.view === 'trends' ? 'trends' : 'records'
+  const view = sp.view === 'trends' ? 'trends' : sp.view === 'benchmarks' ? 'benchmarks' : 'records'
 
   const where = {
     entityId,
@@ -79,7 +80,7 @@ export default async function RecordsPage({
     getCompulsoryFieldsByDomain(),
   )
 
-  // Trends is a secondary view of the same data — fetched only when selected, over
+  // Trends is a secondary view of the same data - fetched only when selected, over
   // the entity's full active history (trends need every quarter, not one page).
   const trends = view === 'trends'
     ? buildRecordTrends(
@@ -182,15 +183,18 @@ export default async function RecordsPage({
 
       <RecordQualitySummary summary={quality} />
 
-      {/* Records (default) and Trends are two views of the same data — a quiet
-          toggle, not tabs. The table stays the primary view. */}
+      {/* Records (default), Trends and Benchmarks are views of the same data - a
+          quiet toggle, not tabs. The table stays the primary view. */}
       <div style={{ display: 'flex', gap: spacing[3], marginBottom: spacing[4], paddingBottom: spacing[2], borderBottom: `1px solid ${colours.border}` }}>
         <Link href="/records" style={viewToggleStyle(view === 'records')}>Records</Link>
         <Link href="/records?view=trends" style={viewToggleStyle(view === 'trends')}>Trends</Link>
+        <Link href="/records?view=benchmarks" style={viewToggleStyle(view === 'benchmarks')}>Benchmarks</Link>
       </div>
 
       {view === 'trends' ? (
         <RecordTrends trends={trends!} />
+      ) : view === 'benchmarks' ? (
+        <BenchmarksView />
       ) : (
       <>
       <div style={{ display: 'flex', gap: spacing[3], marginBottom: spacing[4] }}>

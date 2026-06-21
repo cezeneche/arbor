@@ -37,7 +37,7 @@ export default async function QuestionnairesPage() {
           maxWidth: '640px',
         }}
       >
-        Pick a questionnaire and Arbor fills in the answers from the documents you have already uploaded —
+        Pick a questionnaire and Arbor fills in the answers from the documents you have already uploaded -
         so you answer the question once. Each answer shows where it came from and how trustworthy it is.
       </p>
 

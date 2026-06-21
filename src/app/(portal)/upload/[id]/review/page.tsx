@@ -76,7 +76,7 @@ export default async function ReviewPage({
     periodEnd: c.periodEnd.toISOString(),
   }))
 
-  // Gap 1 — surface multilingual + degraded-document warnings before the field list.
+  // Gap 1 - surface multilingual + degraded-document warnings before the field list.
   const detectedLanguage = job?.detectedLanguage ?? null
   const showLanguageBanner =
     !!detectedLanguage && detectedLanguage !== 'en' && detectedLanguage !== 'unknown'
@@ -126,7 +126,7 @@ export default async function ReviewPage({
             color: colours.amber,
           }}
         >
-          This document appears to be in <strong style={{ fontWeight: typography.weights.medium }}>{detectedLanguage}</strong>. Values are shown as extracted — check numeric fields and units carefully.
+          This document appears to be in <strong style={{ fontWeight: typography.weights.medium }}>{detectedLanguage}</strong>. Values are shown as extracted - check numeric fields and units carefully.
         </div>
       )}
 
@@ -143,7 +143,7 @@ export default async function ReviewPage({
             color: colours.amber,
           }}
         >
-          This image was flagged as <strong style={{ fontWeight: typography.weights.medium }}>{qualityLabel}</strong> quality{qualityIssues ? ` (${qualityIssues})` : ''}. Some values may have been misread — verify before confirming.
+          This image was flagged as <strong style={{ fontWeight: typography.weights.medium }}>{qualityLabel}</strong> quality{qualityIssues ? ` (${qualityIssues})` : ''}. Some values may have been misread - verify before confirming.
         </div>
       )}
 

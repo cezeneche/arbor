@@ -45,7 +45,7 @@ export default async function SharesPage() {
       </h1>
       <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[4]}`, maxWidth: '640px' }}>
         Share a set of your records as a link. Whoever opens it sees the records and their trust tiers, and can
-        confirm the data hasn&apos;t been altered — without needing an Arbor account. Revoke any link at any time.
+        confirm the data hasn&apos;t been altered - without needing an Arbor account. Revoke any link at any time.
       </p>
 
       <SharesManager initial={initial} origin={origin} />

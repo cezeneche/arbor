@@ -7,8 +7,8 @@ import { shareState } from '@/lib/shares/share-status'
 import { categoriseRequests } from '@/lib/layer3/requests-overview'
 import { RequestSectionList } from '@/components/RequestSectionList'
 
-// Unified Requests landing. The supplier sees one idea — "someone wants my data,
-// and here's what I've given" — instead of four separate destinations. Rows route
+// Unified Requests landing. The supplier sees one idea - "someone wants my data,
+// and here's what I've given" - instead of four separate destinations. Rows route
 // into the focused screens (/requests/data, /inbound-requests, /shares) where the
 // actual respond / manage actions live.
 export default async function RequestsPage() {
@@ -86,9 +86,11 @@ export default async function RequestsPage() {
       <RequestSectionList
         title="Waiting on you"
         items={waiting}
-        emptyText="You're all caught up — nothing to respond to."
+        emptyText="You're all caught up, nothing to respond to."
         accent
       />
+
+      <div style={{ height: '1px', backgroundColor: colours.border, margin: `0 0 ${spacing[5]}` }} />
 
       <RequestSectionList
         title="What you've shared"
@@ -104,8 +106,8 @@ export default async function RequestsPage() {
         />
       )}
 
-      {/* Questionnaires have no per-entity "open" state — they're a catalogue you
-          complete on demand — so they're an entry point, not a waiting task. */}
+      {/* Questionnaires have no per-entity "open" state - they're a catalogue you
+          complete on demand - so they're an entry point, not a waiting task. */}
       <div style={{ borderTop: `1px solid ${colours.border}`, paddingTop: spacing[3] }}>
         <Link
           href="/questionnaires"
@@ -113,7 +115,7 @@ export default async function RequestsPage() {
         >
           Complete a questionnaire →
         </Link>
-        <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0' }}>
+        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '4px 0 0' }}>
           Answer a buyer&apos;s questionnaire from the data you already hold.
         </p>
       </div>

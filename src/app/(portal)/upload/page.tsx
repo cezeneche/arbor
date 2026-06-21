@@ -48,7 +48,7 @@ export default async function UploadPage({
           threshold will be flagged for your review before records are written.
         </p>
 
-        {/* Provenance guard — an ingested document becomes the uploader's OWN
+        {/* Provenance guard - an ingested document becomes the uploader's OWN
             record (confirm/route writes under the session entity). For buyers,
             steer supplier data to the request channel so it keeps the supplier's
             name and trust tier rather than being recorded as the buyer's own. */}
@@ -66,7 +66,7 @@ export default async function UploadPage({
             }}
           >
             Documents you ingest are recorded as your organisation&apos;s own data. To obtain a
-            supplier&apos;s certified data — under their name and trust tier —{' '}
+            supplier&apos;s certified data - under their name and trust tier -{' '}
             <Link href="/supply-chain" style={{ color: colours.navy, textDecoration: 'none', fontWeight: typography.weights.medium }}>
               send a data request
             </Link>{' '}
@@ -117,7 +117,7 @@ export default async function UploadPage({
             }}
           >
             Or email documents as attachments to{' '}
-            <code style={{ color: colours.textSecondary }}>{uploadEmail}</code> — we&apos;ll read them and notify you when they&apos;re ready.
+            <code style={{ color: colours.textSecondary }}>{uploadEmail}</code> - we&apos;ll read them and notify you when they&apos;re ready.
           </p>
         )}
       </div>

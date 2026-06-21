@@ -83,7 +83,7 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
         {children}
       </div>
 
-      {/* Toggle handle — fixed at bottom, offset by nav width */}
+      {/* Toggle handle - fixed at bottom, offset by nav width */}
       <div
         role="button"
         tabIndex={0}
@@ -163,7 +163,7 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
         )}
       </div>
 
-      {/* Panel body — fixed, slides up from bottom */}
+      {/* Panel body - fixed, slides up from bottom */}
       <div
         style={{
           position: 'fixed',
@@ -287,7 +287,7 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
                 </span>
                 {result.hasMore && (
                   <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.amber, marginLeft: 'auto' }}>
-                    Showing top results — refine your query for more
+                    Showing top results - refine your query for more
                   </span>
                 )}
               </div>

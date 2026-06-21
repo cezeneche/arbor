@@ -1,7 +1,7 @@
 import { trustTierConfig, typography } from '@/lib/design-system'
 import { tierLabel } from '@/lib/tier-label'
 
-// `plain` (supplier view) shows only the plain-English label — no A/B/C code and
+// `plain` (supplier view) shows only the plain-English label - no A/B/C code and
 // no technical tooltip. Buyers get the full technical form. Defaults to full
 // detail so buyer-facing screens stay unchanged.
 export function TierBadge({ tier, plain = false }: { tier: 'A' | 'B' | 'C'; plain?: boolean }) {

@@ -1,7 +1,7 @@
 import { colours, typography, spacing } from '@/lib/design-system'
 import type { RecordQualitySummary as Summary } from '@/lib/layer3/record-quality'
 
-// A calm, one-line read of the data you already hold — folded into Records so
+// A calm, one-line read of the data you already hold - folded into Records so
 // "see what I have" and "how good is it" live in one place. Plain English only,
 // so it reads the same for an SME supplier and a buyer.
 

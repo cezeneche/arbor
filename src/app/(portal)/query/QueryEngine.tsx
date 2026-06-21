@@ -479,7 +479,7 @@ function GapDisplay({ gapResult }: { gapResult: GapResult }) {
           color: colours.green,
         }}
       >
-        No gaps found — all expected domains have records.
+        No gaps found - all expected domains have records.
       </div>
     )
   }
@@ -503,7 +503,7 @@ function GapDisplay({ gapResult }: { gapResult: GapResult }) {
               margin: '0 0 10px',
             }}
           >
-            Your organisation — missing domains
+            Your organisation - missing domains
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {gapResult.ownMissingDomains.map(d => (

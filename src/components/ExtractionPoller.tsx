@@ -40,7 +40,7 @@ export function ExtractionPoller({ documentId }: { documentId: string }) {
           router.refresh()
         }
       } catch {
-        // Network error — keep polling; will surface as timeout after MAX_ATTEMPTS.
+        // Network error - keep polling; will surface as timeout after MAX_ATTEMPTS.
       }
     }, POLL_INTERVAL_MS)
 

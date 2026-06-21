@@ -96,7 +96,7 @@ export default async function InboundRequestsPage() {
                     {missing.length > 0
                       ? `Missing: ${missing.map((m) => m.replace(/_/g, ' ')).join(', ')}. Upload a document covering this to answer it.`
                       : pf.reason === 'could_not_parse'
-                        ? "We couldn't tell exactly what was being asked — open the email and respond manually."
+                        ? "We couldn't tell exactly what was being asked - open the email and respond manually."
                         : 'Some requested data is not in your records yet.'}
                   </div>
                   <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, marginTop: '6px' }}>

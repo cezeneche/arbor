@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-// Gap 5.1 — one "Revoke all access" action per buyer. Inline confirm (no modal).
+// Gap 5.1 - one "Revoke all access" action per buyer. Inline confirm (no modal).
 export function RevokeAllForBuyer({ granteeEntityId, buyerName }: { granteeEntityId: string; buyerName: string }) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)

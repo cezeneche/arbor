@@ -186,7 +186,7 @@ export function buildFilterTags(filters: FilterState, onChange: (f: FilterState)
         value: TIER_LABELS[t],
         onRemove: () => {
           const next = filters.trustTiers.filter(x => x !== t)
-          // Never leave trust tiers empty — treat removing the last one as "all"
+          // Never leave trust tiers empty - treat removing the last one as "all"
           onChange({ ...filters, trustTiers: next.length === 0 ? ['A', 'B', 'C'] : next })
         },
       })
@@ -490,7 +490,7 @@ function TrustTierPills({
     const next = selected.includes(tier)
       ? selected.filter(t => t !== tier)
       : [...selected, tier].sort() as TrustTier[]
-    // Never leave empty — if last tier is removed, restore all
+    // Never leave empty - if last tier is removed, restore all
     onChange(next.length === 0 ? ALL_TIERS : next)
   }
 
@@ -632,7 +632,7 @@ export interface FilterBarProps {
   supplierCountries: string[]
   value: FilterState
   onChange: (next: FilterState) => void
-  /** Buyer entity ID — used only in the development SQL preview. */
+  /** Buyer entity ID - used only in the development SQL preview. */
   buyerId?: string
 }
 
@@ -831,7 +831,7 @@ export function FilterBar({ supplierCountries, value, onChange, buyerId }: Filte
         </div>
       )}
 
-      {/* SQL preview — development only */}
+      {/* SQL preview - development only */}
       {process.env.NODE_ENV === 'development' && (
         <pre
           style={{
