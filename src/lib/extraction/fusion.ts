@@ -9,9 +9,6 @@
 import { valuesMatch } from '@/lib/confidence/ground-truth'
 import type { ExtractedFieldResult } from './types'
 
-/** Below this fused confidence, a field is flagged for review (matches the 0.85 rule). */
-const FLAG_THRESHOLD = 0.85
-
 export interface FieldSampleGroup {
   fieldName: string
   /** Each run's value for this field, aligned to run order (null = absent that run). */
@@ -95,12 +92,12 @@ export function buildFusedFields(
       )
     }
 
-    const flagged = f.posterior_mean < FLAG_THRESHOLD
-    const flagReason = flagged
-      ? f.agreement < f.k
-        ? `Extraction samples disagreed (${f.agreement}/${f.k})`
-        : (representative?.flagReason ?? 'Low fused confidence')
-      : null
+    // Flag on genuine model uncertainty — the samples disagreed — not on the
+    // Beta-smoothed absolute score (unanimous agreement caps at ~0.8 at k=3, so
+    // an absolute threshold would flag everything). The posterior is still the
+    // (varying) confidence the calibration layer learns from.
+    const flagged = f.agreement < f.k
+    const flagReason = flagged ? `Extraction samples disagreed (${f.agreement}/${f.k})` : null
 
     return {
       fieldName: group.fieldName,
