@@ -56,7 +56,7 @@ describe('buildFusedFields', () => {
     expect(f.sourceText).toBe('Net 24500 KG')
   })
 
-  it('flags a field whose fused confidence falls below 0.85', () => {
+  it('flags a field the samples disagreed on', () => {
     const lowFused: FusedFieldResult[] = [
       { field_name: 'weight', consensus: '24500', agreement: 2, k: 3, posterior_mean: 0.6, ci_low: 0.2, ci_high: 0.9 },
     ]
@@ -65,11 +65,16 @@ describe('buildFusedFields', () => {
     expect(f.flagReason).toMatch(/2\/3/)
   })
 
-  it('does not flag when fused confidence is at/above threshold', () => {
-    const hi: FusedFieldResult[] = [
-      { field_name: 'weight', consensus: '24500', agreement: 3, k: 3, posterior_mean: 0.9, ci_low: 0.5, ci_high: 1 },
+  it('does NOT flag unanimous agreement, even though its posterior (0.8) is below 0.85', () => {
+    // The bug verification caught: at k=3 the max fused score is ~0.8, so an
+    // absolute 0.85 threshold flagged every field. Unanimous = not flagged.
+    const unanimous: FusedFieldResult[] = [
+      { field_name: 'weight', consensus: '24500', agreement: 3, k: 3, posterior_mean: 0.8, ci_low: 0.3, ci_high: 1 },
     ]
-    expect(buildFusedFields(groups, hi)[0].flagged).toBe(false)
+    const [f] = buildFusedFields(groups, unanimous)
+    expect(f.flagged).toBe(false)
+    expect(f.flagReason).toBeNull()
+    expect(f.confidenceScore).toBe(0.8) // posterior still varies for calibration
   })
 
   it('falls back to the representative field when the brain returned no fusion for it', () => {
