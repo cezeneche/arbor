@@ -5,7 +5,8 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
-import { ExtractionMethod, TrustTier } from '@prisma/client'
+import { buildReviewLabels } from '@/lib/confidence/review-capture'
+import { ExtractionMethod, TrustTier, type DataDomain, type GroundTruthSource } from '@prisma/client'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
 import { DOCUMENT_FIELD_DEFINITIONS } from '@/lib/extraction/field-definitions'
 import { computeStaleAfterDate } from '@/lib/layer2/staleness'
@@ -166,6 +167,54 @@ export async function POST(
   await runCrossValidation(entityId, documentId, document.documentType).catch(
     (e) => console.error('[confirm] runCrossValidation failed:', e)
   )
+
+  // Upgrade 1 — capture calibration ground truth: compare what the reviewer
+  // confirmed against what the model extracted, one GroundTruthLabel per
+  // AI-extracted field. Best-effort and post-commit — training signal must
+  // never roll back or block a confirmation.
+  if (job) {
+    try {
+      const recordIdByField: Record<string, string | null> = {}
+      preparedFields.forEach((p, i) => {
+        recordIdByField[p.field.fieldName] = createdRecords[i] ?? null
+      })
+      const labels = buildReviewLabels({
+        entityId,
+        documentId,
+        documentClass: job.documentClass ?? document.documentType,
+        extractedFields: job.extractedFields.map((f) => ({
+          fieldName: f.fieldName,
+          rawValue: f.rawValue,
+          confidenceScore: f.confidenceScore,
+        })),
+        confirmedFields: parsed.data.fields.map((f) => ({
+          fieldName: f.fieldName,
+          confirmedValue: f.confirmedValue,
+          domain: f.domain,
+        })),
+        recordIdByField,
+      })
+      if (labels.length > 0) {
+        await prisma.groundTruthLabel.createMany({
+          data: labels.map((l) => ({
+            entityId: l.entityId,
+            documentId: l.documentId,
+            recordId: l.recordId,
+            fieldName: l.fieldName,
+            documentClass: l.documentClass,
+            domain: l.domain as DataDomain,
+            extractedValue: l.extractedValue,
+            confirmedValue: l.confirmedValue,
+            wasCorrect: l.wasCorrect,
+            confidenceAtExtraction: l.confidenceAtExtraction,
+            source: l.source as GroundTruthSource,
+          })),
+        })
+      }
+    } catch (e) {
+      console.error('[confirm] ground-truth label capture failed:', e)
+    }
+  }
 
   // Gap 5 — notify any buyer with active access that a record they can see was
   // corrected. Deduplicated per grantee+domain. Non-fatal.
