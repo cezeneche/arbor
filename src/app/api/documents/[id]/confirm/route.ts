@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
 import { buildReviewLabels } from '@/lib/confidence/review-capture'
+import { parseNumericValue } from '@/lib/parse-numeric'
 import { ExtractionMethod, TrustTier, type DataDomain, type GroundTruthSource } from '@prisma/client'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
 import { DOCUMENT_FIELD_DEFINITIONS } from '@/lib/extraction/field-definitions'
@@ -90,7 +91,7 @@ export async function POST(
 
   const preparedFields: PreparedField[] = []
   for (const field of parsed.data.fields) {
-    const rawNum = parseFloat(field.confirmedValue)
+    const rawNum = parseNumericValue(field.confirmedValue) ?? NaN
     if (isNaN(rawNum)) continue
 
     const unit = field.confirmedUnit ?? 'unknown'
