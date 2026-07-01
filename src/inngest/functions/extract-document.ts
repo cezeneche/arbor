@@ -1,6 +1,6 @@
 import { inngest } from '@/inngest/client'
 import { prisma } from '@/lib/prisma'
-import { extractDocument, detectLanguage, assessImageQuality } from '@/lib/extraction/engine'
+import { extractDocumentWithConsistency, detectLanguage, assessImageQuality } from '@/lib/extraction/engine'
 import { evaluateAdmissibility } from '@/lib/extraction/admissibility'
 import { fetchDocumentAsBase64 } from '@/lib/storage-retrieval'
 import { sendNotification } from '@/lib/notifications'
@@ -73,7 +73,7 @@ export const extractDocumentFunction = inngest.createFunction(
     }
 
     const extractionResult = await step.run('run-extraction', async () => {
-      return extractDocument({ documentBase64: base64, mediaType, documentType, entityName, detectedLanguage })
+      return extractDocumentWithConsistency({ documentBase64: base64, mediaType, documentType, entityName, detectedLanguage })
     })
 
     if (!extractionResult.success) {

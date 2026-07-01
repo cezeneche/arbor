@@ -14,11 +14,19 @@ import {
 } from './prompts'
 import { DOCUMENT_FIELD_DEFINITIONS } from './field-definitions'
 import { parseLooseJson } from './parse-json'
+import { collectFieldSamples, buildFusedFields } from './fusion'
+import { fuseFields, type FusionInputField } from '@/lib/brain/fusion-client'
+import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 import {
   isGenericExtraction,
   buildGenericExtractionPrompt,
   parseGenericExtractionResponse,
 } from './generic'
+
+// How many self-consistency samples to draw per document (Upgrade 1). k>1 turns
+// on Bayesian fusion of the samples' agreement into an honest, varying
+// confidence; k=1 keeps single-sample extraction (model self-reported score).
+const EXTRACTION_SAMPLES = Math.max(1, Number(process.env.EXTRACTION_SAMPLES ?? 3))
 
 // Lazily instantiated so importing this module (e.g. during `next build` page
 // data collection) never requires ANTHROPIC_API_KEY to be present.
@@ -103,6 +111,60 @@ export async function assessImageQuality(
     return { quality, issues: Array.isArray(parsed.issues) ? parsed.issues : [] }
   } catch {
     return { quality: 5, issues: [] }
+  }
+}
+
+/**
+ * Upgrade 1 — extract with self-consistency. Draws k samples of the document at
+ * the model's sampling temperature, then fuses per-field agreement into an
+ * honest, *varying* confidence via the brain's Bayesian fusion. Fail-soft: if
+ * the brain is unavailable, or only one sample succeeds, it degrades to a single
+ * extraction (the model's self-reported score) rather than blocking ingestion.
+ */
+export async function extractDocumentWithConsistency(
+  input: ExtractionInput,
+  opts: { samples?: number } = {},
+): Promise<ExtractionResult> {
+  const k = Math.max(1, opts.samples ?? EXTRACTION_SAMPLES)
+  if (k <= 1) return extractDocument(input)
+
+  const settled = await Promise.allSettled(
+    Array.from({ length: k }, () => extractDocument(input)),
+  )
+  const results = settled
+    .filter((r): r is PromiseFulfilledResult<ExtractionResult> => r.status === 'fulfilled')
+    .map(r => r.value)
+  const successes = results.filter(r => r.success)
+
+  if (successes.length === 0) {
+    return (
+      results[0] ?? {
+        success: false,
+        fields: [],
+        documentTypeConfirmed: input.documentType,
+        extractionNotes: 'Extraction failed : all samples failed',
+        rawResponse: '',
+        languageNote: null,
+        documentClass: null,
+      }
+    )
+  }
+  if (successes.length === 1) return successes[0]
+
+  const groups = collectFieldSamples(successes)
+  try {
+    const documentClass = successes[0].documentClass ?? input.documentType
+    const payload: FusionInputField[] = groups.map(g => ({
+      field_name: g.fieldName,
+      document_class: documentClass,
+      samples: g.samples,
+    }))
+    const fused = await fuseFields(payload)
+    return { ...successes[0], fields: buildFusedFields(groups, fused) }
+  } catch (err) {
+    // Brain down → degrade to the first successful sample (never block ingestion).
+    if (err instanceof BrainUnavailableError) return successes[0]
+    throw err
   }
 }
 
