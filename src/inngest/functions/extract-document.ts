@@ -84,6 +84,11 @@ export const extractDocumentFunction = inngest.createFunction(
             status: 'FAILED',
             completedAt: new Date(),
             errorMessage: extractionResult.extractionNotes,
+            detectedLanguage,
+            imageQualityScore: quality.quality,
+            // Persist the raw model response on failure too — without it, a parse
+            // failure leaves nothing to debug (this is exactly what bit us).
+            rawOutput: extractionResult as unknown as Prisma.InputJsonValue,
           },
         })
         await prisma.document.update({ where: { id: documentId }, data: { status: 'REJECTED' } })

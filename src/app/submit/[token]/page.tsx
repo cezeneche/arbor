@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { colours, typography, spacing } from '@/lib/design-system'
+import { parseNumericValue } from '@/lib/parse-numeric'
 
 interface RequestDetails {
   id: string
@@ -59,7 +60,7 @@ export default function SubmitPage() {
 
     const entries = request.requiredFields.map(field => ({
       fieldName: field,
-      value: parseFloat(values[field] ?? '0'),
+      value: parseNumericValue(values[field]) ?? NaN,
       unit: units[field] ?? '',
     })).filter(e => !isNaN(e.value) && e.unit)
 

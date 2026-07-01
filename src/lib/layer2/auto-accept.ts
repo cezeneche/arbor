@@ -9,6 +9,7 @@ import { computeStaleAfterDate } from './staleness'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
 import { DOMAIN_BY_DOCUMENT_TYPE, DataDomain } from '@/lib/constants'
 import { NUMERIC_FIELDS, derivePeriod } from '@/lib/review/review-policy'
+import { parseNumericValue } from '@/lib/parse-numeric'
 import { ExtractionMethod, TrustTier } from '@prisma/client'
 
 /**
@@ -41,7 +42,7 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
   const prepared = job.extractedFields
     .filter((f) => NUMERIC_FIELDS.has(f.fieldName) && f.rawValue !== null && f.rawValue !== '')
     .map((f) => {
-      const rawNum = parseFloat(f.rawValue as string)
+      const rawNum = parseNumericValue(f.rawValue) ?? NaN
       return { f, rawNum }
     })
     .filter((p) => !isNaN(p.rawNum))
