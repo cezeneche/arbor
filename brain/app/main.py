@@ -15,9 +15,13 @@ from fastapi import Depends, FastAPI
 
 from .auth import require_internal_token
 from .calibration import Sample, fit_calibration
+from .fusion import fuse_field
 from .models import (
     CalibrationFitRequest,
     CalibrationFitResponse,
+    FusedField,
+    FusionRequest,
+    FusionResponse,
     GroupCalibration,
 )
 
@@ -72,3 +76,25 @@ def calibration_fit(
         groups=groups,
         fitted_at=datetime.now(timezone.utc).isoformat(),
     )
+
+
+@app.post("/fusion/fields", response_model=FusionResponse)
+def fusion_fields(
+    req: FusionRequest,
+    _auth: None = Depends(require_internal_token),
+) -> FusionResponse:
+    """Fuse per-field self-consistency samples into beta-binomial posteriors.
+
+    Layer 1 sends the k sampled values for each field; the response carries the
+    consensus value and a calibrated-honest confidence (posterior mean + CI) that
+    the calibration pipeline can later learn from. This is 'Bayesian fusion' —
+    Upgrade 1's namesake.
+    """
+    fields = [
+        FusedField(
+            field_name=f.field_name,
+            **fuse_field(f.samples, prior_alpha=req.prior_alpha, prior_beta=req.prior_beta),
+        )
+        for f in req.fields
+    ]
+    return FusionResponse(fields=fields)

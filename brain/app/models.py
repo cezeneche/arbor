@@ -56,3 +56,34 @@ class GroupCalibration(BaseModel):
 class CalibrationFitResponse(BaseModel):
     groups: list[GroupCalibration]
     fitted_at: str
+
+
+# ── Bayesian fusion of self-consistency samples (Upgrade 1) ──────────────────
+
+
+class FieldSamples(BaseModel):
+    field_name: str
+    # Carried for per-document-class priors (future); currently the global prior applies.
+    document_class: str
+    # The k sampled raw values for this field (null = model found nothing that run).
+    samples: list[Optional[str]]
+
+
+class FusionRequest(BaseModel):
+    fields: list[FieldSamples]
+    prior_alpha: float = Field(1.0, gt=0, description="Beta prior alpha (correctness).")
+    prior_beta: float = Field(1.0, gt=0, description="Beta prior beta.")
+
+
+class FusedField(BaseModel):
+    field_name: str
+    consensus: Optional[str]
+    agreement: int
+    k: int
+    posterior_mean: float
+    ci_low: float
+    ci_high: float
+
+
+class FusionResponse(BaseModel):
+    fields: list[FusedField]
