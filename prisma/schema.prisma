@@ -50,30 +50,30 @@ enum EntityType {
 }
 
 model Entity {
-  id                         String     @id @default(cuid())
-  legalName                  String
-  registrationNumber         String?
-  country                    String
-  sector                     String
-  entityType                 EntityType @default(SUPPLIER)
-  allowBenchmarkAggregation  Boolean    @default(false)
+  id                        String     @id @default(cuid())
+  legalName                 String
+  registrationNumber        String?
+  country                   String
+  sector                    String
+  entityType                EntityType @default(SUPPLIER)
+  allowBenchmarkAggregation Boolean    @default(false)
   // Gap 8.4 — unique token for the entity's email-to-upload address.
-  uploadEmailToken           String?    @unique
+  uploadEmailToken          String?    @unique
   // Gap 10 — WorkOS SSO organisation binding.
-  workosOrganisationId       String?    @unique
-  createdAt                  DateTime   @default(now())
-  updatedAt                  DateTime   @updatedAt
+  workosOrganisationId      String?    @unique
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
 
-  users            User[]
-  documents        Document[]
-  dataRecords      DataRecord[]
-  auditChain       AuditEntry[]
-  outgoingRequests DataRequest[]     @relation("BuyerRequests")
-  incomingRequests DataRequest[]     @relation("SupplierRequests")
-  notifications    Notification[]
-  dataAccess       DataAccessGrant[] @relation("GrantorEntity")
-  receivedAccess   DataAccessGrant[] @relation("GranteeEntity")
-  apiKeys          ApiKey[]
+  users                   User[]
+  documents               Document[]
+  dataRecords             DataRecord[]
+  auditChain              AuditEntry[]
+  outgoingRequests        DataRequest[]            @relation("BuyerRequests")
+  incomingRequests        DataRequest[]            @relation("SupplierRequests")
+  notifications           Notification[]
+  dataAccess              DataAccessGrant[]        @relation("GrantorEntity")
+  receivedAccess          DataAccessGrant[]        @relation("GranteeEntity")
+  apiKeys                 ApiKey[]
   verificationAssignments VerificationAssignment[]
   auditPackageLogs        AuditPackageLog[]
   auditorAccess           AuditorAccess[]
@@ -81,25 +81,26 @@ model Entity {
   integrationCredentials  IntegrationCredential[]
   sharedExports           SharedExport[]
   inboundRequests         InboundRequest[]
+  groundTruthLabels       GroundTruthLabel[]
 }
 
 // ── USER ──────────────────────────────────────────────────────────────────────
 
 model User {
-  id                String   @id @default(cuid())
-  email             String   @unique
-  name              String
-  passwordHash      String?
-  role              UserRole @default(CONTRIBUTOR)
+  id               String   @id @default(cuid())
+  email            String   @unique
+  name             String
+  passwordHash     String?
+  role             UserRole @default(CONTRIBUTOR)
   // Nullable for platform-level roles (VERIFIER, AUDITOR) that belong to no entity.
-  entityId          String?
-  entity            Entity?  @relation(fields: [entityId], references: [id])
-  createdAt         DateTime @default(now())
-  twoFactorSecret   String?  // AES-256-GCM encrypted TOTP secret
-  twoFactorEnabled  Boolean  @default(false)
-  tokenVersion      Int      @default(0)
+  entityId         String?
+  entity           Entity?  @relation(fields: [entityId], references: [id])
+  createdAt        DateTime @default(now())
+  twoFactorSecret  String? // AES-256-GCM encrypted TOTP secret
+  twoFactorEnabled Boolean  @default(false)
+  tokenVersion     Int      @default(0)
   // Gap 10 — set false by SCIM deprovision; all auth checks require true.
-  isActive          Boolean  @default(true)
+  isActive         Boolean  @default(true)
 
   accounts                Account[]
   sessions                Session[]
@@ -161,8 +162,9 @@ model Document {
   submittedById String
   status        DocumentStatus @default(PENDING)
 
-  dataRecords    DataRecord[]
-  extractionJobs ExtractionJob[]
+  dataRecords       DataRecord[]
+  extractionJobs    ExtractionJob[]
+  groundTruthLabels GroundTruthLabel[]
 
   @@index([entityId, status])
   @@index([entityId, submittedAt])
@@ -212,20 +214,20 @@ enum DocumentStatus {
 // ── EXTRACTION JOB ────────────────────────────────────────────────────────────
 
 model ExtractionJob {
-  id           String           @id @default(cuid())
-  documentId   String
-  document     Document         @relation(fields: [documentId], references: [id])
-  status       ExtractionStatus @default(QUEUED)
-  startedAt    DateTime?
-  completedAt  DateTime?
-  errorMessage String?          @db.Text
-  rawOutput    Json?
+  id                 String           @id @default(cuid())
+  documentId         String
+  document           Document         @relation(fields: [documentId], references: [id])
+  status             ExtractionStatus @default(QUEUED)
+  startedAt          DateTime?
+  completedAt        DateTime?
+  errorMessage       String?          @db.Text
+  rawOutput          Json?
   // Gap 1 — Layer 1 multilingual + degraded-document metadata.
-  detectedLanguage  String? // ISO 639-1 code, or 'unknown'
-  imageQualityScore Float? // 1 (unreadable) to 5 (clear); null for PDFs
+  detectedLanguage   String? // ISO 639-1 code, or 'unknown'
+  imageQualityScore  Float? // 1 (unreadable) to 5 (clear); null for PDFs
   imageQualityIssues Json? // string[] of detected issues e.g. ["blurry","skewed"]
   // Core 3 — best-guess free-text document class for GENERIC (schema-on-read) docs.
-  documentClass     String?
+  documentClass      String?
 
   extractedFields ExtractedField[]
 }
@@ -266,33 +268,37 @@ enum FieldAdmissibility {
 // ── DATA RECORD ───────────────────────────────────────────────────────────────
 
 model DataRecord {
-  id               String           @id @default(cuid())
-  entityId         String
-  entity           Entity           @relation(fields: [entityId], references: [id])
-  documentId       String?
-  document         Document?        @relation(fields: [documentId], references: [id])
-  domain           DataDomain
-  fieldName        String
-  value            Float
-  unit             String
-  originalValue    Float?
-  originalUnit     String?
-  periodStart      DateTime
-  periodEnd        DateTime
-  sourceText       String?          @db.Text
-  confidenceScore  Float            @default(1.0)
-  trustTier        TrustTier
-  extractionMethod ExtractionMethod
-  submittedAt      DateTime         @default(now())
-  submittedById    String
-  submittedBy      User             @relation(fields: [submittedById], references: [id])
-  supersededById   String?
-  supersededBy     DataRecord?      @relation("Supersession", fields: [supersededById], references: [id])
-  supersededByThis DataRecord[]     @relation("Supersession")
-  isActive         Boolean          @default(true)
-  auditHash        String
+  id                  String           @id @default(cuid())
+  entityId            String
+  entity              Entity           @relation(fields: [entityId], references: [id])
+  documentId          String?
+  document            Document?        @relation(fields: [documentId], references: [id])
+  domain              DataDomain
+  fieldName           String
+  value               Float
+  unit                String
+  originalValue       Float?
+  originalUnit        String?
+  periodStart         DateTime
+  periodEnd           DateTime
+  sourceText          String?          @db.Text
+  confidenceScore     Float            @default(1.0)
+  // Upgrade 1 — calibrated posterior sidecar: JSONB ConfidencePosterior
+  // { posteriorMean, ciLow, ciHigh, ciMass, method, priorClass, rawScore }.
+  // Null until the calibration pipeline populates it; confidenceScore stays the raw scalar.
+  confidencePosterior Json?
+  trustTier           TrustTier
+  extractionMethod    ExtractionMethod
+  submittedAt         DateTime         @default(now())
+  submittedById       String
+  submittedBy         User             @relation(fields: [submittedById], references: [id])
+  supersededById      String?
+  supersededBy        DataRecord?      @relation("Supersession", fields: [supersededById], references: [id])
+  supersededByThis    DataRecord[]     @relation("Supersession")
+  isActive            Boolean          @default(true)
+  auditHash           String
   // Gap 2 — batch/mill records go stale after this date (null for non-batch records).
-  staleAfterDate   DateTime?
+  staleAfterDate      DateTime?
 
   validationFlags ValidationFlag[]
   accessLogs      RecordAccessLog[]
@@ -346,6 +352,41 @@ enum ExtractionMethod {
   DOCUMENT_AI
   MANUAL_ENTRY
   SYSTEM_INTEGRATION
+}
+
+// ── GROUND TRUTH LABEL (Upgrade 1 — calibration training signal) ──────────────
+// Every human review decision produces one labelled datapoint: the model's
+// confidence at extraction time paired with whether the extracted value was
+// actually correct (survived review unchanged). POST /calibration/fit consumes
+// these to fit the calibration map and compute ECE / Brier / reliability curves
+// per field type + document class. Not a certified DataRecord — training signal.
+enum GroundTruthSource {
+  REVIEW_CONFIRMED // reviewer accepted the extracted value unchanged → correct
+  REVIEW_CORRECTED // reviewer changed or cleared the extracted value → incorrect
+}
+
+model GroundTruthLabel {
+  id                     String            @id @default(cuid())
+  entityId               String
+  entity                 Entity            @relation(fields: [entityId], references: [id])
+  documentId             String?
+  document               Document?         @relation(fields: [documentId], references: [id])
+  // Loose reference — a corrected-and-discarded field never becomes a DataRecord.
+  recordId               String?
+  fieldName              String
+  // Typed DocumentType value, or the schema-on-read class for GENERIC docs.
+  documentClass          String
+  domain                 DataDomain
+  extractedValue         String?           @db.Text
+  confirmedValue         String?           @db.Text
+  wasCorrect             Boolean
+  confidenceAtExtraction Float
+  source                 GroundTruthSource
+  createdAt              DateTime          @default(now())
+
+  @@index([fieldName, documentClass])
+  @@index([domain, createdAt])
+  @@index([entityId])
 }
 
 // ── VALIDATION FLAG ───────────────────────────────────────────────────────────
@@ -404,17 +445,17 @@ model AuditEntry {
 // ── DATA REQUEST ──────────────────────────────────────────────────────────────
 
 model DataRequest {
-  id               String        @id @default(cuid())
-  buyerEntityId    String
-  buyerEntity      Entity        @relation("BuyerRequests", fields: [buyerEntityId], references: [id])
-  supplierEntityId String
-  supplierEntity   Entity        @relation("SupplierRequests", fields: [supplierEntityId], references: [id])
-  requestedById    String
-  requestedBy      User          @relation(fields: [requestedById], references: [id])
-  domain           DataDomain
-  periodStart      DateTime
-  periodEnd        DateTime
-  requiredFields   Json
+  id                    String        @id @default(cuid())
+  buyerEntityId         String
+  buyerEntity           Entity        @relation("BuyerRequests", fields: [buyerEntityId], references: [id])
+  supplierEntityId      String
+  supplierEntity        Entity        @relation("SupplierRequests", fields: [supplierEntityId], references: [id])
+  requestedById         String
+  requestedBy           User          @relation(fields: [requestedById], references: [id])
+  domain                DataDomain
+  periodStart           DateTime
+  periodEnd             DateTime
+  requiredFields        Json
   deadline              DateTime?
   status                RequestStatus @default(PENDING)
   createdAt             DateTime      @default(now())
@@ -600,9 +641,9 @@ model AuditorAccess {
 // ── WEBHOOK SUBSCRIPTION (Gap 6 — buyer-facing event delivery) ────────────────
 
 model WebhookSubscription {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   entityId           String
-  entity             Entity   @relation(fields: [entityId], references: [id])
+  entity             Entity    @relation(fields: [entityId], references: [id])
   url                String
   events             Json // WebhookEventType[]
   secretEncrypted    String // AES-256-GCM encrypted signing secret (needed to sign deliveries)
@@ -649,21 +690,21 @@ enum IntegrationProvider {
 // ── SHARED EXPORT (Core 2 — signed public record share) ───────────────────────
 
 model SharedExport {
-  id            String     @id @default(cuid())
-  entityId      String
-  entity        Entity     @relation(fields: [entityId], references: [id])
+  id          String      @id @default(cuid())
+  entityId    String
+  entity      Entity      @relation(fields: [entityId], references: [id])
   // Unguessable high-entropy token used in the public URL.
-  token         String     @unique
+  token       String      @unique
   // Optional scope. Null domain = all domains; null period bounds = unbounded.
-  domain        DataDomain?
-  periodStart   DateTime?
-  periodEnd     DateTime?
+  domain      DataDomain?
+  periodStart DateTime?
+  periodEnd   DateTime?
   // Gap-4 audit-package integrity hash for the scope; verifiable via /api/audit/verify-public.
-  packageHash   String
-  createdById   String
-  createdAt     DateTime   @default(now())
-  expiresAt     DateTime?
-  revokedAt     DateTime?
+  packageHash String
+  createdById String
+  createdAt   DateTime    @default(now())
+  expiresAt   DateTime?
+  revokedAt   DateTime?
 
   @@index([entityId, createdAt])
 }
@@ -700,7 +741,7 @@ model InstitutionalEnquiry {
   contactName  String
   email        String
   role         String?
-  interestArea String   // BENCHMARKS | DATA_PARTNERSHIP | POLICY | OTHER
+  interestArea String // BENCHMARKS | DATA_PARTNERSHIP | POLICY | OTHER
   message      String?
   createdAt    DateTime @default(now())
 }
