@@ -7,6 +7,7 @@
 // so callers treat BrainUnavailableError as "skip calibration this run".
 
 import { classifyFieldType } from './field-types'
+import { emitBrainMetric, type BrainOutcome } from './metrics'
 import type { CalibrationFitResponse, LabelSample } from './types'
 
 export type CalibrationGroupBy = 'fieldType' | 'fieldName' | 'documentClass'
@@ -59,45 +60,64 @@ export interface FitCalibrationOptions {
   bins?: number
   minSamples?: number
   timeoutMs?: number
+  /** Injectable fetch, for hermetic tests. Defaults to the global fetch. */
+  fetchImpl?: typeof fetch
 }
+
+const CALIBRATION_ENDPOINT = '/calibration/fit'
 
 /**
  * Post samples to the brain and return its calibration report. Fail-soft:
  * throws BrainUnavailableError on any misconfiguration, timeout, or non-2xx —
  * callers degrade (keep the raw scalar score) rather than block ingestion.
+ * Emits one {endpoint, outcome, latencyMs} metric per call.
  */
 export async function fitCalibration(
   samples: LabelSample[],
   opts: FitCalibrationOptions = {},
 ): Promise<CalibrationFitResponse> {
-  if (!isBrainConfigured()) {
-    throw new BrainUnavailableError('brain URL or internal token not configured')
-  }
-
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15000)
+  const start = Date.now()
+  let outcome: BrainOutcome = 'error'
   try {
-    const res = await fetch(`${process.env.BRAIN_URL}/calibration/fit`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'X-Brain-Token': process.env.BRAIN_INTERNAL_TOKEN as string,
-      },
-      body: JSON.stringify({
-        samples,
-        bins: opts.bins ?? 10,
-        min_samples: opts.minSamples ?? 30,
-      }),
-      signal: controller.signal,
-    })
-    if (!res.ok) {
-      throw new BrainUnavailableError(`brain returned ${res.status}`)
+    if (!isBrainConfigured()) {
+      outcome = 'degraded'
+      throw new BrainUnavailableError('brain URL or internal token not configured')
     }
-    return (await res.json()) as CalibrationFitResponse
+
+    const doFetch = opts.fetchImpl ?? fetch
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15000)
+    try {
+      const res = await doFetch(`${process.env.BRAIN_URL}${CALIBRATION_ENDPOINT}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'X-Brain-Token': process.env.BRAIN_INTERNAL_TOKEN as string,
+        },
+        body: JSON.stringify({
+          samples,
+          bins: opts.bins ?? 10,
+          min_samples: opts.minSamples ?? 30,
+        }),
+        signal: controller.signal,
+      })
+      if (!res.ok) {
+        outcome = 'error'
+        throw new BrainUnavailableError(`brain returned ${res.status}`)
+      }
+      const body = (await res.json()) as CalibrationFitResponse
+      outcome = 'ok'
+      return body
+    } finally {
+      clearTimeout(timeout)
+    }
   } catch (err) {
     if (err instanceof BrainUnavailableError) throw err
+    // A client-timeout abort surfaces as an AbortError; everything else is a
+    // network-level failure. Either way the caller degrades.
+    outcome = (err as Error)?.name === 'AbortError' ? 'timeout' : 'error'
     throw new BrainUnavailableError(`brain request failed: ${(err as Error).message}`)
   } finally {
-    clearTimeout(timeout)
+    emitBrainMetric({ endpoint: CALIBRATION_ENDPOINT, outcome, latencyMs: Date.now() - start })
   }
 }
