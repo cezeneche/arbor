@@ -73,5 +73,36 @@ class TestCalibrationFit(unittest.TestCase):
         self.assertEqual(r.status_code, 422)
 
 
+class TestFusion(unittest.TestCase):
+    def test_requires_token(self):
+        r = client.post("/fusion/fields", json={"fields": []})
+        self.assertEqual(r.status_code, 401)
+
+    def test_fuses_field_samples_into_posteriors(self):
+        r = client.post(
+            "/fusion/fields",
+            json={
+                "fields": [
+                    {"field_name": "declared_weight", "document_class": "CUSTOMS_DECLARATION",
+                     "samples": ["24500", "24,500", "24500"]},
+                    {"field_name": "importer_name", "document_class": "CUSTOMS_DECLARATION",
+                     "samples": ["Acme Steel", "Acme Steel", "Acme Steel Ltd"]},
+                ]
+            },
+            headers=AUTH,
+        )
+        self.assertEqual(r.status_code, 200)
+        fields = {f["field_name"]: f for f in r.json()["fields"]}
+        # Unanimous numeric agreement (thousands separator normalised) -> agreement 3.
+        self.assertEqual(fields["declared_weight"]["agreement"], 3)
+        self.assertAlmostEqual(fields["declared_weight"]["posterior_mean"], 0.8, places=6)
+        # 2/3 agreement on the name -> lower confidence.
+        self.assertEqual(fields["importer_name"]["agreement"], 2)
+        self.assertLess(
+            fields["importer_name"]["posterior_mean"],
+            fields["declared_weight"]["posterior_mean"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
