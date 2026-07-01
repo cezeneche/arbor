@@ -4,6 +4,7 @@
 // a best-guess documentClass. These are pure Layer 1 helpers — no DB, no AI calls.
 
 import { DOCUMENT_FIELD_DEFINITIONS } from './field-definitions'
+import { parseLooseJson } from './parse-json'
 import type { ExtractedFieldResult } from './types'
 
 /** True when the document type has no fixed admissibility spec to validate against. */
@@ -43,7 +44,7 @@ export interface GenericExtractionParse {
 
 export function parseGenericExtractionResponse(rawText: string): GenericExtractionParse {
   try {
-    const parsed = JSON.parse(rawText) as {
+    const parsed = parseLooseJson(rawText) as {
       documentClass?: string
       extractionNotes?: string
       fields?: ExtractedFieldResult[]

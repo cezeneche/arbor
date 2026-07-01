@@ -13,6 +13,7 @@ import {
   buildQualityAssessmentPrompt,
 } from './prompts'
 import { DOCUMENT_FIELD_DEFINITIONS } from './field-definitions'
+import { parseLooseJson } from './parse-json'
 import {
   isGenericExtraction,
   buildGenericExtractionPrompt,
@@ -97,7 +98,7 @@ export async function assessImageQuality(
         },
       ],
     })
-    const parsed = JSON.parse(textFromResponse(response).trim()) as Partial<QualityAssessmentResult>
+    const parsed = parseLooseJson(textFromResponse(response)) as Partial<QualityAssessmentResult>
     const quality = typeof parsed.quality === 'number' ? parsed.quality : 5
     return { quality, issues: Array.isArray(parsed.issues) ? parsed.issues : [] }
   } catch {
@@ -146,7 +147,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
   const rawText = textFromResponse(response)
 
   try {
-    const parsed = JSON.parse(rawText) as {
+    const parsed = parseLooseJson(rawText) as {
       documentTypeConfirmed?: string
       extractionNotes?: string
       fields?: ExtractionResult['fields']
