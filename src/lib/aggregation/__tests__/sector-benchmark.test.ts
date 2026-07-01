@@ -109,6 +109,20 @@ describe('computeSectorBenchmarks', () => {
     expect(r.tierAPercent).toBe(80)
   })
 
+  it('carries the lattice tier composition for the benchmark aggregate (Upgrade 6)', () => {
+    const tierARecords = makeRecords(8, 100)
+    const tierBRecords = makeRecords(2, 100).map((r, i) => ({
+      ...r,
+      entityId: `tier-b-${i}`,
+      trustTier: 'B' as const,
+    }))
+    const [r] = computeSectorBenchmarks({ records: [...tierARecords, ...tierBRecords], year: 2026 })
+    // Meet is the weakest member present — one Declared record drags it to B.
+    expect(r.tierComposition.meet).toBe('B')
+    expect(r.tierComposition.counts).toEqual({ A: 8, B: 2, C: 0 })
+    expect(r.tierComposition.distribution.A).toBeCloseTo(0.8, 10)
+  })
+
   it('attaches the correct year to results', () => {
     const [r] = computeSectorBenchmarks({ records: makeRecords(10), year: 2027 })
     expect(r.year).toBe(2027)
