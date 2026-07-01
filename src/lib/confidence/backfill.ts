@@ -27,6 +27,17 @@ export function groupKeyForField(fieldName: string): string {
 }
 
 /**
+ * Parse an optional `minSamples` override (e.g. from a verification trigger on
+ * the cron). Returns undefined for missing/invalid input so the caller keeps the
+ * production default; guards against NaN/negatives poisoning the brain request.
+ */
+export function parseMinSamples(raw: string | null): number | undefined {
+  if (raw == null) return undefined
+  const n = Number.parseInt(raw, 10)
+  return Number.isFinite(n) && n >= 1 ? n : undefined
+}
+
+/**
  * Compute the posterior write-backs for a batch of records. A record is updated
  * only when its group has a calibration; by default that calibration must be
  * `sufficient` (enough labels to trust the fit) so we never stamp a confident

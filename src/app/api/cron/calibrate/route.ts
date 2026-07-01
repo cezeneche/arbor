@@ -15,7 +15,7 @@ import {
   BrainUnavailableError,
   type GroundTruthRow,
 } from '@/lib/brain/calibration-client'
-import { buildPosteriorUpdates } from '@/lib/confidence/backfill'
+import { buildPosteriorUpdates, parseMinSamples } from '@/lib/confidence/backfill'
 import type { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -31,6 +31,11 @@ function authorized(req: NextRequest): boolean {
 
 export async function GET(req: NextRequest) {
   if (!authorized(req)) return new Response('Unauthorized', { status: 401 })
+
+  // Optional override: how many labels a group needs before its calibration is
+  // trusted enough to write back. Absent → the production default (30). Used to
+  // observe a posterior land during verification without waiting for volume.
+  const minSamples = parseMinSamples(new URL(req.url).searchParams.get('minSamples'))
 
   // 1. Ground-truth labels (bounded) → grouped calibration samples.
   const labels = await prisma.groundTruthLabel.findMany({
@@ -51,7 +56,7 @@ export async function GET(req: NextRequest) {
   // 2. Fit on the brain — fail soft. Brain down ⇒ skip this run, never error.
   let fit
   try {
-    fit = await fitCalibration(samples, { bins: 10 })
+    fit = await fitCalibration(samples, { bins: 10, minSamples })
   } catch (e) {
     if (e instanceof BrainUnavailableError) {
       return Response.json({ status: 'skipped', reason: 'brain unavailable', detail: e.message })
@@ -98,6 +103,7 @@ export async function GET(req: NextRequest) {
   return Response.json({
     status: 'ok',
     labels: labels.length,
+    minSamples: minSamples ?? 30,
     groups: fit.groups.map(g => ({ group: g.group, n: g.n, ece: g.ece, sufficient: g.sufficient })),
     recordsScanned: scanned,
     recordsUpdated: updated,

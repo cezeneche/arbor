@@ -1,4 +1,4 @@
-import { buildPosteriorUpdates, groupKeyForField, type RecordForBackfill } from '../backfill'
+import { buildPosteriorUpdates, groupKeyForField, parseMinSamples, type RecordForBackfill } from '../backfill'
 import type { GroupCalibration } from '@/lib/brain/types'
 
 // Step 5 (Upgrade 1). Given the brain's per-group calibration and the active
@@ -18,6 +18,20 @@ function group(name: string, sufficient: boolean): GroupCalibration {
     sufficient,
   }
 }
+
+describe('parseMinSamples', () => {
+  it('returns undefined for missing or invalid input (keeps production default)', () => {
+    expect(parseMinSamples(null)).toBeUndefined()
+    expect(parseMinSamples('abc')).toBeUndefined()
+    expect(parseMinSamples('0')).toBeUndefined()
+    expect(parseMinSamples('-5')).toBeUndefined()
+  })
+
+  it('parses a valid positive integer override', () => {
+    expect(parseMinSamples('1')).toBe(1)
+    expect(parseMinSamples('30')).toBe(30)
+  })
+})
 
 describe('groupKeyForField', () => {
   it('uses the coarse kill-signal type when known, else the field name', () => {
