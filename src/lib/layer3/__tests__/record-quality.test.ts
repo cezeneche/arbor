@@ -17,7 +17,25 @@ describe('summariseRecordQuality', () => {
   it('returns all zeros for no records', () => {
     expect(summariseRecordQuality([], compulsory)).toEqual({
       total: 0, verified: 0, declared: 0, estimated: 0, missingCompulsoryFields: 0, expiringSoon: 0,
+      // Upgrade 6 — an empty set makes no tier claim.
+      tierComposition: {
+        meet: null, total: 0,
+        counts: { A: 0, B: 0, C: 0 },
+        distribution: { A: 0, B: 0, C: 0 },
+      },
     })
+  })
+
+  it('carries the lattice meet + distribution for the aggregate', () => {
+    // Reason: two Verified + one Declared + one Estimated cannot be presented as
+    // a Verified set — the meet is C (Estimated), the weakest member present.
+    const s = summariseRecordQuality(
+      [rec({ trustTier: 'A' }), rec({ trustTier: 'A' }), rec({ trustTier: 'B' }), rec({ trustTier: 'C' })],
+      compulsory,
+    )
+    expect(s.tierComposition.meet).toBe('C')
+    expect(s.tierComposition.counts).toEqual({ A: 2, B: 1, C: 1 })
+    expect(s.tierComposition.distribution.A).toBeCloseTo(0.5, 10)
   })
 
   it('counts trust tiers under their plain-English buckets', () => {
