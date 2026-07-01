@@ -2,6 +2,8 @@
 // Sector benchmark computation from anonymised, multi-entity Tier A dataset.
 // [PRD §15.2  -  Aggregated and anonymised benchmark product]
 
+import { composeTiers, type TierComposition } from '@/lib/layer3/tier-composition'
+
 export const BENCHMARK_MIN_ENTITIES = 10
 
 export interface BenchmarkRecord {
@@ -27,6 +29,10 @@ export interface SectorBenchmarkResult {
   stddevValue: number
   entityCount: number
   tierAPercent: number
+  // Upgrade 6 — the aggregate's semilattice meet + tier distribution, so this
+  // composite benchmark carries an honest, defined trust tier like every other
+  // aggregate output.
+  tierComposition: TierComposition
 }
 
 export function validateAnonymisation(entityCount: number, minThreshold = BENCHMARK_MIN_ENTITIES): boolean {
@@ -100,6 +106,7 @@ export function computeSectorBenchmarks(
       stddevValue: stddev(entityValues, mean),
       entityCount,
       tierAPercent,
+      tierComposition: composeTiers(records.map(r => r.trustTier)),
     })
   }
 

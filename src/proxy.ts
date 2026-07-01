@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
+import { isPublicPath } from '@/lib/public-paths'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -20,35 +21,7 @@ function redirectTo(req: NextRequest, path: string): NextResponse {
 
 export default auth((req) => {
   const isAuthed = !!req.auth
-  const isPublic =
-    req.nextUrl.pathname === '/' ||
-    req.nextUrl.pathname.startsWith('/pricing') ||
-    req.nextUrl.pathname.startsWith('/legal') ||
-    req.nextUrl.pathname.startsWith('/security') ||
-    req.nextUrl.pathname.startsWith('/docs') ||
-    req.nextUrl.pathname.startsWith('/api/legal') ||
-    req.nextUrl.pathname.startsWith('/login') ||
-    req.nextUrl.pathname.startsWith('/signup') ||
-    req.nextUrl.pathname.startsWith('/forgot-password') ||
-    req.nextUrl.pathname.startsWith('/reset-password') ||
-    req.nextUrl.pathname.startsWith('/2fa-verify') ||
-    req.nextUrl.pathname.startsWith('/sso') ||
-    req.nextUrl.pathname.startsWith('/about') ||
-    req.nextUrl.pathname.startsWith('/how-it-works') ||
-    req.nextUrl.pathname.startsWith('/institutional') ||
-    req.nextUrl.pathname.startsWith('/submit') ||
-    req.nextUrl.pathname.startsWith('/share') ||
-    req.nextUrl.pathname.startsWith('/api/auth') ||
-    req.nextUrl.pathname.startsWith('/api/submit') ||
-    req.nextUrl.pathname.startsWith('/api/signup') ||
-    req.nextUrl.pathname.startsWith('/api/inngest') ||
-    req.nextUrl.pathname.startsWith('/api/inbound-email') ||
-    req.nextUrl.pathname.startsWith('/api/workos') ||
-    req.nextUrl.pathname.startsWith('/api/v1') ||
-    req.nextUrl.pathname.startsWith('/api/query') ||
-    req.nextUrl.pathname.startsWith('/api/records/convert') ||
-    req.nextUrl.pathname.startsWith('/api/institutional') ||
-    req.nextUrl.pathname.startsWith('/api/audit/verify-public')
+  const isPublic = isPublicPath(req.nextUrl.pathname)
 
   if (!isAuthed && !isPublic) {
     return redirectTo(req, '/login')

@@ -1,0 +1,5 @@
+# Arbor brain — runtime dependencies (Vercel Python / Fluid Compute).
+# The calibration maths itself is pure stdlib (app/calibration.py); these are
+# only the HTTP surface. Kept deliberately lean.
+fastapi>=0.110,<1.0
+pydantic>=2.6,<3.0
