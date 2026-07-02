@@ -87,3 +87,38 @@ class FusedField(BaseModel):
 
 class FusionResponse(BaseModel):
     fields: list[FusedField]
+
+
+# ── Entity-resolution baseline scoring (Upgrade 5) ───────────────────────────
+
+
+class EntityName(BaseModel):
+    id: str
+    # Already normalised by the TypeScript blocking layer (lowercased, designators
+    # stripped). The brain scores these as-is — it does not re-normalise.
+    normalised: str
+
+
+class ResolutionPair(BaseModel):
+    a: str = Field(..., description="Entity id.")
+    b: str = Field(..., description="Entity id.")
+
+
+class ResolutionScoreRequest(BaseModel):
+    names: list[EntityName]
+    pairs: list[ResolutionPair]
+    ngram: int = Field(3, ge=2, le=5, description="Character n-gram size.")
+    threshold_match: float = Field(0.85, ge=0.0, le=1.0)
+    threshold_review: float = Field(0.65, ge=0.0, le=1.0)
+
+
+class ScoredPair(BaseModel):
+    a: str
+    b: str
+    similarity: float
+    # match (auto-merge candidate) | review (human decision) | distinct.
+    decision: str
+
+
+class ResolutionScoreResponse(BaseModel):
+    scores: list[ScoredPair]

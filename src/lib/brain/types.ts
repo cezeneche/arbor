@@ -35,3 +35,29 @@ export interface CalibrationFitResponse {
   groups: GroupCalibration[]
   fitted_at: string
 }
+
+// ── Entity-resolution baseline scoring (Upgrade 5) ───────────────────────────
+
+export interface ResolutionEntityName {
+  id: string
+  /** Already normalised by the blocking layer; the brain scores it as-is. */
+  normalised: string
+}
+
+export interface ResolutionPair {
+  a: string
+  b: string
+}
+
+export type ResolutionDecision = 'match' | 'review' | 'distinct'
+
+export interface ScoredPair {
+  a: string
+  b: string
+  similarity: number
+  decision: ResolutionDecision
+}
+
+export interface ResolutionScoreResponse {
+  scores: ScoredPair[]
+}
