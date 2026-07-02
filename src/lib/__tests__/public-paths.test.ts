@@ -19,6 +19,10 @@ describe('isPublicPath', () => {
     expect(isPublicPath('/api/cron/calibrate')).toBe(true)
   })
 
+  it('exposes the offline Merkle verifier (client-only, fetches no data)', () => {
+    expect(isPublicPath('/verify-merkle')).toBe(true)
+  })
+
   it('keeps session-guarded app and API routes private', () => {
     expect(isPublicPath('/dashboard')).toBe(false)
     expect(isPublicPath('/api/records')).toBe(false)

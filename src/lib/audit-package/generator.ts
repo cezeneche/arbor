@@ -2,6 +2,12 @@
 // Assembles DataRecords, source documents, audit chain, and cross-validation results
 // into a structured JSON package for third-party verification (Bureau Veritas, SGS, EY, etc.)
 import { computePackageHash } from '@/lib/layer2/verification-signature'
+import {
+  merkleRoot,
+  buildInclusionProof,
+  verifyInclusionProof,
+  type MerkleInclusionProof,
+} from '@/lib/layer2/merkle'
 
 export interface AuditDataRecord {
   id: string
@@ -17,6 +23,8 @@ export interface AuditDataRecord {
   periodEnd: Date
   extractionMethod: string
   documentId: string | null
+  // Upgrade 7 — the record's HMAC auditHash. Doubles as its Merkle leaf.
+  auditHash: string
 }
 
 export interface AuditSourceDocument {
@@ -80,6 +88,23 @@ export interface AuditPackageSummary {
   crossValidationFailCount: number
 }
 
+// Upgrade 7 — the Merkle commitment carried in the package. The root commits the
+// ordered per-record auditHash leaves; each proof lets an auditor recompute the
+// root for one record offline, without seeing the rest of the corpus.
+export interface AuditRecordInclusionProof {
+  recordId: string
+  proof: MerkleInclusionProof
+}
+
+export interface AuditMerkleCommitment {
+  algorithm: 'RFC6962-SHA256'
+  root: string
+  leafCount: number
+  inclusionProofs: AuditRecordInclusionProof[]
+  /** True when every emitted proof recomputes to the committed root. */
+  consistent: boolean
+}
+
 export interface AuditPackage {
   entityId: string
   entityName: string
@@ -93,7 +118,29 @@ export interface AuditPackage {
   verification: AuditVerification | null
   /** Gap 4 — HMAC of the package's core contents; the verifiable integrity hash. */
   packageIntegrityHash: string
+  /** Upgrade 7 — Merkle-DAG commitment over the record auditHashes. */
+  merkle: AuditMerkleCommitment
   verificationInstructions: VerificationInstructions
+}
+
+// Upgrade 7 — build the Merkle root + one inclusion proof per record. Kept pure
+// (Node crypto only), like the integrity hash. The root is deliberately NOT
+// folded into packageIntegrityHash: it is an additive commitment, so existing
+// package hashes (and the public-verify records that store them) are unchanged.
+function buildMerkleCommitment(records: AuditDataRecord[]): AuditMerkleCommitment {
+  const leaves = records.map((r) => r.auditHash)
+  const root = merkleRoot(leaves)
+  const inclusionProofs = records.map((r, i) => ({
+    recordId: r.id,
+    proof: buildInclusionProof(leaves, i),
+  }))
+  return {
+    algorithm: 'RFC6962-SHA256',
+    root,
+    leafCount: leaves.length,
+    inclusionProofs,
+    consistent: inclusionProofs.every((p) => verifyInclusionProof(p.proof)),
+  }
 }
 
 export function generateAuditPackage(input: AuditPackageInput): AuditPackage {
@@ -151,6 +198,7 @@ export function generateAuditPackage(input: AuditPackageInput): AuditPackage {
     crossValidationResults: input.crossValidationResults,
     verification,
     packageIntegrityHash,
+    merkle: buildMerkleCommitment(input.dataRecords),
     verificationInstructions: {
       description:
         'To independently verify this package, send a GET request to the endpoint below with the packageIntegrityHash.',

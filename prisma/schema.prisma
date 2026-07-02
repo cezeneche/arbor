@@ -82,6 +82,7 @@ model Entity {
   sharedExports           SharedExport[]
   inboundRequests         InboundRequest[]
   groundTruthLabels       GroundTruthLabel[]
+  merkleRoots             MerkleRoot[]
 }
 
 // ── USER ──────────────────────────────────────────────────────────────────────
@@ -474,6 +475,29 @@ model AuditEntry {
 
   @@index([entityId, createdAt])
   @@index([recordId])
+}
+
+// ── MERKLE ROOT (Upgrade 7 — Merkle-DAG audit structure) ──────────────────────
+// A committed RFC 6962 root over the ordered per-record auditHash leaves for an
+// entity+period, persisted when an audit package is generated. Lets an external
+// verifier confirm a single record's inclusion offline (a log2(n) proof) and
+// confirm the root itself existed at generation time. Additive over the linear
+// HMAC chain — it never replaces it. Leaves == DataRecord.auditHash values.
+model MerkleRoot {
+  id          String   @id @default(cuid())
+  entityId    String
+  entity      Entity   @relation(fields: [entityId], references: [id])
+  root        String
+  leafCount   Int
+  algorithm   String   @default("RFC6962-SHA256")
+  periodStart DateTime
+  periodEnd   DateTime
+  // The audit-package integrity hash this root was committed alongside.
+  packageHash String
+  generatedAt DateTime @default(now())
+
+  @@index([entityId, root])
+  @@index([entityId, generatedAt])
 }
 
 // ── DATA REQUEST ──────────────────────────────────────────────────────────────

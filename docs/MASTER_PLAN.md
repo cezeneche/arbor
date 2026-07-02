@@ -20,27 +20,37 @@
 
 | # | Upgrade | Pillar | Status |
 |---|---------|--------|--------|
-| 1 | Bayesian fusion + calibration measurement | A | 🟡 loop verified live; sub-parts pending |
+| 1 | Bayesian fusion + calibration measurement | A | 🟡 measurement loop closed; model-class sub-parts pending |
 | 2 | Information theory (schema + active learning) | A | ⬜ |
 | 3 | Maximum-entropy completion under constraints | A | ⬜ |
 | 4 | Property graph as primary representation | B | ⬜ |
 | 5 | Entity resolution — HNSW + optimal transport | B | ⬜ (OT escalation 🕓) |
 | 6 | Lattice-theoretic tier composition | C | ✅ |
-| 7 | Merkle-DAG audit structure | C | 🟡 primitive done; not productized |
+| 7 | Merkle-DAG audit structure | C | 🟡 productized into audit package + browser verifier; shadow-compare running |
 | 8 | Zero-knowledge proofs for predicate compliance | C | ⬜ |
 | 9 | Graph flow consistency across supply chain | D | ⬜ |
 | 10 | Differential privacy on cross-tenant aggregates | E | ⬜ |
 | 11 | Categorical schema mapping between frameworks | F | 🕓 |
 | 12 | Trust calibration & miscalibration-first UX | G | ⬜ |
 
-## ▶ Next priority (decided 2026-07-01)
+## ▶ Next priority (updated 2026-07-02)
 
-**Real probabilistic confidence at extraction** (Upgrade 1 sub-part). Extraction
-currently emits `confidenceScore: 1.0` for every field, so the calibration
-machine — which is fully built and verified — is being fed a constant and can
-learn nothing. Producing genuine, *varied* per-field confidence is the
-critical-path unblocker that makes Upgrade 1 meaningful, and it takes priority
-over starting Upgrade 5. See "Pending sub-parts" below for the specifics.
+Two foundation threads closed on 2026-07-02:
+- **Upgrade 1 measurement loop** — extraction confidence now varies (k-sample
+  fusion, shipped 2026-07-01), and the loop is now *readable*: the calibration
+  cron persists per-group ECE/Brier each run and evaluates the kill signal
+  (ECE < 5% for supplier identity, mass, emissions intensity), surfaced at
+  `GET /api/admin/calibration/health`.
+- **Upgrade 7 productization** — Merkle roots persisted (`MerkleRoot`), root +
+  per-record inclusion proofs embedded in the audit package, a shadow-compare
+  asserting the Merkle commitment agrees with the linear HMAC chain, and a
+  standalone offline browser verifier at `/verify-merkle`.
+
+With the foundation genuinely complete, the next priority is **Weeks 8–20**:
+Upgrade 5 (HNSW entity-resolution baseline) → Upgrade 4 (property graph) →
+Upgrade 12 (trust UX, which surfaces the now-real calibrated confidence) →
+Upgrade 2. Remaining Upgrade 1 model-class work (Platt scaling, per-doc-class
+conjugate priors) is a separate, lower-priority track — see "Pending sub-parts".
 
 **Architecture decision (2026-07-01):** heavy maths lives in a Python "brain"
 service behind the TypeScript product. TS/Next.js owns the customer-facing app
@@ -253,18 +263,19 @@ The build order that respects both dependency graphs and product urgency.
 ## 🟡 Pending sub-parts within the "done" foundation
 
 **Upgrade 1 — pending (the plan's full vision):**
-- **Real probabilistic confidence at extraction.** *Critical-path blocker:* extraction currently returns `confidenceScore: 1.0` for every field, so the calibration machine is fed a constant. Needs genuine per-field uncertainty (softmax / logprobs / model-elicited) before calibration is *meaningful*.
-- **Platt scaling** (only isotonic/PAV implemented).
-- **True Bayesian fusion with conjugate priors per document class** (current is isotonic calibration only).
-- **Headline ECE/Brier tracking + kill-signal monitoring** (ECE < 5% for supplier identity, mass, emissions intensity).
-- **Surfacing** the posterior + reliability diagram as a customer-facing data-quality health indicator (`confidencePosterior` is written but shown nowhere).
+- ✅ **Real probabilistic confidence at extraction** (k-sample self-consistency fusion; shipped 2026-07-01). Confidence now varies instead of being a constant 1.0.
+- ✅ **Headline ECE/Brier tracking + kill-signal monitoring** (2026-07-02). The calibration cron persists a `CalibrationRun` + per-group `CalibrationGroupMetric` each fit and evaluates the kill signal (ECE < 5% for supplier identity, mass, emissions intensity, judged only on sufficient groups). Read at `GET /api/admin/calibration/health`. Pure core: `src/lib/confidence/calibration-metrics.ts`.
+- **Platt scaling** (only isotonic/PAV implemented) — separate model-class track.
+- **True Bayesian fusion with conjugate priors per document class** (current is isotonic calibration only) — separate model-class track.
+- **Surfacing** the posterior + reliability diagram as a *customer-facing* data-quality health indicator (`confidencePosterior` is written and now tracked internally, but not shown to customers) — belongs with Upgrade 12.
 - Selection-bias caveat: only human-reviewed docs produce labels (auto-accepted low-stakes docs do not) — by design, but caveats the ECE claim.
 
-**Upgrade 7 — pending (productization):**
-- Persist Merkle roots (`MerkleRoot` table).
-- Wire root + inclusion proofs into the audit package and signed exports.
-- Browser-side (SubtleCrypto) verifier for buyers/auditors.
-- Shadow-compare window (Merkle vs linear HMAC) before any consumer treats the root as authoritative.
+**Upgrade 7 — productized (2026-07-02):**
+- ✅ Persist Merkle roots (`MerkleRoot` table; written when an audit package is generated).
+- ✅ Root + per-record inclusion proofs embedded in the audit package (`generator.ts` `buildMerkleCommitment`; surfaced in the `/api/audit-package/me` response).
+- ✅ Browser-side (Web Crypto) verifier for buyers/auditors at `/verify-merkle` (`src/lib/layer2/merkle-browser.ts`, cross-checked against the Node RFC 6962 impl).
+- ✅ Shadow-compare (Merkle vs linear HMAC) — `assemble.ts` `merkleShadow` asserts the chain verifies, every Merkle leaf is in the chain, and every proof recomputes to the root, on every package generation.
+- Remaining: fold the Merkle root into CSV/XML tabular exports if those ever need standalone provenance (the audit package is the current signed-export vehicle).
 
 ## ⬜ Not started
 Upgrades **2, 3, 4, 5, 8, 9, 10, 12** — see sequencing above.
