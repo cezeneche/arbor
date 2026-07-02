@@ -83,6 +83,8 @@ model Entity {
   inboundRequests         InboundRequest[]
   groundTruthLabels       GroundTruthLabel[]
   merkleRoots             MerkleRoot[]
+  entityLinksA            EntityLink[]             @relation("EntityLinkA")
+  entityLinksB            EntityLink[]             @relation("EntityLinkB")
 }
 
 // ── USER ──────────────────────────────────────────────────────────────────────
@@ -111,6 +113,7 @@ model User {
   totpRecoveryCodes       TotpRecoveryCode[]
   verificationAssignments VerificationAssignment[]
   auditorAccess           AuditorAccess[]
+  entityLinkReviews       EntityLink[]
 }
 
 // ── TOTP RECOVERY CODES ───────────────────────────────────────────────────────
@@ -498,6 +501,46 @@ model MerkleRoot {
 
   @@index([entityId, root])
   @@index([entityId, generatedAt])
+}
+
+// ── ENTITY LINK (Upgrade 5 — entity resolution) ───────────────────────────────
+// A proposed "same real-world entity" edge between two Entity rows, produced by
+// the resolution job (blocking + lexical scoring). Non-destructive by design:
+// it NEVER mutates or merges the entities — records stay immutable and their
+// audit chains untouched. A human always reviews (status PENDING → CONFIRMED /
+// REJECTED); nothing auto-links. This edge is also the seed of Upgrade 4's graph.
+enum EntityLinkStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum EntityLinkRelation {
+  SAME_AS
+}
+
+model EntityLink {
+  id        String             @id @default(cuid())
+  // Ordered a<b by id so each unordered pair has exactly one row.
+  entityAId String
+  entityA   Entity             @relation("EntityLinkA", fields: [entityAId], references: [id])
+  entityBId String
+  entityB   Entity             @relation("EntityLinkB", fields: [entityBId], references: [id])
+  relation  EntityLinkRelation @default(SAME_AS)
+  similarity Float
+  // The scorer's banding when proposed (match | review) — persisted for context.
+  suggestedDecision String
+  // Algorithm provenance, e.g. "lexical-baseline-v1".
+  method    String
+  status    EntityLinkStatus   @default(PENDING)
+  reviewedById String?
+  reviewedBy   User?           @relation(fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([entityAId, entityBId])
+  @@index([status, createdAt])
 }
 
 // ── DATA REQUEST ──────────────────────────────────────────────────────────────
