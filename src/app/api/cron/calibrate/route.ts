@@ -16,6 +16,7 @@ import {
   type GroundTruthRow,
 } from '@/lib/brain/calibration-client'
 import { buildPosteriorUpdates, parseMinSamples } from '@/lib/confidence/backfill'
+import { evaluateCalibrationRun } from '@/lib/confidence/calibration-metrics'
 import type { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -64,6 +65,22 @@ export async function GET(req: NextRequest) {
     throw e
   }
 
+  // 2b. Close the measurement loop: persist headline ECE/Brier per group and
+  // evaluate the kill signal (ECE < 5% for supplier identity, mass, emissions
+  // intensity). This is derived measurement, not certified data — it never
+  // touches the audit chain.
+  const { metrics, killSignalBreached } = evaluateCalibrationRun(fit.groups)
+  const run = await prisma.calibrationRun.create({
+    data: {
+      labelCount: labels.length,
+      minSamples: minSamples ?? 30,
+      brainFittedAt: new Date(fit.fitted_at),
+      killSignalBreached,
+      groupMetrics: { create: metrics },
+    },
+    select: { id: true },
+  })
+
   // 3. Apply calibration to active records in batches. Records that share a
   // (group, rawScore) share a posterior, so collapse them into one updateMany.
   let scanned = 0
@@ -102,8 +119,10 @@ export async function GET(req: NextRequest) {
 
   return Response.json({
     status: 'ok',
+    runId: run.id,
     labels: labels.length,
     minSamples: minSamples ?? 30,
+    killSignalBreached,
     groups: fit.groups.map(g => ({ group: g.group, n: g.n, ece: g.ece, sufficient: g.sufficient })),
     recordsScanned: scanned,
     recordsUpdated: updated,

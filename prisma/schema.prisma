@@ -389,6 +389,40 @@ model GroundTruthLabel {
   @@index([entityId])
 }
 
+// ── CALIBRATION METRICS (Upgrade 1 — measurement loop) ────────────────────────
+// Each offline calibration fit records one CalibrationRun plus a per-group
+// metric row. This is how the headline ECE / Brier are tracked over time and the
+// plan's kill signal (ECE < 5% for supplier identity, mass, emissions intensity)
+// is monitored — the numbers the calibration machine produces finally have a
+// home. Derived measurement, not certified data: never touches the audit chain.
+model CalibrationRun {
+  id                 String                   @id @default(cuid())
+  createdAt          DateTime                 @default(now())
+  labelCount         Int
+  minSamples         Int
+  brainFittedAt      DateTime
+  killSignalBreached Boolean                  @default(false)
+  groupMetrics       CalibrationGroupMetric[]
+
+  @@index([createdAt])
+}
+
+model CalibrationGroupMetric {
+  id                String         @id @default(cuid())
+  runId             String
+  run               CalibrationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  group             String
+  n                 Int
+  brier             Float?
+  ece               Float?
+  sufficient        Boolean
+  isKillSignalGroup Boolean
+  breached          Boolean
+
+  @@index([runId])
+  @@index([group, id])
+}
+
 // ── VALIDATION FLAG ───────────────────────────────────────────────────────────
 
 model ValidationFlag {
