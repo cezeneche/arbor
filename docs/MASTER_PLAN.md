@@ -24,7 +24,7 @@
 | 2 | Information theory (schema + active learning) | A | ⬜ |
 | 3 | Maximum-entropy completion under constraints | A | ⬜ |
 | 4 | Property graph as primary representation | B | ⬜ |
-| 5 | Entity resolution — HNSW + optimal transport | B | ⬜ (OT escalation 🕓) |
+| 5 | Entity resolution — HNSW + optimal transport | B | 🟡 lexical baseline live (block+score+review); embeddings/HNSW + OT pending |
 | 6 | Lattice-theoretic tier composition | C | ✅ |
 | 7 | Merkle-DAG audit structure | C | 🟡 productized into audit package + browser verifier; shadow-compare running |
 | 8 | Zero-knowledge proofs for predicate compliance | C | ⬜ |
@@ -277,8 +277,16 @@ The build order that respects both dependency graphs and product urgency.
 - ✅ Shadow-compare (Merkle vs linear HMAC) — `assemble.ts` `merkleShadow` asserts the chain verifies, every Merkle leaf is in the chain, and every proof recomputes to the root, on every package generation.
 - Remaining: fold the Merkle root into CSV/XML tabular exports if those ever need standalone provenance (the audit package is the current signed-export vehicle).
 
+## 🟡 In progress — Weeks 8–20
+
+**Upgrade 5 — entity resolution — lexical baseline live (2026-07-02).**
+- Stage 1 blocking (TS, pure): `src/lib/entity-resolution/blocking.ts` — identity/registration normalisation + `candidatePairs` on a registration key and a country+sector geo key. (Postcode blocking isn't available at Entity level — address lives on documents — so country+sector is the geo block.)
+- Stage 2 scoring (brain, pure stdlib): `brain/app/resolution.py` `POST /resolution/score` — char n-gram TF-IDF cosine ⊕ edit-distance ratio → match/review/distinct. Fail-soft TS client `scoreEntityPairs`. **Vercel-safe lexical baseline chosen over self-hosted torch**; semantic embeddings + pgvector/HNSW are the next escalation if it plateaus, OT the one after (still 🕓).
+- Persistence + review: `EntityLink` model — a **non-destructive** SAME_AS edge; never merges/mutates entities (records stay immutable). `link-planner.ts` (pure); `/api/cron/resolve-entities` (weekly) proposes PENDING candidates; ADMIN review queue at `/api/admin/entity-links` (+ `[id]` confirm/reject). **Nothing auto-links — always human-reviewed.**
+- Pending: semantic-embedding escalation + pgvector/HNSW index (deferred until the lexical baseline is shown to plateau); OT escalation (🕓, unchanged).
+
 ## ⬜ Not started
-Upgrades **2, 3, 4, 5, 8, 9, 10, 12** — see sequencing above.
+Upgrades **2, 3, 4, 8, 9, 10, 12** — see sequencing above.
 
 ## 🕓 Deferred by design
 - Upgrade 5's optimal-transport escalation (only if HNSW plateaus).
