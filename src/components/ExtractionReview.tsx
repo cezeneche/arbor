@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing, confidenceThreshold } from '@/lib/design-system'
+import { colours, typography, spacing } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
+import { TrustIndicator } from './TrustIndicator'
+import { trustDisplay } from '@/lib/confidence/trust-display'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 import { NUMERIC_FIELDS } from '@/lib/review/review-policy'
 
@@ -248,34 +250,58 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
           }}
         >
           {groupFields.map(field => {
-            const isLowConfidence = field.confidenceScore < confidenceThreshold
             const isMissing = field.rawValue === null || field.rawValue === ''
-            const showWarning = field.flagged || isLowConfidence || isMissing
+            const trust = trustDisplay({ confidenceScore: field.confidenceScore })
+            // Low confidence must break the scanning pattern — a distinct red
+            // treatment with a left accent bar, never the same amber as a merely
+            // flagged/missing field. Missing/flagged/moderate stay amber.
+            const isLow = !isMissing && trust.band === 'low'
+            const showWarning = field.flagged || isMissing || trust.breaksPattern
 
             return (
               <div
                 key={field.id}
                 style={{
-                  backgroundColor: colours.surface,
-                  border: `1px solid ${showWarning ? colours.amber : colours.border}`,
+                  backgroundColor: isLow ? colours.redBg : colours.surface,
+                  border: `1px solid ${isLow ? colours.red : showWarning ? colours.amber : colours.border}`,
+                  borderLeft: isLow ? `3px solid ${colours.red}` : undefined,
                   borderRadius: '6px',
                   padding: spacing[2],
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[1], marginBottom: '8px' }}>
                   <label htmlFor={field.id} style={labelStyle}>
                     {field.fieldName.replace(/_/g, ' ')}
                   </label>
-                  <span
+                  {isMissing ? (
+                    <span
+                      style={{
+                        fontSize: typography.sizes.xs,
+                        fontWeight: typography.weights.medium,
+                        letterSpacing: typography.tracking.wide,
+                        color: colours.amber,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Not found
+                    </span>
+                  ) : (
+                    <TrustIndicator confidenceScore={field.confidenceScore} />
+                  )}
+                </div>
+
+                {isLow && (
+                  <p
                     style={{
                       fontSize: typography.sizes.xs,
-                      fontWeight: typography.weights.light,
-                      color: isLowConfidence ? colours.amber : colours.green,
+                      fontWeight: typography.weights.medium,
+                      color: colours.red,
+                      margin: '0 0 6px',
                     }}
                   >
-                    {Math.round(field.confidenceScore * 100)}%
-                  </span>
-                </div>
+                    Please check this value carefully before saving.
+                  </p>
+                )}
 
                 <input
                   id={field.id}
@@ -323,7 +349,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
                         cursor: 'pointer',
                       }}
                     >
-                      Source text
+                      Where this came from
                     </summary>
                     <blockquote
                       style={{
