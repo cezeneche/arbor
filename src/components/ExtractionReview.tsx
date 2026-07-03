@@ -6,6 +6,7 @@ import { colours, typography, spacing } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
 import { TrustIndicator } from './TrustIndicator'
 import { trustDisplay } from '@/lib/confidence/trust-display'
+import { rankReviewFields } from '@/lib/review/information-gain'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 import { NUMERIC_FIELDS } from '@/lib/review/review-policy'
 
@@ -212,8 +213,151 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     outline: 'none',
   })
 
+  function renderCard(field: ExtractedField) {
+    const isMissing = field.rawValue === null || field.rawValue === ''
+    const trust = trustDisplay({ confidenceScore: field.confidenceScore })
+    // Low confidence must break the scanning pattern — a distinct red treatment
+    // with a left accent bar, never the same amber as a merely flagged/missing
+    // field. Missing/flagged/moderate stay amber.
+    const isLow = !isMissing && trust.band === 'low'
+    const showWarning = field.flagged || isMissing || trust.breaksPattern
+
+    return (
+      <div
+        key={field.id}
+        style={{
+          backgroundColor: isLow ? colours.redBg : colours.surface,
+          border: `1px solid ${isLow ? colours.red : showWarning ? colours.amber : colours.border}`,
+          borderLeft: isLow ? `3px solid ${colours.red}` : undefined,
+          borderRadius: '6px',
+          padding: spacing[2],
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[1], marginBottom: '8px' }}>
+          <label htmlFor={field.id} style={labelStyle}>
+            {field.fieldName.replace(/_/g, ' ')}
+          </label>
+          {isMissing ? (
+            <span
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.medium,
+                letterSpacing: typography.tracking.wide,
+                color: colours.amber,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Not found
+            </span>
+          ) : (
+            <TrustIndicator confidenceScore={field.confidenceScore} />
+          )}
+        </div>
+
+        {isLow && (
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.medium,
+              color: colours.red,
+              margin: '0 0 6px',
+            }}
+          >
+            Please check this value carefully before saving.
+          </p>
+        )}
+
+        <input
+          id={field.id}
+          type="text"
+          value={values[field.fieldName] ?? ''}
+          onChange={e => setValues(prev => ({ ...prev, [field.fieldName]: e.target.value }))}
+          placeholder={isMissing ? 'Not found in document' : undefined}
+          style={inputStyle(showWarning)}
+        />
+
+        {field.rawUnit && (
+          <span
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textTertiary,
+              marginTop: '4px',
+              display: 'block',
+            }}
+          >
+            Unit: {field.rawUnit}
+          </span>
+        )}
+
+        {field.flagReason && (
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.amber,
+              margin: '6px 0 0',
+            }}
+          >
+            {field.flagReason}
+          </p>
+        )}
+
+        {field.sourceText && (
+          <details style={{ marginTop: '8px' }}>
+            <summary
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                cursor: 'pointer',
+              }}
+            >
+              Where this came from
+            </summary>
+            <blockquote
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.textSecondary,
+                borderLeft: `2px solid ${colours.border}`,
+                margin: '6px 0 0',
+                paddingLeft: '10px',
+                fontStyle: 'italic',
+              }}
+            >
+              {field.sourceText}
+            </blockquote>
+          </details>
+        )}
+      </div>
+    )
+  }
+
   function renderFieldGroup(title: string, groupFields: ExtractedField[], badge?: string) {
     if (groupFields.length === 0) return null
+    // Upgrade 2 — active learning: order fields by expected information gain
+    // (most-uncertain, most-important first) and collapse the confident,
+    // low-information ones, so the user's attention leads with what matters most.
+    const ranked = rankReviewFields(
+      groupFields.map(f => ({
+        fieldName: f.fieldName,
+        confidence: f.confidenceScore,
+        admissibility: f.admissibility,
+        flagged: f.flagged,
+        hasValue: !(f.rawValue === null || f.rawValue === ''),
+      })),
+    )
+    const byName = new Map(groupFields.map(f => [f.fieldName, f]))
+    const pick = (lowInfo: boolean) =>
+      ranked
+        .filter(r => r.lowInformation === lowInfo)
+        .map(r => byName.get(r.fieldName))
+        .filter((f): f is ExtractedField => Boolean(f))
+    const prominent = pick(false)
+    const confident = pick(true)
+    const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: spacing[2] } as const
+
     return (
       <section style={{ marginBottom: spacing[4] }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], marginBottom: spacing[2] }}>
@@ -242,134 +386,23 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
             </span>
           )}
         </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: spacing[2],
-          }}
-        >
-          {groupFields.map(field => {
-            const isMissing = field.rawValue === null || field.rawValue === ''
-            const trust = trustDisplay({ confidenceScore: field.confidenceScore })
-            // Low confidence must break the scanning pattern — a distinct red
-            // treatment with a left accent bar, never the same amber as a merely
-            // flagged/missing field. Missing/flagged/moderate stay amber.
-            const isLow = !isMissing && trust.band === 'low'
-            const showWarning = field.flagged || isMissing || trust.breaksPattern
-
-            return (
-              <div
-                key={field.id}
-                style={{
-                  backgroundColor: isLow ? colours.redBg : colours.surface,
-                  border: `1px solid ${isLow ? colours.red : showWarning ? colours.amber : colours.border}`,
-                  borderLeft: isLow ? `3px solid ${colours.red}` : undefined,
-                  borderRadius: '6px',
-                  padding: spacing[2],
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[1], marginBottom: '8px' }}>
-                  <label htmlFor={field.id} style={labelStyle}>
-                    {field.fieldName.replace(/_/g, ' ')}
-                  </label>
-                  {isMissing ? (
-                    <span
-                      style={{
-                        fontSize: typography.sizes.xs,
-                        fontWeight: typography.weights.medium,
-                        letterSpacing: typography.tracking.wide,
-                        color: colours.amber,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Not found
-                    </span>
-                  ) : (
-                    <TrustIndicator confidenceScore={field.confidenceScore} />
-                  )}
-                </div>
-
-                {isLow && (
-                  <p
-                    style={{
-                      fontSize: typography.sizes.xs,
-                      fontWeight: typography.weights.medium,
-                      color: colours.red,
-                      margin: '0 0 6px',
-                    }}
-                  >
-                    Please check this value carefully before saving.
-                  </p>
-                )}
-
-                <input
-                  id={field.id}
-                  type="text"
-                  value={values[field.fieldName] ?? ''}
-                  onChange={e => setValues(prev => ({ ...prev, [field.fieldName]: e.target.value }))}
-                  placeholder={isMissing ? 'Not found in document' : undefined}
-                  style={inputStyle(showWarning)}
-                />
-
-                {field.rawUnit && (
-                  <span
-                    style={{
-                      fontSize: typography.sizes.xs,
-                      fontWeight: typography.weights.light,
-                      color: colours.textTertiary,
-                      marginTop: '4px',
-                      display: 'block',
-                    }}
-                  >
-                    Unit: {field.rawUnit}
-                  </span>
-                )}
-
-                {field.flagReason && (
-                  <p
-                    style={{
-                      fontSize: typography.sizes.xs,
-                      fontWeight: typography.weights.light,
-                      color: colours.amber,
-                      margin: '6px 0 0',
-                    }}
-                  >
-                    {field.flagReason}
-                  </p>
-                )}
-
-                {field.sourceText && (
-                  <details style={{ marginTop: '8px' }}>
-                    <summary
-                      style={{
-                        fontSize: typography.sizes.xs,
-                        fontWeight: typography.weights.light,
-                        color: colours.textTertiary,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Where this came from
-                    </summary>
-                    <blockquote
-                      style={{
-                        fontSize: typography.sizes.xs,
-                        fontWeight: typography.weights.light,
-                        color: colours.textSecondary,
-                        borderLeft: `2px solid ${colours.border}`,
-                        margin: '6px 0 0',
-                        paddingLeft: '10px',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      {field.sourceText}
-                    </blockquote>
-                  </details>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        {prominent.length > 0 && <div style={gridStyle}>{prominent.map(renderCard)}</div>}
+        {confident.length > 0 && (
+          <details style={{ marginTop: prominent.length > 0 ? spacing[2] : 0 }}>
+            <summary
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                cursor: 'pointer',
+                padding: '4px 0',
+              }}
+            >
+              {confident.length} {confident.length === 1 ? 'field we’re' : 'fields we’re'} confident about — expand to review
+            </summary>
+            <div style={{ ...gridStyle, marginTop: spacing[2] }}>{confident.map(renderCard)}</div>
+          </details>
+        )}
       </section>
     )
   }

@@ -21,7 +21,7 @@
 | # | Upgrade | Pillar | Status |
 |---|---------|--------|--------|
 | 1 | Bayesian fusion + calibration measurement | A | 🟡 measurement loop closed; model-class sub-parts pending |
-| 2 | Information theory (schema + active learning) | A | ⬜ |
+| 2 | Information theory (schema + active learning) | A | 🟡 active-learning review ranking live; schema-inference application pending |
 | 3 | Maximum-entropy completion under constraints | A | ⬜ |
 | 4 | Property graph as primary representation | B | 🟡 Postgres-native graph live (projector + job + multi-hop query); Neo4j not used |
 | 5 | Entity resolution — HNSW + optimal transport | B | 🟡 lexical baseline live (block+score+review); embeddings/HNSW + OT pending |
@@ -299,8 +299,13 @@ The build order that respects both dependency graphs and product urgency.
 - Surfaces now covered: the SME review flow, the supplier records table (calibrated confidence column), the buyer supply-chain records view (`detail` mode with the credible interval + wide-interval honest-uncertainty downgrade), and a dashboard **correction-agency reinforcement** card (`summariseCorrections`, reflects the user's review vigilance back to them).
 - Pending: onboarding ten-record scepticism drill (deferred — reuses TrustIndicator); the 30-day A/B kill-signal measurement.
 
+**Upgrade 2 — information theory — active-learning review ranking live (2026-07-03).**
+- Primitives in the brain (`brain/app/infotheory.py`, pure stdlib): base-2 `entropy`, `binary_entropy`, `mutual_information` — the shared foundation for both applications.
+- Active-learning review ranking (`src/lib/review/information-gain.ts`, pure TS — runs on the user-facing review render path where the brain must never block): expected information gain = binary entropy of the field's correctness × importance (compulsory > optional; flags raise it). Wired into `ExtractionReview`: fields ordered by gain (most-uncertain/important first), and confident low-information fields collapse under a "N fields we're confident about" expander (never hidden). Directly delivers the plan's "why" (lower SME review burden).
+- Pending: the schema-inference application (mutual information over field co-occurrence, for GENERIC/schema-on-read docs — uses the brain's `mutual_information`); the 2× A/B kill-signal (ranked-high vs random confirmation rate).
+
 ## ⬜ Not started
-Upgrades **2, 3, 8, 9, 10** — see sequencing above.
+Upgrades **3, 8, 9, 10** — see sequencing above.
 
 ## 🕓 Deferred by design
 - Upgrade 5's optimal-transport escalation (only if HNSW plateaus).
