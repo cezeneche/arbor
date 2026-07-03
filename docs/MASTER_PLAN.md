@@ -23,7 +23,7 @@
 | 1 | Bayesian fusion + calibration measurement | A | 🟡 measurement loop closed; model-class sub-parts pending |
 | 2 | Information theory (schema + active learning) | A | ⬜ |
 | 3 | Maximum-entropy completion under constraints | A | ⬜ |
-| 4 | Property graph as primary representation | B | ⬜ |
+| 4 | Property graph as primary representation | B | 🟡 Postgres-native graph live (projector + job + multi-hop query); Neo4j not used |
 | 5 | Entity resolution — HNSW + optimal transport | B | 🟡 lexical baseline live (block+score+review); embeddings/HNSW + OT pending |
 | 6 | Lattice-theoretic tier composition | C | ✅ |
 | 7 | Merkle-DAG audit structure | C | 🟡 productized into audit package + browser verifier; shadow-compare running |
@@ -285,8 +285,15 @@ The build order that respects both dependency graphs and product urgency.
 - Persistence + review: `EntityLink` model — a **non-destructive** SAME_AS edge; never merges/mutates entities (records stay immutable). `link-planner.ts` (pure); `/api/cron/resolve-entities` (weekly) proposes PENDING candidates; ADMIN review queue at `/api/admin/entity-links` (+ `[id]` confirm/reject). **Nothing auto-links — always human-reviewed.**
 - Pending: semantic-embedding escalation + pgvector/HNSW index (deferred until the lexical baseline is shown to plateau); OT escalation (🕓, unchanged).
 
+**Upgrade 4 — property graph — Postgres-native baseline live (2026-07-03).**
+- Store decision: **Postgres-native edge tables** (`GraphNode`/`GraphEdge`), not Neo4j — no new datastore, one source of truth, reversible (matches the kill signal); recursive CTE / dedicated graph DB are later escalations only if traversals outgrow it.
+- Pure projector `src/lib/graph/project.ts` — relational snapshot → typed nodes (entity/document/record) + edges (SUBMITTED / OWNS / YIELDED / SAME_AS / SUPPLIES). Store-agnostic.
+- Pure traversal `src/lib/graph/traverse.ts` — BFS neighbourhood within N hops (typed, directed/undirected). In-memory over the persisted edges for now; recursive CTE is the drop-in scale escalation.
+- Projection job `/api/cron/project-graph` (daily) rebuilds the graph off the write path (never a second source of truth in Layer 2). Multi-hop query surface: `GET /api/admin/graph/neighbourhood`.
+- Confirmed `EntityLink`s (Upgrade 5) become SAME_AS edges — the two Pillar B upgrades now compose. Pending: richer node types (installations, batches, certificates as first-class), and the recursive-CTE escalation when needed.
+
 ## ⬜ Not started
-Upgrades **2, 3, 4, 8, 9, 10, 12** — see sequencing above.
+Upgrades **2, 3, 8, 9, 10, 12** — see sequencing above.
 
 ## 🕓 Deferred by design
 - Upgrade 5's optimal-transport escalation (only if HNSW plateaus).

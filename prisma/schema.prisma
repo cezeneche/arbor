@@ -543,6 +543,57 @@ model EntityLink {
   @@index([status, createdAt])
 }
 
+// ── PROPERTY GRAPH (Upgrade 4) ────────────────────────────────────────────────
+// A derived graph projection of the relational store: entities, documents, and
+// records as nodes; who-submitted-what, which-document-yielded-which-record,
+// who-supplies-whom, and confirmed same-entity links as edges. Rebuilt off the
+// write path by the projection job — never a second source of truth in the
+// Layer 2 critical section. Multi-hop questions traverse this. Node id is the
+// namespaced projector id (e.g. "entity:abc"); no FK back to the source rows so
+// a rebuild is a clean replace, and there is no coupling to certified data.
+enum GraphNodeType {
+  ENTITY
+  DOCUMENT
+  RECORD
+}
+
+enum GraphEdgeType {
+  SUBMITTED
+  OWNS
+  YIELDED
+  SAME_AS
+  SUPPLIES
+}
+
+model GraphNode {
+  id        String        @id
+  type      GraphNodeType
+  refId     String
+  label     String
+  props     Json
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  outEdges GraphEdge[] @relation("GraphEdgeSource")
+  inEdges  GraphEdge[] @relation("GraphEdgeTarget")
+
+  @@index([type, refId])
+}
+
+model GraphEdge {
+  id        String        @id
+  type      GraphEdgeType
+  sourceId  String
+  source    GraphNode     @relation("GraphEdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId  String
+  target    GraphNode     @relation("GraphEdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@index([sourceId, type])
+  @@index([targetId, type])
+  @@index([type])
+}
+
 // ── DATA REQUEST ──────────────────────────────────────────────────────────────
 
 model DataRequest {
