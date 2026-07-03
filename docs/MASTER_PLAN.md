@@ -31,7 +31,7 @@
 | 9 | Graph flow consistency across supply chain | D | ⬜ |
 | 10 | Differential privacy on cross-tenant aggregates | E | ⬜ |
 | 11 | Categorical schema mapping between frameworks | F | 🕓 |
-| 12 | Trust calibration & miscalibration-first UX | G | 🟡 calibrated trust treatment in the review flow; onboarding drill + broader surfaces pending |
+| 12 | Trust calibration & miscalibration-first UX | G | 🟡 trust treatment across review + records + buyer views + correction reinforcement; onboarding drill pending |
 
 ## ▶ Next priority (updated 2026-07-02)
 
@@ -296,7 +296,8 @@ The build order that respects both dependency graphs and product urgency.
 - Pure classifier `src/lib/confidence/trust-display.ts` — the single source of truth for field-level confidence display: prefers the calibrated posterior over the raw score, bands high/moderate/low, and downgrades a high mean with a wide credible interval (honest uncertainty) so it breaks the scanning pattern anyway.
 - Reusable `src/components/TrustIndicator.tsx` — coloured band badge (plain for suppliers, `detail` shows the credible interval + calibration note for buyers).
 - Wired into the SME review flow (`ExtractionReview`): replaced the raw-% + binary 0.85 flag with the calibrated treatment; low-confidence fields get a distinct red break-out (left accent bar + "check this carefully"), never the same amber as merely flagged/missing; provenance ("Where this came from") one click away.
-- Pending: onboarding ten-record scepticism drill (deferred — reuses TrustIndicator); broader surfaces (records/data + buyer views); correction-agency reinforcement; the 30-day A/B kill-signal measurement.
+- Surfaces now covered: the SME review flow, the supplier records table (calibrated confidence column), the buyer supply-chain records view (`detail` mode with the credible interval + wide-interval honest-uncertainty downgrade), and a dashboard **correction-agency reinforcement** card (`summariseCorrections`, reflects the user's review vigilance back to them).
+- Pending: onboarding ten-record scepticism drill (deferred — reuses TrustIndicator); the 30-day A/B kill-signal measurement.
 
 ## ⬜ Not started
 Upgrades **2, 3, 8, 9, 10** — see sequencing above.
