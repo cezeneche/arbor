@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
+import { TrustIndicator } from '@/components/TrustIndicator'
+import type { ConfidencePosterior } from '@/lib/confidence/types'
 import { logRecordAccess } from '@/lib/layer3/grant-access'
 
 const DOMAINS = [
@@ -321,16 +323,11 @@ export default async function SupplierRecordsPage({
                       </div>
 
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <p
-                          style={{
-                            fontSize: typography.sizes.xs,
-                            fontWeight: typography.weights.light,
-                            color: colours.textTertiary,
-                            margin: 0,
-                          }}
-                        >
-                          Confidence {(record.confidenceScore * 100).toFixed(0)}%
-                        </p>
+                        <TrustIndicator
+                          confidenceScore={record.confidenceScore}
+                          confidencePosterior={record.confidencePosterior as ConfidencePosterior | null}
+                          detail
+                        />
                         {record.document && (
                           <p
                             style={{

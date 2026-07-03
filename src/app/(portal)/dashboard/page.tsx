@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { Pagination, PAGE_SIZE } from '@/components/Pagination'
+import { summariseCorrections } from '@/lib/confidence/correction-summary'
 
 const DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
@@ -81,7 +82,7 @@ export default async function DashboardPage({
   const reqPage = Math.max(1, parseInt(sp.reqPage ?? '1', 10))
 
   const now = new Date()
-  const [recentDocuments, [pendingRequests, totalPending], allRecords, expiringDocs, staleRecords] = await Promise.all([
+  const [recentDocuments, [pendingRequests, totalPending], allRecords, expiringDocs, staleRecords, reviewLabels] = await Promise.all([
     prisma.document.findMany({
       where: { entityId },
       orderBy: { submittedAt: 'desc' },
@@ -124,7 +125,15 @@ export default async function DashboardPage({
       orderBy: { staleAfterDate: 'asc' },
       take: 20,
     }),
+    // Upgrade 12 - the user's review decisions, for agency reinforcement.
+    prisma.groundTruthLabel.findMany({
+      where: { entityId },
+      select: { source: true, wasCorrect: true },
+      take: 5000,
+    }),
   ])
+
+  const corrections = summariseCorrections(reviewLabels)
 
   // Gap 2 - build a plain-English "needs attention" list (certificate expiry + staleness).
   const readableDocType = (t: string) =>
@@ -224,6 +233,49 @@ export default async function DashboardPage({
           Upload documents
         </Link>
       </div>
+
+      {/* Upgrade 12 - agency reinforcement: reflect the user's review vigilance
+          back to them so trust stays calibrated, not automatic. */}
+      {corrections.reviewed > 0 && (
+        <section style={{ marginBottom: spacing[4] }}>
+          <div
+            style={{
+              backgroundColor: colours.greenBg,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '8px',
+              padding: spacing[3],
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: spacing[3],
+              flexWrap: 'wrap' as const,
+            }}
+          >
+            <span style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.green }}>
+              {corrections.reviewed.toLocaleString('en-GB')} checked
+              {corrections.corrected > 0 && (
+                <span style={{ color: colours.textSecondary }}>
+                  {' · '}
+                  {corrections.corrected.toLocaleString('en-GB')} corrected
+                </span>
+              )}
+            </span>
+            <span
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textSecondary,
+                lineHeight: typography.lineHeight.body,
+                flex: 1,
+                minWidth: '260px',
+              }}
+            >
+              {corrections.corrected > 0
+                ? 'Your checks catch values the reader gets wrong — and every correction helps Arbor read your next document more accurately.'
+                : 'Thanks for checking your extracted values. Your review is what keeps every record accurate.'}
+            </span>
+          </div>
+        </section>
+      )}
 
       {/* Gap 8.3 - onboarding progress, removed once the first record is confirmed. */}
       {!onboardingComplete && (

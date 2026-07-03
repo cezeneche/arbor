@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
+import { TrustIndicator } from '@/components/TrustIndicator'
+import type { ConfidencePosterior } from '@/lib/confidence/types'
 import { Pagination, PAGE_SIZE } from '@/components/Pagination'
 import { RecordsQueryPanel } from '@/components/RecordsQueryPanel'
 import { RecordQualitySummary } from '@/components/RecordQualitySummary'
@@ -292,7 +294,7 @@ export default async function RecordsPage({
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
-                  {['Field', 'Value', 'Period', 'Domain', isSupplier ? 'Certification' : 'Trust tier', 'Flags', 'Source'].map(col => (
+                  {['Field', 'Value', 'Period', 'Domain', isSupplier ? 'Certification' : 'Trust tier', 'Confidence', 'Flags', 'Source'].map(col => (
                     <th
                       key={col}
                       style={{
@@ -343,6 +345,13 @@ export default async function RecordsPage({
                             Upload to verify ↑
                           </Link>
                         )}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <TrustIndicator
+                          confidenceScore={record.confidenceScore}
+                          confidencePosterior={record.confidencePosterior as ConfidencePosterior | null}
+                          detail={!isSupplier}
+                        />
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         {openFlags.length > 0 ? (
