@@ -20,10 +20,23 @@ export interface AssembleOptions {
   logRequestedById?: string
 }
 
+// Upgrade 7 — shadow-compare: the Merkle root and the linear HMAC chain secure
+// the same leaves (DataRecord.auditHash == AuditEntry.hash), so before any
+// consumer treats the root as authoritative we assert the two structures agree:
+// the chain verifies, every Merkle leaf is present in the chain, and every proof
+// recomputes to the root.
+export interface MerkleShadowCompare {
+  chainVerified: boolean
+  allLeavesInChain: boolean
+  proofsConsistent: boolean
+  agree: boolean
+}
+
 export interface AssembledPackage {
   package: AuditPackage
   chainIntegrityVerified: boolean
   auditEntryCount: number
+  merkleShadow: MerkleShadowCompare
 }
 
 export async function assembleAuditPackage(opts: AssembleOptions): Promise<AssembledPackage> {
@@ -98,6 +111,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
       periodEnd: r.periodEnd,
       extractionMethod: r.extractionMethod,
       documentId: r.documentId,
+      auditHash: r.auditHash,
     })),
     sourceDocuments: [...sourceDocMap.values()].map((d) => ({
       id: d.id,
@@ -119,6 +133,16 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
     verification,
   })
 
+  // Upgrade 7 — shadow-compare the Merkle commitment against the linear chain.
+  const chainHashes = new Set(auditEntries.map((e) => e.hash))
+  const allLeavesInChain = pkg.dataRecords.every((r) => chainHashes.has(r.auditHash))
+  const merkleShadow: MerkleShadowCompare = {
+    chainVerified: chainIntegrityVerified,
+    allLeavesInChain,
+    proofsConsistent: pkg.merkle.consistent,
+    agree: chainIntegrityVerified && allLeavesInChain && pkg.merkle.consistent,
+  }
+
   if (opts.logRequestedById) {
     await prisma.auditPackageLog.create({
       data: {
@@ -129,7 +153,25 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
         requestedById: opts.logRequestedById,
       },
     })
+    // Persist the committed root so a later verifier can confirm it existed at
+    // generation time. Additive provenance bookkeeping — not a data mutation.
+    await prisma.merkleRoot.create({
+      data: {
+        entityId,
+        root: pkg.merkle.root,
+        leafCount: pkg.merkle.leafCount,
+        algorithm: pkg.merkle.algorithm,
+        periodStart: pkg.periodStart,
+        periodEnd: pkg.periodEnd,
+        packageHash: pkg.packageIntegrityHash,
+      },
+    })
   }
 
-  return { package: pkg, chainIntegrityVerified, auditEntryCount: auditEntries.length }
+  return {
+    package: pkg,
+    chainIntegrityVerified,
+    auditEntryCount: auditEntries.length,
+    merkleShadow,
+  }
 }

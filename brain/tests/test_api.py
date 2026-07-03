@@ -104,5 +104,37 @@ class TestFusion(unittest.TestCase):
         )
 
 
+class TestResolutionScore(unittest.TestCase):
+    def test_requires_token(self):
+        r = client.post("/resolution/score", json={"names": [], "pairs": []})
+        self.assertEqual(r.status_code, 401)
+
+    def test_scores_and_bands_candidate_pairs(self):
+        r = client.post(
+            "/resolution/score",
+            json={
+                "names": [
+                    {"id": "a", "normalised": "acme steel"},
+                    {"id": "b", "normalised": "acme steel"},
+                    {"id": "c", "normalised": "zenith logistics"},
+                ],
+                "pairs": [{"a": "a", "b": "b"}, {"a": "a", "b": "c"}],
+            },
+            headers=AUTH,
+        )
+        self.assertEqual(r.status_code, 200)
+        scores = {(s["a"], s["b"]): s for s in r.json()["scores"]}
+        self.assertEqual(scores[("a", "b")]["decision"], "match")
+        self.assertEqual(scores[("a", "c")]["decision"], "distinct")
+
+    def test_ngram_out_of_range_is_rejected(self):
+        r = client.post(
+            "/resolution/score",
+            json={"names": [], "pairs": [], "ngram": 9},
+            headers=AUTH,
+        )
+        self.assertEqual(r.status_code, 422)
+
+
 if __name__ == "__main__":
     unittest.main()

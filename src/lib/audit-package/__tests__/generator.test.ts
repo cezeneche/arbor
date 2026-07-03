@@ -1,4 +1,5 @@
 import { generateAuditPackage, type AuditPackageInput } from '../generator'
+import { verifyInclusionProof, merkleRoot } from '@/lib/layer2/merkle'
 
 // The generator computes an HMAC integrity hash (Gap 4), which needs the secret.
 const ORIGINAL_SECRET = process.env.AUDIT_CHAIN_SECRET
@@ -28,6 +29,7 @@ function makeRecord(
     periodEnd: new Date('2024-03-31'),
     extractionMethod: 'AI_EXTRACTED',
     documentId: 'doc-1',
+    auditHash: `audithash-${id}`,
   }
 }
 
@@ -176,5 +178,49 @@ describe('generateAuditPackage', () => {
     expect(generateAuditPackage(BASE_INPUT).packageIntegrityHash).toBe(
       generateAuditPackage(BASE_INPUT).packageIntegrityHash,
     )
+  })
+})
+
+describe('generateAuditPackage — Merkle commitment (Upgrade 7)', () => {
+  it('commits an RFC 6962 root over the record auditHashes in package order', () => {
+    const pkg = generateAuditPackage(BASE_INPUT)
+    expect(pkg.merkle.algorithm).toBe('RFC6962-SHA256')
+    expect(pkg.merkle.leafCount).toBe(2)
+    expect(pkg.merkle.root).toBe(merkleRoot(['audithash-r1', 'audithash-r2']))
+  })
+
+  it('emits one inclusion proof per record that recomputes to the root', () => {
+    const pkg = generateAuditPackage(BASE_INPUT)
+    expect(pkg.merkle.inclusionProofs).toHaveLength(2)
+    for (const { recordId, proof } of pkg.merkle.inclusionProofs) {
+      expect(pkg.dataRecords.some(r => r.id === recordId)).toBe(true)
+      expect(proof.root).toBe(pkg.merkle.root)
+      expect(verifyInclusionProof(proof)).toBe(true)
+    }
+  })
+
+  it('self-consistency flag is true when every proof verifies', () => {
+    expect(generateAuditPackage(BASE_INPUT).merkle.consistent).toBe(true)
+  })
+
+  it('a tampered leaf makes its proof fail to recompute the committed root', () => {
+    const pkg = generateAuditPackage(BASE_INPUT)
+    const proof = pkg.merkle.inclusionProofs[0].proof
+    const forged = { ...proof, leaf: 'audithash-forged' }
+    expect(verifyInclusionProof(forged)).toBe(false)
+  })
+
+  it('handles an empty record set without proofs', () => {
+    const pkg = generateAuditPackage({ ...BASE_INPUT, dataRecords: [] })
+    expect(pkg.merkle.leafCount).toBe(0)
+    expect(pkg.merkle.inclusionProofs).toEqual([])
+    expect(pkg.merkle.consistent).toBe(true)
+  })
+
+  it('exposes the root while the integrity hash stays deterministic', () => {
+    const a = generateAuditPackage(BASE_INPUT)
+    const b = generateAuditPackage(BASE_INPUT)
+    expect(a.packageIntegrityHash).toBe(b.packageIntegrityHash)
+    expect(a.merkle.root).toBe(b.merkle.root)
   })
 })

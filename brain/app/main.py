@@ -16,6 +16,7 @@ from fastapi import Depends, FastAPI
 from .auth import require_internal_token
 from .calibration import Sample, fit_calibration
 from .fusion import fuse_field
+from .resolution import score_pairs
 from .models import (
     CalibrationFitRequest,
     CalibrationFitResponse,
@@ -23,6 +24,9 @@ from .models import (
     FusionRequest,
     FusionResponse,
     GroupCalibration,
+    ResolutionScoreRequest,
+    ResolutionScoreResponse,
+    ScoredPair,
 )
 
 app = FastAPI(title="Arbor Brain", version="0.1.0")
@@ -98,3 +102,26 @@ def fusion_fields(
         for f in req.fields
     ]
     return FusionResponse(fields=fields)
+
+
+@app.post("/resolution/score", response_model=ResolutionScoreResponse)
+def resolution_score(
+    req: ResolutionScoreRequest,
+    _auth: None = Depends(require_internal_token),
+) -> ResolutionScoreResponse:
+    """Score blocked candidate entity pairs (Upgrade 5 baseline).
+
+    TypeScript sends the normalised names and the candidate pairs its blocking
+    layer produced; the brain returns a lexical similarity per pair and bands it
+    into match / review / distinct. Stateless: no DB, no embeddings, no index.
+    """
+    names = {n.id: n.normalised for n in req.names}
+    pairs = [(p.a, p.b) for p in req.pairs]
+    scored = score_pairs(
+        names,
+        pairs,
+        ngram=req.ngram,
+        threshold_match=req.threshold_match,
+        threshold_review=req.threshold_review,
+    )
+    return ResolutionScoreResponse(scores=[ScoredPair(**s) for s in scored])
