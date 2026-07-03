@@ -31,7 +31,7 @@
 | 9 | Graph flow consistency across supply chain | D | ⬜ |
 | 10 | Differential privacy on cross-tenant aggregates | E | ⬜ |
 | 11 | Categorical schema mapping between frameworks | F | 🕓 |
-| 12 | Trust calibration & miscalibration-first UX | G | ⬜ |
+| 12 | Trust calibration & miscalibration-first UX | G | 🟡 calibrated trust treatment in the review flow; onboarding drill + broader surfaces pending |
 
 ## ▶ Next priority (updated 2026-07-02)
 
@@ -292,8 +292,14 @@ The build order that respects both dependency graphs and product urgency.
 - Projection job `/api/cron/project-graph` (daily) rebuilds the graph off the write path (never a second source of truth in Layer 2). Multi-hop query surface: `GET /api/admin/graph/neighbourhood`.
 - Confirmed `EntityLink`s (Upgrade 5) become SAME_AS edges — the two Pillar B upgrades now compose. Pending: richer node types (installations, batches, certificates as first-class), and the recursive-CTE escalation when needed.
 
+**Upgrade 12 — miscalibration-first UX — first surface live (2026-07-03).**
+- Pure classifier `src/lib/confidence/trust-display.ts` — the single source of truth for field-level confidence display: prefers the calibrated posterior over the raw score, bands high/moderate/low, and downgrades a high mean with a wide credible interval (honest uncertainty) so it breaks the scanning pattern anyway.
+- Reusable `src/components/TrustIndicator.tsx` — coloured band badge (plain for suppliers, `detail` shows the credible interval + calibration note for buyers).
+- Wired into the SME review flow (`ExtractionReview`): replaced the raw-% + binary 0.85 flag with the calibrated treatment; low-confidence fields get a distinct red break-out (left accent bar + "check this carefully"), never the same amber as merely flagged/missing; provenance ("Where this came from") one click away.
+- Pending: onboarding ten-record scepticism drill (deferred — reuses TrustIndicator); broader surfaces (records/data + buyer views); correction-agency reinforcement; the 30-day A/B kill-signal measurement.
+
 ## ⬜ Not started
-Upgrades **2, 3, 8, 9, 10, 12** — see sequencing above.
+Upgrades **2, 3, 8, 9, 10** — see sequencing above.
 
 ## 🕓 Deferred by design
 - Upgrade 5's optimal-transport escalation (only if HNSW plateaus).
