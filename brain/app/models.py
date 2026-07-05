@@ -187,3 +187,54 @@ class ConstraintRecordResult(BaseModel):
 
 class ConstraintCheckResponse(BaseModel):
     results: list[ConstraintRecordResult]
+
+
+# ── Graph flow consistency (Upgrade 9) ───────────────────────────────────────
+
+
+class FlowNode(BaseModel):
+    id: str
+    supply: float = 0.0
+    demand: float = 0.0
+
+
+class FlowEdge(BaseModel):
+    source: str
+    target: str
+    quantity: float
+
+
+class FlowClaim(BaseModel):
+    ref: str
+    claimant: str
+    quantity: float = 0.0
+    capacity: Optional[float] = None
+
+
+class FlowCheckRequest(BaseModel):
+    nodes: list[FlowNode] = []
+    edges: list[FlowEdge] = []
+    claims: list[FlowClaim] = []
+    tolerance: float = Field(0.05, ge=0.0)
+
+
+class ConservationAnomaly(BaseModel):
+    node: str
+    type: str
+    available: float
+    used: float
+    message: str
+
+
+class DoubleCountAnomaly(BaseModel):
+    ref: str
+    type: str
+    claimants: list[str]
+    total: float
+    capacity: Optional[float]
+    message: str
+
+
+class FlowCheckResponse(BaseModel):
+    conservation: list[ConservationAnomaly]
+    double_counting: list[DoubleCountAnomaly]
