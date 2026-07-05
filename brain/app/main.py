@@ -18,9 +18,15 @@ from .calibration import Sample, fit_calibration
 from .fusion import fuse_field
 from .resolution import score_pairs
 from .schema_infer import infer_schema
+from .constraints import check_record, complete_missing
 from .models import (
     CalibrationFitRequest,
     CalibrationFitResponse,
+    ConstraintCheckRequest,
+    ConstraintCheckResponse,
+    ConstraintCompletion,
+    ConstraintRecordResult,
+    ConstraintViolation,
     FusedField,
     FusionRequest,
     FusionResponse,
@@ -148,3 +154,23 @@ def infotheory_schema(
         noise_rate=req.noise_rate,
     )
     return SchemaInferResponse(**result)
+
+
+@app.post("/constraints/check", response_model=ConstraintCheckResponse)
+def constraints_check(
+    req: ConstraintCheckRequest,
+    _auth: None = Depends(require_internal_token),
+) -> ConstraintCheckResponse:
+    """Check records against algebraic constraints and complete missing fields
+    with maximum entropy (Upgrade 3). Surfaces physically impossible / fraudulent
+    records and fills determined-or-bounded gaps. Stateless; runs off any write
+    path (fail-soft on the caller side)."""
+    results = [
+        ConstraintRecordResult(
+            id=r.id,
+            violations=[ConstraintViolation(**v) for v in check_record(r.fields, r.sector)],
+            completions=[ConstraintCompletion(**c) for c in complete_missing(r.fields, r.sector)],
+        )
+        for r in req.records
+    ]
+    return ConstraintCheckResponse(results=results)
