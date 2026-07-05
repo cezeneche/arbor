@@ -146,3 +146,44 @@ class SchemaInferResponse(BaseModel):
     groups: list[list[str]]
     noise: list[str]
     pairs: list[SchemaFieldPair]
+
+
+# ── Algebraic constraints + MaxEnt completion (Upgrade 3) ────────────────────
+
+
+class ConstraintRecord(BaseModel):
+    id: str
+    sector: Optional[str] = None
+    # Field name → numeric value (missing fields simply absent).
+    fields: dict[str, Optional[float]]
+
+
+class ConstraintCheckRequest(BaseModel):
+    records: list[ConstraintRecord]
+
+
+class ConstraintViolation(BaseModel):
+    field: str
+    type: str
+    severity: str
+    message: str
+
+
+class ConstraintCompletion(BaseModel):
+    field: str
+    value: float
+    method: str
+    determined: bool
+    entropy_bits: float
+    low: Optional[float] = None
+    high: Optional[float] = None
+
+
+class ConstraintRecordResult(BaseModel):
+    id: str
+    violations: list[ConstraintViolation]
+    completions: list[ConstraintCompletion]
+
+
+class ConstraintCheckResponse(BaseModel):
+    results: list[ConstraintRecordResult]

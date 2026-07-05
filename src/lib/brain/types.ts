@@ -76,3 +76,38 @@ export interface SchemaInferResponse {
   noise: string[]
   pairs: SchemaFieldPair[]
 }
+
+// ── Algebraic constraints + MaxEnt completion (Upgrade 3) ────────────────────
+
+export interface ConstraintRecordInput {
+  id: string
+  sector?: string | null
+  fields: Record<string, number | null>
+}
+
+export interface ConstraintViolation {
+  field: string
+  type: string
+  severity: string
+  message: string
+}
+
+export interface ConstraintCompletion {
+  field: string
+  value: number
+  method: string
+  determined: boolean
+  entropy_bits: number
+  low?: number | null
+  high?: number | null
+}
+
+export interface ConstraintRecordResult {
+  id: string
+  violations: ConstraintViolation[]
+  completions: ConstraintCompletion[]
+}
+
+export interface ConstraintCheckResponse {
+  results: ConstraintRecordResult[]
+}

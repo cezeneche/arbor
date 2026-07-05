@@ -22,7 +22,7 @@
 |---|---------|--------|--------|
 | 1 | Bayesian fusion + calibration measurement | A | 🟡 measurement loop closed; model-class sub-parts pending |
 | 2 | Information theory (schema + active learning) | A | ✅ both applications: active-learning review ranking + MI schema inference |
-| 3 | Maximum-entropy completion under constraints | A | ⬜ |
+| 3 | Maximum-entropy completion under constraints | A | 🟡 constraint checks + MaxEnt completion + anomaly scan; intake integration pending |
 | 4 | Property graph as primary representation | B | 🟡 Postgres-native graph live (projector + job + multi-hop query); Neo4j not used |
 | 5 | Entity resolution — HNSW + optimal transport | B | 🟡 lexical baseline live (block+score+review); embeddings/HNSW + OT pending |
 | 6 | Lattice-theoretic tier composition | C | ✅ |
@@ -305,8 +305,13 @@ The build order that respects both dependency graphs and product urgency.
 - Schema-inference application (2026-07-03): `brain/app/schema_infer.py` `infer_schema` — classifies fields from co-occurrence into core (near-ubiquitous), groups (co-varying by mutual information), and noise (rarely present). `POST /infotheory/schema` (fail-closed); fail-soft TS client `inferSchema`; on-demand ADMIN analysis route `GET /api/admin/schema-inference` (optional `?documentType`, most useful for GENERIC/schema-on-read docs). Off the write/render path.
 - Pending: the 2× A/B kill-signal (ranked-high vs random confirmation rate).
 
+**Upgrade 3 — MaxEnt completion under algebraic constraints — maths + anomaly scan live (2026-07-03).**
+- `brain/app/constraints.py` (pure stdlib): `check_record` flags the physically impossible (negative quantities, emissions that don't balance against tonnage×intensity, intensity outside the plausible sector range) — the fraud/erratum signal the rule-based admissibility spec can't see. `complete_missing` fills gaps with maximum entropy: determined-by-balance completions are exact (entropy 0); a field bounded only by the sector range gets the uniform (MaxEnt) midpoint + the interval's entropy in bits.
+- `POST /constraints/check` (fail-closed); fail-soft TS client `checkConstraints`; pure `groupRecordsByDocument` (regroups one-field-per-row records into per-document field bags). Anomaly-scan surface `GET /api/admin/constraints/scan` (optional `?entityId`) — read-only over certified data, off any write path, 503 if the brain is down.
+- Pending: fail-soft integration into the live intake/confirm flow (surface violations as validation flags at intake, non-blocking); a general MaxEnt solver (cvxpy) for non-linear sector constraints; the kill-signal overlap check (<85% with admissibility).
+
 ## ⬜ Not started
-Upgrades **3, 8, 9, 10** — see sequencing above.
+Upgrades **8, 9, 10** — see sequencing above.
 
 ## 🕓 Deferred by design
 - Upgrade 5's optimal-transport escalation (only if HNSW plateaus).

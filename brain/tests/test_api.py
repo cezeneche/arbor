@@ -155,5 +155,28 @@ class TestSchemaInfer(unittest.TestCase):
         self.assertTrue(any(set(g) == {"weight", "origin"} for g in body["groups"]))
 
 
+class TestConstraintsCheck(unittest.TestCase):
+    def test_requires_token(self):
+        r = client.post("/constraints/check", json={"records": []})
+        self.assertEqual(r.status_code, 401)
+
+    def test_flags_and_completes(self):
+        r = client.post(
+            "/constraints/check",
+            json={
+                "records": [
+                    {"id": "bad", "sector": "cement", "fields": {"embedded_emissions_per_tonne": 50}},
+                    {"id": "gap", "sector": "steel", "fields": {"quantity_tonnes": 100, "embedded_emissions_per_tonne": 2.0}},
+                ]
+            },
+            headers=AUTH,
+        )
+        self.assertEqual(r.status_code, 200)
+        results = {x["id"]: x for x in r.json()["results"]}
+        self.assertTrue(any(v["type"] == "IMPLAUSIBLE_INTENSITY" for v in results["bad"]["violations"]))
+        self.assertEqual(results["gap"]["completions"][0]["field"], "embedded_emissions_tco2e")
+        self.assertEqual(results["gap"]["completions"][0]["value"], 200)
+
+
 if __name__ == "__main__":
     unittest.main()
