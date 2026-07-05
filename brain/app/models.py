@@ -122,3 +122,27 @@ class ScoredPair(BaseModel):
 
 class ResolutionScoreResponse(BaseModel):
     scores: list[ScoredPair]
+
+
+# ── Schema inference from field co-occurrence (Upgrade 2) ────────────────────
+
+
+class SchemaInferRequest(BaseModel):
+    # Each document is the list of field names extracted from it.
+    documents: list[list[str]]
+    mi_threshold: float = Field(0.05, ge=0.0)
+    core_rate: float = Field(0.9, ge=0.0, le=1.0)
+    noise_rate: float = Field(0.1, ge=0.0, le=1.0)
+
+
+class SchemaFieldPair(BaseModel):
+    a: str
+    b: str
+    mi: float
+
+
+class SchemaInferResponse(BaseModel):
+    core: list[str]
+    groups: list[list[str]]
+    noise: list[str]
+    pairs: list[SchemaFieldPair]
