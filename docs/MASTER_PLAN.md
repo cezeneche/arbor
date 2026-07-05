@@ -21,7 +21,7 @@
 | # | Upgrade | Pillar | Status |
 |---|---------|--------|--------|
 | 1 | Bayesian fusion + calibration measurement | A | 🟡 measurement loop closed; model-class sub-parts pending |
-| 2 | Information theory (schema + active learning) | A | 🟡 active-learning review ranking live; schema-inference application pending |
+| 2 | Information theory (schema + active learning) | A | ✅ both applications: active-learning review ranking + MI schema inference |
 | 3 | Maximum-entropy completion under constraints | A | ⬜ |
 | 4 | Property graph as primary representation | B | 🟡 Postgres-native graph live (projector + job + multi-hop query); Neo4j not used |
 | 5 | Entity resolution — HNSW + optimal transport | B | 🟡 lexical baseline live (block+score+review); embeddings/HNSW + OT pending |
@@ -302,7 +302,8 @@ The build order that respects both dependency graphs and product urgency.
 **Upgrade 2 — information theory — active-learning review ranking live (2026-07-03).**
 - Primitives in the brain (`brain/app/infotheory.py`, pure stdlib): base-2 `entropy`, `binary_entropy`, `mutual_information` — the shared foundation for both applications.
 - Active-learning review ranking (`src/lib/review/information-gain.ts`, pure TS — runs on the user-facing review render path where the brain must never block): expected information gain = binary entropy of the field's correctness × importance (compulsory > optional; flags raise it). Wired into `ExtractionReview`: fields ordered by gain (most-uncertain/important first), and confident low-information fields collapse under a "N fields we're confident about" expander (never hidden). Directly delivers the plan's "why" (lower SME review burden).
-- Pending: the schema-inference application (mutual information over field co-occurrence, for GENERIC/schema-on-read docs — uses the brain's `mutual_information`); the 2× A/B kill-signal (ranked-high vs random confirmation rate).
+- Schema-inference application (2026-07-03): `brain/app/schema_infer.py` `infer_schema` — classifies fields from co-occurrence into core (near-ubiquitous), groups (co-varying by mutual information), and noise (rarely present). `POST /infotheory/schema` (fail-closed); fail-soft TS client `inferSchema`; on-demand ADMIN analysis route `GET /api/admin/schema-inference` (optional `?documentType`, most useful for GENERIC/schema-on-read docs). Off the write/render path.
+- Pending: the 2× A/B kill-signal (ranked-high vs random confirmation rate).
 
 ## ⬜ Not started
 Upgrades **3, 8, 9, 10** — see sequencing above.

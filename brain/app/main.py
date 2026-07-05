@@ -17,6 +17,7 @@ from .auth import require_internal_token
 from .calibration import Sample, fit_calibration
 from .fusion import fuse_field
 from .resolution import score_pairs
+from .schema_infer import infer_schema
 from .models import (
     CalibrationFitRequest,
     CalibrationFitResponse,
@@ -27,6 +28,8 @@ from .models import (
     ResolutionScoreRequest,
     ResolutionScoreResponse,
     ScoredPair,
+    SchemaInferRequest,
+    SchemaInferResponse,
 )
 
 app = FastAPI(title="Arbor Brain", version="0.1.0")
@@ -125,3 +128,23 @@ def resolution_score(
         threshold_review=req.threshold_review,
     )
     return ResolutionScoreResponse(scores=[ScoredPair(**s) for s in scored])
+
+
+@app.post("/infotheory/schema", response_model=SchemaInferResponse)
+def infotheory_schema(
+    req: SchemaInferRequest,
+    _auth: None = Depends(require_internal_token),
+) -> SchemaInferResponse:
+    """Infer a schema from field co-occurrence (Upgrade 2, schema application).
+
+    Classifies fields into core (near-ubiquitous), groups (co-varying by mutual
+    information), and noise (rarely present). Stateless: the caller sends each
+    document as its list of extracted field names.
+    """
+    result = infer_schema(
+        req.documents,
+        mi_threshold=req.mi_threshold,
+        core_rate=req.core_rate,
+        noise_rate=req.noise_rate,
+    )
+    return SchemaInferResponse(**result)

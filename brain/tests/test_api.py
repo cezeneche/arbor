@@ -136,5 +136,24 @@ class TestResolutionScore(unittest.TestCase):
         self.assertEqual(r.status_code, 422)
 
 
+class TestSchemaInfer(unittest.TestCase):
+    def test_requires_token(self):
+        r = client.post("/infotheory/schema", json={"documents": []})
+        self.assertEqual(r.status_code, 401)
+
+    def test_classifies_fields(self):
+        docs = (
+            [["entity_name", "weight", "origin"] for _ in range(5)]
+            + [["entity_name"] for _ in range(4)]
+            + [["entity_name", "junk"]]
+        )
+        r = client.post("/infotheory/schema", json={"documents": docs}, headers=AUTH)
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        self.assertIn("entity_name", body["core"])
+        self.assertIn("junk", body["noise"])
+        self.assertTrue(any(set(g) == {"weight", "origin"} for g in body["groups"]))
+
+
 if __name__ == "__main__":
     unittest.main()

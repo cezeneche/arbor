@@ -61,3 +61,18 @@ export interface ScoredPair {
 export interface ResolutionScoreResponse {
   scores: ScoredPair[]
 }
+
+// ── Schema inference from field co-occurrence (Upgrade 2) ────────────────────
+
+export interface SchemaFieldPair {
+  a: string
+  b: string
+  mi: number
+}
+
+export interface SchemaInferResponse {
+  core: string[]
+  groups: string[][]
+  noise: string[]
+  pairs: SchemaFieldPair[]
+}
