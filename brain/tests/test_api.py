@@ -178,5 +178,29 @@ class TestConstraintsCheck(unittest.TestCase):
         self.assertEqual(results["gap"]["completions"][0]["value"], 200)
 
 
+class TestFlowCheck(unittest.TestCase):
+    def test_requires_token(self):
+        r = client.post("/flow/check", json={})
+        self.assertEqual(r.status_code, 401)
+
+    def test_detects_double_counting_and_overdraw(self):
+        r = client.post(
+            "/flow/check",
+            json={
+                "nodes": [{"id": "s", "supply": 10}],
+                "edges": [{"source": "s", "target": "b", "quantity": 100}],
+                "claims": [
+                    {"ref": "REGO-1", "claimant": "buyer_a"},
+                    {"ref": "REGO-1", "claimant": "buyer_b"},
+                ],
+            },
+            headers=AUTH,
+        )
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        self.assertEqual(body["conservation"][0]["type"], "OVERDRAW")
+        self.assertEqual(body["double_counting"][0]["type"], "DOUBLE_COUNTED")
+
+
 if __name__ == "__main__":
     unittest.main()

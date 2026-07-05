@@ -28,7 +28,7 @@
 | 6 | Lattice-theoretic tier composition | C | ✅ |
 | 7 | Merkle-DAG audit structure | C | 🟡 productized into audit package + browser verifier; shadow-compare running |
 | 8 | Zero-knowledge proofs for predicate compliance | C | ⬜ |
-| 9 | Graph flow consistency across supply chain | D | ⬜ |
+| 9 | Graph flow consistency across supply chain | D | 🟡 flow maths + cross-tenant double-counting scan; node conservation from records pending |
 | 10 | Differential privacy on cross-tenant aggregates | E | ⬜ |
 | 11 | Categorical schema mapping between frameworks | F | 🕓 |
 | 12 | Trust calibration & miscalibration-first UX | G | 🟡 trust treatment across review + records + buyer views + correction reinforcement; onboarding drill pending |
@@ -310,8 +310,13 @@ The build order that respects both dependency graphs and product urgency.
 - `POST /constraints/check` (fail-closed); fail-soft TS client `checkConstraints`; pure `groupRecordsByDocument` (regroups one-field-per-row records into per-document field bags). Anomaly-scan surface `GET /api/admin/constraints/scan` (optional `?entityId`) — read-only over certified data, off any write path, 503 if the brain is down.
 - Pending: fail-soft integration into the live intake/confirm flow (surface violations as validation flags at intake, non-blocking); a general MaxEnt solver (cvxpy) for non-linear sector constraints; the kill-signal overlap check (<85% with admissibility).
 
+**Upgrade 9 — graph flow consistency — flow maths + cross-tenant double-counting scan live (2026-07-03).**
+- `brain/app/flow.py` (pure stdlib): `check_conservation` — Kirchhoff-style balance per node (incoming edges + supply must cover outgoing edges + demand; a node that sends out more than it could have is an impossible-capacity claim); `detect_double_counting` — a single-use reference claimed by >1 party, or a ref over-allocated against capacity (the certificate-laundering signal no single tenant can see).
+- `POST /flow/check` (fail-closed); fail-soft TS client `checkFlow`; pure `buildCertificateClaims` (one claim per reference+claimant). Cross-tenant scan `GET /api/admin/flow/anomalies` — reads certificate/BoL/customs references across all tenants, flags any claimed by more than one entity. Read-only, off any write path, 503 if the brain is down.
+- Pending: node-level flow conservation from records (needs the graph to carry quantity-weighted supply edges); the LP feasibility formulation (pulp/cvxpy) for tight balances; the <10% false-positive kill-signal calibration.
+
 ## ⬜ Not started
-Upgrades **8, 9, 10** — see sequencing above.
+Upgrades **8, 10** — see sequencing above.
 
 ## 🕓 Deferred by design
 - Upgrade 5's optimal-transport escalation (only if HNSW plateaus).

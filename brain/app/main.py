@@ -19,14 +19,19 @@ from .fusion import fuse_field
 from .resolution import score_pairs
 from .schema_infer import infer_schema
 from .constraints import check_record, complete_missing
+from .flow import check_conservation, detect_double_counting
 from .models import (
     CalibrationFitRequest,
     CalibrationFitResponse,
+    ConservationAnomaly,
     ConstraintCheckRequest,
     ConstraintCheckResponse,
     ConstraintCompletion,
     ConstraintRecordResult,
     ConstraintViolation,
+    DoubleCountAnomaly,
+    FlowCheckRequest,
+    FlowCheckResponse,
     FusedField,
     FusionRequest,
     FusionResponse,
@@ -174,3 +179,21 @@ def constraints_check(
         for r in req.records
     ]
     return ConstraintCheckResponse(results=results)
+
+
+@app.post("/flow/check", response_model=FlowCheckResponse)
+def flow_check(
+    req: FlowCheckRequest,
+    _auth: None = Depends(require_internal_token),
+) -> FlowCheckResponse:
+    """Graph flow-consistency anomaly detection (Upgrade 9). Returns nodes whose
+    flow doesn't balance (impossible-capacity claims) and references claimed
+    beyond what exists (double counting / certificate laundering). Stateless;
+    runs off any write path as an anomaly detector."""
+    nodes = [n.model_dump() for n in req.nodes]
+    edges = [e.model_dump() for e in req.edges]
+    claims = [c.model_dump() for c in req.claims]
+    return FlowCheckResponse(
+        conservation=[ConservationAnomaly(**a) for a in check_conservation(nodes, edges, req.tolerance)],
+        double_counting=[DoubleCountAnomaly(**a) for a in detect_double_counting(claims, req.tolerance)],
+    )

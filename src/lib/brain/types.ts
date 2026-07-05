@@ -111,3 +111,46 @@ export interface ConstraintRecordResult {
 export interface ConstraintCheckResponse {
   results: ConstraintRecordResult[]
 }
+
+// ── Graph flow consistency (Upgrade 9) ───────────────────────────────────────
+
+export interface FlowNodeInput {
+  id: string
+  supply?: number
+  demand?: number
+}
+
+export interface FlowEdgeInput {
+  source: string
+  target: string
+  quantity: number
+}
+
+export interface FlowClaimInput {
+  ref: string
+  claimant: string
+  quantity?: number
+  capacity?: number | null
+}
+
+export interface ConservationAnomaly {
+  node: string
+  type: string
+  available: number
+  used: number
+  message: string
+}
+
+export interface DoubleCountAnomaly {
+  ref: string
+  type: string
+  claimants: string[]
+  total: number
+  capacity: number | null
+  message: string
+}
+
+export interface FlowCheckResponse {
+  conservation: ConservationAnomaly[]
+  double_counting: DoubleCountAnomaly[]
+}
