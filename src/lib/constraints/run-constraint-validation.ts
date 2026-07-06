@@ -12,11 +12,17 @@
 
 import { prisma } from '@/lib/prisma'
 import { groupRecordsByDocument, type RecordRow } from './group-records'
-import { planConstraintFlags, type RecordRef } from './plan-flags'
+import { planConstraintFlags, type RecordRef, type PlannedFlag } from './plan-flags'
 import { checkConstraints } from '@/lib/brain/constraints-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 
-export async function runConstraintValidation(documentId: string): Promise<void> {
+/**
+ * Check a document's stored records against the algebraic constraints and write a
+ * ValidationFlag for each violation. Returns the flags written (empty on a clean
+ * document, and — fail-soft — empty whenever the brain is unavailable) so callers
+ * such as the auto-accept gate can react to whether any physics violation was found.
+ */
+export async function runConstraintValidation(documentId: string): Promise<PlannedFlag[]> {
   const records = await prisma.dataRecord.findMany({
     where: { documentId, isActive: true },
     select: {
@@ -27,7 +33,7 @@ export async function runConstraintValidation(documentId: string): Promise<void>
     },
   })
 
-  if (records.length === 0) return
+  if (records.length === 0) return []
 
   const rows: RecordRow[] = records.map((r) => ({
     documentId,
@@ -42,19 +48,20 @@ export async function runConstraintValidation(documentId: string): Promise<void>
   }))
 
   const inputs = groupRecordsByDocument(rows)
-  if (inputs.length === 0) return
+  if (inputs.length === 0) return []
 
   let results
   try {
     results = await checkConstraints(inputs)
   } catch (e) {
     // Fail-soft: brain down or errored → no flags, confirmation still stands.
-    if (e instanceof BrainUnavailableError) return
+    if (e instanceof BrainUnavailableError) return []
     throw e
   }
 
   const flags = planConstraintFlags(results, refs)
-  if (flags.length === 0) return
+  if (flags.length === 0) return []
 
   await prisma.validationFlag.createMany({ data: flags })
+  return flags
 }
