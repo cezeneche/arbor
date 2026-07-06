@@ -12,7 +12,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { groupRecordsByDocument, type RecordRow } from './group-records'
-import { planConstraintFlags, type RecordRef, type PlannedFlag } from './plan-flags'
+import { planConstraintFlags, dedupeNewFlags, type RecordRef, type PlannedFlag } from './plan-flags'
 import { checkConstraints } from '@/lib/brain/constraints-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 
@@ -62,6 +62,21 @@ export async function runConstraintValidation(documentId: string): Promise<Plann
   const flags = planConstraintFlags(results, refs)
   if (flags.length === 0) return []
 
-  await prisma.validationFlag.createMany({ data: flags })
+  // Idempotent write: skip flags already persisted for these records, so an inngest
+  // step retry (this runs inside a retrying step on the auto-accept path) cannot
+  // duplicate rows — ValidationFlag has no unique constraint to lean on. We still
+  // return the full planned set so the caller's reroute decision is unaffected by
+  // what was already written on a prior attempt.
+  const existing = await prisma.validationFlag.findMany({
+    where: {
+      dataRecordId: { in: refs.map((r) => r.dataRecordId) },
+      flagType: 'INTERNAL_INCONSISTENCY',
+    },
+    select: { dataRecordId: true, message: true },
+  })
+  const toWrite = dedupeNewFlags(flags, existing)
+  if (toWrite.length > 0) {
+    await prisma.validationFlag.createMany({ data: toWrite })
+  }
   return flags
 }
