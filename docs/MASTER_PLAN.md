@@ -21,8 +21,8 @@
 | # | Upgrade | Pillar | Status |
 |---|---------|--------|--------|
 | 1 | Bayesian fusion + calibration measurement | A | 🟡 measurement loop closed; model-class sub-parts pending |
-| 2 | Information theory (schema + active learning) | A | ✅ both applications: active-learning review ranking + MI schema inference |
-| 3 | Maximum-entropy completion under constraints | A | 🟡 constraint checks + MaxEnt completion + anomaly scan; intake integration pending |
+| 2 | Information theory (schema + active learning) | A | ✅ both applications live; A/B kill-signal now instrumented (readout pending reviewer traffic) |
+| 3 | Maximum-entropy completion under constraints | A | ✅ constraint checks + MaxEnt completion + anomaly scan + intake flagging + auto-accept gate; cvxpy solver = earn-it escalation |
 | 4 | Property graph as primary representation | B | 🟡 Postgres-native graph live (projector + job + multi-hop query); Neo4j not used |
 | 5 | Entity resolution — HNSW + optimal transport | B | 🟡 lexical baseline live (block+score+review); embeddings/HNSW + OT pending |
 | 6 | Lattice-theoretic tier composition | C | ✅ |
@@ -33,24 +33,38 @@
 | 11 | Categorical schema mapping between frameworks | F | 🕓 |
 | 12 | Trust calibration & miscalibration-first UX | G | 🟡 trust treatment across review + records + buyer views + correction reinforcement; onboarding drill pending |
 
-## ▶ Next priority (updated 2026-07-02)
+## ▶ Where the plan stands (updated 2026-07-07)
 
-Two foundation threads closed on 2026-07-02:
-- **Upgrade 1 measurement loop** — extraction confidence now varies (k-sample
-  fusion, shipped 2026-07-01), and the loop is now *readable*: the calibration
-  cron persists per-group ECE/Brier each run and evaluates the kill signal
-  (ECE < 5% for supplier identity, mass, emissions intensity), surfaced at
-  `GET /api/admin/calibration/health`.
-- **Upgrade 7 productization** — Merkle roots persisted (`MerkleRoot`), root +
-  per-record inclusion proofs embedded in the audit package, a shadow-compare
-  asserting the Merkle commitment agrees with the linear HMAC chain, and a
-  standalone offline browser verifier at `/verify-merkle`.
+**All 12 upgrades have shipped their core engineering. No mandatory engineering
+block remains.** What's left falls into four buckets, none of which is a "build
+this next" without a deliberate decision:
 
-With the foundation genuinely complete, the next priority is **Weeks 8–20**:
-Upgrade 5 (HNSW entity-resolution baseline) → Upgrade 4 (property graph) →
-Upgrade 12 (trust UX, which surfaces the now-real calibrated confidence) →
-Upgrade 2. Remaining Upgrade 1 model-class work (Platt scaling, per-doc-class
-conjugate priors) is a separate, lower-priority track — see "Pending sub-parts".
+1. **Deferred by design — don't build until a precondition is met.**
+   - **Upgrade 8's SNARK proving engine** — the statement/predicate layer + a
+     `PendingProofSystem` interface are live; the real Groth16/Halo2 prover
+     (Circom circuits + trusted-setup ceremony + snarkjs + WASM verifier) is a
+     dedicated crypto build with a proving-time kill-signal.
+   - **Upgrade 11** — gated until ≥4 regulatory schemas are live (see below).
+
+2. **Earn-it escalations — only build if a baseline's kill-signal shows it is
+   insufficient:** U5 semantic embeddings / HNSW / OT (only if the lexical
+   baseline plateaus); U9 LP feasibility + node-conservation from records; U10 DP
+   quantiles / OpenDP; U3 general cvxpy solver.
+
+3. **Kill-signal readouts — a production-data wait, not a build:** U1 (ECE < 5%),
+   U2 (2× ranked-vs-random correction rate — now instrumented), U3, U9, U12 all
+   need weeks–months of real traffic to decide.
+
+4. **One optional UX slice:** U12 onboarding ten-record scepticism drill (a soft
+   nudge if built).
+
+The current posture is **wait-and-measure**: let labels/traffic accumulate, then
+read the kill-signals. Pulling an escalation forward before its signal justifies
+it would violate the plan's own earn-it discipline.
+
+**Architecture unchanged:** heavy maths lives in the Python `brain/` (seven
+fail-soft endpoints live), never in the write path; TS/Next.js owns the product
+and Layers 1/2/3; Upgrade 6 is definitional and stays in TS.
 
 **Architecture decision (2026-07-01):** heavy maths lives in a Python "brain"
 service behind the TypeScript product. TS/Next.js owns the customer-facing app
@@ -77,7 +91,7 @@ Grouped by pillar. Each carries a shipping target, a technology stack, and a kil
 
 **Kill signal.** If, at three months of production data, the calibration ECE cannot be brought below 5% for the top three field types (supplier identity, mass, emissions intensity), the model class is wrong — escalate to a different family before shipping further.
 
-### 2. Information theory across schema inference and active learning  ⬜
+### 2. Information theory across schema inference and active learning  ✅
 *(my #2 + your M1, kept as one pillar with two applications)*
 
 **What it is.** Shannon entropy and mutual information used for two decisions: (a) at intake, to choose how to group fields into a schema that preserves signal and discards noise, and (b) at review time, to rank which field to ask the human to confirm next, prioritising expected information gain over the corpus's downstream query set.
@@ -88,7 +102,7 @@ Grouped by pillar. Each carries a shipping target, a technology stack, and a kil
 
 **Kill signal.** If SME confirmation rate on ranked-high fields does not exceed rate on random fields by a factor of two on an A/B test, the mutual-information channel isn't picking up the right signal.
 
-### 3. Maximum-entropy completion under algebraic constraints  ⬜
+### 3. Maximum-entropy completion under algebraic constraints  ✅
 *(my #3, reframed — same math, no physics label)*
 
 **What it is.** When a field is missing, don't fall back to a published default. Compute the maximum-entropy distribution over the missing field consistent with (a) the other known fields for that record, and (b) the algebraic constraints the record must satisfy — mass balance, energy balance, stoichiometric ratios, and regulatory bounds. Report the completed value with the entropy of the posterior as its uncertainty.
@@ -101,7 +115,7 @@ Grouped by pillar. Each carries a shipping target, a technology stack, and a kil
 
 ## Pillar B — Data structure and resolution
 
-### 4. Property graph as primary representation  ⬜
+### 4. Property graph as primary representation  🟡
 *(your M2, adopted as first-class)*
 
 **What it is.** After Arbor writes a record to the relational store, it also writes nodes and edges to a graph representation: suppliers, installations, batches, buyers, documents, certificates, and the relationships between them. Both representations coexist; queries pick the one that fits.
@@ -112,7 +126,7 @@ Grouped by pillar. Each carries a shipping target, a technology stack, and a kil
 
 **Kill signal.** If, after six months, no product feature meaningfully depends on multi-hop graph queries (i.e. all real queries are one-hop and could be a join), the graph is unearning its operational cost — collapse back to relational and revisit later.
 
-### 5. Entity resolution — HNSW baseline plus optimal transport escalation  ⬜ (OT 🕓)
+### 5. Entity resolution — HNSW baseline plus optimal transport escalation  🟡 (embeddings/OT 🕓)
 *(your M3 as baseline + my #6 as escalation)*
 
 **What it is.** Every named entity gets a sentence-transformer embedding indexed with HNSW; cosine similarity produces candidate matches; blocking on postcode, registration number, and sector keeps it O(n log n). For pairs that fall in the ambiguous band around the similarity threshold, escalate to an optimal-transport match over an attribute distribution (location, sector code, historical throughput, ownership graph position) — Wasserstein distance handles cases that string embeddings cannot.
@@ -147,7 +161,7 @@ Grouped by pillar. Each carries a shipping target, a technology stack, and a kil
 
 **Kill signal.** N/A. This is drop-in with strict upside.
 
-### 8. Zero-knowledge proofs for predicate compliance  ⬜
+### 8. Zero-knowledge proofs for predicate compliance  🟡 (statement layer live; SNARK engine 🕓)
 *(my #5)*
 
 **What it is.** Given the Merkle root as a public commitment, generate SNARK proofs that Arbor's records satisfy a threshold predicate ("Scope 1 < X", "no sanctioned origin", "renewable share > Y%") without revealing the records themselves. Buyer verifies the proof in milliseconds.
@@ -160,7 +174,7 @@ Grouped by pillar. Each carries a shipping target, a technology stack, and a kil
 
 ## Pillar D — Physical / supply-chain consistency
 
-### 9. Graph flow consistency across the supply chain  ⬜
+### 9. Graph flow consistency across the supply chain  🟡
 *(my #8, reframed under graph theory rather than physics)*
 
 **What it is.** Treat the supply chain as a directed flow network over the graph from Upgrade 4. At each node, enforce Kirchhoff-style balance: flow-in equals flow-out plus stored plus lost. Cross-tenant visibility means Arbor can detect double-counting (same lot certified to two buyers), impossible-capacity claims, and low-emission-certificate laundering — none of which are visible from any single tenant's records.
@@ -173,7 +187,7 @@ Grouped by pillar. Each carries a shipping target, a technology stack, and a kil
 
 ## Pillar E — Corpus economics
 
-### 10. Differential privacy on cross-tenant aggregates  ⬜
+### 10. Differential privacy on cross-tenant aggregates  🟡
 *(my #9)*
 
 **What it is.** Publish sector-level statistics (median emissions intensity per commodity code per country per quarter) from the aggregate corpus with ε-differential privacy guarantees. No individual SME's contribution is statistically detectable.
@@ -199,7 +213,7 @@ Grouped by pillar. Each carries a shipping target, a technology stack, and a kil
 
 ## Pillar G — Human factors
 
-### 12. Trust calibration and miscalibration-first UX  ⬜
+### 12. Trust calibration and miscalibration-first UX  🟡
 *(your P1 + your P2, merged into a single human-factors pillar)*
 
 **What it is.** UI-level enforcement of appropriate trust. Every field shows its calibrated confidence prominently. Every field's provenance chain is one click away. Low-confidence records break the user's scanning pattern visually — never displayed identically to high-confidence records. Onboarding includes a mandatory ten-record review exercise mixing correct and incorrect Arbor outputs, trained-in scepticism before automation bias sets in. Correction events are logged, surfaced back to the user as agency reinforcement, and fed into the calibration pipeline (Upgrade 1) as ground-truth signal.
@@ -241,7 +255,7 @@ The build order that respects both dependency graphs and product urgency.
 
 ---
 
-# Current status & what's pending (2026-07-01)
+# Current status & what's pending (updated 2026-07-07)
 
 ## ✅ Done — Weeks 0–8 foundation
 
@@ -303,12 +317,14 @@ The build order that respects both dependency graphs and product urgency.
 - Primitives in the brain (`brain/app/infotheory.py`, pure stdlib): base-2 `entropy`, `binary_entropy`, `mutual_information` — the shared foundation for both applications.
 - Active-learning review ranking (`src/lib/review/information-gain.ts`, pure TS — runs on the user-facing review render path where the brain must never block): expected information gain = binary entropy of the field's correctness × importance (compulsory > optional; flags raise it). Wired into `ExtractionReview`: fields ordered by gain (most-uncertain/important first), and confident low-information fields collapse under a "N fields we're confident about" expander (never hidden). Directly delivers the plan's "why" (lower SME review burden).
 - Schema-inference application (2026-07-03): `brain/app/schema_infer.py` `infer_schema` — classifies fields from co-occurrence into core (near-ubiquitous), groups (co-varying by mutual information), and noise (rarely present). `POST /infotheory/schema` (fail-closed); fail-soft TS client `inferSchema`; on-demand ADMIN analysis route `GET /api/admin/schema-inference` (optional `?documentType`, most useful for GENERIC/schema-on-read docs). Off the write/render path.
-- Pending: the 2× A/B kill-signal (ranked-high vs random confirmation rate).
+- ✅ **A/B kill-signal instrumented (2026-07-07):** every `GroundTruthLabel` now persists the expected information gain + low-information verdict the review UI ranked the field by (`fieldInformation` is the single source of truth for both the UI ordering and the stored value; nullable columns, additive migration). The 2× readout (corrected-rate for high-gain vs low-gain labels) is now a query once reviewer traffic accumulates — a production measurement, not an engineering block. Selection-bias caveat: only human-reviewed docs produce labels.
 
 **Upgrade 3 — MaxEnt completion under algebraic constraints — maths + anomaly scan live (2026-07-03).**
 - `brain/app/constraints.py` (pure stdlib): `check_record` flags the physically impossible (negative quantities, emissions that don't balance against tonnage×intensity, intensity outside the plausible sector range) — the fraud/erratum signal the rule-based admissibility spec can't see. `complete_missing` fills gaps with maximum entropy: determined-by-balance completions are exact (entropy 0); a field bounded only by the sector range gets the uniform (MaxEnt) midpoint + the interval's entropy in bits.
-- `POST /constraints/check` (fail-closed); fail-soft TS client `checkConstraints`; pure `groupRecordsByDocument` (regroups one-field-per-row records into per-document field bags). Anomaly-scan surface `GET /api/admin/constraints/scan` (optional `?entityId`) — read-only over certified data, off any write path, 503 if the brain is down.
-- Pending: fail-soft integration into the live intake/confirm flow (surface violations as validation flags at intake, non-blocking); a general MaxEnt solver (cvxpy) for non-linear sector constraints; the kill-signal overlap check (<85% with admissibility).
+- `POST /constraints/check` (fail-closed); fail-soft TS client `checkConstraints`; pure `groupRecordsByDocument` (regroups one-field-per-row records into per-document field bags). Anomaly-scan surface `GET /api/admin/constraints/scan` (optional `?entityId`) — read-only over certified data, off any write path, 503 if the brain is down. (Route shipped 2026-07-07, PR #30 — it had been written but never committed.)
+- ✅ **Intake flagging (2026-07-07, PR #31):** post-commit in the confirm route, a document's records are checked and any violation is raised as a non-blocking `ValidationFlag` (`plan-flags.ts` maps each violation to its `DataRecord`; `run-constraint-validation.ts` writes them, fail-soft, brain never in the write-path critical section).
+- ✅ **Auto-accept gate (2026-07-07, PR #32):** auto-accepted (unreviewed) documents are re-checked; a **CRITICAL** violation routes the document back to `REVIEW_REQUIRED` (a Document status flip — records + tier unchanged, immutability untouched). A WARNING (only `MASS_BALANCE`, >5% off) is flagged but stays accepted. Idempotent under inngest step retry (dedup on flag write + status flip guarded on `status='ACCEPTED'`).
+- Pending (earn-it): a general MaxEnt solver (cvxpy) for non-linear sector constraints; the kill-signal overlap check (<85% with admissibility).
 
 **Upgrade 9 — graph flow consistency — flow maths + cross-tenant double-counting scan live (2026-07-03).**
 - `brain/app/flow.py` (pure stdlib): `check_conservation` — Kirchhoff-style balance per node (incoming edges + supply must cover outgoing edges + demand; a node that sends out more than it could have is an impossible-capacity claim); `detect_double_counting` — a single-use reference claimed by >1 party, or a ref over-allocated against capacity (the certificate-laundering signal no single tenant can see).
@@ -329,11 +345,9 @@ The build order that respects both dependency graphs and product urgency.
 - **Deferred by decision (2026-07-06):** the real Groth16/Halo2 proving engine (Circom circuits, trusted-setup ceremony, snarkjs, WASM verifier) — it can't be responsibly stood up/verified in an autonomous pass and has a proving-time kill-signal, so it's a dedicated follow-up. Until it lands, full zero-knowledge isn't live; the statement layer + interface are.
 
 ## 🕓 Deferred by design
-Upgrade **11** (categorical schema mapping) — only once ≥4 regulatory schemas are live and bespoke translation cost is measurable. Upgrade **8**'s SNARK proving engine — a dedicated crypto build (see above).
-
-## 🕓 Deferred by design
-- Upgrade 5's optimal-transport escalation (only if HNSW plateaus).
-- Upgrade 11 (only once ≥4 regulatory schemas live and translation cost measurable).
+- **Upgrade 8's SNARK proving engine** — a dedicated crypto build (Circom/Halo2 + trusted-setup ceremony + snarkjs + WASM verifier); the statement layer + interface are live, the prover is not.
+- **Upgrade 11** (categorical schema mapping) — only once ≥4 regulatory schemas are live and bespoke translation cost is measurable.
+- **Upgrade 5's optimal-transport escalation** — only if the HNSW/embedding baseline plateaus.
 
 ## 🧹 Non-upgrade follow-ups
 - Re-verify the numeric-parsing + `rawOutput`-on-failure fixes on a fresh production upload (deployed, not yet re-checked end-to-end).
