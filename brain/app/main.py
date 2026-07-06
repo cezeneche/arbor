@@ -20,10 +20,14 @@ from .resolution import score_pairs
 from .schema_infer import infer_schema
 from .constraints import check_record, complete_missing
 from .flow import check_conservation, detect_double_counting
+from .privacy import release as dp_release
 from .models import (
     CalibrationFitRequest,
     CalibrationFitResponse,
     ConservationAnomaly,
+    DPBenchmarkRequest,
+    DPBenchmarkResponse,
+    DPRelease,
     ConstraintCheckRequest,
     ConstraintCheckResponse,
     ConstraintCompletion,
@@ -197,3 +201,20 @@ def flow_check(
         conservation=[ConservationAnomaly(**a) for a in check_conservation(nodes, edges, req.tolerance)],
         double_counting=[DoubleCountAnomaly(**a) for a in detect_double_counting(claims, req.tolerance)],
     )
+
+
+@app.post("/privacy/benchmark", response_model=DPBenchmarkResponse)
+def privacy_benchmark(
+    req: DPBenchmarkRequest,
+    _auth: None = Depends(require_internal_token),
+) -> DPBenchmarkResponse:
+    """Release ε-differentially-private sector aggregates (Upgrade 10). Each group
+    yields a Laplace-noised mean + count, or is suppressed below the minimum-
+    population floor. Values are clamped to the caller-supplied public bounds.
+    Stateless; the caller has already reduced each group to one value per
+    aggregation unit (canonical entity)."""
+    releases = [
+        DPRelease(key=g.key, **dp_release(g.values, g.low, g.high, req.epsilon, req.min_n))
+        for g in req.groups
+    ]
+    return DPBenchmarkResponse(releases=releases)

@@ -154,3 +154,28 @@ export interface FlowCheckResponse {
   conservation: ConservationAnomaly[]
   double_counting: DoubleCountAnomaly[]
 }
+
+// ── Differential privacy on cross-tenant aggregates (Upgrade 10) ─────────────
+
+export interface DPGroupInput {
+  key: string
+  /** One value per aggregation unit (canonical entity) in this group. */
+  values: number[]
+  low: number
+  high: number
+}
+
+export interface DPRelease {
+  key: string
+  suppressed: boolean
+  n: number
+  dp_mean?: number | null
+  dp_count?: number | null
+  epsilon?: number | null
+  bounds?: number[] | null
+  reason?: string | null
+}
+
+export interface DPBenchmarkResponse {
+  releases: DPRelease[]
+}

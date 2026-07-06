@@ -202,5 +202,30 @@ class TestFlowCheck(unittest.TestCase):
         self.assertEqual(body["double_counting"][0]["type"], "DOUBLE_COUNTED")
 
 
+class TestPrivacyBenchmark(unittest.TestCase):
+    def test_requires_token(self):
+        r = client.post("/privacy/benchmark", json={"groups": []})
+        self.assertEqual(r.status_code, 401)
+
+    def test_releases_large_groups_and_suppresses_small(self):
+        r = client.post(
+            "/privacy/benchmark",
+            json={
+                "groups": [
+                    {"key": "steel__GB", "values": [2.0] * 12, "low": 0.0, "high": 5.0},
+                    {"key": "cement__DE", "values": [0.8, 0.9], "low": 0.0, "high": 2.0},
+                ],
+                "epsilon": 1.0,
+                "min_n": 10,
+            },
+            headers=AUTH,
+        )
+        self.assertEqual(r.status_code, 200)
+        releases = {x["key"]: x for x in r.json()["releases"]}
+        self.assertFalse(releases["steel__GB"]["suppressed"])
+        self.assertIsNotNone(releases["steel__GB"]["dp_mean"])
+        self.assertTrue(releases["cement__DE"]["suppressed"])
+
+
 if __name__ == "__main__":
     unittest.main()

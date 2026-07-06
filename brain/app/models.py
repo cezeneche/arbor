@@ -238,3 +238,36 @@ class DoubleCountAnomaly(BaseModel):
 class FlowCheckResponse(BaseModel):
     conservation: list[ConservationAnomaly]
     double_counting: list[DoubleCountAnomaly]
+
+
+# ── Differential privacy on cross-tenant aggregates (Upgrade 10) ─────────────
+
+
+class DPGroup(BaseModel):
+    key: str
+    # One value per aggregation unit (canonical entity) in this group.
+    values: list[float]
+    # Public clamp bounds (from domain knowledge, never derived from the data).
+    low: float
+    high: float
+
+
+class DPBenchmarkRequest(BaseModel):
+    groups: list[DPGroup]
+    epsilon: float = Field(1.0, gt=0, description="Privacy budget; smaller = more private.")
+    min_n: int = Field(10, ge=1, description="Minimum population floor; smaller groups are suppressed.")
+
+
+class DPRelease(BaseModel):
+    key: str
+    suppressed: bool
+    n: int
+    dp_mean: Optional[float] = None
+    dp_count: Optional[float] = None
+    epsilon: Optional[float] = None
+    bounds: Optional[list[float]] = None
+    reason: Optional[str] = None
+
+
+class DPBenchmarkResponse(BaseModel):
+    releases: list[DPRelease]

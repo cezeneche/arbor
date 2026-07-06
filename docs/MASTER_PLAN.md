@@ -29,7 +29,7 @@
 | 7 | Merkle-DAG audit structure | C | 🟡 productized into audit package + browser verifier; shadow-compare running |
 | 8 | Zero-knowledge proofs for predicate compliance | C | ⬜ |
 | 9 | Graph flow consistency across supply chain | D | 🟡 flow maths + cross-tenant double-counting scan; node conservation from records pending |
-| 10 | Differential privacy on cross-tenant aggregates | E | ⬜ |
+| 10 | Differential privacy on cross-tenant aggregates | E | 🟡 ε-DP benchmark release (Laplace + floor + canonical units); DP quantiles pending |
 | 11 | Categorical schema mapping between frameworks | F | 🕓 |
 | 12 | Trust calibration & miscalibration-first UX | G | 🟡 trust treatment across review + records + buyer views + correction reinforcement; onboarding drill pending |
 
@@ -315,8 +315,15 @@ The build order that respects both dependency graphs and product urgency.
 - `POST /flow/check` (fail-closed); fail-soft TS client `checkFlow`; pure `buildCertificateClaims` (one claim per reference+claimant). Cross-tenant scan `GET /api/admin/flow/anomalies` — reads certificate/BoL/customs references across all tenants, flags any claimed by more than one entity. Read-only, off any write path, 503 if the brain is down.
 - Pending: node-level flow conservation from records (needs the graph to carry quantity-weighted supply edges); the LP feasibility formulation (pulp/cvxpy) for tight balances; the <10% false-positive kill-signal calibration.
 
+**Upgrade 10 — differential privacy on cross-tenant aggregates — ε-DP benchmark release live (2026-07-06).**
+- `brain/app/privacy.py` (pure stdlib): Laplace mechanism — `laplace_scale` (Δf/ε), `dp_mean` (clamps to public bounds, sensitivity (high−low)/n), `dp_count`, `release` (suppresses below the minimum-population floor; noise alone isn't enough for a handful of contributors). Tested by properties (unbiasedness, clamping, floor) with a seeded RNG.
+- `POST /privacy/benchmark` (fail-closed); fail-soft TS client `releaseDpBenchmarks`.
+- **Uses Upgrade 5**: pure `entity-canonical.ts` (union-find over confirmed `EntityLink`s → canonical id) collapses one real-world company appearing as two Entity rows into a single contributor, so it can't split data to dodge the floor or dilute the noise. `dp-benchmark-input.ts` reduces each group to one value per canonical entity; `public-bounds.ts` gates DP release to fields with a public range.
+- Surface `GET /api/admin/benchmarks/dp?epsilon=` — consent-filtered (`allowBenchmarkAggregation`), Tier A only, canonical units, floor + noise via the brain. Off any write path; 503 if the brain is down.
+- Pending: DP quantiles/median (exponential mechanism — the plan mentions median/quartiles; baseline ships DP mean+count); a vetted DP library (OpenDP); per-entity caps for raw-total fields; ε-budget accounting across releases.
+
 ## ⬜ Not started
-Upgrades **8, 10** — see sequencing above.
+Upgrade **8** — see sequencing above.
 
 ## 🕓 Deferred by design
 - Upgrade 5's optimal-transport escalation (only if HNSW plateaus).
