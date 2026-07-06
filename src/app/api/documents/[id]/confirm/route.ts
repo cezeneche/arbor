@@ -5,6 +5,7 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
+import { runConstraintValidation } from '@/lib/constraints/run-constraint-validation'
 import { buildReviewLabels } from '@/lib/confidence/review-capture'
 import { parseNumericValue } from '@/lib/parse-numeric'
 import { ExtractionMethod, TrustTier, type DataDomain, type GroundTruthSource } from '@prisma/client'
@@ -167,6 +168,14 @@ export async function POST(
   // Failures here do not roll back the confirmation (warnings only, not blocking).
   await runCrossValidation(entityId, documentId, document.documentType).catch(
     (e) => console.error('[confirm] runCrossValidation failed:', e)
+  )
+
+  // Upgrade 3 — algebraic-constraint intake flagging: raise non-blocking
+  // ValidationFlags for physically impossible / fraudulent records (mass
+  // balance, non-negativity, implausible sector intensity). Post-commit,
+  // fail-soft — the brain must never block or roll back a confirmation.
+  await runConstraintValidation(documentId).catch(
+    (e) => console.error('[confirm] runConstraintValidation failed:', e)
   )
 
   // Upgrade 1 — capture calibration ground truth: compare what the reviewer
