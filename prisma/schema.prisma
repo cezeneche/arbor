@@ -386,6 +386,11 @@ model GroundTruthLabel {
   wasCorrect             Boolean
   confidenceAtExtraction Float
   source                 GroundTruthSource
+  // Upgrade 2 A/B instrumentation — the expected information gain the review UI
+  // ranked this field by, and its low-information verdict. Nullable: labels from
+  // before this instrumentation (and any non-review source) have no ranking signal.
+  expectedInformationGain Float?
+  lowInformation          Boolean?
   createdAt              DateTime          @default(now())
 
   @@index([fieldName, documentClass])

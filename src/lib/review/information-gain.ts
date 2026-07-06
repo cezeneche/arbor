@@ -62,6 +62,18 @@ export function expectedInformationGain(field: RankableField): number {
 }
 
 /**
+ * A single field's information verdict: its expected gain and whether it is
+ * low-information (confident, unimportant, present, unflagged). This is the one
+ * place the gain + low-info rule lives — `rankReviewFields` orders by it for the
+ * review UI, and label capture persists it so the active-learning A/B signal
+ * (Upgrade 2) can be measured against real confirm/correct outcomes.
+ */
+export function fieldInformation(field: RankableField): { gain: number; lowInformation: boolean } {
+  const gain = expectedInformationGain(field)
+  return { gain, lowInformation: field.hasValue && !field.flagged && gain < LOW_INFO_GAIN }
+}
+
+/**
  * Rank fields by expected information gain, highest first (deterministic
  * field-name tie-break), flagging the low-information ones the UI can collapse.
  * A field is only ever low-information if it is present, unflagged, and its gain
@@ -69,13 +81,6 @@ export function expectedInformationGain(field: RankableField): number {
  */
 export function rankReviewFields(fields: RankableField[]): RankedField[] {
   return fields
-    .map(field => {
-      const gain = expectedInformationGain(field)
-      return {
-        ...field,
-        gain,
-        lowInformation: field.hasValue && !field.flagged && gain < LOW_INFO_GAIN,
-      }
-    })
+    .map(field => ({ ...field, ...fieldInformation(field) }))
     .sort((a, b) => (b.gain === a.gain ? a.fieldName.localeCompare(b.fieldName) : b.gain - a.gain))
 }

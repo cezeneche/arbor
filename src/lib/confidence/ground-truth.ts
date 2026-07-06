@@ -28,6 +28,10 @@ export interface ReviewFieldDecision {
   confirmedValue: string | null
   /** The uncalibrated model score for this field at extraction time. */
   confidenceAtExtraction: number
+  /** Upgrade 2 A/B: the expected information gain the review UI ranked this field
+   *  by, and whether it was de-emphasised as low-information. Null when unknown. */
+  expectedInformationGain?: number | null
+  lowInformation?: boolean | null
 }
 
 export interface GroundTruthLabelInput {
@@ -42,6 +46,9 @@ export interface GroundTruthLabelInput {
   wasCorrect: boolean
   confidenceAtExtraction: number
   source: GroundTruthSource
+  /** Upgrade 2 A/B instrumentation — the ranking signal, correlated later with wasCorrect. */
+  expectedInformationGain: number | null
+  lowInformation: boolean | null
 }
 
 /** Normalise a value for the "did it survive review" comparison. */
@@ -94,5 +101,7 @@ export function buildGroundTruthLabel(decision: ReviewFieldDecision): GroundTrut
     wasCorrect,
     confidenceAtExtraction: clamp01(decision.confidenceAtExtraction),
     source: wasCorrect ? 'REVIEW_CONFIRMED' : 'REVIEW_CORRECTED',
+    expectedInformationGain: decision.expectedInformationGain ?? null,
+    lowInformation: decision.lowInformation ?? null,
   }
 }

@@ -10,12 +10,17 @@
 // extracted (pure manual entry) carry no signal and are skipped.
 
 import { buildGroundTruthLabel, type GroundTruthLabelInput } from './ground-truth'
+import { fieldInformation, type Admissibility } from '@/lib/review/information-gain'
 
 export interface ExtractedFieldLite {
   fieldName: string
   rawValue: string | null
   /** The model's uncalibrated score for this field at extraction time. */
   confidenceScore: number
+  /** How much the field matters downstream — needed to reproduce the review-time
+   *  information gain the field was ranked by (Upgrade 2 A/B instrumentation). */
+  admissibility: Admissibility
+  flagged: boolean
 }
 
 export interface ConfirmedFieldLite {
@@ -43,6 +48,16 @@ export function buildReviewLabels(input: BuildReviewLabelsInput): GroundTruthLab
     const extracted = extractedByName.get(confirmed.fieldName)
     if (!extracted) continue // no AI extraction for this field → no calibration signal
 
+    // Reproduce the exact expected-information-gain the review UI ranked this field
+    // by, from the same inputs (confidence, admissibility, flagged, presence).
+    const { gain, lowInformation } = fieldInformation({
+      fieldName: extracted.fieldName,
+      confidence: extracted.confidenceScore,
+      admissibility: extracted.admissibility,
+      flagged: extracted.flagged,
+      hasValue: extracted.rawValue !== null && extracted.rawValue !== '',
+    })
+
     labels.push(
       buildGroundTruthLabel({
         entityId: input.entityId,
@@ -54,6 +69,8 @@ export function buildReviewLabels(input: BuildReviewLabelsInput): GroundTruthLab
         extractedValue: extracted.rawValue,
         confirmedValue: confirmed.confirmedValue,
         confidenceAtExtraction: extracted.confidenceScore,
+        expectedInformationGain: gain,
+        lowInformation,
       }),
     )
   }
