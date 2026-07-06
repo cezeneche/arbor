@@ -196,6 +196,8 @@ export async function POST(
           fieldName: f.fieldName,
           rawValue: f.rawValue,
           confidenceScore: f.confidenceScore,
+          admissibility: f.admissibility,
+          flagged: f.flagged,
         })),
         confirmedFields: parsed.data.fields.map((f) => ({
           fieldName: f.fieldName,
@@ -218,6 +220,8 @@ export async function POST(
             wasCorrect: l.wasCorrect,
             confidenceAtExtraction: l.confidenceAtExtraction,
             source: l.source as GroundTruthSource,
+            expectedInformationGain: l.expectedInformationGain,
+            lowInformation: l.lowInformation,
           })),
         })
       }

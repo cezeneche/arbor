@@ -1,13 +1,20 @@
 import { buildReviewLabels } from '../review-capture'
+import { fieldInformation } from '@/lib/review/information-gain'
 
-// Label capture (Upgrade 1, minimal slice). At document confirmation the
-// reviewer's confirmed values are compared against what the model originally
-// extracted, producing one GroundTruthLabel per AI-extracted field. This is the
-// pure assembly step — no DB — that the confirm route persists best-effort.
+// Label capture (Upgrade 1 slice + Upgrade 2 A/B instrumentation). At document
+// confirmation the reviewer's confirmed values are compared against what the model
+// originally extracted, producing one GroundTruthLabel per AI-extracted field.
+// This is the pure assembly step — no DB — that the confirm route persists
+// best-effort.
 //
-// Crucially it captures *every* reviewed AI field, not just the numeric ones
-// that become DataRecords: the #1 kill-signal field type (supplier identity) is
-// a string field that never becomes a record, so its recordId is null.
+// Crucially it captures *every* reviewed AI field, not just the numeric ones that
+// become DataRecords: the #1 kill-signal field type (supplier identity) is a
+// string field that never becomes a record, so its recordId is null.
+//
+// Upgrade 2: each label also carries the field's expected information gain and
+// low-information verdict — the exact quantities the review UI ranked by — so the
+// active-learning kill-signal (do ranked-high fields get corrected at a higher
+// rate than random?) is measurable once reviewer traffic accumulates.
 
 const base = {
   entityId: 'ent_1',
@@ -19,7 +26,7 @@ describe('buildReviewLabels', () => {
   it('captures a string identity field with no record id as a confirmed label', () => {
     const labels = buildReviewLabels({
       ...base,
-      extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme Steel Ltd', confidenceScore: 0.7 }],
+      extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme Steel Ltd', confidenceScore: 0.7, admissibility: 'COMPULSORY', flagged: false }],
       confirmedFields: [{ fieldName: 'supplier_name', confirmedValue: 'Acme Steel Ltd', domain: 'ENERGY' }],
     })
     expect(labels).toHaveLength(1)
@@ -36,7 +43,7 @@ describe('buildReviewLabels', () => {
   it('uses the model score at extraction, and attaches the written record id for numeric fields', () => {
     const labels = buildReviewLabels({
       ...base,
-      extractedFields: [{ fieldName: 'total_consumption_kwh', rawValue: '100', confidenceScore: 0.9 }],
+      extractedFields: [{ fieldName: 'total_consumption_kwh', rawValue: '100', confidenceScore: 0.9, admissibility: 'COMPULSORY', flagged: false }],
       confirmedFields: [{ fieldName: 'total_consumption_kwh', confirmedValue: '250', domain: 'ENERGY' }],
       recordIdByField: { total_consumption_kwh: 'rec_1' },
     })
@@ -51,7 +58,7 @@ describe('buildReviewLabels', () => {
   it('skips confirmed fields the model never extracted (manual entry — no AI signal)', () => {
     const labels = buildReviewLabels({
       ...base,
-      extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.8 }],
+      extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.8, admissibility: 'COMPULSORY', flagged: false }],
       confirmedFields: [
         { fieldName: 'supplier_name', confirmedValue: 'Acme', domain: 'ENERGY' },
         { fieldName: 'meter_reference', confirmedValue: 'MPAN-123', domain: 'ENERGY' },
@@ -63,9 +70,39 @@ describe('buildReviewLabels', () => {
   it('defaults recordId to null when no record-id map is supplied', () => {
     const labels = buildReviewLabels({
       ...base,
-      extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.8 }],
+      extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.8, admissibility: 'COMPULSORY', flagged: false }],
       confirmedFields: [{ fieldName: 'supplier_name', confirmedValue: 'Acme', domain: 'ENERGY' }],
     })
     expect(labels[0].recordId).toBeNull()
+  })
+
+  it('records the field’s expected information gain (Upgrade 2 A/B signal), matched to the shared ranking helper', () => {
+    const labels = buildReviewLabels({
+      ...base,
+      extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.7, admissibility: 'COMPULSORY', flagged: false }],
+      confirmedFields: [{ fieldName: 'supplier_name', confirmedValue: 'Acme', domain: 'ENERGY' }],
+    })
+    const expected = fieldInformation({ fieldName: 'supplier_name', confidence: 0.7, admissibility: 'COMPULSORY', flagged: false, hasValue: true })
+    expect(labels[0].expectedInformationGain).toBe(expected.gain)
+    expect(labels[0].lowInformation).toBe(expected.lowInformation)
+    expect(labels[0].lowInformation).toBe(false) // compulsory + uncertain → high info
+  })
+
+  it('marks a confident, unimportant, present, unflagged field low-information', () => {
+    const labels = buildReviewLabels({
+      ...base,
+      extractedFields: [{ fieldName: 'notes', rawValue: 'x', confidenceScore: 0.999, admissibility: 'OPTIONAL', flagged: false }],
+      confirmedFields: [{ fieldName: 'notes', confirmedValue: 'x', domain: 'ENERGY' }],
+    })
+    expect(labels[0].lowInformation).toBe(true)
+  })
+
+  it('treats a field the model found nothing for as not-low-information (missing stays prominent)', () => {
+    const labels = buildReviewLabels({
+      ...base,
+      extractedFields: [{ fieldName: 'notes', rawValue: null, confidenceScore: 0.999, admissibility: 'OPTIONAL', flagged: false }],
+      confirmedFields: [{ fieldName: 'notes', confirmedValue: 'filled in by hand', domain: 'ENERGY' }],
+    })
+    expect(labels[0].lowInformation).toBe(false)
   })
 })

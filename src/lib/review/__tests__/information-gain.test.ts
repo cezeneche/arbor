@@ -3,6 +3,7 @@ import {
   importanceWeight,
   expectedInformationGain,
   rankReviewFields,
+  fieldInformation,
   LOW_INFO_GAIN,
   type RankableField,
 } from '../information-gain'
@@ -83,5 +84,21 @@ describe('rankReviewFields', () => {
       field({ fieldName: 'a', confidence: 0.8 }),
     ])
     expect(ranked.map(r => r.fieldName)).toEqual(['a', 'b'])
+  })
+})
+
+describe('fieldInformation', () => {
+  it('returns the same gain + low-info verdict rankReviewFields assigns (single source of truth)', () => {
+    const f = field({ fieldName: 'x', admissibility: 'OPTIONAL', confidence: 0.999 })
+    const info = fieldInformation(f)
+    const [ranked] = rankReviewFields([f])
+    expect(info.gain).toBe(ranked.gain)
+    expect(info.lowInformation).toBe(ranked.lowInformation)
+    expect(info.lowInformation).toBe(true) // confident + unimportant + present + unflagged
+  })
+
+  it('matches expectedInformationGain for the gain value', () => {
+    const f = field({ fieldName: 'x', confidence: 0.6 })
+    expect(fieldInformation(f).gain).toBe(expectedInformationGain(f))
   })
 })
