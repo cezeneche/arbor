@@ -27,7 +27,7 @@
 | 5 | Entity resolution — HNSW + optimal transport | B | 🟡 lexical baseline live (block+score+review); embeddings/HNSW + OT pending |
 | 6 | Lattice-theoretic tier composition | C | ✅ |
 | 7 | Merkle-DAG audit structure | C | 🟡 productized into audit package + browser verifier; shadow-compare running |
-| 8 | Zero-knowledge proofs for predicate compliance | C | ⬜ |
+| 8 | Zero-knowledge proofs for predicate compliance | C | 🟡 predicate/statement layer + engine interface live; SNARK proving engine deferred |
 | 9 | Graph flow consistency across supply chain | D | 🟡 flow maths + cross-tenant double-counting scan; node conservation from records pending |
 | 10 | Differential privacy on cross-tenant aggregates | E | 🟡 ε-DP benchmark release (Laplace + floor + canonical units); DP quantiles pending |
 | 11 | Categorical schema mapping between frameworks | F | 🕓 |
@@ -322,8 +322,14 @@ The build order that respects both dependency graphs and product urgency.
 - Surface `GET /api/admin/benchmarks/dp?epsilon=` — consent-filtered (`allowBenchmarkAggregation`), Tier A only, canonical units, floor + noise via the brain. Off any write path; 503 if the brain is down.
 - Pending: DP quantiles/median (exponential mechanism — the plan mentions median/quartiles; baseline ships DP mean+count); a vetted DP library (OpenDP); per-entity caps for raw-total fields; ε-budget accounting across releases.
 
-## ⬜ Not started
-Upgrade **8** — see sequencing above.
+**Upgrade 8 — ZK predicate compliance — statement layer live, proving engine deferred (2026-07-06).**
+- `src/lib/zk/predicate.ts` (pure, tested): the three predicate templates (numeric inequality, set membership, weighted-sum threshold), evaluated over the witness records, plus `statementDigest` — SHA-256 over the Merkle root (Upgrade 7) + predicate, the deterministic public commitment a proof attests to.
+- `src/lib/zk/proof.ts`: an engine-agnostic `ProofSystem` prove/verify interface + `PendingProofSystem`, which reports unavailability honestly rather than emitting a non-ZK "proof".
+- `POST /api/admin/zk/statement` (ADMIN): commits an entity's records with a Merkle root, returns the public statement digest + the admin-only prover-side evaluation, and marks the engine as pending. Off any write path.
+- **Deferred by decision (2026-07-06):** the real Groth16/Halo2 proving engine (Circom circuits, trusted-setup ceremony, snarkjs, WASM verifier) — it can't be responsibly stood up/verified in an autonomous pass and has a proving-time kill-signal, so it's a dedicated follow-up. Until it lands, full zero-knowledge isn't live; the statement layer + interface are.
+
+## 🕓 Deferred by design
+Upgrade **11** (categorical schema mapping) — only once ≥4 regulatory schemas are live and bespoke translation cost is measurable. Upgrade **8**'s SNARK proving engine — a dedicated crypto build (see above).
 
 ## 🕓 Deferred by design
 - Upgrade 5's optimal-transport escalation (only if HNSW plateaus).
