@@ -1,4 +1,4 @@
-import { planConstraintFlags, type RecordRef } from '../plan-flags'
+import { planConstraintFlags, dedupeNewFlags, type RecordRef, type PlannedFlag } from '../plan-flags'
 import type { ConstraintRecordResult } from '@/lib/brain/types'
 
 // Upgrade 3 — intake flagging. The brain returns algebraic-constraint violations
@@ -112,5 +112,31 @@ describe('planConstraintFlags', () => {
     ]
     const flags = planConstraintFlags(results, [ref('doc1', 'quantity_tonnes', 'rec-a')])
     expect(flags).toEqual([])
+  })
+})
+
+describe('dedupeNewFlags', () => {
+  function planned(dataRecordId: string, message: string): PlannedFlag {
+    return { dataRecordId, message, flagType: 'INTERNAL_INCONSISTENCY', severity: 'CRITICAL' }
+  }
+
+  it('drops a flag already persisted for the same record + message (idempotent re-run)', () => {
+    const flags = [planned('rec-a', 'negative mass')]
+    expect(dedupeNewFlags(flags, [{ dataRecordId: 'rec-a', message: 'negative mass' }])).toEqual([])
+  })
+
+  it('keeps a flag with the same message on a different record', () => {
+    const flags = [planned('rec-b', 'negative mass')]
+    expect(dedupeNewFlags(flags, [{ dataRecordId: 'rec-a', message: 'negative mass' }])).toEqual(flags)
+  })
+
+  it('keeps a different violation on a record that already has another flag', () => {
+    const flags = [planned('rec-a', 'implausible intensity')]
+    expect(dedupeNewFlags(flags, [{ dataRecordId: 'rec-a', message: 'negative mass' }])).toEqual(flags)
+  })
+
+  it('writes everything when nothing is persisted yet (first run)', () => {
+    const flags = [planned('rec-a', 'negative mass'), planned('rec-b', 'over 100%')]
+    expect(dedupeNewFlags(flags, [])).toEqual(flags)
   })
 })

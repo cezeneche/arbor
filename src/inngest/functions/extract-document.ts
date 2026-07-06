@@ -9,6 +9,7 @@ import { MIN_EXTRACTABLE_QUALITY } from '@/lib/extraction/types'
 import type { ExtractedFieldResult } from '@/lib/extraction/types'
 import { shouldAutoAccept } from '@/lib/review/review-policy'
 import { autoAcceptDocument } from '@/lib/layer2/auto-accept'
+import { gateAutoAcceptOnConstraints } from '@/lib/constraints/auto-accept-gate'
 import type { Prisma } from '@prisma/client'
 
 export const extractDocumentFunction = inngest.createFunction(
@@ -148,11 +149,24 @@ export const extractDocumentFunction = inngest.createFunction(
     // Tier B (Declared) so a record exists immediately. High-stakes types and any
     // document with a critical flag stay in REVIEW_REQUIRED for per-document review.
     let autoAcceptedCount = 0
+    let routedToReviewByConstraints = false
     if (shouldAutoAccept(documentType, admissibility.criticalCount)) {
       autoAcceptedCount = await step.run('auto-accept-low-stakes', async () => {
         const ids = await autoAcceptDocument(documentId)
         return ids.length
       })
+
+      // Upgrade 3 — physics gate on the auto-accept path. Auto-accepted docs get
+      // no human review, so re-check the just-written records against the algebraic
+      // constraints; if any physical-impossibility violation is found, route the
+      // document back to REVIEW_REQUIRED. Records and tier are unchanged — only the
+      // workflow status flips. Post-write and fail-soft (brain down → stays accepted).
+      if (autoAcceptedCount > 0) {
+        routedToReviewByConstraints = await step.run('constraint-gate-auto-accept', async () => {
+          const { routedToReview } = await gateAutoAcceptOnConstraints(documentId)
+          return routedToReview
+        })
+      }
     }
 
     await step.run('send-notification', async () => {
@@ -170,6 +184,6 @@ export const extractDocumentFunction = inngest.createFunction(
       })
     })
 
-    return { success: true, jobId: job.id, tier: admissibility.tier, autoAcceptedCount }
+    return { success: true, jobId: job.id, tier: admissibility.tier, autoAcceptedCount, routedToReviewByConstraints }
   },
 )

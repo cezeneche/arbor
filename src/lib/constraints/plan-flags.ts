@@ -70,3 +70,22 @@ export function planConstraintFlags(
   }
   return flags
 }
+
+/** An already-persisted constraint flag, keyed on what makes it a duplicate. */
+export interface ExistingFlag {
+  dataRecordId: string
+  message: string
+}
+
+/**
+ * Keep only planned flags that aren't already persisted, matched on
+ * (dataRecordId, message). Constraint checks are re-derived deterministically from
+ * immutable record values, so a given violation yields the same message every run —
+ * this makes the flag write idempotent under an inngest step retry (no unique
+ * constraint exists on ValidationFlag). Pure: no DB, no network.
+ */
+export function dedupeNewFlags(planned: PlannedFlag[], existing: ExistingFlag[]): PlannedFlag[] {
+  const seen = new Set<string>()
+  for (const e of existing) seen.add(JSON.stringify([e.dataRecordId, e.message]))
+  return planned.filter((f) => !seen.has(JSON.stringify([f.dataRecordId, f.message])))
+}

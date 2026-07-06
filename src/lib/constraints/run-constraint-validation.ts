@@ -12,11 +12,17 @@
 
 import { prisma } from '@/lib/prisma'
 import { groupRecordsByDocument, type RecordRow } from './group-records'
-import { planConstraintFlags, type RecordRef } from './plan-flags'
+import { planConstraintFlags, dedupeNewFlags, type RecordRef, type PlannedFlag } from './plan-flags'
 import { checkConstraints } from '@/lib/brain/constraints-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 
-export async function runConstraintValidation(documentId: string): Promise<void> {
+/**
+ * Check a document's stored records against the algebraic constraints and write a
+ * ValidationFlag for each violation. Returns the flags written (empty on a clean
+ * document, and — fail-soft — empty whenever the brain is unavailable) so callers
+ * such as the auto-accept gate can react to whether any physics violation was found.
+ */
+export async function runConstraintValidation(documentId: string): Promise<PlannedFlag[]> {
   const records = await prisma.dataRecord.findMany({
     where: { documentId, isActive: true },
     select: {
@@ -27,7 +33,7 @@ export async function runConstraintValidation(documentId: string): Promise<void>
     },
   })
 
-  if (records.length === 0) return
+  if (records.length === 0) return []
 
   const rows: RecordRow[] = records.map((r) => ({
     documentId,
@@ -42,19 +48,35 @@ export async function runConstraintValidation(documentId: string): Promise<void>
   }))
 
   const inputs = groupRecordsByDocument(rows)
-  if (inputs.length === 0) return
+  if (inputs.length === 0) return []
 
   let results
   try {
     results = await checkConstraints(inputs)
   } catch (e) {
     // Fail-soft: brain down or errored → no flags, confirmation still stands.
-    if (e instanceof BrainUnavailableError) return
+    if (e instanceof BrainUnavailableError) return []
     throw e
   }
 
   const flags = planConstraintFlags(results, refs)
-  if (flags.length === 0) return
+  if (flags.length === 0) return []
 
-  await prisma.validationFlag.createMany({ data: flags })
+  // Idempotent write: skip flags already persisted for these records, so an inngest
+  // step retry (this runs inside a retrying step on the auto-accept path) cannot
+  // duplicate rows — ValidationFlag has no unique constraint to lean on. We still
+  // return the full planned set so the caller's reroute decision is unaffected by
+  // what was already written on a prior attempt.
+  const existing = await prisma.validationFlag.findMany({
+    where: {
+      dataRecordId: { in: refs.map((r) => r.dataRecordId) },
+      flagType: 'INTERNAL_INCONSISTENCY',
+    },
+    select: { dataRecordId: true, message: true },
+  })
+  const toWrite = dedupeNewFlags(flags, existing)
+  if (toWrite.length > 0) {
+    await prisma.validationFlag.createMany({ data: toWrite })
+  }
+  return flags
 }
