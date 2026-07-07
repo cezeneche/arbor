@@ -102,14 +102,19 @@ export function convertFromSI(
   }
 }
 
+// All units the conversion engine accepts, grouped by physical dimension. The
+// output-time /api/records/convert/units endpoint surfaces this to API consumers.
+export const SUPPORTED_UNITS: Record<SIDimension, SupportedUnit[]> = {
+  mj: ['mj', 'kwh', 'gj', 'btu', 'therms', 'toe', 'kcal'],
+  kg: ['kg', 'tonnes', 'g', 'lbs', 'short_tons', 'long_tons', 'oz'],
+  m3: ['m3', 'litres', 'ml', 'gallons_uk', 'gallons_us', 'barrels', 'ft3'],
+  m2: ['m2', 'hectares', 'acres', 'km2', 'ft2', 'yd2'],
+  km: ['km', 'miles', 'nautical_miles', 'm'],
+  kg_co2e: ['kg_co2e', 'tonnes_co2e', 'g_co2e', 'lbs_co2e'],
+}
+
+const ALL_SUPPORTED_UNITS: SupportedUnit[] = Object.values(SUPPORTED_UNITS).flat()
+
 export function isSupportedUnit(unit: string): unit is SupportedUnit {
-  const supported: SupportedUnit[] = [
-    'mj', 'kwh', 'gj', 'btu', 'therms', 'toe', 'kcal',
-    'kg', 'tonnes', 'g', 'lbs', 'short_tons', 'long_tons', 'oz',
-    'm3', 'litres', 'ml', 'gallons_uk', 'gallons_us', 'barrels', 'ft3',
-    'm2', 'hectares', 'acres', 'km2', 'ft2', 'yd2',
-    'km', 'miles', 'nautical_miles', 'm',
-    'kg_co2e', 'tonnes_co2e', 'g_co2e', 'lbs_co2e',
-  ]
-  return supported.includes(unit as SupportedUnit)
+  return ALL_SUPPORTED_UNITS.includes(unit as SupportedUnit)
 }
