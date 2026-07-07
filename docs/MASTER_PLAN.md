@@ -344,10 +344,39 @@ The build order that respects both dependency graphs and product urgency.
 - `POST /api/admin/zk/statement` (ADMIN): commits an entity's records with a Merkle root, returns the public statement digest + the admin-only prover-side evaluation, and marks the engine as pending. Off any write path.
 - **Deferred by decision (2026-07-06):** the real Groth16/Halo2 proving engine (Circom circuits, trusted-setup ceremony, snarkjs, WASM verifier) — it can't be responsibly stood up/verified in an autonomous pass and has a proving-time kill-signal, so it's a dedicated follow-up. Until it lands, full zero-knowledge isn't live; the statement layer + interface are.
 
-## 🕓 Deferred by design
-- **Upgrade 8's SNARK proving engine** — a dedicated crypto build (Circom/Halo2 + trusted-setup ceremony + snarkjs + WASM verifier); the statement layer + interface are live, the prover is not.
-- **Upgrade 11** (categorical schema mapping) — only once ≥4 regulatory schemas are live and bespoke translation cost is measurable.
-- **Upgrade 5's optimal-transport escalation** — only if the HNSW/embedding baseline plateaus.
+## 🕓 Deferred by design — with explicit unpark triggers
+
+The project has crossed an inflection point (2026-07-07): the 12-upgrade **build
+phase is complete**, and further investment here is **demand-gated or data-gated**,
+not sequence-gated. The plan was a build order; it did not have a concept for
+"stop building and wait for a signal." That is the current posture. Each deferred
+item below carries the concrete trigger that unparks it — do not start before it.
+
+- **Upgrade 8's SNARK proving engine** — a dedicated crypto build (Circom/Halo2 +
+  trusted-setup ceremony + snarkjs + WASM verifier); the statement layer +
+  `PendingProofSystem` interface are live and are an honest interim (public
+  commitment shown, proof pending) for every current customer.
+  - **Unpark trigger:** the first customer or serious prospect explicitly asks to
+    answer a compliance predicate *without exposing the underlying records* — e.g.
+    a buyer questionnaire data-minimisation clause, a financier wanting an
+    aggregate proof rather than raw data, a regulator hinting at privacy-preserving
+    submission. **First step then:** a narrow spike — one circuit, one predicate,
+    end-to-end (prove → WASM verify), dev-only insecure setup clearly labelled,
+    benchmarked against the proving-time kill-signal (≤ ~5 min per 10k records).
+    Only past the spike do you invest in the real multi-party ceremony + all three
+    templates. Building it before a demand signal is speculative crypto.
+
+- **Upgrade 11** (categorical schema mapping) — below ~4 live regulatory schemas,
+  bespoke pairwise translations are cheaper, clearer, and easier to debug; the
+  functorial abstraction is premature. Arbor is at 1–2 today.
+  - **Unpark trigger:** the **third** regulatory schema goes live in production —
+    write the framework instead of the fourth bespoke mapping. Three concrete
+    instances is enough to validate the abstraction against, and a known fourth is
+    enough forward view to justify it.
+
+- **Upgrade 5's optimal-transport escalation** — only if the lexical/HNSW entity
+  resolution baseline is shown to **plateau** on a labelled test set (OT must beat
+  it by ≥3pp precision-at-fixed-recall to be worth keeping).
 
 ## 🧹 Non-upgrade follow-ups
 - Re-verify the numeric-parsing + `rawOutput`-on-failure fixes on a fresh production upload (deployed, not yet re-checked end-to-end).
