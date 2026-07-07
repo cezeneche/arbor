@@ -10,6 +10,7 @@ import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
+import { runSerializable } from '@/lib/layer2/serializable'
 import { domainSchema } from '@/lib/constants'
 import { TrustTier, ExtractionMethod } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
@@ -86,24 +87,22 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const { recordId } = await prisma.$transaction(
-        (tx) =>
-          writeRecordWithAuditEntry(tx, {
-            entityId,
-            domain: r.domain,
-            fieldName: r.fieldName,
-            value: r.value,
-            unit: r.unit,
-            originalValue: r.value,
-            originalUnit: r.unit,
-            periodStart: new Date(r.periodStart),
-            periodEnd: new Date(r.periodEnd),
-            sourceText: r.sourceSystem,
-            trustTier: TrustTier.B,
-            extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
-            submittedById: systemUser.id,
-          }),
-        { isolationLevel: 'Serializable' },
+      const { recordId } = await runSerializable((tx) =>
+        writeRecordWithAuditEntry(tx, {
+          entityId,
+          domain: r.domain,
+          fieldName: r.fieldName,
+          value: r.value,
+          unit: r.unit,
+          originalValue: r.value,
+          originalUnit: r.unit,
+          periodStart: new Date(r.periodStart),
+          periodEnd: new Date(r.periodEnd),
+          sourceText: r.sourceSystem,
+          trustTier: TrustTier.B,
+          extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
+          submittedById: systemUser.id,
+        }),
       )
       results.push({ index: i, status: 'created', recordId, domain: r.domain, fieldName: r.fieldName })
     } catch {

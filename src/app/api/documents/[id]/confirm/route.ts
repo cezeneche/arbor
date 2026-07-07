@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
+import { runSerializable } from '@/lib/layer2/serializable'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
 import { runConstraintValidation } from '@/lib/constraints/run-constraint-validation'
 import { buildReviewLabels } from '@/lib/confidence/review-capture'
@@ -38,7 +40,7 @@ export async function POST(
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const { id: documentId } = await params
 
   const body = await req.json().catch(() => null)
@@ -111,7 +113,7 @@ export async function POST(
   // Gap 5 — scopes whose prior records were superseded, so we can notify buyers.
   const supersededScopes: { domain: string; periodStart: Date; periodEnd: Date }[] = []
 
-  const createdRecords = await prisma.$transaction(async (tx) => {
+  const createdRecords = await runSerializable(async (tx) => {
     const recordIds: string[] = []
 
     for (const { field, rawNum, siValue, siUnit, periodStart, periodEnd } of preparedFields) {
@@ -162,7 +164,7 @@ export async function POST(
     })
 
     return recordIds
-  }, { isolationLevel: 'Serializable' })
+  })
 
   // Cross-validation runs after commit — it reads accepted records and writes CV results.
   // Failures here do not roll back the confirmation (warnings only, not blocking).
