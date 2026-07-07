@@ -1,0 +1,20 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: "0 6 */4 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Supabase database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install postgresql-client
+        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+
+      - name: Ping database
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_KEEPALIVE_DATABASE_URL }}
+        run: psql "$DATABASE_URL" -c "SELECT 1;"
