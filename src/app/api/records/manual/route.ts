@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
+import { runSerializable } from '@/lib/layer2/serializable'
 import { domainSchema } from '@/lib/constants'
 import { ExtractionMethod, TrustTier } from '@prisma/client'
 
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const userId = session.user!.id!
 
   const body = await req.json().catch(() => null)
@@ -38,27 +40,25 @@ export async function POST(req: NextRequest) {
     return err('periodEnd must be after periodStart', 'VALIDATION_ERROR', 400)
   }
 
-  const { recordId } = await prisma.$transaction(
-    (tx) =>
-      writeRecordWithAuditEntry(
-        tx,
-        {
-          entityId,
-          domain: parsed.data.domain,
-          fieldName: parsed.data.fieldName,
-          value: parsed.data.value,
-          unit: parsed.data.unit,
-          originalValue: parsed.data.value,
-          originalUnit: parsed.data.unit,
-          periodStart,
-          periodEnd,
-          sourceText: parsed.data.sourceText,
-          trustTier: TrustTier.B,
-          extractionMethod: ExtractionMethod.MANUAL_ENTRY,
-          submittedById: userId,
-        },
-      ),
-    { isolationLevel: 'Serializable' },
+  const { recordId } = await runSerializable((tx) =>
+    writeRecordWithAuditEntry(
+      tx,
+      {
+        entityId,
+        domain: parsed.data.domain,
+        fieldName: parsed.data.fieldName,
+        value: parsed.data.value,
+        unit: parsed.data.unit,
+        originalValue: parsed.data.value,
+        originalUnit: parsed.data.unit,
+        periodStart,
+        periodEnd,
+        sourceText: parsed.data.sourceText,
+        trustTier: TrustTier.B,
+        extractionMethod: ExtractionMethod.MANUAL_ENTRY,
+        submittedById: userId,
+      },
+    ),
   )
 
   return ok({ recordId, trustTier: 'B' }, 201)

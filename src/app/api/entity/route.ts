@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
@@ -14,7 +15,7 @@ export async function PATCH(req: NextRequest) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   let body: unknown
   try { body = await req.json() } catch {

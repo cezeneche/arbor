@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -12,7 +13,7 @@ export default async function UploadPage({
 }) {
   const session = await auth()
   if (!session?.user) redirect('/login')
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const sp = await searchParams
   const initialType = sp.type ?? ''
 

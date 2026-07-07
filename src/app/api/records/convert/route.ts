@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
 import { authenticateApiKey } from '@/lib/api-key-auth'
+import { enforceBuyerApiLimit } from '@/lib/rate-limit-guard'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { convertFromSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
@@ -26,11 +28,14 @@ export async function POST(req: NextRequest) {
   } else {
     const { session } = await requireAuth()
     if (session?.user) {
-      entityId = (session.user as Record<string, unknown>).entityId as string
+      entityId = getSessionUser(session).entityId as string
     }
   }
 
   if (!entityId) return err('Unauthorized', 'UNAUTHORIZED', 401)
+
+  const limited = await enforceBuyerApiLimit(entityId)
+  if (limited) return limited
 
   const body = await req.json().catch(() => null)
   const parsed = bodySchema.safeParse(body)

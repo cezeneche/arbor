@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 const PAGE_SIZE = 20
@@ -73,12 +74,6 @@ const STATUS_COLOURS: Record<string, string> = {
   ACCEPTED: colours.green,
   QUERY_RAISED: colours.amber,
   CLOSED: colours.textTertiary,
-}
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
 }
 
 interface Props {

@@ -4,7 +4,10 @@
 // Trust tier is always present on every record in every response.
 
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
+import { enforceBuyerApiLimit } from '@/lib/rate-limit-guard'
+import { anyGrantCoversRecord } from '@/lib/layer3/grant-scope'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { parseNlQuery } from '@/lib/query-interpreter/nl-parser'
@@ -18,7 +21,11 @@ export async function POST(req: NextRequest) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
+
+  // Each call spends an LLM request — cap per entity to prevent cost abuse.
+  const limited = await enforceBuyerApiLimit(entityId)
+  if (limited) return limited
 
   let body: { question?: string }
   try {
@@ -192,15 +199,7 @@ async function runSupplyChainQuery(params: {
   })
 
   return rows
-    .filter(r => {
-      const entityGrants = grants.filter(g => g.grantorEntityId === r.entityId)
-      return entityGrants.some(g => {
-        const domainMatch = !g.domain || g.domain === r.domain
-        const startMatch = !g.periodStart || r.periodEnd >= g.periodStart
-        const endMatch = !g.periodEnd || r.periodStart <= g.periodEnd
-        return domainMatch && startMatch && endMatch
-      })
-    })
+    .filter(r => anyGrantCoversRecord(grants.filter(g => g.grantorEntityId === r.entityId), r))
     .map(r => ({
       id: r.id,
       entityName: r.entity.legalName,

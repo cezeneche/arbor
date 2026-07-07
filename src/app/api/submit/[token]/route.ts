@@ -4,9 +4,11 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
+import { runSerializable } from '@/lib/layer2/serializable'
 import { ExtractionMethod, TrustTier } from '@prisma/client'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
+import { MAX_BATCH_ENTRIES } from '@/lib/constants'
 
 const entrySchema = z.object({
   fieldName: z.string().min(1),
@@ -16,7 +18,7 @@ const entrySchema = z.object({
 })
 
 const bodySchema = z.object({
-  entries: z.array(entrySchema).min(1),
+  entries: z.array(entrySchema).min(1).max(MAX_BATCH_ENTRIES),
 })
 
 export async function GET(
@@ -106,7 +108,10 @@ export async function POST(
   // If any step fails the whole thing rolls back — no partial state.
   let recordCount = 0
   try {
-    await prisma.$transaction(async (tx) => {
+    await runSerializable(async (tx) => {
+      // Reset per attempt — the wrapper may re-run this whole function on a
+      // write-conflict retry, and each run starts the transaction from scratch.
+      recordCount = 0
       // Atomic claim — prevents concurrent double-submissions.
       const claimed = await tx.dataRequest.updateMany({
         where: { id: request.id, status: { notIn: ['SUBMITTED', 'ACCEPTED'] } },
@@ -166,7 +171,7 @@ export async function POST(
           },
         })
       }
-    }, { isolationLevel: 'Serializable' })
+    })
   } catch (e: unknown) {
     if (e instanceof Error && e.name === 'ALREADY_RESPONDED') {
       return err('This request has already been responded to', 'ALREADY_RESPONDED', 409)

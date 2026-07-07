@@ -2,6 +2,7 @@
 // Auth: session only (buyers). Validates grants before returning any supplier data.
 // Trust tier and provenance travel with every record — cannot be removed (PRD §21.2).
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 
-  const buyerEntityId = (session.user as Record<string, unknown>).entityId as string
+  const buyerEntityId = getSessionUser(session).entityId as string
 
   const sp = req.nextUrl.searchParams
   const format = sp.get('format') ?? 'csv'

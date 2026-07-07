@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -10,7 +11,7 @@ import { SharesManager } from '@/components/SharesManager'
 export default async function SharesPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const [shares, hdrs] = await Promise.all([
     prisma.sharedExport.findMany({ where: { entityId }, orderBy: { createdAt: 'desc' } }),

@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
@@ -10,7 +11,7 @@ export async function DELETE(
 ) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const { id } = await params
 
   const share = await prisma.sharedExport.findUnique({ where: { id } })

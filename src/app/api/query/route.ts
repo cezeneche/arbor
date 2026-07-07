@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { authenticateApiKey } from '@/lib/api-key-auth'
+import { enforceBuyerApiLimit } from '@/lib/rate-limit-guard'
+import { anyGrantCoversRecord } from '@/lib/layer3/grant-scope'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { domainSchema, tierSchema, ALL_DOMAINS } from '@/lib/constants'
@@ -21,8 +24,11 @@ export async function GET(req: NextRequest) {
   } else {
     const { session, response } = await requireAuth()
     if (!session) return response!
-    entityId = (session.user as Record<string, unknown>).entityId as string
+    entityId = getSessionUser(session).entityId as string
   }
+
+  const limited = await enforceBuyerApiLimit(entityId)
+  if (limited) return limited
 
   const { searchParams } = req.nextUrl
   const queryType = (searchParams.get('type') ?? 'entity') as QueryType
@@ -179,15 +185,9 @@ async function handleSupplyChainQuery(params: {
     orderBy: [{ entityId: 'asc' }, { domain: 'asc' }, { periodEnd: 'desc' }],
   })
 
-  const filteredRecords = records.filter(record => {
-    const entityGrants = grants.filter(g => g.grantorEntityId === record.entityId)
-    return entityGrants.some(grant => {
-      const domainMatch = !grant.domain || grant.domain === record.domain
-      const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
-      const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
-      return domainMatch && startMatch && endMatch
-    })
-  })
+  const filteredRecords = records.filter(record =>
+    anyGrantCoversRecord(grants.filter(g => g.grantorEntityId === record.entityId), record),
+  )
 
   const supplierCount = new Set(filteredRecords.map(r => r.entityId)).size
 

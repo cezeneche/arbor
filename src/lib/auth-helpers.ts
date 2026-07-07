@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { evaluateSessionSecurity, type SessionSecurityCode } from '@/lib/auth-helpers-pure'
+import { getSessionUser } from '@/lib/session'
 
 const unauthorised = (reason: string, code: string) => ({
   session: null,
@@ -20,7 +21,7 @@ export async function requireAuth() {
     return unauthorised('Unauthorised', 'AUTH_REQUIRED')
   }
 
-  const user = session.user as Record<string, unknown>
+  const user = getSessionUser(session)
   const userId = user.id as string | undefined
 
   // Look up the live tokenVersion so a password reset / forced logout actually
@@ -31,7 +32,7 @@ export async function requireAuth() {
     : { tokenVersion: 0 }
 
   const verdict = evaluateSessionSecurity(
-    { pending2fa: user.pending2fa as boolean | undefined, tokenVersion: user.tokenVersion as number | undefined },
+    { pending2fa: user.pending2fa, tokenVersion: user.tokenVersion },
     dbUser,
   )
 
@@ -48,7 +49,7 @@ export async function requireAuth() {
 export async function requireWriteAccess() {
   const { session, response } = await requireAuth()
   if (!session) return { session: null, response: response! }
-  const role = (session.user as Record<string, unknown>).role as string
+  const role = getSessionUser(session).role
   if (role === 'VIEWER') {
     return {
       session: null,
@@ -67,7 +68,7 @@ export async function requireWriteAccess() {
 export async function requireAdmin() {
   const { session, response } = await requireAuth()
   if (!session) return { session: null, response: response! }
-  const role = (session.user as Record<string, unknown>).role as string
+  const role = getSessionUser(session).role
   if (role !== 'ADMIN') {
     return {
       session: null,
@@ -86,7 +87,7 @@ export async function requireAdmin() {
 export async function requireVerifier() {
   const { session, response } = await requireAuth()
   if (!session) return { session: null, response: response! }
-  const role = (session.user as Record<string, unknown>).role as string
+  const role = getSessionUser(session).role
   if (role !== 'VERIFIER') {
     return {
       session: null,
@@ -103,7 +104,7 @@ export async function requireVerifier() {
 export async function requireAuditorAccess(entityId: string) {
   const { session, response } = await requireAuth()
   if (!session) return { session: null, response: response! }
-  const role = (session.user as Record<string, unknown>).role as string
+  const role = getSessionUser(session).role
   if (role !== 'AUDITOR') {
     return {
       session: null,
@@ -113,7 +114,7 @@ export async function requireAuditorAccess(entityId: string) {
       ),
     }
   }
-  const userId = (session.user as Record<string, unknown>).id as string
+  const userId = getSessionUser(session).id
   const access = await prisma.auditorAccess.findFirst({
     where: { auditorUserId: userId, entityId, expiresAt: { gt: new Date() } },
   })

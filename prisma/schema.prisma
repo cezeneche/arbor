@@ -101,6 +101,11 @@ model User {
   createdAt        DateTime @default(now())
   twoFactorSecret  String? // AES-256-GCM encrypted TOTP secret
   twoFactorEnabled Boolean  @default(false)
+  // Single-use proof (SHA-256 hash) that a 2FA challenge was passed server-side.
+  // The jwt callback consumes this to upgrade a pending2fa session — the client
+  // can no longer self-assert verification. Nulled on consume; short-lived.
+  twoFactorVerifiedNonce   String?
+  twoFactorVerifiedExpires DateTime?
   tokenVersion     Int      @default(0)
   // Gap 10 — set false by SCIM deprovision; all auth checks require true.
   isActive         Boolean  @default(true)

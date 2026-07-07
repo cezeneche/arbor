@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { getSessionUser } from '@/lib/session'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -11,7 +12,7 @@ export default async function VerifierAssignmentDetail({ params }: { params: Pro
   const { id } = await params
   const session = await auth()
   if (!session?.user) redirect('/login')
-  const verifierId = (session.user as Record<string, unknown>).id as string
+  const verifierId = getSessionUser(session).id
 
   const assignment = await prisma.verificationAssignment.findUnique({
     where: { id },

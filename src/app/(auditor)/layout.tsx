@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { colours, typography, spacing } from '@/lib/design-system'
@@ -7,7 +8,7 @@ import { colours, typography, spacing } from '@/lib/design-system'
 export default async function AuditorLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session?.user) redirect('/login')
-  const role = (session.user as Record<string, unknown>).role as string | undefined
+  const role = getSessionUser(session).role
   if (role !== 'AUDITOR') redirect('/dashboard')
 
   return (
@@ -35,7 +36,7 @@ export default async function AuditorLayout({ children }: { children: React.Reac
           arbor · Auditor
         </Link>
         <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, opacity: 0.85 }}>
-          {(session.user as Record<string, unknown>).email as string}
+          {getSessionUser(session).email as string}
         </span>
       </header>
       <main style={{ maxWidth: '960px', margin: '0 auto', padding: `${spacing[5]} ${spacing[4]}` }}>

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { getSessionUser } from '@/lib/session'
 import { redirect, notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -22,7 +23,7 @@ export default async function SupplierRecordsPage({
   if (!session?.user) redirect('/login')
 
   const { supplierId } = await params
-  const buyerEntityId = (session.user as Record<string, unknown>).entityId as string
+  const buyerEntityId = getSessionUser(session).entityId as string
 
   const grants = await prisma.dataAccessGrant.findMany({
     where: { grantorEntityId: supplierId, granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },

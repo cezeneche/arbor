@@ -1,11 +1,6 @@
 import { colours, typography, spacing } from '@/lib/design-system'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import type { RecordTrends as Trends } from '@/lib/layer3/record-trends'
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
-}
 
 const sectionLabel = {
   fontSize: typography.sizes.xs,

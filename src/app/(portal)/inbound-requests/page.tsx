@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
@@ -13,7 +14,7 @@ interface ParsedShape {
 export default async function InboundRequestsPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const startOfMonth = new Date()
   startOfMonth.setUTCDate(1)

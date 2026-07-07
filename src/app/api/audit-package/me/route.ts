@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { assembleAuditPackage } from '@/lib/audit-package/assemble'
 
@@ -8,8 +9,8 @@ import { assembleAuditPackage } from '@/lib/audit-package/assemble'
 export async function GET(req: NextRequest) {
   const { session, response } = await requireAuth()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
-  const userId = (session.user as Record<string, unknown>).id as string
+  const entityId = getSessionUser(session).entityId as string
+  const userId = getSessionUser(session).id
 
   const sp = req.nextUrl.searchParams
   const periodStart = sp.get('periodStart')

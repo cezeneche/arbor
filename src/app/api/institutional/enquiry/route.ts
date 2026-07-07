@@ -1,35 +1,44 @@
-// Layer 2  -  write path for institutional partner expressions of interest.
-// Public endpoint  -  no auth required. Writes to InstitutionalEnquiry table only.
+// Layer 2 — write path for institutional partner expressions of interest.
+// Public endpoint (no auth). Validated and IP-rate-limited to resist spam, since
+// it writes rows to InstitutionalEnquiry.
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/rate-limit-pure'
 
-const VALID_INTEREST_AREAS = ['BENCHMARKS', 'DATA_PARTNERSHIP', 'POLICY', 'OTHER'] as const
+const schema = z.object({
+  orgName: z.string().trim().min(1).max(200),
+  contactName: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(200),
+  role: z.string().trim().max(120).optional(),
+  interestArea: z.enum(['BENCHMARKS', 'DATA_PARTNERSHIP', 'POLICY', 'OTHER']),
+  message: z.string().trim().max(4000).optional(),
+})
 
 export async function POST(req: NextRequest) {
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 })
+  const ip = getClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'))
+  const { allowed } = await checkRateLimit(RATE_LIMITS.institutionalEnquiry, ip)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
-  const { orgName, contactName, email, role, interestArea, message } = body as Record<string, string>
-
-  if (!orgName?.trim()) return NextResponse.json({ error: 'Organisation name is required.' }, { status: 422 })
-  if (!contactName?.trim()) return NextResponse.json({ error: 'Contact name is required.' }, { status: 422 })
-  if (!email?.trim() || !email.includes('@')) return NextResponse.json({ error: 'A valid email address is required.' }, { status: 422 })
-  if (!interestArea || !VALID_INTEREST_AREAS.includes(interestArea as typeof VALID_INTEREST_AREAS[number])) {
-    return NextResponse.json({ error: 'Interest area must be one of: Benchmarks, Data partnership, Policy, Other.' }, { status: 422 })
+  const body = await req.json().catch(() => null)
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Please check the form and try again.' }, { status: 422 })
   }
+
+  const { orgName, contactName, email, role, interestArea, message } = parsed.data
 
   await prisma.institutionalEnquiry.create({
     data: {
-      orgName: orgName.trim(),
-      contactName: contactName.trim(),
-      email: email.trim().toLowerCase(),
-      role: role?.trim() || null,
+      orgName,
+      contactName,
+      email: email.toLowerCase(),
+      role: role || null,
       interestArea,
-      message: message?.trim() || null,
+      message: message || null,
     },
   })
 

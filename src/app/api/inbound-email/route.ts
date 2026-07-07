@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { inngest } from '@/inngest/client'
 import { extractRequestToken } from '@/lib/requests/inbound-parse'
+import { verifyBodyHmac } from '@/lib/webhooks/verify-signature'
 
 // Gap 8.4 / Core 5 — inbound email webhook. The email provider (Postmark /
 // SendGrid) POSTs parsed messages here. We verify a shared secret, derive the
@@ -30,13 +31,25 @@ function extractToken(to: string): string | null {
 
 export async function POST(req: NextRequest) {
   const secret = process.env.INBOUND_EMAIL_WEBHOOK_SECRET
-  const provided = req.headers.get('x-inbound-secret')
-  if (!secret || provided !== secret) {
+  if (!secret) {
+    return NextResponse.json({ error: 'Webhook secret not configured', code: 'MISCONFIGURED' }, { status: 503 })
+  }
+
+  // Verify an HMAC of the raw body (constant-time) rather than comparing a static
+  // header token — a leaked token can otherwise be replayed to create accounts.
+  const rawBody = await req.text()
+  const signature = req.headers.get('x-inbound-signature')
+  if (!verifyBodyHmac(rawBody, signature, secret)) {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
   }
 
-  const body = await req.json().catch(() => null)
-  const parsed = bodySchema.safeParse(body)
+  let json: unknown
+  try {
+    json = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'Invalid payload', code: 'VALIDATION_ERROR' }, { status: 400 })
+  }
+  const parsed = bodySchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid payload', code: 'VALIDATION_ERROR' }, { status: 400 })
 
   // Always 200 so the provider does not retry; unknown/empty messages are dropped.

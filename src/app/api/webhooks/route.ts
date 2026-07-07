@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
@@ -17,7 +18,7 @@ const createSchema = z.object({
 export async function GET() {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const subs = await prisma.webhookSubscription.findMany({
     where: { entityId },
@@ -40,7 +41,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const body = await req.json().catch(() => null)
   const parsed = createSchema.safeParse(body)

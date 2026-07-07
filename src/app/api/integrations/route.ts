@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/auth-helpers'
+import { getSessionUser } from '@/lib/session'
 import { ok } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
@@ -6,7 +7,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const creds = await prisma.integrationCredential.findMany({
     where: { entityId },

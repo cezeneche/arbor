@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
@@ -18,7 +19,7 @@ export async function POST(
 ) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const userId = (session.user as Record<string, unknown>).id as string
+  const userId = getSessionUser(session).id
   const { id } = await params
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))

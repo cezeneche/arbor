@@ -8,6 +8,7 @@ import { authConfig } from '@/lib/auth.config'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
 import { verifySsoToken } from '@/lib/sso/sso-token'
+import { isNonceValid } from '@/lib/auth/two-factor-nonce'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -55,7 +56,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           request?.headers?.get('x-forwarded-for') ?? null,
           request?.headers?.get('x-real-ip') ?? null,
         )
-        const { allowed } = await checkRateLimit(RATE_LIMITS.login, ip)
+        // Login brute-force gate — fail closed so a limiter outage cannot silently
+        // open password spraying.
+        const { allowed } = await checkRateLimit(RATE_LIMITS.login, ip, { failMode: 'closed' })
         if (!allowed) return null
 
         const user = await prisma.user.findUnique({
@@ -111,17 +114,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return token
       }
 
-      // 2FA upgrade: client called update({ totpVerified: true }) after verifying code
-      if (trigger === 'update' && token.pending2fa && (session as Record<string, unknown>)?.totpVerified) {
+      // 2FA upgrade: the client calls update({ totpVerifiedNonce }) with the nonce
+      // that /api/auth/2fa/complete minted after checking the code. The token only
+      // upgrades if that nonce matches the stored (unexpired) hash — the client can
+      // no longer self-assert verification. Consuming it is atomic and single-use.
+      const presentedNonce = (session as Record<string, unknown>)?.totpVerifiedNonce
+      if (trigger === 'update' && token.pending2fa && typeof presentedNonce === 'string') {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub! },
-          select: { entityId: true, role: true, tokenVersion: true },
+          select: {
+            entityId: true,
+            role: true,
+            tokenVersion: true,
+            twoFactorVerifiedNonce: true,
+            twoFactorVerifiedExpires: true,
+          },
         })
-        if (dbUser) {
-          token.entityId = dbUser.entityId
-          token.role = dbUser.role
-          token.tokenVersion = dbUser.tokenVersion
-          token.pending2fa = undefined
+        if (
+          dbUser &&
+          isNonceValid(
+            { nonceHash: dbUser.twoFactorVerifiedNonce, expiresAt: dbUser.twoFactorVerifiedExpires },
+            presentedNonce,
+          )
+        ) {
+          // Consume the nonce so it cannot be replayed, then upgrade the token.
+          const consumed = await prisma.user.updateMany({
+            where: { id: token.sub!, twoFactorVerifiedNonce: dbUser.twoFactorVerifiedNonce },
+            data: { twoFactorVerifiedNonce: null, twoFactorVerifiedExpires: null },
+          })
+          if (consumed.count > 0) {
+            token.entityId = dbUser.entityId
+            token.role = dbUser.role
+            token.tokenVersion = dbUser.tokenVersion
+            token.pending2fa = undefined
+          }
         }
       }
 

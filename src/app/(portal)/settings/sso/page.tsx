@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
@@ -7,9 +8,9 @@ import { SsoSetup } from './SsoSetup'
 export default async function SsoSettingsPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
-  const role = (session.user as Record<string, unknown>).role as string
+  const role = getSessionUser(session).role
   if (role !== 'ADMIN') redirect('/settings')
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const entity = await prisma.entity.findUnique({
     where: { id: entityId },
