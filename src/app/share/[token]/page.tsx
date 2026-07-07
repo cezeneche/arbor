@@ -1,16 +1,12 @@
 import { prisma } from '@/lib/prisma'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
 import { ShareVerifyButton } from '@/components/ShareVerifyButton'
 import { isShareViewable } from '@/lib/shares/share-status'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
-}
 
 function Unavailable() {
   return (
@@ -58,14 +54,19 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   })
 
   // Log each open — one RecordAccessLog row per record disclosed (method EXPORT).
+  // Throttled per token so a refresh loop can't amplify writes: at most one log
+  // batch per window. Fails open (logs) if the limiter is unavailable.
   if (records.length > 0) {
-    await prisma.recordAccessLog.createMany({
-      data: records.map((r) => ({
-        recordId: r.id,
-        granteeEntityId: `share:${share.id}`,
-        accessMethod: 'EXPORT' as const,
-      })),
-    })
+    const { allowed } = await checkRateLimit(RATE_LIMITS.shareView, share.token)
+    if (allowed) {
+      await prisma.recordAccessLog.createMany({
+        data: records.map((r) => ({
+          recordId: r.id,
+          granteeEntityId: `share:${share.id}`,
+          accessMethod: 'EXPORT' as const,
+        })),
+      })
+    }
   }
 
   return (
