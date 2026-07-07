@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decryptTotpSecret, verifyTotpCode, verifyRecoveryCode, hashRecoveryCode } from '@/lib/auth/totp'
+import { generateVerificationNonce } from '@/lib/auth/two-factor-nonce'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 const bodySchema = z.object({
@@ -25,7 +26,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Anti-brute-force: cap verification attempts per user (6-digit TOTP / recovery codes).
-  const { allowed } = await checkRateLimit(RATE_LIMITS.twoFactor, user.id as string)
+  // This is the only gate on a 6-digit code, so fail closed if the limiter is down.
+  const { allowed } = await checkRateLimit(RATE_LIMITS.twoFactor, user.id as string, { failMode: 'closed' })
   if (!allowed) {
     return NextResponse.json(
       { error: 'Too many attempts. Please wait a few minutes and try again.' },
@@ -50,6 +52,18 @@ export async function POST(req: NextRequest) {
 
   const { code, isRecovery } = body.data
 
+  // Persist a single-use nonce and hand the raw value back. The client replays it
+  // via update({ totpVerifiedNonce }); the jwt callback consumes it to upgrade the
+  // session. This is the only server-verifiable proof the challenge was passed.
+  async function issueVerificationNonce(): Promise<string> {
+    const { nonce, nonceHash, expiresAt } = generateVerificationNonce()
+    await prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorVerifiedNonce: nonceHash, twoFactorVerifiedExpires: expiresAt },
+    })
+    return nonce
+  }
+
   if (isRecovery) {
     // Find a matching unused recovery code
     const all = await prisma.totpRecoveryCode.findMany({
@@ -67,7 +81,7 @@ export async function POST(req: NextRequest) {
     if (consumed.count === 0) {
       return NextResponse.json({ error: 'Recovery code is invalid or has already been used.' }, { status: 400 })
     }
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, nonce: await issueVerificationNonce() })
   }
 
   // Standard TOTP code
@@ -82,5 +96,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Code is incorrect or has expired.' }, { status: 400 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, nonce: await issueVerificationNonce() })
 }

@@ -32,6 +32,10 @@ export const RATE_LIMITS = {
   verifyPublic: { prefix: 'verify-public', limit: 10, window: '1 m' },
   // Gap 6 — keyed by entity (API key): buyer query API budget.
   buyerApi: { prefix: 'buyer-api', limit: 100, window: '1 m' },
+  // Keyed by IP: caps spam to the public institutional enquiry form.
+  institutionalEnquiry: { prefix: 'inst-enquiry', limit: 5, window: '60 m' },
+  // Keyed by share token: collapses repeated views into one access-log write per window.
+  shareView: { prefix: 'share-view', limit: 1, window: '5 m' },
 } as const satisfies Record<string, RateLimitConfig>
 
 let _redis: Redis | null = null
@@ -67,26 +71,43 @@ export interface RateLimitResult {
 }
 
 /**
+ * How to behave when the limiter cannot run (Upstash unconfigured or Redis error).
+ *   'open'   — allow the request (availability over strictness). Default.
+ *   'closed' — deny the request. Use where the limiter is the only brute-force
+ *              gate and a silent bypass is unacceptable (TOTP verify, login).
+ */
+export type RateLimitFailMode = 'open' | 'closed'
+
+export interface CheckRateLimitOptions {
+  failMode?: RateLimitFailMode
+}
+
+/**
  * Check (and consume) one unit of the given limit for `identifier`.
- * Returns { allowed: false } when the caller has exceeded the window.
+ * Returns { allowed: false } when the caller has exceeded the window, or when the
+ * limiter is unavailable and `failMode` is 'closed'.
  */
 export async function checkRateLimit(
   config: RateLimitConfig,
   identifier: string,
+  opts: CheckRateLimitOptions = {},
 ): Promise<RateLimitResult> {
+  const failMode = opts.failMode ?? 'open'
   const limiter = getLimiter(config)
   if (!limiter) {
-    if (process.env.NODE_ENV === 'production') {
-      console.warn(`[rate-limit] Upstash not configured — '${config.prefix}' is not being enforced`)
+    // Missing config is a deploy error on a fail-closed path — surface it loudly.
+    const log = failMode === 'closed' ? console.error : console.warn
+    if (failMode === 'closed' || process.env.NODE_ENV === 'production') {
+      log(`[rate-limit] Upstash not configured — '${config.prefix}' failing ${failMode}`)
     }
-    return { allowed: true, remaining: config.limit }
+    return { allowed: failMode === 'open', remaining: failMode === 'open' ? config.limit : 0 }
   }
   try {
     const { success, remaining } = await limiter.limit(rateLimitKey(config.prefix, identifier))
     return { allowed: success, remaining }
   } catch (e) {
-    // Never let a Redis hiccup take down auth — fail open, but log it.
-    console.error('[rate-limit] check failed, allowing request:', e)
-    return { allowed: true, remaining: config.limit }
+    // A Redis hiccup must not silently drop a fail-closed brute-force gate.
+    console.error(`[rate-limit] check failed for '${config.prefix}', failing ${failMode}:`, e)
+    return { allowed: failMode === 'open', remaining: failMode === 'open' ? config.limit : 0 }
   }
 }

@@ -66,16 +66,19 @@ export default function TwoFactorVerifyPage() {
 
     setLoading(false)
 
+    const data = await res?.json().catch(() => null)
+
     if (res?.ok) {
-      // Upgrade the JWT — the jwt callback rewrites the token with full user data.
-      await update({ totpVerified: true })
+      // Upgrade the JWT by replaying the server-issued nonce. The jwt callback
+      // consumes it and rewrites the token with full user data; without a valid
+      // nonce the session stays pending2fa.
+      await update({ totpVerifiedNonce: data?.nonce })
       // Hard navigation so the middleware sees the upgraded session cookie. A soft
       // router.push() races the cookie write and gets bounced back to /2fa-verify.
       window.location.href = '/dashboard'
       return
     }
 
-    const data = await res?.json().catch(() => null)
     // If the challenge was already completed (e.g. a double submit after success),
     // the user is in fact verified — proceed to the dashboard instead of erroring.
     if (res?.status === 400 && data?.error === 'No 2FA challenge is active.') {
