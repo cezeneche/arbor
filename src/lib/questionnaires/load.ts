@@ -1,4 +1,4 @@
-// Core 1 — Layer 3 adapter between stored DataRecords (held in SI base units)
+// Layer 3 adapter between stored DataRecords (held in SI base units)
 // and the pure prefill function (which sums identical units). Pure: no DB reads,
 // no AI. The only transform is a unit conversion on OUTPUT — explicitly allowed
 // in Layer 3 — so each question sees its records already in its target unit.

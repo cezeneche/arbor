@@ -69,7 +69,7 @@ export default async function SupplyChainPage({
     return { grantorEntityId, grantorEntity: { ...first.grantorEntity, dataRecords: allRecords }, expiringCount }
   })
 
-  // Gap 2 - buyer filter: show only suppliers with expiring/stale records.
+  // buyer filter: show only suppliers with expiring/stale records.
   const visibleSuppliers = expiringOnly ? suppliers.filter((s) => s.expiringCount > 0) : suppliers
   const suppliersWithExpiring = suppliers.filter((s) => s.expiringCount > 0).length
 
@@ -119,7 +119,7 @@ export default async function SupplyChainPage({
         </div>
       </div>
 
-      {/* Gap 2 - filter to suppliers with expiring/stale records */}
+      {/* filter to suppliers with expiring/stale records */}
       {suppliersWithExpiring > 0 && (
         <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[3] }}>
           <Link

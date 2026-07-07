@@ -1,7 +1,7 @@
 import { buildCanonicalMap, canonicalId } from '../entity-canonical'
 import { buildDpGroups, type BenchmarkRow } from '../dp-benchmark-input'
 
-// Upgrade 10 — canonical aggregation units (via Upgrade 5) + DP group building.
+// canonical aggregation units (via entity resolution) + DP group building.
 
 describe('buildCanonicalMap', () => {
   it('collapses a chain of links to the smallest id', () => {

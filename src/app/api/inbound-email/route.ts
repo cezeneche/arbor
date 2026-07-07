@@ -4,11 +4,11 @@ import { inngest } from '@/inngest/client'
 import { extractRequestToken } from '@/lib/requests/inbound-parse'
 import { verifyBodyHmac } from '@/lib/webhooks/verify-signature'
 
-// Gap 8.4 / Core 5 — inbound email webhook. The email provider (Postmark /
+// Inbound email webhook. The email provider (Postmark /
 // SendGrid) POSTs parsed messages here. We verify a shared secret, derive the
 // entity token from the recipient address, and enqueue processing. Two patterns:
-//   upload-<token>@arbor.io   → attachments become documents (Gap 8.4)
-//   requests-<token>@arbor.io → the email body is parsed as a data request (Core 5)
+//   upload-<token>@arbor.io   → attachments become documents
+//   requests-<token>@arbor.io → the email body is parsed as a data request
 const attachmentSchema = z.object({
   name: z.string(),
   contentType: z.string(),
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid payload', code: 'VALIDATION_ERROR' }, { status: 400 })
 
   // Always 200 so the provider does not retry; unknown/empty messages are dropped.
-  // Core 5 — a requests-<token>@ address routes to the data-request handler.
+  // a requests-<token>@ address routes to the data-request handler.
   const requestToken = extractRequestToken(parsed.data.to)
   if (requestToken) {
     const text = [parsed.data.subject, parsed.data.text].filter(Boolean).join('\n\n')

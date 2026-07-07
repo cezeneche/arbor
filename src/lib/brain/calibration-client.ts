@@ -1,4 +1,4 @@
-// TypeScript ↔ brain seam for calibration (Upgrade 1).
+// TypeScript ↔ brain seam for calibration.
 //
 // The offline calibration job reads GroundTruthLabel rows, turns them into
 // grouped samples here, and posts them to the brain's POST /calibration/fit.

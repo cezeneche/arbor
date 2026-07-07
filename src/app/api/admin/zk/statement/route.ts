@@ -7,9 +7,9 @@ import { merkleRoot } from '@/lib/layer2/merkle'
 import { evaluatePredicate, statementDigest, type EvalRecord, type Predicate } from '@/lib/zk/predicate'
 import { PENDING_ENGINE } from '@/lib/zk/proof'
 
-// Upgrade 8 — the ZK predicate statement surface (ADMIN). Given an entity and a
+// the ZK predicate statement surface (ADMIN). Given an entity and a
 // compliance predicate, commit the entity's records with a Merkle root
-// (Upgrade 7) and return the public statement digest a proof would attest to,
+// and return the public statement digest a proof would attest to,
 // plus the admin-only (prover-side) evaluation. This is the "what is proven,
 // against which commitment" layer; the Groth16/Halo2 proving engine is a
 // deferred build (engine: pending). Read-only, off any write path.

@@ -1,4 +1,4 @@
-// TypeScript ↔ brain seam for algebraic constraints + MaxEnt completion (Upgrade 3).
+// TypeScript ↔ brain seam for algebraic constraints + MaxEnt completion.
 //
 // Sends a batch of records (field values + sector) to the brain's
 // /constraints/check and returns per-record violations and completions. Fail-soft

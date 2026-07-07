@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
-// Gap 6.4 — delete a webhook subscription owned by the caller's entity.
+// delete a webhook subscription owned by the caller's entity.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireAdmin()
   if (!session) return response!

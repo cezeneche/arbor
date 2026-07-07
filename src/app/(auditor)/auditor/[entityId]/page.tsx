@@ -7,7 +7,7 @@ import { colours, typography, spacing } from '@/lib/design-system'
 import { assembleAuditPackage } from '@/lib/audit-package/assemble'
 import { AuditPackageView } from '@/components/AuditPackageView'
 
-// Gap 4 — read-only audit package view for an external auditor, scoped to a
+// read-only audit package view for an external auditor, scoped to a
 // single entity+period by their AuditorAccess grant. No actions.
 export default async function AuditorEntityPage({ params }: { params: Promise<{ entityId: string }> }) {
   const { entityId } = await params

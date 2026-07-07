@@ -24,13 +24,13 @@ export const RATE_LIMITS = {
   resetPassword: { prefix: 'reset-pw', limit: 10, window: '60 m' },
   // Keyed by user id: the real anti-brute-force gate for the 6-digit TOTP / recovery codes.
   twoFactor: { prefix: '2fa', limit: 6, window: '10 m' },
-  // Gap 7a — keyed by IP: caps automated account creation.
+  // keyed by IP: caps automated account creation.
   signup: { prefix: 'signup', limit: 5, window: '60 m' },
-  // Gap 7a — keyed by IP: caps probing of public supplier submission links.
+  // keyed by IP: caps probing of public supplier submission links.
   submitToken: { prefix: 'submit-token', limit: 30, window: '10 m' },
-  // Gap 4 — keyed by IP: caps probing of the public audit-package verify endpoint.
+  // keyed by IP: caps probing of the public audit-package verify endpoint.
   verifyPublic: { prefix: 'verify-public', limit: 10, window: '1 m' },
-  // Gap 6 — keyed by entity (API key): buyer query API budget.
+  // keyed by entity (API key): buyer query API budget.
   buyerApi: { prefix: 'buyer-api', limit: 100, window: '1 m' },
   // Keyed by IP: caps spam to the public institutional enquiry form.
   institutionalEnquiry: { prefix: 'inst-enquiry', limit: 5, window: '60 m' },

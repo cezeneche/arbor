@@ -1,4 +1,4 @@
-// TypeScript ↔ brain seam for differentially-private benchmarks (Upgrade 10).
+// TypeScript ↔ brain seam for differentially-private benchmarks.
 //
 // Sends per-group aggregation values (already reduced to one value per canonical
 // entity) to the brain's /privacy/benchmark and returns ε-DP releases. Fail-soft

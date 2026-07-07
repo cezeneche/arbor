@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-// Gap 3 — verifier portal shell. Verifiers belong to no entity; this is a
+// verifier portal shell. Verifiers belong to no entity; this is a
 // deliberately minimal chrome, separate from the entity portal Nav.
 export default async function VerifierLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()

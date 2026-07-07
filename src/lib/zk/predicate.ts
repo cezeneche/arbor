@@ -1,7 +1,7 @@
-// Upgrade 8 — zero-knowledge predicate compliance, statement layer. Pure crypto.
+// zero-knowledge predicate compliance, statement layer. Pure crypto.
 //
-// A ZK proof needs three things: a public commitment (the Merkle root from
-// Upgrade 7), a public statement (which predicate, with what thresholds), and a
+// A ZK proof needs three things: a public commitment (the Merkle root), a
+// public statement (which predicate, with what thresholds), and a
 // private witness (the records). This module is the commitment/statement half —
 // the part that is the same whatever proving system generates the proof. It
 // defines the predicate templates the plan calls for (numeric inequality, set
@@ -88,7 +88,7 @@ export function evaluatePredicate(predicate: Predicate, records: EvalRecord[]): 
 }
 
 export interface PredicateStatement {
-  /** The public commitment the predicate is proven against (Upgrade 7). */
+  /** The public commitment the predicate is proven against. */
   merkleRoot: string
   predicate: Predicate
 }

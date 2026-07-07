@@ -110,7 +110,7 @@ export async function POST(
 
   // Single serializable transaction: all records + supersessions + document status.
   // If any field write fails the entire confirmation rolls back — no partial state.
-  // Gap 5 — scopes whose prior records were superseded, so we can notify buyers.
+  // scopes whose prior records were superseded, so we can notify buyers.
   const supersededScopes: { domain: string; periodStart: Date; periodEnd: Date }[] = []
 
   const createdRecords = await runSerializable(async (tx) => {
@@ -172,7 +172,7 @@ export async function POST(
     (e) => console.error('[confirm] runCrossValidation failed:', e)
   )
 
-  // Upgrade 3 — algebraic-constraint intake flagging: raise non-blocking
+  // algebraic-constraint intake flagging: raise non-blocking
   // ValidationFlags for physically impossible / fraudulent records (mass
   // balance, non-negativity, implausible sector intensity). Post-commit,
   // fail-soft — the brain must never block or roll back a confirmation.
@@ -180,7 +180,7 @@ export async function POST(
     (e) => console.error('[confirm] runConstraintValidation failed:', e)
   )
 
-  // Upgrade 1 — capture calibration ground truth: compare what the reviewer
+  // capture calibration ground truth: compare what the reviewer
   // confirmed against what the model extracted, one GroundTruthLabel per
   // AI-extracted field. Best-effort and post-commit — training signal must
   // never roll back or block a confirmation.
@@ -232,7 +232,7 @@ export async function POST(
     }
   }
 
-  // Gap 5 — notify any buyer with active access that a record they can see was
+  // notify any buyer with active access that a record they can see was
   // corrected. Deduplicated per grantee+domain. Non-fatal.
   if (supersededScopes.length > 0) {
     try {
@@ -254,7 +254,7 @@ export async function POST(
               periodEnd: scope.periodEnd.toISOString().slice(0, 10),
             },
           })
-          // Gap 6 — webhook to the buyer for the supersession.
+          // webhook to the buyer for the supersession.
           await dispatchWebhook(granteeEntityId, 'record.superseded', {
             supplierEntityId: entityId,
             domain: scope.domain,
@@ -268,7 +268,7 @@ export async function POST(
     }
   }
 
-  // Gap 6 — fire record.certified webhooks for newly written Tier A records to
+  // fire record.certified webhooks for newly written Tier A records to
   // any buyer with active access covering that scope.
   if (trustTier === 'A' && preparedFields.length > 0) {
     try {

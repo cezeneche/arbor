@@ -2,7 +2,7 @@
 import { prisma } from '@/lib/prisma'
 import type { AccessMethod } from '@prisma/client'
 
-// Gap 5.2 — record that a grantee viewed specific records. Best-effort; logging
+// record that a grantee viewed specific records. Best-effort; logging
 // failures never block the read. Skips when there are no records.
 export async function logRecordAccess(
   recordIds: string[],
@@ -19,7 +19,7 @@ export async function logRecordAccess(
   }
 }
 
-// Gap 5 — entities with an active grant from `grantorEntityId` that covers the
+// entities with an active grant from `grantorEntityId` that covers the
 // given domain and overlaps the given period. A grant with null domain/period is
 // treated as covering everything (matches the supply-chain filtering semantics).
 export async function findActiveGranteeEntityIds(

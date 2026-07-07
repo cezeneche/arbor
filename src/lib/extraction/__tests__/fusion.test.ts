@@ -1,7 +1,7 @@
 import { collectFieldSamples, buildFusedFields, type FusedFieldResult } from '../fusion'
 import type { ExtractedFieldResult } from '../types'
 
-// Upgrade 1 — self-consistency confidence, TS side. Given k extraction runs of
+// self-consistency confidence, TS side. Given k extraction runs of
 // the same document, collectFieldSamples lines up each field's value across the
 // runs (the payload sent to the brain's /fusion/fields), and buildFusedFields
 // rebuilds the extracted fields using the consensus value and the *fused*

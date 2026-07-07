@@ -12,7 +12,7 @@ const bodySchema = z.object({
   expiresAt: z.string().datetime(),
 })
 
-// Gap 4 — an admin grants a scoped, time-limited read-only audit access.
+// an admin grants a scoped, time-limited read-only audit access.
 export async function POST(req: NextRequest) {
   const { session, response } = await requireAdmin()
   if (!session) return response!

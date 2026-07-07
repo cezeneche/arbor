@@ -6,7 +6,7 @@ import { BrainUnavailableError } from '../calibration-client'
 import { setBrainMetricSink, type BrainCallMetric } from '../metrics'
 import type { ResolutionEntityName, ResolutionPair } from '../types'
 
-// Upgrade 5 — the resolution client obeys the same brain-seam invariant as the
+// the resolution client obeys the same brain-seam invariant as the
 // calibration/fusion clients: down ⇒ degrade, never block. Every failure mode
 // throws BrainUnavailableError and emits exactly one metric.
 

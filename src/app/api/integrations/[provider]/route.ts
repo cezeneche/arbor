@@ -17,7 +17,7 @@ function parseProvider(raw: string): IntegrationProvider | null {
   return (PROVIDERS as readonly string[]).includes(upper) ? (upper as IntegrationProvider) : null
 }
 
-// Gap 9.6 — connect (store encrypted credentials).
+// connect (store encrypted credentials).
 export async function POST(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
   return ok({ ok: true, provider }, 201)
 }
 
-// Gap 9.6 — disconnect (delete credentials).
+// disconnect (delete credentials).
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { session, response } = await requireAdmin()
   if (!session) return response!

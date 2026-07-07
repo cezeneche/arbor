@@ -1,6 +1,6 @@
 import { colours, typography } from '@/lib/design-system'
 
-// Gap 6.5 — public API reference. Gates enterprise buyer adoption.
+// public API reference. Gates enterprise buyer adoption.
 const container = { maxWidth: '900px', margin: '0 auto', padding: '0 40px' }
 const h2 = { fontSize: '20px', fontWeight: typography.weights.medium, color: colours.textPrimary, letterSpacing: typography.tracking.tight, margin: '40px 0 12px' }
 const h3 = { fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: '24px 0 8px' }

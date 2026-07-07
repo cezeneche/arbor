@@ -1,6 +1,6 @@
 import { summariseCorrections, type ReviewLabel } from '../correction-summary'
 
-// Upgrade 12 — correction-agency reinforcement. Every human review decision is a
+// correction-agency reinforcement. Every human review decision is a
 // GroundTruthLabel; this counts them so the UI can reflect the user's vigilance
 // back to them ("your corrections improve every future extraction"). Pure.
 

@@ -4,7 +4,7 @@ import { verifyChain, type AuditPayload } from '@/lib/layer2/audit-chain'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
 
-// Gap 4 — public, unauthenticated audit-package verification.
+// public, unauthenticated audit-package verification.
 // An external auditor holding a generated package can confirm its integrity hash
 // against this endpoint without an Arbor account. Returns no records or PII.
 // Always responds 200 (never reveals whether an entityId exists via status code).

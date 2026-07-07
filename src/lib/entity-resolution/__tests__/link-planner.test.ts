@@ -6,7 +6,7 @@ import {
 } from '../link-planner'
 import type { ScoredPair } from '@/lib/brain/types'
 
-// Upgrade 5 — the planner decides which scored pairs become persisted candidate
+// the planner decides which scored pairs become persisted candidate
 // links. Two rules matter: only match/review pairs are persisted (distinct is
 // dropped), and a human decision is never resurfaced — a CONFIRMED or REJECTED
 // link is left alone on re-runs, only PENDING links refresh. Pure — the cron

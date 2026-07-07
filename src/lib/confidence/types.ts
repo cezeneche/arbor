@@ -1,4 +1,4 @@
-// Upgrade 1 — Bayesian fusion + calibration.
+// Bayesian fusion + calibration.
 //
 // The calibrated posterior that rides alongside every field's stored value.
 // Persisted as the JSONB `confidencePosterior` sidecar on DataRecord. The raw

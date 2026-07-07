@@ -1,4 +1,4 @@
-// Core 1 — Questionnaire pre-fill engine.
+// Questionnaire pre-fill engine.
 // Pure function: (template, records) → PrefilledAnswer[]. No DB, no AI, no
 // conversion (the Layer-3 loader presents records already in each question's
 // target unit). Assembly is a transparent sum of identical-unit records — never

@@ -1,4 +1,4 @@
-// Core 4 — weekly review digest. Instead of nagging per document, once a week
+// weekly review digest. Instead of nagging per document, once a week
 // each entity gets a single email: "N values to check — about M minutes", linking
 // to the unified /review queue. Entities with nothing outstanding get no email.
 import { inngest } from '@/inngest/client'

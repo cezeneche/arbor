@@ -17,7 +17,7 @@ describe('summariseRecordQuality', () => {
   it('returns all zeros for no records', () => {
     expect(summariseRecordQuality([], compulsory)).toEqual({
       total: 0, verified: 0, declared: 0, estimated: 0, missingCompulsoryFields: 0, expiringSoon: 0,
-      // Upgrade 6 — an empty set makes no tier claim.
+      // an empty set makes no tier claim.
       tierComposition: {
         meet: null, total: 0,
         counts: { A: 0, B: 0, C: 0 },

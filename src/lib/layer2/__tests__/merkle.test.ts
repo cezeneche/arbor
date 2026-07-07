@@ -6,7 +6,7 @@ import {
   verifyInclusionProof,
 } from '../merkle'
 
-// Upgrade 7 — Merkle-DAG audit structure.
+// Merkle-DAG audit structure.
 //
 // The linear HMAC chain proves tamper-evidence at write time; the Merkle tree
 // is the additive commitment that makes single-record proofs shareable. Leaves

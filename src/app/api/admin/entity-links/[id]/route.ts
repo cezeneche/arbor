@@ -5,11 +5,11 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
-// Upgrade 5 — a human resolves a candidate link (ADMIN). Confirm or reject only;
+// a human resolves a candidate link (ADMIN). Confirm or reject only;
 // a decision is terminal, so a link can only be acted on while PENDING. This
 // records the decision on the edge — it never merges or rewrites the entities,
 // preserving record immutability and the audit chain. A CONFIRMED link is the
-// authoritative "same entity" signal downstream consumers (and Upgrade 4's
+// authoritative "same entity" signal downstream consumers (and the property
 // graph) rely on.
 const bodySchema = z.object({ action: z.enum(['confirm', 'reject']) })
 

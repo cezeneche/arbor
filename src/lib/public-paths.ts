@@ -25,7 +25,7 @@ const PUBLIC_PREFIXES = [
   // Scoped supplier/buyer entry links
   '/submit',
   '/share',
-  // Upgrade 7 — offline Merkle inclusion verifier (client-only, no data fetched)
+  // offline Merkle inclusion verifier (client-only, no data fetched)
   '/verify-merkle',
   // Self-authenticating / public API routes
   '/api/legal',

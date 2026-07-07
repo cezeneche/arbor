@@ -109,7 +109,7 @@ describe('computeSectorBenchmarks', () => {
     expect(r.tierAPercent).toBe(80)
   })
 
-  it('carries the lattice tier composition for the benchmark aggregate (Upgrade 6)', () => {
+  it('carries the lattice tier composition for the benchmark aggregate', () => {
     const tierARecords = makeRecords(8, 100)
     const tierBRecords = makeRecords(2, 100).map((r, i) => ({
       ...r,

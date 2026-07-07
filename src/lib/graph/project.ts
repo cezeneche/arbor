@@ -1,4 +1,4 @@
-// Upgrade 4 — property graph, projection layer. Pure: no DB, no network, no
+// property graph, projection layer. Pure: no DB, no network, no
 // store dependency.
 //
 // Arbor's relational store already encodes relationships as foreign keys; this

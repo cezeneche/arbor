@@ -1,6 +1,6 @@
 import { computeVerificationSignature, computePackageHash } from '../verification-signature'
 
-// Gap 3/4 — cryptographic signing of verification artefacts and audit packages.
+// cryptographic signing of verification artefacts and audit packages.
 // Deterministic HMAC over a stable serialisation; secret never leaves the server.
 
 const ORIGINAL_SECRET = process.env.AUDIT_CHAIN_SECRET

@@ -22,7 +22,7 @@ function Status({ message, error }: { message: string; error: boolean }) {
   )
 }
 
-// Gap 10 — completes SSO by exchanging the one-time token for a NextAuth session.
+// completes SSO by exchanging the one-time token for a NextAuth session.
 function SsoCompleteInner() {
   const router = useRouter()
   const params = useSearchParams()

@@ -1,7 +1,7 @@
 import { evaluateAdmissibility } from '../admissibility'
 import type { ExtractedFieldResult } from '../types'
 
-// Gap 1 — Layer 1 confidence calibration.
+// Layer 1 confidence calibration.
 // Claude is systematically over-confident on non-English and degraded documents.
 // The threshold check applies a penalty so borderline fields are flagged for review.
 // The penalty is applied only for the threshold comparison — the stored

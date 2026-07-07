@@ -4,7 +4,7 @@ import {
   buildQualityAssessmentPrompt,
 } from '../prompts'
 
-// Gap 1 — Layer 1 multilingual + degraded-document handling.
+// Layer 1 multilingual + degraded-document handling.
 // These are pure prompt-construction functions; no AI call is made here.
 
 describe('buildExtractionPrompt — language awareness', () => {

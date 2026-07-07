@@ -14,7 +14,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
-    // Gap 10 — SSO sign-in: a one-time signed token minted by the WorkOS callback.
+    // SSO sign-in: a one-time signed token minted by the WorkOS callback.
     Credentials({
       id: 'workos',
       name: 'WorkOS SSO',
@@ -67,7 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         })
 
         if (!user || !user.passwordHash) return null
-        // Gap 10 — deprovisioned (SCIM-disabled) accounts cannot sign in.
+        // deprovisioned (SCIM-disabled) accounts cannot sign in.
         if (!user.isActive) return null
         const valid = await compare(parsed.data.password, user.passwordHash)
         if (!valid) return null

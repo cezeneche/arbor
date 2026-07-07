@@ -1,6 +1,6 @@
 import { mapCdsDeclarations, mapSapMaterialDocs, mapNetSuiteItemReceipts } from '../mappers'
 
-// Gap 9 — pure mapping from provider payloads to Arbor integration records.
+// pure mapping from provider payloads to Arbor integration records.
 describe('mapCdsDeclarations', () => {
   it('maps HMRC CDS declarations to LOGISTICS weight records', () => {
     const out = mapCdsDeclarations({

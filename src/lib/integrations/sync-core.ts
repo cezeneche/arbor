@@ -1,4 +1,4 @@
-// Gap 9 — write integration-sourced records as Tier B / SYSTEM_INTEGRATION.
+// write integration-sourced records as Tier B / SYSTEM_INTEGRATION.
 // A source document submitted later upgrades them to Tier A via the tier
 // upgrade pathway. Deduplicates by sourceRef stored in sourceText.
 import { prisma } from '@/lib/prisma'

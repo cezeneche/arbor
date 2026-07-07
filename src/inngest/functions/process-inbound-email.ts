@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { put } from '@vercel/blob'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 
-// Gap 8.4 — process an inbound email forwarded by the email provider (Postmark /
+// process an inbound email forwarded by the email provider (Postmark /
 // SendGrid inbound parse). Attachments become Document records and are sent
 // through the standard extraction pipeline. Unknown tokens are silently dropped
 // to prevent enumeration.

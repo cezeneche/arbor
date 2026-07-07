@@ -8,7 +8,7 @@ import {
   type RankableField,
 } from '../information-gain'
 
-// Upgrade 2 — active-learning review ranking. Order which field the human should
+// active-learning review ranking. Order which field the human should
 // confirm next by expected information gain: how uncertain we are about it
 // (entropy of its correctness) weighted by how much it matters (compulsory >
 // optional; flagged matters more). Fields we're confident about AND that don't

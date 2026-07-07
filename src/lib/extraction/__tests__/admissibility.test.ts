@@ -33,7 +33,7 @@ function fullElectricityBillFields(overrides: Record<string, string | null> = {}
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
 
-describe('evaluateAdmissibility  -  generic (Core 3, schema-on-read)', () => {
+describe('evaluateAdmissibility  -  generic (schema-on-read)', () => {
   it('OTHER document type with arbitrary fields → Tier B, no critical flags', () => {
     const result = evaluateAdmissibility(
       'OTHER',

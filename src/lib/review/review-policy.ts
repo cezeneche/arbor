@@ -1,4 +1,4 @@
-// Core 4 — Batched review policy. Pure: no DB, no AI, no side effects.
+// Batched review policy. Pure: no DB, no AI, no side effects.
 // Decides which documents may be auto-accepted (low-stakes) versus which must
 // still block on per-document review (high-stakes), and the maths behind the
 // weekly review digest.

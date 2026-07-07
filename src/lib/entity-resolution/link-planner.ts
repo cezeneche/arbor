@@ -1,4 +1,4 @@
-// Upgrade 5 — entity-resolution link planner. Pure: no DB, no network.
+// entity-resolution link planner. Pure: no DB, no network.
 //
 // Given the brain's scored candidate pairs and the links that already exist,
 // decide what to persist. Two invariants:

@@ -26,7 +26,7 @@ export interface AdmissibilityResult {
   criticalCount: number
 }
 
-// Gap 1 — Layer 1 calibration inputs. Claude reports systematically higher
+// Layer 1 calibration inputs. Claude reports systematically higher
 // confidence on English, clean documents than its true accuracy warrants on
 // foreign-language or degraded scans. We subtract a small penalty before the
 // threshold comparison so borderline fields are routed to human review. The
@@ -99,7 +99,7 @@ export function evaluateAdmissibility(
     }
   }
 
-  // Low confidence — with Gap 1 calibration penalty applied to the comparison only.
+  // Low confidence — with the calibration penalty applied to the comparison only.
   const penalty = confidencePenalty(calibration)
   for (const f of extractedFields) {
     const adjusted = f.confidenceScore - penalty
@@ -374,7 +374,7 @@ export function evaluateAdmissibility(
   }
 
   const criticalCount = flags.filter((f) => f.severity === 'CRITICAL').length
-  // Core 3 — documents with no admissibility spec (OTHER / unknown / generic) and
+  // documents with no admissibility spec (OTHER / unknown / generic) and
   // supplier questionnaires default to Tier B: there is no spec to verify against.
   const isGeneric = fieldDefs.length === 0
   const tier: TrustTierResult =

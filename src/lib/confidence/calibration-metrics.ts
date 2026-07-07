@@ -1,4 +1,4 @@
-// Upgrade 1 — measurement loop. Pure: no DB, no network.
+// measurement loop. Pure: no DB, no network.
 //
 // The brain fits calibration and returns per-group ECE / Brier / reliability
 // each run, but nothing was reading them: the calibration machine was producing

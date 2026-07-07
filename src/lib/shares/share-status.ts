@@ -1,4 +1,4 @@
-// Core 2 — pure share-lifecycle logic. No DB, no side effects. A share is
+// pure share-lifecycle logic. No DB, no side effects. A share is
 // viewable only while active; revoked or expired shares must reveal no data.
 
 export type ShareState = 'active' | 'revoked' | 'expired'

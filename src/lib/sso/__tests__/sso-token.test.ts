@@ -1,6 +1,6 @@
 import { mintSsoToken, verifySsoToken } from '../sso-token'
 
-// Gap 10 — one-time signed token bridging the WorkOS callback to the NextAuth
+// one-time signed token bridging the WorkOS callback to the NextAuth
 // session. HMAC-signed with an expiry; tamper- and replay-window-bounded.
 const ORIGINAL = process.env.NEXTAUTH_SECRET
 beforeAll(() => { process.env.NEXTAUTH_SECRET = 'test-nextauth-secret' })

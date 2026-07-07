@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-// Gap 3 — inline verify / reject actions. No modal (design rule); the reject
+// inline verify / reject actions. No modal (design rule); the reject
 // note field expands inline.
 export function VerifyActions({ assignmentId }: { assignmentId: string }) {
   const router = useRouter()

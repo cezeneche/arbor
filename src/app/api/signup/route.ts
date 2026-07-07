@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       sector,
       country,
       entityType,
-      // Gap 8.4 — email-to-upload token: upload-<token>@arbor.io
+      // email-to-upload token: upload-<token>@arbor.io
       uploadEmailToken: randomBytes(8).toString('hex'),
     },
   })

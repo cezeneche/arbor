@@ -5,7 +5,7 @@ import {
 } from '../calibration-metrics'
 import type { GroupCalibration } from '@/lib/brain/types'
 
-// Upgrade 1 — measurement loop. Turn the brain's per-group calibration report
+// measurement loop. Turn the brain's per-group calibration report
 // into persistable headline metrics and evaluate the plan's kill signal:
 // ECE < 5% for the three kill-signal field types (supplier identity, mass,
 // emissions intensity), judged only once a group has enough labels to trust.

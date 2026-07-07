@@ -1,6 +1,6 @@
 import { buildCertificateClaims, type RawClaim } from '../build-claims'
 
-// Upgrade 9 — one claim per (reference, claimant): the same certificate re-uploaded
+// one claim per (reference, claimant): the same certificate re-uploaded
 // by one entity counts once; the same certificate under two entities counts twice
 // (the double-counting signal).
 

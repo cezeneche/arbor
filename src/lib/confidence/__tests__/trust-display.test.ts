@@ -1,7 +1,7 @@
 import { trustDisplay, TRUST_HIGH, TRUST_MODERATE, WIDE_INTERVAL } from '../trust-display'
 import type { ConfidencePosterior } from '../types'
 
-// Upgrade 12 — miscalibration-first UX. The pure classifier every field-level UI
+// miscalibration-first UX. The pure classifier every field-level UI
 // consumes: it turns a field's confidence state into a display band, and decides
 // when a field must visually break the user's scanning pattern. It prefers the
 // *calibrated* posterior over the raw model score, and treats an honest wide

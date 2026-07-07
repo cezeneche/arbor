@@ -1,4 +1,4 @@
-// Label capture from the review flow (Upgrade 1, minimal slice). Pure: no DB.
+// Label capture from the review flow. Pure: no DB.
 //
 // At document confirmation we compare each field the reviewer confirmed against
 // what the model originally extracted, emitting one GroundTruthLabel per
@@ -18,7 +18,7 @@ export interface ExtractedFieldLite {
   /** The model's uncalibrated score for this field at extraction time. */
   confidenceScore: number
   /** How much the field matters downstream — needed to reproduce the review-time
-   *  information gain the field was ranked by (Upgrade 2 A/B instrumentation). */
+   *  information gain the field was ranked by. */
   admissibility: Admissibility
   flagged: boolean
 }

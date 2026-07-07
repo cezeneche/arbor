@@ -13,7 +13,7 @@ const createSchema = z.object({
   domain: z.string().optional(),
   periodStart: z.string().datetime().optional(),
   periodEnd: z.string().datetime().optional(),
-  // Gap 5.4 — the supplier must acknowledge the data-use consent statement.
+  // the supplier must acknowledge the data-use consent statement.
   consent: z.literal(true),
 })
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Gap 5.4 — record the consent acknowledgement in the audit chain. recordId is
+  // record the consent acknowledgement in the audit chain. recordId is
   // namespaced 'consent_' so the chain-verify route treats it as a synthetic entry.
   try {
     const nowIso = new Date().toISOString()
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     payload: { grantId: grant.id, grantorEntityId: entityId },
   }).catch(e => console.error('[grants] sendNotification failed:', e))
 
-  // Gap 6 — webhook to the buyer that access was granted.
+  // webhook to the buyer that access was granted.
   await dispatchWebhook(granteeEntityId, 'access.granted', {
     grantId: grant.id,
     grantorEntityId: entityId,

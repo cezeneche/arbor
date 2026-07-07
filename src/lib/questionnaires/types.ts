@@ -1,4 +1,4 @@
-// Core 1 — Questionnaire pre-fill engine.
+// Questionnaire pre-fill engine.
 // Type model only. No DB, no AI, no side effects. Shared by the pure prefill
 // function (Layer 3 logic), the templates, the API loader, and the UI.
 

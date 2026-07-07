@@ -1,4 +1,4 @@
-// Gap 6 — fan a domain event out to the webhook subscriptions that should
+// fan a domain event out to the webhook subscriptions that should
 // receive it, enqueuing one Inngest delivery per subscription.
 import { prisma } from '@/lib/prisma'
 import { inngest } from '@/inngest/client'

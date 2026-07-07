@@ -3,7 +3,7 @@ import { ok } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { KILL_SIGNAL_GROUPS, ECE_KILL_THRESHOLD } from '@/lib/confidence/calibration-metrics'
 
-// Upgrade 1 — measurement loop, monitoring surface. Internal (ADMIN only).
+// measurement loop, monitoring surface. Internal (ADMIN only).
 // Reads the persisted calibration metrics so the headline ECE / Brier are
 // observable over time and the kill signal is watchable: is the calibration ECE
 // under 5% for supplier identity, mass, and emissions intensity? Read-only.

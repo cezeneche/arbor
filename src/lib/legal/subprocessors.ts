@@ -1,4 +1,4 @@
-// Gap 7.1 — sub-processor list (DPA appendix). Update DPA_VERSION whenever this
+// sub-processor list (DPA appendix). Update DPA_VERSION whenever this
 // list changes; buyers may have signed a specific version.
 export const DPA_VERSION = 'v1'
 export const DPA_LAST_UPDATED = '19 June 2026'

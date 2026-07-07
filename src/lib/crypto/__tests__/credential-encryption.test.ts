@@ -1,6 +1,6 @@
 import { encryptSecret, decryptSecret } from '../credential-encryption'
 
-// Gap 6/9 — reversible encryption at rest for secrets that must be used later
+// reversible encryption at rest for secrets that must be used later
 // (webhook signing secrets, integration credentials). AES-256-GCM.
 const ORIGINAL = process.env.INTEGRATION_ENCRYPTION_KEY
 beforeAll(() => {

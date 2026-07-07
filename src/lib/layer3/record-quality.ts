@@ -19,7 +19,7 @@ export type RecordQualitySummary = {
   estimated: number // Tier C
   missingCompulsoryFields: number
   expiringSoon: number
-  // Upgrade 6 — the aggregate's semilattice meet + tier distribution, so any
+  // the aggregate's semilattice meet + tier distribution, so any
   // composite view of this record set carries an honest, defined tier.
   tierComposition: TierComposition
 }

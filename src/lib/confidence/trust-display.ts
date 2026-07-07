@@ -1,4 +1,4 @@
-// Upgrade 12 — miscalibration-first UX, display classifier. Pure: no DB, no React.
+// miscalibration-first UX, display classifier. Pure: no DB, no React.
 //
 // Skitka's finding is the whole reason this upgrade exists: miscalibrated trust
 // is worse than no automation. Every other upgrade produces calibrated numbers;
@@ -7,7 +7,7 @@
 // field can never accidentally render identically to a high-confidence one.
 //
 // Two principles it encodes:
-//   1. Prefer the *calibrated* posterior (Upgrade 1) over the raw model score —
+//   1. Prefer the *calibrated* posterior over the raw model score —
 //      the calibrated number is the one empirically tied to real accuracy.
 //   2. Honest uncertainty counts: a high point estimate with a wide credible
 //      interval (e.g. the n=1 case) is not trustworthy, so it is downgraded and

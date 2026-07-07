@@ -1,18 +1,18 @@
 import { buildReviewLabels } from '../review-capture'
 import { fieldInformation } from '@/lib/review/information-gain'
 
-// Label capture (Upgrade 1 slice + Upgrade 2 A/B instrumentation). At document
+// Label capture. At document
 // confirmation the reviewer's confirmed values are compared against what the model
 // originally extracted, producing one GroundTruthLabel per AI-extracted field.
-// This is the pure assembly step — no DB — that the confirm route persists
+// This is the pure assembly step â no DB â that the confirm route persists
 // best-effort.
 //
 // Crucially it captures *every* reviewed AI field, not just the numeric ones that
 // become DataRecords: the #1 kill-signal field type (supplier identity) is a
 // string field that never becomes a record, so its recordId is null.
 //
-// Upgrade 2: each label also carries the field's expected information gain and
-// low-information verdict — the exact quantities the review UI ranked by — so the
+// Each label also carries the field’s expected information gain and
+// low-information verdict â the exact quantities the review UI ranked by â so the
 // active-learning kill-signal (do ranked-high fields get corrected at a higher
 // rate than random?) is measurable once reviewer traffic accumulates.
 
@@ -55,7 +55,7 @@ describe('buildReviewLabels', () => {
     })
   })
 
-  it('skips confirmed fields the model never extracted (manual entry — no AI signal)', () => {
+  it('skips confirmed fields the model never extracted (manual entry â no AI signal)', () => {
     const labels = buildReviewLabels({
       ...base,
       extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.8, admissibility: 'COMPULSORY', flagged: false }],
@@ -76,7 +76,7 @@ describe('buildReviewLabels', () => {
     expect(labels[0].recordId).toBeNull()
   })
 
-  it('records the field’s expected information gain (Upgrade 2 A/B signal), matched to the shared ranking helper', () => {
+  it('records the fieldâs expected information gain, matched to the shared ranking helper', () => {
     const labels = buildReviewLabels({
       ...base,
       extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.7, admissibility: 'COMPULSORY', flagged: false }],
@@ -85,7 +85,7 @@ describe('buildReviewLabels', () => {
     const expected = fieldInformation({ fieldName: 'supplier_name', confidence: 0.7, admissibility: 'COMPULSORY', flagged: false, hasValue: true })
     expect(labels[0].expectedInformationGain).toBe(expected.gain)
     expect(labels[0].lowInformation).toBe(expected.lowInformation)
-    expect(labels[0].lowInformation).toBe(false) // compulsory + uncertain → high info
+    expect(labels[0].lowInformation).toBe(false) // compulsory + uncertain â high info
   })
 
   it('marks a confident, unimportant, present, unflagged field low-information', () => {

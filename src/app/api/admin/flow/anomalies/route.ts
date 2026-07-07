@@ -5,7 +5,7 @@ import { buildCertificateClaims, type RawClaim } from '@/lib/flow/build-claims'
 import { checkFlow } from '@/lib/brain/flow-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 
-// Upgrade 9 — cross-tenant flow-consistency anomaly scan (ADMIN). The fraud
+// cross-tenant flow-consistency anomaly scan (ADMIN). The fraud
 // signal only Arbor can see: a single-use reference (certificate, bill of lading,
 // customs declaration) claimed by more than one entity — double counting /
 // certificate laundering. Reads across all tenants' extractions, so it is

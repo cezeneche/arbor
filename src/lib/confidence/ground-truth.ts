@@ -1,4 +1,4 @@
-// Upgrade 1 — calibration training signal (pure; no DB, no AI, no side effects).
+// calibration training signal (pure; no DB, no AI, no side effects).
 //
 // Every human review decision on a single field becomes one labelled datapoint:
 // the model's confidence at extraction time paired with whether its extracted
@@ -28,7 +28,7 @@ export interface ReviewFieldDecision {
   confirmedValue: string | null
   /** The uncalibrated model score for this field at extraction time. */
   confidenceAtExtraction: number
-  /** Upgrade 2 A/B: the expected information gain the review UI ranked this field
+  /** The expected information gain the review UI ranked this field
    *  by, and whether it was de-emphasised as low-information. Null when unknown. */
   expectedInformationGain?: number | null
   lowInformation?: boolean | null
@@ -46,7 +46,7 @@ export interface GroundTruthLabelInput {
   wasCorrect: boolean
   confidenceAtExtraction: number
   source: GroundTruthSource
-  /** Upgrade 2 A/B instrumentation — the ranking signal, correlated later with wasCorrect. */
+  /** The ranking signal, correlated later with wasCorrect. */
   expectedInformationGain: number | null
   lowInformation: boolean | null
 }

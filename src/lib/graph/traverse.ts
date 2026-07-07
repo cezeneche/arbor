@@ -1,4 +1,4 @@
-// Upgrade 4 — property graph, traversal. Pure: no DB, no network.
+// property graph, traversal. Pure: no DB, no network.
 //
 // Breadth-first neighbourhood over the persisted edges: everything reachable
 // from a start node within N hops. This is the multi-hop capability the graph

@@ -1,10 +1,10 @@
-// Upgrade 12 — correction-agency reinforcement. Pure: no DB, no React.
+// correction-agency reinforcement. Pure: no DB, no React.
 //
 // Skitka's automation-bias failure mode is users deferring to the machine. The
 // antidote the plan calls for is reflecting the user's own vigilance back to
 // them: every value they corrected is proof their review mattered — and it did,
 // because each correction is a GroundTruthLabel that feeds the calibration
-// pipeline (Upgrade 1). This counts those decisions for that surface.
+// pipeline. This counts those decisions for that surface.
 
 import type { GroundTruthSource } from '@prisma/client'
 

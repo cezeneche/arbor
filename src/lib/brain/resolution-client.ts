@@ -1,4 +1,4 @@
-// TypeScript ↔ brain seam for entity-resolution scoring (Upgrade 5).
+// TypeScript ↔ brain seam for entity-resolution scoring.
 //
 // The blocking layer (src/lib/entity-resolution/blocking.ts) reduces the corpus
 // to candidate pairs; this posts the normalised names + pairs to the brain's

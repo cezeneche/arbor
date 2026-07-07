@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { nodeId, type GraphEdgeType } from '@/lib/graph/project'
 import { neighbourhood, type TraversableEdge } from '@/lib/graph/traverse'
 
-// Upgrade 4 — the multi-hop query surface (ADMIN). Given a start entity, returns
+// the multi-hop query surface (ADMIN). Given a start entity, returns
 // every node reachable within N hops of the property graph — the question a
 // relational join can't answer cleanly. Read-only over the derived graph.
 //

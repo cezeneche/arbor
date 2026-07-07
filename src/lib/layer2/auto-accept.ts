@@ -1,4 +1,4 @@
-// Core 4 — Layer 2 auto-accept writer for low-stakes documents.
+// Layer 2 auto-accept writer for low-stakes documents.
 // Writes numeric extracted fields as Tier B (Declared) DataRecords immediately,
 // so a record exists without forcing per-document review. No AI here; this is a
 // pure Layer-2 write through the shared audit-chained record writer. The weekly

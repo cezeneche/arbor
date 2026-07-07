@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { inferSchema } from '@/lib/brain/schema-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 
-// Upgrade 2 — schema-inference analysis surface (ADMIN). Reads the corpus's
+// schema-inference analysis surface (ADMIN). Reads the corpus's
 // completed extractions as one field-name list per document and asks the brain
 // to classify the fields into core / co-varying groups / noise by mutual
 // information. On-demand analysis (not a write/render path); fail-soft if the

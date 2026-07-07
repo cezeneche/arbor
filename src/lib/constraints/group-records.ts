@@ -1,4 +1,4 @@
-// Upgrade 3 — reshape stored records into per-document field sets for the
+// reshape stored records into per-document field sets for the
 // constraint check. Pure: no DB, no network.
 //
 // Each DataRecord is one field; the algebraic constraints (emissions balance,

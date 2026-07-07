@@ -1,4 +1,4 @@
-// Core 3 — Broader document taxonomy (schema-on-read).
+// Broader document taxonomy (schema-on-read).
 // The GENERIC ingestion path: when a document has no admissibility spec (type is
 // OTHER or unknown), the extractor returns whatever key/value fields it finds plus
 // a best-guess documentClass. These are pure Layer 1 helpers — no DB, no AI calls.

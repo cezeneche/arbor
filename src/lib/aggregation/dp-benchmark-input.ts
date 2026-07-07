@@ -1,8 +1,8 @@
-// Upgrade 10 — build the per-group DP release inputs from stored records. Pure.
+// build the per-group DP release inputs from stored records. Pure.
 //
 // Groups records by sector+domain+field+unit, then reduces each group to one
 // value per *canonical* entity (mean of that entity's records in the group) so
-// every contributor counts once (Upgrade 5). Only fields with public bounds are
+// every contributor counts once. Only fields with public bounds are
 // eligible. The brain then adds calibrated noise and enforces the floor.
 
 import { canonicalId } from './entity-canonical'

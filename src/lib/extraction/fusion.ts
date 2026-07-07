@@ -1,4 +1,4 @@
-// Upgrade 1 — self-consistency confidence (TS side). Pure: no DB, no network.
+// self-consistency confidence (TS side). Pure: no DB, no network.
 //
 // Layer 1 runs the extraction k times at temperature > 0. These helpers line up
 // each field's value across the runs (the payload for the brain's

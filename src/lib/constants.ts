@@ -87,7 +87,7 @@ export const DOCUMENT_MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 // serializable transaction can hold locks and how much memory one payload consumes.
 export const MAX_BATCH_ENTRIES = 200
 
-// Gap 2 — batch/mill records go stale this many days after the period they cover.
+// batch/mill records go stale this many days after the period they cover.
 export const BATCH_RECORD_STALE_DAYS = 90
 
 export const ALLOWED_MIME_TYPES = new Set([
