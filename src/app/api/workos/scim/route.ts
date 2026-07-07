@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { verifyWorkosSignature } from '@/lib/webhooks/verify-signature'
 
-// Gap 10.4 — SCIM provisioning webhook from WorkOS. Deactivation sets isActive
-// false and bumps tokenVersion (revoking live sessions). Activation/creation
-// (re)enables the account against the entity bound to the WorkOS organisation.
+// SCIM provisioning webhook from WorkOS. Deactivation sets isActive false and bumps
+// tokenVersion (revoking live sessions). Activation/creation (re)enables the account
+// against the entity bound to the WorkOS organisation.
+//
+// Authenticity is proven by verifying the WorkOS signature over the raw request
+// body against WORKOS_WEBHOOK_SECRET — not by comparing a static bearer token.
 const bodySchema = z.object({
   event: z.string(),
   data: z.object({
@@ -16,13 +20,26 @@ const bodySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const secret = process.env.WORKOS_API_KEY
-  const provided = req.headers.get('x-workos-signature') ?? req.headers.get('authorization')?.replace('Bearer ', '')
-  if (!secret || provided !== secret) {
+  const secret = process.env.WORKOS_WEBHOOK_SECRET
+  if (!secret) {
+    // Missing secret is a deploy error — refuse rather than accept unverified events.
+    return NextResponse.json({ error: 'Webhook secret not configured', code: 'MISCONFIGURED' }, { status: 503 })
+  }
+
+  // Read the raw body once and verify the signature over those exact bytes before parsing.
+  const rawBody = await req.text()
+  const signatureHeader = req.headers.get('workos-signature') ?? req.headers.get('x-workos-signature')
+  if (!verifyWorkosSignature(rawBody, signatureHeader, secret)) {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
   }
 
-  const parsed = bodySchema.safeParse(await req.json().catch(() => null))
+  let body: unknown
+  try {
+    body = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'Invalid payload', code: 'VALIDATION_ERROR' }, { status: 400 })
+  }
+  const parsed = bodySchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid payload', code: 'VALIDATION_ERROR' }, { status: 400 })
 
   const { event, data } = parsed.data
