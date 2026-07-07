@@ -16,14 +16,5 @@ jobs:
 
       - name: Ping database
         env:
-          # Password passed literally via PGPASSWORD so special characters need
-          # no URL-encoding. Host/user/port are not secret (project ref is
-          # already public), so they stay inline as one source of truth.
-          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: |
-          psql \
-            -h aws-1-eu-west-1.pooler.supabase.com \
-            -p 6543 \
-            -U postgres.qwpxqwtgosmgpnposwpo \
-            -d postgres \
-            -c "SELECT 1;"
+          DATABASE_URL: ${{ secrets.SUPABASE_KEEPALIVE_DATABASE_URL }}
+        run: psql "$DATABASE_URL" -c "SELECT 1;"
