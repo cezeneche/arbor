@@ -1,16 +1,23 @@
+import { randomUUID } from 'crypto'
 import { getSupabaseAdmin, DOCUMENTS_BUCKET } from './supabase-admin'
+import { toStoragePath } from './storage-path'
+import type { SniffedType } from './upload/sniff'
+import { extensionForType } from './upload/sniff'
 
 export async function storeDocument(
   file: File,
-  entityId: string
+  entityId: string,
+  // The server-sniffed content type. Drives both the stored contentType and the
+  // extension, so a spoofed filename/MIME can't influence the stored object.
+  contentType: SniffedType,
 ): Promise<{ url: string; pathname: string }> {
-  const extension = file.name.split('.').pop() ?? 'bin'
-  const pathname = `${entityId}/${Date.now()}.${extension}`
+  // UUID (not Date.now()) removes any same-millisecond collision within an entity.
+  const pathname = `${entityId}/${randomUUID()}.${extensionForType(contentType)}`
 
   const supabase = getSupabaseAdmin()
   const { error } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
-    .upload(pathname, file, { contentType: file.type, upsert: false })
+    .upload(pathname, file, { contentType, upsert: false })
 
   if (error) throw new Error(`Storage upload failed: ${error.message}`)
 
@@ -19,15 +26,6 @@ export async function storeDocument(
 
 export async function deleteDocument(pathname: string): Promise<void> {
   const supabase = getSupabaseAdmin()
-  const path = storagePath(pathname)
-  const { error } = await supabase.storage.from(DOCUMENTS_BUCKET).remove([path])
+  const { error } = await supabase.storage.from(DOCUMENTS_BUCKET).remove([toStoragePath(pathname)])
   if (error) throw new Error(`Storage delete failed: ${error.message}`)
-}
-
-// Normalise a stored value (path or legacy full URL) to a bare storage path
-function storagePath(urlOrPath: string): string {
-  if (!urlOrPath.startsWith('http')) return urlOrPath
-  // Supabase URL format: .../storage/v1/object/(public/)documents/{path}
-  const match = urlOrPath.match(/\/object\/(?:public\/)?[^/]+\/(.+)$/)
-  return match ? match[1] : urlOrPath
 }

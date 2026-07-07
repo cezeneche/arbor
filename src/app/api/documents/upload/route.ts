@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { storeDocument } from '@/lib/storage'
+import { sniffFileType } from '@/lib/upload/sniff'
 import { inngest } from '@/inngest/client'
 import { documentTypeSchema, DOCUMENT_MAX_BYTES, ALLOWED_MIME_TYPES } from '@/lib/constants'
 
@@ -16,7 +18,7 @@ export async function POST(req: NextRequest) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   if (!entityId) return err('Entity not found for session user', 'NO_ENTITY', 403)
 
   let file: File | null = null
@@ -43,7 +45,15 @@ export async function POST(req: NextRequest) {
     return err('Unsupported file type. Accepted: PDF, JPEG, PNG', 'UNSUPPORTED_FILE_TYPE', 415)
   }
 
-  const { url } = await storeDocument(file, entityId)
+  // Trust the file's magic bytes, not the client-declared MIME. Reject spoofed
+  // content even when the declared type is in the allowlist.
+  const header = new Uint8Array(await file.slice(0, 16).arrayBuffer())
+  const sniffedType = sniffFileType(header)
+  if (!sniffedType) {
+    return err('File content does not match a supported type (PDF, JPEG, PNG).', 'UNSUPPORTED_FILE_TYPE', 415)
+  }
+
+  const { url } = await storeDocument(file, entityId, sniffedType)
 
   const entity = await prisma.entity.findUnique({ where: { id: entityId } })
   if (!entity) return err('Entity not found', 'ENTITY_NOT_FOUND', 404)
@@ -52,7 +62,7 @@ export async function POST(req: NextRequest) {
     data: {
       entityId,
       fileName: file.name,
-      fileType: file.type,
+      fileType: sniffedType,
       documentType,
       blobUrl: url,
       submittedById: session.user!.id!,
