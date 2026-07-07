@@ -15,7 +15,7 @@ const querySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(500).default(50),
 })
 
-// Gap 6.1 — buyer API: paginated records for a supplier the caller has been
+// buyer API: paginated records for a supplier the caller has been
 // granted access to. Returns 403 without an active grant. Logs API access.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ supplierId: string }> }) {
   const auth = await authenticateApiKey(req.headers.get('authorization'))
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ supp
   const start = (page - 1) * pageSize
   const pageRecords = scoped.slice(start, start + pageSize)
 
-  // Gap 5.2 — log API access to the returned records.
+  // log API access to the returned records.
   await logRecordAccess(pageRecords.map((r) => r.id), buyerEntityId, 'API')
 
   return NextResponse.json({

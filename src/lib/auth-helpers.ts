@@ -81,7 +81,7 @@ export async function requireAdmin() {
   return { session, response: null }
 }
 
-/** Gap 3 — requires an authenticated session with the VERIFIER role.
+/** requires an authenticated session with the VERIFIER role.
  *  Verifiers belong to no entity; they act on assigned verification packages.
  */
 export async function requireVerifier() {
@@ -100,7 +100,7 @@ export async function requireVerifier() {
   return { session, response: null }
 }
 
-/** Gap 4 — requires an authenticated AUDITOR with non-expired AuditorAccess to the entity. */
+/** requires an authenticated AUDITOR with non-expired AuditorAccess to the entity. */
 export async function requireAuditorAccess(entityId: string) {
   const { session, response } = await requireAuth()
   if (!session) return { session: null, response: response! }

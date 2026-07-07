@@ -1,7 +1,7 @@
 import { generateAuditPackage, type AuditPackageInput } from '../generator'
 import { verifyInclusionProof, merkleRoot } from '@/lib/layer2/merkle'
 
-// The generator computes an HMAC integrity hash (Gap 4), which needs the secret.
+// The generator computes an HMAC integrity hash, which needs the secret.
 const ORIGINAL_SECRET = process.env.AUDIT_CHAIN_SECRET
 beforeAll(() => {
   process.env.AUDIT_CHAIN_SECRET = 'test-secret-for-audit-package'
@@ -139,7 +139,7 @@ describe('generateAuditPackage', () => {
     expect(pkg.summary.tierACount).toBe(0)
   })
 
-  // Gap 3 — verification block
+  // verification block
   it('verification is null when no verifier has signed off', () => {
     const pkg = generateAuditPackage(BASE_INPUT)
     expect(pkg.verification).toBeNull()
@@ -159,7 +159,7 @@ describe('generateAuditPackage', () => {
     expect(pkg.verification?.verifierName).toBe('Bureau Veritas')
   })
 
-  // Gap 4 — integrity hash + verification instructions
+  // integrity hash + verification instructions
   it('produces a 64-char integrity hash and matching instructions', () => {
     const pkg = generateAuditPackage(BASE_INPUT)
     expect(pkg.packageIntegrityHash).toMatch(/^[a-f0-9]{64}$/)
@@ -181,7 +181,7 @@ describe('generateAuditPackage', () => {
   })
 })
 
-describe('generateAuditPackage — Merkle commitment (Upgrade 7)', () => {
+describe('generateAuditPackage — Merkle commitment', () => {
   it('commits an RFC 6962 root over the record auditHashes in package order', () => {
     const pkg = generateAuditPackage(BASE_INPUT)
     expect(pkg.merkle.algorithm).toBe('RFC6962-SHA256')

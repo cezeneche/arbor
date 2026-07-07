@@ -5,7 +5,7 @@ import { colours, typography, spacing, borders } from '@/lib/design-system'
 import { verifyInclusionProofWebCrypto } from '@/lib/layer2/merkle-browser'
 import type { MerkleInclusionProof } from '@/lib/layer2/merkle'
 
-// Upgrade 7 — standalone, offline Merkle inclusion verifier. An external auditor
+// standalone, offline Merkle inclusion verifier. An external auditor
 // pastes the inclusion proof from an Arbor audit package and this page
 // recomputes the record's root in their own browser, using nothing but the Web
 // Crypto API. No data is fetched and nothing is sent anywhere — the proof is

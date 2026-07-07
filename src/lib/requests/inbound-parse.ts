@@ -1,4 +1,4 @@
-// Core 5 — Email-forward inbound request handler. Pure helpers: recipient-token
+// Email-forward inbound request handler. Pure helpers: recipient-token
 // parsing, parsing the model's structured output, and matching a parsed request
 // against stored records. No DB, no AI, no side effects.
 

@@ -1,4 +1,4 @@
-// Offline property-graph projection job (Upgrade 4). Scheduled worker (Vercel Cron).
+// Offline property-graph projection job. Scheduled worker (Vercel Cron).
 //
 // Reads a consistent snapshot of the relational store, projects it into typed
 // nodes + edges (pure `projectGraph`), and replaces the GraphNode/GraphEdge

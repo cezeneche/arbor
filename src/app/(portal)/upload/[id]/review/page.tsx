@@ -77,7 +77,7 @@ export default async function ReviewPage({
     periodEnd: c.periodEnd.toISOString(),
   }))
 
-  // Gap 1 - surface multilingual + degraded-document warnings before the field list.
+  // surface multilingual + degraded-document warnings before the field list.
   const detectedLanguage = job?.detectedLanguage ?? null
   const showLanguageBanner =
     !!detectedLanguage && detectedLanguage !== 'en' && detectedLanguage !== 'unknown'

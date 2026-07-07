@@ -1,4 +1,4 @@
-// Core 5 — parse an inbound data-request email, match it against stored records,
+// parse an inbound data-request email, match it against stored records,
 // and either auto-answer it or flag it as needing data. Reuses the Gap-8.4 inbound
 // email infrastructure; the requests-<token>@ address routes here instead of upload.
 import { Resend } from 'resend'

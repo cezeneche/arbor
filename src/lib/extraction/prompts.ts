@@ -214,13 +214,13 @@ Key extraction rules for third-party audit and assurance reports:
 `,
 }
 
-// Gap 1 — Layer 1 pre-call: detect the document language before full extraction.
+// Layer 1 pre-call: detect the document language before full extraction.
 // A cheap single-sentence call; the result calibrates downstream confidence checks.
 export function buildLanguageDetectionPrompt(): string {
   return `What language is this document written in? Respond with the ISO 639-1 language code only (for example: en, de, fr, es, zh, nl, pl). Return the code only — no other text, no punctuation.`
 }
 
-// Gap 1 — Layer 1 pre-call (images only): rate legibility before committing to extraction.
+// Layer 1 pre-call (images only): rate legibility before committing to extraction.
 // A photographed or scanned paper invoice that scores too low is rejected before the
 // full extraction call, so the user is told to re-upload rather than shown garbage.
 export function buildQualityAssessmentPrompt(): string {

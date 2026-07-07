@@ -1,6 +1,6 @@
 import { neighbourhood, type TraversableEdge } from '../traverse'
 
-// Upgrade 4 — multi-hop traversal. This is the capability SQL joins can't express
+// multi-hop traversal. This is the capability SQL joins can't express
 // cleanly: reach everything connected to a start node within N hops, optionally
 // restricted to certain edge types. Pure BFS over the persisted edges (the store
 // is the source of truth; a recursive CTE is the scale escalation).

@@ -1,7 +1,7 @@
 import { colours, typography } from '@/lib/design-system'
 import { SUB_PROCESSORS } from '@/lib/legal/subprocessors'
 
-// Gap 7.2 — public security posture page. Referenced in the DPA and sent to
+// public security posture page. Referenced in the DPA and sent to
 // enterprise buyer procurement / security teams.
 const container = { maxWidth: '900px', margin: '0 auto', padding: '0 40px' }
 

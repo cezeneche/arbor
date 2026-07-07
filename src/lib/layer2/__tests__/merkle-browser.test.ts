@@ -1,7 +1,7 @@
 import { merkleRoot, buildInclusionProof } from '../merkle'
 import { verifyInclusionProofWebCrypto } from '../merkle-browser'
 
-// Upgrade 7 — the browser verifier an auditor runs offline. It must agree, bit
+// the browser verifier an auditor runs offline. It must agree, bit
 // for bit, with the Node RFC 6962 implementation: a proof built server-side has
 // to verify in the browser, and a forged one must not. We cross-check the two
 // implementations here so they can never silently diverge.

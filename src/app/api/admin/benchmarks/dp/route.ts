@@ -8,9 +8,9 @@ import { BENCHMARK_MIN_ENTITIES } from '@/lib/aggregation/sector-benchmark'
 import { releaseDpBenchmarks } from '@/lib/brain/privacy-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 
-// Upgrade 10 — ε-differentially-private sector benchmarks (ADMIN). Aggregates
+// ε-differentially-private sector benchmarks (ADMIN). Aggregates
 // Tier A records from entities that consented to benchmarking, collapses
-// confirmed same-entity links into one contributor each (Upgrade 5), and asks
+// confirmed same-entity links into one contributor each, and asks
 // the brain for a Laplace-noised mean + count per group — suppressing any group
 // below the population floor. Read-only, off any write path, 503 if brain down.
 // This is the monetisable corpus product that never touches an individual

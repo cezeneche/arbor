@@ -1,4 +1,4 @@
-// TypeScript ↔ brain seam for Bayesian fusion (Upgrade 1).
+// TypeScript ↔ brain seam for Bayesian fusion.
 //
 // Sends the per-field self-consistency samples to the brain's /fusion/fields and
 // returns the fused posteriors. Fail-soft like the calibration client: any

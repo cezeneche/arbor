@@ -5,7 +5,7 @@ import {
   type Tier,
 } from '../tier-composition'
 
-// Upgrade 6 — Lattice-theoretic tier composition.
+// Lattice-theoretic tier composition.
 //
 // Trust tiers form a semilattice under C ≺ B ≺ A. The tier of an *aggregate*
 // of records is the MEET (the lowest tier present) — the honest answer to

@@ -1,7 +1,7 @@
 import { computeStaleAfterDate } from '../staleness'
 import { BATCH_RECORD_STALE_DAYS } from '@/lib/constants'
 
-// Gap 2 — batch/mill records (production logs, material intake, delivery notes)
+// batch/mill records (production logs, material intake, delivery notes)
 // are valid only for the period they cover. They carry no expiry_date, so we
 // derive a staleness horizon of periodEnd + BATCH_RECORD_STALE_DAYS.
 

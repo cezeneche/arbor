@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-// Gap 4 — external-auditor shell. Read-only; scoped per AuditorAccess grant.
+// external-auditor shell. Read-only; scoped per AuditorAccess grant.
 export default async function AuditorLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session?.user) redirect('/login')

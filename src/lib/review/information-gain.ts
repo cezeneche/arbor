@@ -1,4 +1,4 @@
-// Upgrade 2 — active-learning review ranking. Pure: no DB, no network, no brain.
+// active-learning review ranking. Pure: no DB, no network, no brain.
 //
 // Orders which field the human should confirm next by expected information gain,
 // so SME review burden falls: Arbor asks about the fields whose confirmation
@@ -66,7 +66,7 @@ export function expectedInformationGain(field: RankableField): number {
  * low-information (confident, unimportant, present, unflagged). This is the one
  * place the gain + low-info rule lives — `rankReviewFields` orders by it for the
  * review UI, and label capture persists it so the active-learning A/B signal
- * (Upgrade 2) can be measured against real confirm/correct outcomes.
+ * can be measured against real confirm/correct outcomes.
  */
 export function fieldInformation(field: RankableField): { gain: number; lowInformation: boolean } {
   const gain = expectedInformationGain(field)

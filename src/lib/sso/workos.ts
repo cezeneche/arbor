@@ -1,4 +1,4 @@
-// Gap 10 — WorkOS SSO via the WorkOS REST API (no SDK dependency).
+// WorkOS SSO via the WorkOS REST API (no SDK dependency).
 // All functions read configuration lazily so importing this module never
 // requires the env vars at build time. SSO is disabled if unconfigured.
 const WORKOS_BASE = 'https://api.workos.com'

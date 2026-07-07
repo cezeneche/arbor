@@ -1,4 +1,4 @@
-// Upgrade 3 — intake flagging (Layer 1: reads DB, raises flags). Runs after a
+// intake flagging (Layer 1: reads DB, raises flags). Runs after a
 // document is confirmed and its records are written. Groups the document's
 // stored records, asks the brain whether they satisfy the algebraic constraints
 // (mass balance, non-negativity, plausible sector intensity), and raises any

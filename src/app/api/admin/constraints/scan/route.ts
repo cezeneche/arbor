@@ -6,7 +6,7 @@ import { groupRecordsByDocument, type RecordRow } from '@/lib/constraints/group-
 import { checkConstraints } from '@/lib/brain/constraints-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 
-// Upgrade 3 — physical-impossibility / fraud anomaly scan (ADMIN). Regroups the
+// physical-impossibility / fraud anomaly scan (ADMIN). Regroups the
 // stored records by document and asks the brain whether each satisfies the
 // algebraic constraints (emissions balance, non-negativity, plausible sector
 // intensity) and what its missing fields complete to. On-demand analysis over

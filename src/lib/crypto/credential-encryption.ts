@@ -1,4 +1,4 @@
-// Gap 6/9 — AES-256-GCM encryption for secrets that must be recovered later:
+// AES-256-GCM encryption for secrets that must be recovered later:
 // webhook signing secrets and third-party integration credentials. The key is
 // INTEGRATION_ENCRYPTION_KEY (32 bytes, base64-encoded). Format of the stored
 // string: base64(iv).base64(authTag).base64(ciphertext).

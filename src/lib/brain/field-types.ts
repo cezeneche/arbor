@@ -1,4 +1,4 @@
-// Coarse field-type classification for calibration grouping (Upgrade 1).
+// Coarse field-type classification for calibration grouping.
 //
 // The plan's kill signal tracks Expected Calibration Error for three field types
 // — supplier identity, mass, emissions intensity. Extraction produces many raw

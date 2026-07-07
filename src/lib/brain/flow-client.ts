@@ -1,4 +1,4 @@
-// TypeScript ↔ brain seam for graph flow consistency (Upgrade 9).
+// TypeScript ↔ brain seam for graph flow consistency.
 //
 // Sends a supply-flow graph and/or a set of reference claims to the brain's
 // /flow/check and returns the conservation + double-counting anomalies. Fail-soft

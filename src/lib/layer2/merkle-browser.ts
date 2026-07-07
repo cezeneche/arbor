@@ -1,4 +1,4 @@
-// Upgrade 7 — Merkle inclusion verification using the Web Crypto API only.
+// Merkle inclusion verification using the Web Crypto API only.
 //
 // A deliberate sibling to merkle.ts: that module uses Node's `crypto` (server
 // side); this one uses `globalThis.crypto.subtle` so it runs in a browser with

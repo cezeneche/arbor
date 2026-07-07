@@ -1,6 +1,6 @@
 import { signWebhookPayload, generateWebhookSecret } from '../signing'
 
-// Gap 6.3 — webhook payloads are signed so subscribers can verify authenticity.
+// webhook payloads are signed so subscribers can verify authenticity.
 describe('signWebhookPayload', () => {
   it('produces a sha256= prefixed hex signature', () => {
     const sig = signWebhookPayload('secret', '{"event":"record.certified"}')

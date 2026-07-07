@@ -23,7 +23,7 @@ import {
   parseGenericExtractionResponse,
 } from './generic'
 
-// How many self-consistency samples to draw per document (Upgrade 1). k>1 turns
+// How many self-consistency samples to draw per document. k>1 turns
 // on Bayesian fusion of the samples' agreement into an honest, varying
 // confidence; k=1 keeps single-sample extraction (model self-reported score).
 const EXTRACTION_SAMPLES = Math.max(1, Number(process.env.EXTRACTION_SAMPLES ?? 3))
@@ -61,7 +61,7 @@ function textFromResponse(response: Anthropic.Message): string {
     .join('')
 }
 
-// Gap 1 — cheap language-detection pre-call. Returns 'unknown' on any failure;
+// cheap language-detection pre-call. Returns 'unknown' on any failure;
 // language detection must never block the extraction pipeline.
 export async function detectLanguage(
   base64: string,
@@ -88,7 +88,7 @@ export async function detectLanguage(
   }
 }
 
-// Gap 1 — image quality pre-call (images only; PDFs are vector/text and skip this).
+// image quality pre-call (images only; PDFs are vector/text and skip this).
 // Returns quality 5 on any failure so a transient error never blocks a good document.
 export async function assessImageQuality(
   base64: string,
@@ -115,7 +115,7 @@ export async function assessImageQuality(
 }
 
 /**
- * Upgrade 1 — extract with self-consistency. Draws k samples of the document at
+ * extract with self-consistency. Draws k samples of the document at
  * the model's sampling temperature, then fuses per-field agreement into an
  * honest, *varying* confidence via the brain's Bayesian fusion. Fail-soft: if
  * the brain is unavailable, or only one sample succeeds, it degrades to a single
@@ -169,7 +169,7 @@ export async function extractDocumentWithConsistency(
 }
 
 export async function extractDocument(input: ExtractionInput): Promise<ExtractionResult> {
-  // Core 3 — schema-on-read path for documents with no admissibility spec.
+  // schema-on-read path for documents with no admissibility spec.
   if (isGenericExtraction(input.documentType)) {
     return extractGenericDocument(input)
   }
@@ -236,7 +236,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
   }
 }
 
-// Core 3 — GENERIC extraction. No fixed field list: the model returns whatever
+// GENERIC extraction. No fixed field list: the model returns whatever
 // labelled values it finds, plus a best-guess documentClass. Records produced from
 // these fields default to Tier B (Declared) — there is no spec to verify against.
 async function extractGenericDocument(input: ExtractionInput): Promise<ExtractionResult> {

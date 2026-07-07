@@ -336,7 +336,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
 
   function renderFieldGroup(title: string, groupFields: ExtractedField[], badge?: string) {
     if (groupFields.length === 0) return null
-    // Upgrade 2 — active learning: order fields by expected information gain
+    // active learning: order fields by expected information gain
     // (most-uncertain, most-important first) and collapse the confident,
     // low-information ones, so the user's attention leads with what matters most.
     const ranked = rankReviewFields(

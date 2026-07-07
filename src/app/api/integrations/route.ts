@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { ok } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
-// Gap 9.6 — list the caller entity's integration status. Never returns credentials.
+// list the caller entity's integration status. Never returns credentials.
 export async function GET() {
   const { session, response } = await requireAdmin()
   if (!session) return response!

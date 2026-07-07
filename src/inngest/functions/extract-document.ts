@@ -43,7 +43,7 @@ export const extractDocumentFunction = inngest.createFunction(
       return fetchDocumentAsBase64(doc.blobUrl)
     })
 
-    // Gap 1 — cheap pre-calls before committing to full extraction.
+    // cheap pre-calls before committing to full extraction.
     const detectedLanguage = await step.run('detect-language', async () => {
       const { language } = await detectLanguage(base64, mediaType)
       return language
@@ -88,7 +88,7 @@ export const extractDocumentFunction = inngest.createFunction(
             detectedLanguage,
             imageQualityScore: quality.quality,
             // Persist the raw model response on failure too — without it, a parse
-            // failure leaves nothing to debug (this is exactly what bit us).
+            // failure leaves nothing to diagnose.
             rawOutput: extractionResult as unknown as Prisma.InputJsonValue,
           },
         })
@@ -145,7 +145,7 @@ export const extractDocumentFunction = inngest.createFunction(
       })
     })
 
-    // Core 4 — low-stakes documents with no critical flags are auto-accepted as
+    // low-stakes documents with no critical flags are auto-accepted as
     // Tier B (Declared) so a record exists immediately. High-stakes types and any
     // document with a critical flag stay in REVIEW_REQUIRED for per-document review.
     let autoAcceptedCount = 0
@@ -156,7 +156,7 @@ export const extractDocumentFunction = inngest.createFunction(
         return ids.length
       })
 
-      // Upgrade 3 — physics gate on the auto-accept path. Auto-accepted docs get
+      // physics gate on the auto-accept path. Auto-accepted docs get
       // no human review, so re-check the just-written records against the algebraic
       // constraints; if any physical-impossibility violation is found, route the
       // document back to REVIEW_REQUIRED. Records and tier are unchanged — only the

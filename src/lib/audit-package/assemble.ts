@@ -1,7 +1,7 @@
 // Layer 3 — Access & Sharing. Reads stored records (read-only) and assembles
 // them into a structured audit package via the pure generator. No mutation of
 // stored data, no calculation. Optionally logs the package hash for public
-// verification (Gap 4) — that single write is provenance bookkeeping, not a
+// verification — that single write is provenance bookkeeping, not a
 // modification of any data record.
 import { prisma } from '@/lib/prisma'
 import {
@@ -20,7 +20,7 @@ export interface AssembleOptions {
   logRequestedById?: string
 }
 
-// Upgrade 7 — shadow-compare: the Merkle root and the linear HMAC chain secure
+// shadow-compare: the Merkle root and the linear HMAC chain secure
 // the same leaves (DataRecord.auditHash == AuditEntry.hash), so before any
 // consumer treats the root as authoritative we assert the two structures agree:
 // the chain verifies, every Merkle leaf is present in the chain, and every proof
@@ -56,7 +56,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
     }),
     prisma.auditEntry.findMany({ where: { entityId }, orderBy: { createdAt: 'asc' } }),
     prisma.crossValidationResult.findMany({ where: { entityId }, orderBy: { createdAt: 'asc' } }),
-    // Gap 3 — the most recent verified sign-off covering this period, if any.
+    // the most recent verified sign-off covering this period, if any.
     prisma.verificationAssignment.findFirst({
       where: {
         entityId,
@@ -133,7 +133,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
     verification,
   })
 
-  // Upgrade 7 — shadow-compare the Merkle commitment against the linear chain.
+  // shadow-compare the Merkle commitment against the linear chain.
   const chainHashes = new Set(auditEntries.map((e) => e.hash))
   const allLeavesInChain = pkg.dataRecords.every((r) => chainHashes.has(r.auditHash))
   const merkleShadow: MerkleShadowCompare = {

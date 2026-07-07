@@ -1,4 +1,4 @@
-// Gap 6.3 — webhook payload signing. Pure crypto helpers; the subscriber's
+// webhook payload signing. Pure crypto helpers; the subscriber's
 // signing secret is generated here and only its hash is stored.
 import { createHmac, randomBytes } from 'crypto'
 

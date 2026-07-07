@@ -1,4 +1,4 @@
-// Upgrade 3 — intake flagging (pure). The brain's /constraints/check returns
+// intake flagging (pure). The brain's /constraints/check returns
 // algebraic-constraint violations per document; each violation names a concrete
 // field. This maps every violation back to the stored DataRecord for that field
 // so it can be raised as a non-blocking ValidationFlag. Violations whose field

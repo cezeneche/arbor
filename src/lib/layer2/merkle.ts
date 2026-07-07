@@ -1,6 +1,6 @@
 // Layer 2 — Merkle-DAG audit structure. Pure cryptographic functions.
 //
-// Upgrade 7. The linear HMAC chain (audit-chain.ts) proves tamper-evidence at
+// The linear HMAC chain (audit-chain.ts) proves tamper-evidence at
 // write time; this Merkle tree is the additive commitment that makes a single
 // record's authenticity *shareable*. Leaves are the existing per-record
 // `auditHash` values, in a fixed order. A single root commits the whole set; a

@@ -11,7 +11,7 @@ const bodySchema = z.object({
   periodEnd: z.string().datetime(),
 })
 
-// Gap 3 — an admin assigns a verifier to verify an entity+period.
+// an admin assigns a verifier to verify an entity+period.
 export async function POST(req: NextRequest) {
   const { session, response } = await requireAdmin()
   if (!session) return response!

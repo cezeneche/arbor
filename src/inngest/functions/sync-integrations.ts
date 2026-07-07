@@ -5,7 +5,7 @@ import { writeIntegrationRecords, recordSyncOutcome } from '@/lib/integrations/s
 import { mapCdsDeclarations, mapSapMaterialDocs, mapNetSuiteItemReceipts } from '@/lib/integrations/mappers'
 import type { IntegrationProvider } from '@prisma/client'
 
-// Gap 9 — fetch from a provider's API, map, and write Tier B records.
+// fetch from a provider's API, map, and write Tier B records.
 // Credentials are AES-256-GCM encrypted; only decrypted in-memory here.
 async function runSync(provider: IntegrationProvider, credentialId: string): Promise<{ created: number; skipped: number }> {
   const cred = await prisma.integrationCredential.findUnique({ where: { id: credentialId } })

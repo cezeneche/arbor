@@ -1,4 +1,4 @@
-// Gap 10 — short-lived, HMAC-signed token that proves a WorkOS authentication
+// short-lived, HMAC-signed token that proves a WorkOS authentication
 // succeeded, so the NextAuth `workos` credentials provider can establish the
 // session without a password. Format: base64url(userId.expiry).hexsig
 import { createHmac, timingSafeEqual } from 'crypto'

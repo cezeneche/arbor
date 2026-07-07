@@ -1,7 +1,7 @@
 import { applyCalibrationMap, wilsonInterval, buildPosterior } from '../posterior'
 import type { GroupCalibration } from '@/lib/brain/types'
 
-// Step 5 core (Upgrade 1). The brain returns a calibration map (isotonic knots)
+// Step 5 core. The brain returns a calibration map (isotonic knots)
 // plus a reliability diagram per group. The ingestion/backfill path applies the
 // map itself — no runtime dependency on the brain — turning a raw model score
 // into a calibrated posterior with a credible interval. These are the pure

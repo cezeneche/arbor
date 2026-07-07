@@ -8,7 +8,7 @@ import { dispatchWebhook } from '@/lib/webhooks/dispatch'
 
 const schema = z.object({ granteeEntityId: z.string().min(1) })
 
-// Gap 5.1/5.5 — revoke every active grant from the caller's entity to one buyer
+// Revoke every active grant from the caller's entity to one buyer
 // in a single action, and notify that buyer once.
 export async function POST(req: NextRequest) {
   const { session, response } = await requireWriteAccess()

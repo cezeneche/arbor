@@ -1,7 +1,7 @@
 import { buildPosteriorUpdates, groupKeyForField, parseMinSamples, type RecordForBackfill } from '../backfill'
 import type { GroupCalibration } from '@/lib/brain/types'
 
-// Step 5 (Upgrade 1). Given the brain's per-group calibration and the active
+// Step 5. Given the brain's per-group calibration and the active
 // records, decide which records get a calibrated confidencePosterior written
 // back and what it is. Pure — the cron route wraps DB reads/writes around this.
 

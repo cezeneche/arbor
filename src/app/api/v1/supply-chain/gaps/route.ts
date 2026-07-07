@@ -10,7 +10,7 @@ const querySchema = z.object({
   periodEnd: z.string().datetime().optional(),
 })
 
-// Gap 6.1 — buyer API: which supplier+domain combinations have no records, or
+// buyer API: which supplier+domain combinations have no records, or
 // only Tier C (estimated) records, for the requested period.
 export async function GET(req: NextRequest) {
   const auth = await authenticateApiKey(req.headers.get('authorization'))

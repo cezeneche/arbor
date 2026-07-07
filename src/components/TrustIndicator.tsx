@@ -2,7 +2,7 @@ import { colours, typography } from '@/lib/design-system'
 import { trustDisplay, type TrustBand } from '@/lib/confidence/trust-display'
 import type { ConfidencePosterior } from '@/lib/confidence/types'
 
-// Upgrade 12 — the field-level confidence badge. Colour and label are driven by
+// the field-level confidence badge. Colour and label are driven by
 // the calibrated trust classifier, so a low-confidence field can never render
 // identically to a high-confidence one. `detail` adds the credible interval and
 // calibration note for buyer/technical screens; suppliers see the plain form.

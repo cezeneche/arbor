@@ -20,7 +20,7 @@ function daysUntil(date: Date, from: Date): number {
   return Math.ceil((date.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-// Gap 2 — per-entity tallies so each entity receives at most one expiring email
+// per-entity tallies so each entity receives at most one expiring email
 // and one expired email per run, in plain English.
 interface EntityTally {
   expiringCount: number

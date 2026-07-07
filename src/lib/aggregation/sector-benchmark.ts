@@ -29,7 +29,7 @@ export interface SectorBenchmarkResult {
   stddevValue: number
   entityCount: number
   tierAPercent: number
-  // Upgrade 6 — the aggregate's semilattice meet + tier distribution, so this
+  // the aggregate's semilattice meet + tier distribution, so this
   // composite benchmark carries an honest, defined trust tier like every other
   // aggregate output.
   tierComposition: TierComposition

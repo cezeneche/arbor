@@ -36,7 +36,7 @@ export interface RecordInput {
   sourceText?: string
   documentId?: string
   isActive?: boolean
-  /** Gap 2 — batch/mill staleness horizon. Derived metadata, not part of the audit payload. */
+  /** batch/mill staleness horizon. Derived metadata, not part of the audit payload. */
   staleAfterDate?: Date | null
 }
 

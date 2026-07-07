@@ -1,4 +1,4 @@
-// Upgrade 10 — public clamp bounds for differentially-private benchmarks.
+// public clamp bounds for differentially-private benchmarks.
 //
 // The Laplace mechanism's sensitivity depends on a value range that must come
 // from *public* domain knowledge, never from the data (deriving bounds from the

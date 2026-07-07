@@ -1,6 +1,6 @@
 import { groupRecordsByDocument, type RecordRow } from '../group-records'
 
-// Upgrade 3 — each stored record is one field; the constraint check needs a
+// each stored record is one field; the constraint check needs a
 // document's fields together. This regroups them.
 
 function row(documentId: string, fieldName: string, value: number, sector: string | null = 'steel'): RecordRow {

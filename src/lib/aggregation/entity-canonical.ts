@@ -1,4 +1,4 @@
-// Upgrade 10 (uses Upgrade 5) — collapse confirmed same-entity links into one
+// Collapse confirmed same-entity links into one
 // canonical aggregation unit. Pure: no DB, no network.
 //
 // Differential privacy protects a *contributor*. If one real-world company

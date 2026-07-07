@@ -6,7 +6,7 @@ import {
   type BlockableEntity,
 } from '../blocking'
 
-// Upgrade 5 — entity-resolution baseline, blocking layer. Pure and
+// entity-resolution baseline, blocking layer. Pure and
 // dependency-free. Blocking is the O(n log n) reducer: it groups entities that
 // could plausibly be the same real-world company (shared registration number,
 // or same country+sector) so the expensive similarity step only ever compares

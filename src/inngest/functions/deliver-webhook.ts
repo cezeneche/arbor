@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { signWebhookPayload } from '@/lib/webhooks/signing'
 import { decryptSecret } from '@/lib/crypto/credential-encryption'
 
-// Gap 6.3 — deliver a single webhook to one subscription, signed with HMAC.
+// deliver a single webhook to one subscription, signed with HMAC.
 // Inngest retries on throw (up to `retries`); final failure marks the subscription.
 export const deliverWebhookFunction = inngest.createFunction(
   { id: 'deliver-webhook', retries: 3, concurrency: { limit: 5 }, triggers: [{ event: 'webhook/deliver' }] },

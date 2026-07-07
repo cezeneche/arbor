@@ -1,7 +1,7 @@
 import { planConstraintFlags, dedupeNewFlags, type RecordRef, type PlannedFlag } from '../plan-flags'
 import type { ConstraintRecordResult } from '@/lib/brain/types'
 
-// Upgrade 3 — intake flagging. The brain returns algebraic-constraint violations
+// intake flagging. The brain returns algebraic-constraint violations
 // per document (mass balance, non-negativity, implausible intensity). Each
 // violation names a concrete field; this maps it back to the stored DataRecord
 // so it can be raised as a non-blocking ValidationFlag for human review.

@@ -1,4 +1,4 @@
-// Core 5 — Layer 1 (AI). Parses a free-text data-request email into a structured
+// Layer 1 (AI). Parses a free-text data-request email into a structured
 // {domain, fields, period}. The actual matching against stored records is pure and
 // lives in inbound-parse.ts; this module only does the probabilistic extraction.
 import Anthropic from '@anthropic-ai/sdk'

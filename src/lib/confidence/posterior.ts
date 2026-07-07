@@ -1,4 +1,4 @@
-// Step 5 core (Upgrade 1). Pure: no DB, no network.
+// Step 5 core. Pure: no DB, no network.
 //
 // The brain fits a calibration map (isotonic knots) and reliability diagram per
 // group and hands them back; the ingestion/backfill path applies them here to

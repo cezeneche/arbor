@@ -25,17 +25,17 @@ export interface ExtractionResult {
   rawResponse: string
   /** Set when the document was detected as non-English. Surfaced in the review UI. */
   languageNote: string | null
-  /** Core 3 — best-guess class for GENERIC (schema-on-read) documents; null otherwise. */
+  /** best-guess class for GENERIC (schema-on-read) documents; null otherwise. */
   documentClass?: string | null
 }
 
-// Gap 1 — result of the cheap language-detection pre-call.
+// result of the cheap language-detection pre-call.
 export interface LanguageDetectionResult {
   /** ISO 639-1 code, or 'unknown' if detection failed or was ambiguous. */
   language: string
 }
 
-// Gap 1 — result of the image quality pre-call (images only; PDFs skip this).
+// result of the image quality pre-call (images only; PDFs skip this).
 export interface QualityAssessmentResult {
   /** 1 (unreadable) to 5 (clear). */
   quality: number

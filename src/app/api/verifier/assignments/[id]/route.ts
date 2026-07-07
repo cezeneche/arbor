@@ -14,7 +14,7 @@ const bodySchema = z.object({
   note: z.string().max(2000).optional(),
 })
 
-// Gap 3 — a verifier signs off (or rejects) an assigned entity+period.
+// a verifier signs off (or rejects) an assigned entity+period.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireVerifier()
   if (!session) return response!

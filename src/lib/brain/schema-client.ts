@@ -1,4 +1,4 @@
-// TypeScript ↔ brain seam for schema inference (Upgrade 2, schema application).
+// TypeScript ↔ brain seam for schema inference.
 //
 // Sends the corpus as one field-name list per document to the brain's
 // /infotheory/schema and returns the inferred core/groups/noise classification.

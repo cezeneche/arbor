@@ -1,6 +1,6 @@
 import { PendingProofSystem, PENDING_ENGINE } from '../proof'
 
-// Upgrade 8 — until a real engine is wired, the placeholder must report
+// until a real engine is wired, the placeholder must report
 // unavailability and never emit a proof.
 
 describe('PendingProofSystem', () => {

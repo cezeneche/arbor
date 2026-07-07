@@ -5,7 +5,7 @@ import { inferSchema } from '../schema-client'
 import { BrainUnavailableError } from '../calibration-client'
 import { setBrainMetricSink, type BrainCallMetric } from '../metrics'
 
-// Upgrade 2 — the schema client obeys the brain-seam invariant: down ⇒ degrade,
+// the schema client obeys the brain-seam invariant: down ⇒ degrade,
 // never block. Every failure mode throws BrainUnavailableError + one metric.
 
 const ORIGINAL_ENV = { ...process.env }

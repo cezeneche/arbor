@@ -3,8 +3,8 @@ import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { assembleAuditPackage } from '@/lib/audit-package/assemble'
 
-// Layer 3 — generate the caller's own audit package, including (Gap 3) any
-// third-party verification block and (Gap 4) the integrity hash + public
+// Layer 3 — generate the caller's own audit package, including any
+// third-party verification block and the integrity hash + public
 // verification instructions. Generation is logged for later public verification.
 export async function GET(req: NextRequest) {
   const { session, response } = await requireAuth()
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     sourceDocuments: pkg.sourceDocuments,
     crossValidations: pkg.crossValidationResults,
     auditChain: { entryCount: auditEntryCount, chainIntegrityVerified },
-    // Upgrade 7 — Merkle commitment + per-record inclusion proofs, plus the
+    // Merkle commitment + per-record inclusion proofs, plus the
     // shadow-compare confirming it agrees with the linear HMAC chain.
     merkle: pkg.merkle,
     merkleShadow,

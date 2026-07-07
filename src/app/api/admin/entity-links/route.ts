@@ -2,7 +2,7 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { ok } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
-// Upgrade 5 — the entity-resolution review queue (ADMIN). Lists PENDING
+// the entity-resolution review queue (ADMIN). Lists PENDING
 // candidate links (proposed "same real-world entity" edges) with both entities'
 // identity detail and the scorer's similarity, highest-confidence first, so a
 // human can confirm or reject. Read-only; resolution is cross-tenant platform

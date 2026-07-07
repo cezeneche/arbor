@@ -3,7 +3,7 @@ import { authenticateApiKey } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
-// Gap 6.1 — buyer API: list suppliers that have granted the caller access, with
+// buyer API: list suppliers that have granted the caller access, with
 // a data-coverage summary. Authenticated by API key (the caller is the buyer).
 export async function GET(req: NextRequest) {
   const auth = await authenticateApiKey(req.headers.get('authorization'))

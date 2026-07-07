@@ -176,7 +176,7 @@ export default function LoginPage() {
         </button>
       </form>
 
-      {/* Gap 10 — SSO sign-in. Uses the email entered above to resolve the org. */}
+      {/* SSO sign-in. Uses the email entered above to resolve the org. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], margin: `${spacing[3]} 0 ${spacing[2]}` }}>
         <div style={{ flex: 1, height: '1px', backgroundColor: colours.border }} />
         <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>or</span>

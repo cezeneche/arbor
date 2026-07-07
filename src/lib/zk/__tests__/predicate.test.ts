@@ -5,7 +5,7 @@ import {
   type EvalRecord,
 } from '../predicate'
 
-// Upgrade 8 — the statement layer a ZK proof attests to (proving system aside).
+// the statement layer a ZK proof attests to (proving system aside).
 // The predicate templates evaluate over the witness records, and a predicate
 // binds to a Merkle root as one deterministic public digest.
 

@@ -1,6 +1,6 @@
 import { projectGraph, nodeId, edgeId, type GraphProjectionInput } from '../project'
 
-// Upgrade 4 — property graph. The projector turns a consistent relational
+// property graph. The projector turns a consistent relational
 // snapshot into typed nodes + edges. Pure and store-agnostic: it commits to no
 // graph database, so it holds whatever the persistence layer becomes (Postgres
 // edge tables, Neo4j, …). Multi-hop questions run over what this produces.

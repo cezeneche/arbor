@@ -1,4 +1,4 @@
-// Upgrade 3 — auto-accept physics gate (Layer 1: reads DB, flips workflow status).
+// auto-accept physics gate (Layer 1: reads DB, flips workflow status).
 //
 // Auto-accepted documents (low-stakes, written straight to Tier B) get NO human
 // review. If the brain's algebraic-constraint check finds a physically impossible

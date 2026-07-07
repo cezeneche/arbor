@@ -1,4 +1,4 @@
-// Offline entity-resolution job (Upgrade 5). Scheduled worker (Vercel Cron).
+// Offline entity-resolution job. Scheduled worker (Vercel Cron).
 //
 // Blocks the entity corpus into candidate pairs, scores them on the brain, and
 // persists the match/review pairs as PENDING EntityLink candidates for human

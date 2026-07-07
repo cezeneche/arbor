@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma'
 
 const schema = z.object({ workosOrganisationId: z.string().trim().min(1).nullable() })
 
-// Gap 10.5 — bind (or clear) the caller's entity to a WorkOS organisation.
+// bind (or clear) the caller's entity to a WorkOS organisation.
 export async function POST(req: NextRequest) {
   const { session, response } = await requireAdmin()
   if (!session) return response!

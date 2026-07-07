@@ -1,4 +1,4 @@
-// Step 5 (Upgrade 1). Pure: no DB, no network.
+// Step 5. Pure: no DB, no network.
 //
 // Given the brain's per-group calibration report and the set of active records,
 // decide which records get a calibrated confidencePosterior written back and

@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-// Gap 4 — landing page listing the entities an auditor is scoped to.
+// landing page listing the entities an auditor is scoped to.
 export default async function AuditorHome() {
   const session = await auth()
   if (!session?.user) redirect('/login')

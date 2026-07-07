@@ -1,4 +1,4 @@
-// Gap 9 — pure mappers from provider payloads to a normalised integration record.
+// pure mappers from provider payloads to a normalised integration record.
 // No DB, no network. The sync functions call these then write Tier B records.
 import type { DataDomain } from '@/lib/constants'
 

@@ -1,4 +1,4 @@
-// Core 1 — Questionnaire templates.
+// Questionnaire templates.
 // CDP Climate (core operational subset) is the first fully-mapped template; it
 // draws on stored operational data (energy, emissions, water, waste, production).
 // Other frameworks are stubbed so the catalogue is honest about what is wired up.

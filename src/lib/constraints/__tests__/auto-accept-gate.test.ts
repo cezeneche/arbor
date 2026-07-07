@@ -4,7 +4,7 @@ import {
 } from '../auto-accept-gate'
 import type { PlannedFlag } from '../plan-flags'
 
-// Upgrade 3 — auto-accept physics gate. Auto-accepted documents get no human
+// auto-accept physics gate. Auto-accepted documents get no human
 // review, so if the brain finds a physically IMPOSSIBLE record (a CRITICAL
 // violation) we route the document back to review. A WARNING — currently only a
 // >5%-off mass balance — is flagged on the record but leaves the doc auto-accepted.

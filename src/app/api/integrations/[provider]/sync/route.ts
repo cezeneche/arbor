@@ -8,7 +8,7 @@ import type { IntegrationProvider } from '@prisma/client'
 
 const PROVIDERS = ['CDS', 'SAP', 'NETSUITE', 'ORACLE'] as const
 
-// Gap 9.6 — trigger an on-demand sync for a connected provider.
+// trigger an on-demand sync for a connected provider.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { session, response } = await requireAdmin()
   if (!session) return response!

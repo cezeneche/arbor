@@ -1,5 +1,5 @@
-// Layer 2 — cryptographic signing for third-party verification (Gap 3) and
-// audit-package integrity (Gap 4). Pure functions, no DB or AI. Same HMAC
+// Layer 2 — cryptographic signing for third-party verification and
+// audit-package integrity. Pure functions, no DB or AI. Same HMAC
 // secret as the audit chain — it never leaves the server.
 import { createHmac } from 'crypto'
 
@@ -24,7 +24,7 @@ export function computeVerificationSignature(input: VerificationSignatureInput):
 }
 
 // Stable hash of an audit package's contents. Keys are sorted recursively so the
-// hash does not depend on serialisation order. Used for public verification (Gap 4).
+// hash does not depend on serialisation order. Used for public verification.
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`

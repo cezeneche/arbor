@@ -27,7 +27,7 @@ export default auth((req) => {
     return redirectTo(req, '/login')
   }
 
-  // Gap 3/4 — route platform roles to their own areas and keep them out of the
+  // route platform roles to their own areas and keep them out of the
   // entity portal (their session carries no entityId).
   const authedUser = (req.auth as unknown as { user?: Record<string, unknown> } | null)?.user
   const role = authedUser?.role as string | undefined

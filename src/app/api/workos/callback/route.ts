@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { authenticateWithCode } from '@/lib/sso/workos'
 import { mintSsoToken } from '@/lib/sso/sso-token'
 
-// Gap 10 — WorkOS callback. Exchanges the code, auto-provisions the user against
+// WorkOS callback. Exchanges the code, auto-provisions the user against
 // the entity bound to the WorkOS organisation, then hands a one-time token to the
 // client which completes NextAuth sign-in.
 export async function GET(req: NextRequest) {

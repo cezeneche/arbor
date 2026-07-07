@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { SUB_PROCESSORS, DPA_VERSION, DPA_LAST_UPDATED } from '@/lib/legal/subprocessors'
 
-// Gap 7.1 — downloadable, versioned DPA with sub-processor appendix.
+// downloadable, versioned DPA with sub-processor appendix.
 // Served as Markdown with an attachment disposition so a buyer's procurement
 // team can save and circulate it. No PDF dependency required.
 export async function GET() {

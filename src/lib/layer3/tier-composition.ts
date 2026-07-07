@@ -1,6 +1,6 @@
 // Layer 3 — Access. Pure, read-only. No DB, no AI, no value transformation.
 //
-// Upgrade 6 — Lattice-theoretic tier composition.
+// Lattice-theoretic tier composition.
 //
 // Trust tiers form a semilattice ordered C ≺ B ≺ A (Estimated is weakest,
 // Verified is strongest). This module answers the question the rest of the

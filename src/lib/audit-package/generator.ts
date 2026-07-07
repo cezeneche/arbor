@@ -23,7 +23,7 @@ export interface AuditDataRecord {
   periodEnd: Date
   extractionMethod: string
   documentId: string | null
-  // Upgrade 7 — the record's HMAC auditHash. Doubles as its Merkle leaf.
+  // the record's HMAC auditHash. Doubles as its Merkle leaf.
   auditHash: string
 }
 
@@ -46,7 +46,7 @@ export interface AuditCrossValidationResult {
   passed: boolean
 }
 
-// Gap 3 — third-party verification status carried in the package.
+// third-party verification status carried in the package.
 export interface AuditVerification {
   status: 'INDEPENDENTLY_VERIFIED' | 'REJECTED'
   verifierName: string
@@ -63,13 +63,13 @@ export interface AuditPackageInput {
   sourceDocuments: AuditSourceDocument[]
   crossValidationResults: AuditCrossValidationResult[]
   generatedAt: Date
-  /** Gap 3 — present when an assigned verifier has signed off this entity+period. */
+  /** present when an assigned verifier has signed off this entity+period. */
   verification?: AuditVerification | null
-  /** Gap 4 — public verify endpoint embedded in the package's instructions. */
+  /** public verify endpoint embedded in the package's instructions. */
   publicVerifyEndpoint?: string
 }
 
-// Gap 4 — instructions an external auditor can follow to verify the package
+// instructions an external auditor can follow to verify the package
 // without an Arbor account.
 export interface VerificationInstructions {
   description: string
@@ -88,7 +88,7 @@ export interface AuditPackageSummary {
   crossValidationFailCount: number
 }
 
-// Upgrade 7 — the Merkle commitment carried in the package. The root commits the
+// the Merkle commitment carried in the package. The root commits the
 // ordered per-record auditHash leaves; each proof lets an auditor recompute the
 // root for one record offline, without seeing the rest of the corpus.
 export interface AuditRecordInclusionProof {
@@ -116,14 +116,14 @@ export interface AuditPackage {
   sourceDocuments: AuditSourceDocument[]
   crossValidationResults: AuditCrossValidationResult[]
   verification: AuditVerification | null
-  /** Gap 4 — HMAC of the package's core contents; the verifiable integrity hash. */
+  /** HMAC of the package's core contents; the verifiable integrity hash. */
   packageIntegrityHash: string
-  /** Upgrade 7 — Merkle-DAG commitment over the record auditHashes. */
+  /** Merkle-DAG commitment over the record auditHashes. */
   merkle: AuditMerkleCommitment
   verificationInstructions: VerificationInstructions
 }
 
-// Upgrade 7 — build the Merkle root + one inclusion proof per record. Kept pure
+// build the Merkle root + one inclusion proof per record. Kept pure
 // (Node crypto only), like the integrity hash. The root is deliberately NOT
 // folded into packageIntegrityHash: it is an additive commitment, so existing
 // package hashes (and the public-verify records that store them) are unchanged.
@@ -162,7 +162,7 @@ export function generateAuditPackage(input: AuditPackageInput): AuditPackage {
 
   const verification = input.verification ?? null
 
-  // Gap 4 — integrity hash over the package's core content (everything that
+  // integrity hash over the package's core content (everything that
   // matters for provenance), excluding the hash and instructions themselves.
   const core = {
     entityId: input.entityId,

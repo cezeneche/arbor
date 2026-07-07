@@ -1,4 +1,4 @@
-// Upgrade 8 — the proving-engine interface. Deliberately engine-agnostic.
+// the proving-engine interface. Deliberately engine-agnostic.
 //
 // The statement layer (predicate.ts) defines *what* is proven and against which
 // commitment. This defines the shape of a proof and the prove/verify contract a

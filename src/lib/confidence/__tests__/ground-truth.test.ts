@@ -1,6 +1,6 @@
 import { buildGroundTruthLabel, valuesMatch } from '../ground-truth'
 
-// Upgrade 1 — calibration training signal.
+// calibration training signal.
 //
 // Every human review decision is a labelled datapoint: the model's confidence
 // at extraction time paired with whether its extracted value was actually

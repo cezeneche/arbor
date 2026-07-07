@@ -1,4 +1,4 @@
-// Offline calibration job (Upgrade 1, step 5). Scheduled worker (Vercel Cron).
+// Offline calibration job. Scheduled worker (Vercel Cron).
 //
 // Reads GroundTruthLabel → fits calibration on the brain → writes a calibrated
 // confidencePosterior back onto active DataRecords, grouped by field type. Runs
