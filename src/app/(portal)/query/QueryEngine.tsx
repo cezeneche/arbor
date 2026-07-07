@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing, trustTierConfig } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
 
@@ -34,12 +35,6 @@ type QueryResult = {
   tierDistribution: { A: number; B: number; C: number }
   records: NlRecord[]
   gapResult?: GapResult
-}
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
 }
 
 const EXAMPLE_QUESTIONS = [

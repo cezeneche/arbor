@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
@@ -15,7 +16,7 @@ export default async function ReviewPage({
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const document = await prisma.document.findUnique({
     where: { id },

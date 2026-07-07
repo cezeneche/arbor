@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
@@ -11,7 +12,7 @@ export async function PATCH(
 ) {
   const { session, response } = await requireAuth()
   if (!session) return response!
-  const sessionEntityId = (session.user as Record<string, unknown>).entityId as string
+  const sessionEntityId = getSessionUser(session).entityId as string
   const { entityId } = await params
 
   if (sessionEntityId !== entityId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

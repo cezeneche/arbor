@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -12,9 +13,9 @@ export default async function AuditorEntityPage({ params }: { params: Promise<{ 
   const { entityId } = await params
   const session = await auth()
   if (!session?.user) redirect('/login')
-  const role = (session.user as Record<string, unknown>).role as string | undefined
+  const role = getSessionUser(session).role
   if (role !== 'AUDITOR') redirect('/dashboard')
-  const userId = (session.user as Record<string, unknown>).id as string
+  const userId = getSessionUser(session).id
 
   const access = await prisma.auditorAccess.findFirst({
     where: { auditorUserId: userId, entityId, expiresAt: { gt: new Date() } },

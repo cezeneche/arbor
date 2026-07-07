@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
@@ -8,7 +9,7 @@ export async function DELETE(
 ) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const { id } = await params
   const key = await prisma.apiKey.findUnique({ where: { id } })

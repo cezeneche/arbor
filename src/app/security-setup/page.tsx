@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours } from '@/lib/design-system'
@@ -10,8 +11,8 @@ export default async function SecuritySetupPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const userId = (session.user as Record<string, unknown>).id as string
-  const role = (session.user as Record<string, unknown>).role as string
+  const userId = getSessionUser(session).id
+  const role = getSessionUser(session).role
 
   const me = await prisma.user.findUnique({
     where: { id: userId },

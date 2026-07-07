@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
 import { hash } from 'bcryptjs'
@@ -10,7 +11,7 @@ const createSchema = z.object({ label: z.string().min(1).max(100) })
 export async function GET() {
   const { session, response } = await requireAuth()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const keys = await prisma.apiKey.findMany({
     where: { entityId, isActive: true },
@@ -24,7 +25,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const body = await req.json().catch(() => null)
   const parsed = createSchema.safeParse(body)

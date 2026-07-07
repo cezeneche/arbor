@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Nav } from '@/components/Nav'
@@ -8,8 +9,8 @@ export default async function PortalLayout({ children }: { children: React.React
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const userId = (session.user as Record<string, unknown>).id as string | undefined
-  const role = (session.user as Record<string, unknown>).role as string | undefined
+  const userId = getSessionUser(session).id
+  const role = getSessionUser(session).role
 
   // Mandatory 2FA for administrators: an admin who has not yet enrolled is sent to
   // the dedicated setup page and cannot use the portal until 2FA is enabled.
@@ -22,7 +23,7 @@ export default async function PortalLayout({ children }: { children: React.React
     if (me && !me.twoFactorEnabled) redirect('/security-setup')
   }
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string | undefined
+  const entityId = getSessionUser(session).entityId as string | undefined
 
   let entityName = 'Your organisation'
   let entityType: 'SUPPLIER' | 'BUYER' = 'SUPPLIER'

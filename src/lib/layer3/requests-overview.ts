@@ -1,3 +1,4 @@
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
 // Layer 3 — Access. Read-only. Fuses the three request sources a supplier
 // experiences as one idea into two human sections (plus a separate "sent" list
 // for buyers). It classifies and formats; it makes no decisions and writes nothing.
@@ -42,12 +43,6 @@ export type CategorisedRequests = {
   waiting: RequestItem[]
   shared: RequestItem[]
   sent: RequestItem[]
-}
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
 }
 
 const INCOMING_WAITING = new Set(['PENDING', 'QUERY_RAISED'])

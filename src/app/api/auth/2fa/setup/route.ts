@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateTotpSecret, getTotpUri, encryptTotpSecret } from '@/lib/auth/totp'
@@ -15,7 +16,7 @@ export async function POST() {
   }
 
   const userId = user.id as string
-  const email = (session.user as Record<string, unknown>).email as string ?? ''
+  const email = getSessionUser(session).email as string ?? ''
 
   const secret = generateTotpSecret()
   const encrypted = encryptTotpSecret(secret)

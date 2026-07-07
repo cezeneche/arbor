@@ -1,15 +1,5 @@
 import { colours, typography, spacing, trustTierConfig } from '@/lib/design-system'
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy',
-  MATERIALS: 'Materials',
-  PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics',
-  EMISSIONS: 'Emissions',
-  AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water',
-  COMPLIANCE: 'Compliance',
-}
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
 
 export interface DomainStat {
   domain: string

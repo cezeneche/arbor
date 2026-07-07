@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
@@ -10,7 +11,7 @@ const schema = z.object({
 export async function PATCH(req: NextRequest) {
   const { session, response } = await requireAuth()
   if (!session) return response!
-  const userId = (session.user as Record<string, unknown>).id as string
+  const userId = getSessionUser(session).id
 
   let body: unknown
   try { body = await req.json() } catch {

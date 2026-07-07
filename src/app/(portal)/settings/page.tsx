@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -12,9 +13,9 @@ export default async function SettingsPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const userId = (session.user as Record<string, unknown>).id as string
-  const entityId = (session.user as Record<string, unknown>).entityId as string
-  const sessionRole = (session.user as Record<string, unknown>).role as string
+  const userId = getSessionUser(session).id
+  const entityId = getSessionUser(session).entityId as string
+  const sessionRole = getSessionUser(session).role
 
   const [user, entity] = await Promise.all([
     prisma.user.findUnique({

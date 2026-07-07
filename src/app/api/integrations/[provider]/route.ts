@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
@@ -20,7 +21,7 @@ function parseProvider(raw: string): IntegrationProvider | null {
 export async function POST(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const provider = parseProvider((await params).provider)
   if (!provider) return err('Unknown provider', 'NOT_FOUND', 404)
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const provider = parseProvider((await params).provider)
   if (!provider) return err('Unknown provider', 'NOT_FOUND', 404)
 

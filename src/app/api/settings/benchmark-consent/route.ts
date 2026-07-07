@@ -1,6 +1,7 @@
 // Layer 2  -  updates entity's allowBenchmarkAggregation flag.
 // Logs consent grant/revocation in the audit chain for traceability (PRD §19.3).
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { computeRecordHash } from '@/lib/layer2/audit-chain'
@@ -11,8 +12,8 @@ export async function POST(req: NextRequest) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
-  const userId = (session.user as Record<string, unknown>).id as string
+  const entityId = getSessionUser(session).entityId as string
+  const userId = getSessionUser(session).id
 
   let body: { allow: boolean }
   try {

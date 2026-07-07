@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
+import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -19,12 +21,6 @@ import { tierLabel } from '@/lib/tier-label'
 const DOMAINS = ['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']
 const TIERS = ['A', 'B', 'C']
 
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
-}
-
 export default async function RecordsPage({
   searchParams,
 }: {
@@ -33,7 +29,7 @@ export default async function RecordsPage({
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const sp = await searchParams
   const domainFilter = sp.domain ?? null
   const tierFilter = sp.tier ?? null

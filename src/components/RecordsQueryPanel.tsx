@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing, layout } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
 
@@ -26,12 +27,6 @@ type QueryResult = {
   recordCount: number
   hasMore: boolean
   records: NlRecord[]
-}
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
 }
 
 export function RecordsQueryPanel({ children, plainTiers = false }: { children: React.ReactNode; plainTiers?: boolean }) {

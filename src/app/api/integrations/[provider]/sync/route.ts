@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
@@ -11,7 +12,7 @@ const PROVIDERS = ['CDS', 'SAP', 'NETSUITE', 'ORACLE'] as const
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const upper = (await params).provider.toUpperCase()
   if (!(PROVIDERS as readonly string[]).includes(upper)) return err('Unknown provider', 'NOT_FOUND', 404)
   const provider = upper as IntegrationProvider

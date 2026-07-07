@@ -1,14 +1,10 @@
 import { redirect } from 'next/navigation'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
+import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { Pagination, PAGE_SIZE } from '@/components/Pagination'
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
-}
 
 const EVENT_LABELS: Record<string, string> = {
   CREATED: 'Record created',
@@ -45,7 +41,7 @@ export default async function ActivityPage({
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const sp = await searchParams
   const page = Math.max(1, parseInt(sp.page ?? '1', 10))
 

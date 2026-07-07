@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
+import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -10,17 +12,6 @@ const DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
   'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
 ] as const
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy',
-  MATERIALS: 'Materials',
-  PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics',
-  EMISSIONS: 'Emissions',
-  AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water',
-  COMPLIANCE: 'Compliance',
-}
 
 const DOC_STATUS_LABELS: Record<string, string> = {
   PENDING: 'Queued',
@@ -77,7 +68,7 @@ export default async function DashboardPage({
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
   const sp = await searchParams
   const reqPage = Math.max(1, parseInt(sp.reqPage ?? '1', 10))
 

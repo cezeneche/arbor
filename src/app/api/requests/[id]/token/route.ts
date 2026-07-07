@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
@@ -12,7 +13,7 @@ export async function POST(
   if (!session) return response!
 
   const { id } = await params
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const request = await prisma.dataRequest.findUnique({ where: { id } })
   if (!request) return err('Request not found', 'NOT_FOUND', 404)

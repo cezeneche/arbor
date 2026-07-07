@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { randomBytes } from 'crypto'
 import { z } from 'zod'
 import { requireWriteAccess, requireAuth } from '@/lib/auth-helpers'
@@ -27,8 +28,8 @@ export async function POST(req: NextRequest) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
-  const entityId = (session.user as Record<string, unknown>).entityId as string
-  const createdById = (session.user as Record<string, unknown>).id as string
+  const entityId = getSessionUser(session).entityId as string
+  const createdById = getSessionUser(session).id
 
   const body = await req.json().catch(() => null)
   const parsed = bodySchema.safeParse(body ?? {})
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const { session, response } = await requireAuth()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const shares = await prisma.sharedExport.findMany({
     where: { entityId },

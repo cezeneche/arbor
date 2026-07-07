@@ -1,14 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing } from '@/lib/design-system'
 import type { BenchmarkPoint } from '@/app/api/benchmarks/route'
-
-const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste & Water', COMPLIANCE: 'Compliance',
-}
 
 interface BenchmarkResponse {
   benchmarks: BenchmarkPoint[]

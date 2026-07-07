@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireVerifier } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { session, response } = await requireVerifier()
   if (!session) return response!
 
-  const verifierId = (session.user as Record<string, unknown>).id as string
+  const verifierId = getSessionUser(session).id
   const { id } = await params
 
   const body = await req.json().catch(() => null)

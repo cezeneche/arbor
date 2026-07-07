@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAuth, requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
@@ -19,7 +20,7 @@ const createSchema = z.object({
 export async function GET() {
   const { session, response } = await requireAuth()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const grants = await prisma.dataAccessGrant.findMany({
     where: {
@@ -39,7 +40,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
-  const entityId = (session.user as Record<string, unknown>).entityId as string
+  const entityId = getSessionUser(session).entityId as string
 
   const body = await req.json().catch(() => null)
   const parsed = createSchema.safeParse(body)
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
       documentId: null,
       extractionMethod: 'MANUAL_ENTRY',
       submittedAt: nowIso,
-      submittedById: (session.user as Record<string, unknown>).id as string,
+      submittedById: getSessionUser(session).id,
     }
     const hash = computeRecordHash(payload, previousHash)
     await prisma.auditEntry.create({
