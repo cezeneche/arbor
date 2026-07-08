@@ -58,9 +58,11 @@ export function verifyWorkosSignature(
   const { timestamp, signature } = parseWorkosSignatureHeader(header)
   if (timestamp === null || !signature) return false
 
-  const nowSec = Math.floor((opts.now ?? new Date()).getTime() / 1000)
-  const tolerance = opts.toleranceSec ?? 300
-  if (Math.abs(nowSec - timestamp) > tolerance) return false
+  // WorkOS's `t=` value is milliseconds since the epoch (Date.now()), so the
+  // replay window has to be compared in milliseconds too.
+  const nowMs = (opts.now ?? new Date()).getTime()
+  const toleranceMs = (opts.toleranceSec ?? 300) * 1000
+  if (Math.abs(nowMs - timestamp) > toleranceMs) return false
 
   const expected = createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex')
   return safeEqualHex(signature.toLowerCase(), expected)
