@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean }) {
   const [enabled, setEnabled] = useState(initialValue)
@@ -39,30 +39,13 @@ export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3] }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            style={{
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.medium,
-              color: colours.textSecondary,
-              letterSpacing: typography.tracking.wider,
-              textTransform: 'uppercase',
-              margin: `0 0 ${spacing[1]}`,
-            }}
-          >
+          <p style={{ ...textStyles.eyebrow, marginBottom: spacing[1] }}>
             Sector benchmarks
           </p>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}` }}>
+          <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
             Contribute to anonymous sector data
           </p>
-          <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: 0,
-              lineHeight: '1.6',
-            }}
-          >
+          <p style={{ ...textStyles.sectionSubtitle, lineHeight: '1.6' }}>
             When enabled, your verified records are included in anonymised statistical benchmarks for your sector.
             Your business is never identified. Benchmarks require at least 10 businesses before any figure is shown.
             You can withdraw consent at any time. Your records are removed from future benchmark calculations.
@@ -90,7 +73,7 @@ export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean
             {saving ? 'Saving…' : enabled ? 'Enabled' : 'Disabled'}
           </button>
           {saved && (
-            <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.green, margin: 0 }}>
+            <p style={{ ...textStyles.caption, color: colours.green }}>
               Saved
             </p>
           )}

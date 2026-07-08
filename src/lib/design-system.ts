@@ -42,6 +42,75 @@ export const typography = {
   },
 } as const
 
+// Canonical text hierarchy for the whole product. Every screen should compose its
+// headings, labels, and body text from these — spread a style and add only spacing
+// (margins) locally. This is the single source of truth for the type scale, so the
+// stepped hierarchy (page 24 → section 15 → row 13 → caption 11) stays consistent
+// across every page instead of being re-guessed inline. Derived from the layered
+// pattern used in the Settings "Administration" card.
+export const textStyles = {
+  // Page H1 — one per screen (e.g. "Settings").
+  pageTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.medium,
+    color: colours.textPrimary,
+    letterSpacing: typography.tracking.tight,
+    margin: 0,
+  },
+  // The single line of context under a page H1.
+  pageSubtitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.light,
+    color: colours.textSecondary,
+    margin: 0,
+  },
+  // Card / section heading (e.g. "Administration", "Your profile").
+  sectionTitle: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.medium,
+    color: colours.textPrimary,
+    letterSpacing: typography.tracking.heading,
+    margin: 0,
+  },
+  // The line of context under a section heading.
+  sectionSubtitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.light,
+    color: colours.textSecondary,
+    margin: 0,
+  },
+  // A list-item / setting title inside a card (e.g. "Webhooks").
+  rowTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colours.textPrimary,
+    margin: 0,
+  },
+  // Supporting description under a row title, or any small helper text.
+  caption: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.light,
+    color: colours.textSecondary,
+    margin: 0,
+  },
+  // Uppercase field label above a value (e.g. "NAME", "COUNTRY").
+  eyebrow: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colours.textSecondary,
+    letterSpacing: typography.tracking.wider,
+    textTransform: 'uppercase',
+    margin: 0,
+  },
+  // A displayed field value under an eyebrow label (e.g. "Midlands Steel").
+  value: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.light,
+    color: colours.textPrimary,
+    margin: 0,
+  },
+} as const
+
 export const spacing = {
   1: '8px',
   2: '16px',
