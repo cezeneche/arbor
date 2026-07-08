@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 interface Props {
   legalName: string
@@ -62,20 +62,9 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
     setTimeout(() => setSuccess(false), 3000)
   }
 
-  const labelStyle = {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
-    color: colours.textSecondary,
-    letterSpacing: typography.tracking.wider,
-    textTransform: 'uppercase' as const,
-    marginBottom: '4px',
-  }
+  const labelStyle = { ...textStyles.eyebrow, marginBottom: '4px' }
 
-  const valueStyle = {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.light,
-    color: colours.textPrimary,
-  }
+  const valueStyle = textStyles.value
 
   const inputStyle = {
     width: '100%',
@@ -95,10 +84,10 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[3] }}>
         <div>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+          <p style={textStyles.sectionTitle}>
             Organisation
           </p>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `4px 0 0` }}>
+          <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
             {isAdmin ? 'Company registration and classification details.' : 'Contact your account administrator to update these details.'}
           </p>
         </div>

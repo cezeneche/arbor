@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 type Step = 'idle' | 'scanning' | 'confirming' | 'recovery' | 'disabling'
 
@@ -124,10 +124,10 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+          <p style={textStyles.sectionTitle}>
             Two-factor authentication
           </p>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '4px 0 0' }}>
+          <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
             {isEnabled
               ? 'Your account is protected with an authenticator app.'
               : 'Add a second layer of security using an authenticator app.'}

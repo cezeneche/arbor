@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { ProfileEditor } from './ProfileEditor'
 import { OrganisationEditor } from './OrganisationEditor'
 import { BenchmarkConsentToggle } from './api-keys/BenchmarkConsentToggle'
@@ -51,25 +51,8 @@ export default async function SettingsPage() {
   return (
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[4] }}>
-        <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
-        >
-          Settings
-        </h1>
-        <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
-        >
+        <h1 style={textStyles.pageTitle}>Settings</h1>
+        <p style={{ ...textStyles.pageSubtitle, marginTop: spacing[1] }}>
           Manage your account, organisation profile, and data preferences.
         </p>
       </div>
@@ -98,15 +81,15 @@ export default async function SettingsPage() {
 
         {/* Data preferences */}
         <div style={sectionStyle}>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}` }}>
+          <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
             Data preferences
           </p>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[2]}` }}>
+          <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[2] }}>
             Control how your data is used beyond your own account.
           </p>
           <BenchmarkConsentToggle initialValue={entity.allowBenchmarkAggregation} />
           {divider}
-          <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0, lineHeight: '1.6' }}>
+          <p style={{ ...textStyles.caption, color: colours.textTertiary, lineHeight: '1.6' }}>
             To request account closure or permanent data deletion, contact{' '}
             <a href="mailto:support@arbor.uk" style={{ color: colours.textSecondary, textDecoration: 'underline' }}>support@arbor.uk</a>.
             Your certified records will be retained for audit chain integrity until the request is processed.
@@ -115,10 +98,10 @@ export default async function SettingsPage() {
 
         {/* Reports & logs - reads-not-fills tools, kept off the primary nav */}
         <div style={sectionStyle}>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}` }}>
+          <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
             Logs &amp; access
           </p>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[2]}` }}>
+          <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[2] }}>
             Review the history of every change to your data. Data quality, trends and benchmarks now live in Records.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -130,8 +113,8 @@ export default async function SettingsPage() {
             ].map((row) => (
               <div key={row.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] }}>
                 <div>
-                  <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>{row.label}</p>
-                  <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>{row.desc}</p>
+                  <p style={textStyles.rowTitle}>{row.label}</p>
+                  <p style={{ ...textStyles.caption, marginTop: '2px' }}>{row.desc}</p>
                 </div>
                 <Link
                   href={row.href}
@@ -156,10 +139,10 @@ export default async function SettingsPage() {
         <div style={sectionStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+              <p style={textStyles.sectionTitle}>
                 Integrations &amp; API keys
               </p>
-              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `4px 0 0` }}>
+              <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
                 Connect your ERP or accounting system to push data into arbor automatically.
               </p>
             </div>
@@ -186,7 +169,7 @@ export default async function SettingsPage() {
         {/* Admin-only: connectors, webhooks, SSO */}
         {sessionRole === 'ADMIN' && (
           <div style={sectionStyle}>
-            <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[2]}` }}>
+            <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[2] }}>
               Administration
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
