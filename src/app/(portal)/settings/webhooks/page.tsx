@@ -2,8 +2,9 @@ import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { spacing, textStyles } from '@/lib/design-system'
 import { WebhookManager } from './WebhookManager'
+import { SettingsBreadcrumb } from '../SettingsBreadcrumb'
 
 export default async function WebhooksPage() {
   const session = await auth()
@@ -34,6 +35,7 @@ export default async function WebhooksPage() {
 
   return (
     <div>
+      <SettingsBreadcrumb current="Webhooks" />
       <div style={{ marginBottom: spacing[5] }}>
         <h1 style={textStyles.pageTitle}>
           Webhooks

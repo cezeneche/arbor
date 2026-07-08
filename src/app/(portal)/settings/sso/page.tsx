@@ -2,8 +2,9 @@ import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { spacing, textStyles } from '@/lib/design-system'
 import { SsoSetup } from './SsoSetup'
+import { SettingsBreadcrumb } from '../SettingsBreadcrumb'
 
 export default async function SsoSettingsPage() {
   const session = await auth()
@@ -19,6 +20,7 @@ export default async function SsoSettingsPage() {
 
   return (
     <div>
+      <SettingsBreadcrumb current="Single sign-on" />
       <div style={{ marginBottom: spacing[5] }}>
         <h1 style={textStyles.pageTitle}>
           Single sign-on
