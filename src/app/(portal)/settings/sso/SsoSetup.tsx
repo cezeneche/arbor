@@ -32,7 +32,7 @@ export function SsoSetup({ initialOrgId }: { initialOrgId: string | null }) {
   }
 
   return (
-    <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[3], maxWidth: '560px' }}>
+    <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[3] }}>
       <label style={{ display: 'block', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textSecondary, letterSpacing: typography.tracking.wider, textTransform: 'uppercase' as const, marginBottom: '6px' }}>
         WorkOS organisation ID
       </label>

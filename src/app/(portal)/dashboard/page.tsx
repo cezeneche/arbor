@@ -176,17 +176,6 @@ export default async function DashboardPage({
   const openRequestsCount = totalPending
   const reviewCount = recentDocuments.filter(d => d.status === 'REVIEW_REQUIRED').length
 
-  // onboarding progress. Shown until the first document is uploaded and
-  // its data confirmed (a record written). Removed permanently thereafter.
-  const step1Done = recentDocuments.length > 0
-  const step2Done = totalRecords > 0
-  const onboardingComplete = step1Done && step2Done
-  const onboardingSteps = [
-    { n: 1, label: 'Upload your first document', done: step1Done },
-    { n: 2, label: 'Check what was found', done: step2Done },
-    { n: 3, label: 'Share when a customer asks', done: false, ready: true },
-  ]
-
   return (
     <div>
       <div
@@ -262,57 +251,6 @@ export default async function DashboardPage({
         </section>
       )}
 
-      {/* onboarding progress, removed once the first record is confirmed. */}
-      {!onboardingComplete && (
-        <section style={{ marginBottom: spacing[4] }}>
-          <div
-            style={{
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '8px',
-              padding: spacing[3],
-              display: 'flex',
-              gap: spacing[4],
-              flexWrap: 'wrap' as const,
-            }}
-          >
-            {onboardingSteps.map((step) => (
-              <div key={step.n} style={{ display: 'flex', gap: spacing[1], alignItems: 'center' }}>
-                <span
-                  style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    backgroundColor: step.done ? colours.green : colours.background,
-                    border: `1px solid ${step.done ? colours.green : colours.border}`,
-                    color: step.done ? colours.surface : colours.textTertiary,
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.medium,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {step.done ? '✓' : step.n}
-                </span>
-                <span
-                  style={{
-                    fontSize: typography.sizes.sm,
-                    fontWeight: step.done ? typography.weights.light : typography.weights.medium,
-                    color: step.done ? colours.textTertiary : colours.textPrimary,
-                  }}
-                >
-                  {step.label}
-                  {step.ready && (
-                    <span style={{ color: colours.green, fontWeight: typography.weights.light, marginLeft: '6px' }}>Ready</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Needs attention: certificate expiry + batch staleness. Shown only when non-empty. */}
       {attentionItems.length > 0 && (
