@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 const labelStyle = {
   display: 'block',
@@ -57,13 +57,7 @@ export default function ForgotPasswordPage() {
     >
       <div style={{ marginBottom: spacing[5] }}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Reset your password
         </h1>

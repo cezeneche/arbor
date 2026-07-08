@@ -3,7 +3,7 @@ import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { Pagination, PAGE_SIZE } from '@/components/Pagination'
 
 const EVENT_LABELS: Record<string, string> = {
@@ -87,7 +87,7 @@ export default async function ActivityPage({
   return (
     <div>
       <div style={{ marginBottom: spacing[5] }}>
-        <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
+        <h1 style={textStyles.pageTitle}>
           Activity
         </h1>
         <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>

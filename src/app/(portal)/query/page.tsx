@@ -1,4 +1,4 @@
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { QueryEngine } from './QueryEngine'
 
 export default function QueryPage() {
@@ -6,13 +6,7 @@ export default function QueryPage() {
     <div>
       <div style={{ marginBottom: spacing[4] }}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Query
         </h1>

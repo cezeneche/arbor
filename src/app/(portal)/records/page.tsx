@@ -4,7 +4,7 @@ import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
 import { TrustIndicator } from '@/components/TrustIndicator'
 import type { ConfidencePosterior } from '@/lib/confidence/types'
@@ -138,13 +138,7 @@ export default async function RecordsPage({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[4] }}>
         <div>
           <h1
-            style={{
-              fontSize: typography.sizes.lg,
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
-              margin: 0,
-              letterSpacing: typography.tracking.tight,
-            }}
+            style={textStyles.pageTitle}
           >
             Records
           </h1>

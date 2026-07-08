@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { signOut } from 'next-auth/react'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 type Step = 'intro' | 'scanning' | 'recovery'
 
@@ -98,13 +98,7 @@ export function MandatoryTwoFactorSetup() {
     >
       <div style={{ marginBottom: spacing[4] }}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Secure your administrator account
         </h1>
