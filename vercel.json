@@ -3,6 +3,7 @@
   "crons": [
     { "path": "/api/cron/calibrate", "schedule": "0 3 * * *" },
     { "path": "/api/cron/resolve-entities", "schedule": "0 4 * * 1" },
-    { "path": "/api/cron/project-graph", "schedule": "0 5 * * *" }
+    { "path": "/api/cron/project-graph", "schedule": "0 5 * * *" },
+    { "path": "/api/cron/keepalive", "schedule": "0 6 * * 1,4" }
   ]
 }
