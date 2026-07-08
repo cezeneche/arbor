@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
 import { ShareVerifyButton } from '@/components/ShareVerifyButton'
 import { isShareViewable } from '@/lib/shares/share-status'
@@ -76,7 +76,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
           arbor
         </div>
 
-        <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
+        <h1 style={textStyles.pageTitle}>
           {entity?.legalName ?? 'Shared data'}
         </h1>
         <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[3]}` }}>

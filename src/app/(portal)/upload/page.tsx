@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { UploadZone } from '@/components/UploadZone'
 
 export default async function UploadPage({
@@ -27,13 +27,7 @@ export default async function UploadPage({
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[5] }}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           {isBuyer ? 'Ingest documents' : 'Upload document'}
         </h1>

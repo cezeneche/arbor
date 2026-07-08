@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 const labelStyle = {
   display: 'block',
@@ -76,13 +76,7 @@ export default function ResetPasswordForm() {
     return (
       <div style={cardStyle}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Reset link missing
         </h1>
@@ -110,13 +104,7 @@ export default function ResetPasswordForm() {
     <div style={cardStyle}>
       <div style={{ marginBottom: spacing[5] }}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Choose a new password
         </h1>

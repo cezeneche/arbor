@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { WebhookManager } from './WebhookManager'
 
 export default async function WebhooksPage() {
@@ -35,7 +35,7 @@ export default async function WebhooksPage() {
   return (
     <div>
       <div style={{ marginBottom: spacing[5] }}>
-        <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
+        <h1 style={textStyles.pageTitle}>
           Webhooks
         </h1>
         <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>

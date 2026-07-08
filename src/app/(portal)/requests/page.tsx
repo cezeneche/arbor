@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { shareState } from '@/lib/shares/share-status'
 import { categoriseRequests } from '@/lib/layer3/requests-overview'
 import { RequestSectionList } from '@/components/RequestSectionList'
@@ -59,13 +59,7 @@ export default async function RequestsPage() {
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[5] }}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Requests
         </h1>

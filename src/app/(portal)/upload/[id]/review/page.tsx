@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { ExtractionReview } from '@/components/ExtractionReview'
 import { ExtractionPoller } from '@/components/ExtractionPoller'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
@@ -92,13 +92,7 @@ export default async function ReviewPage({
     <div>
       <div style={{ marginBottom: spacing[5] }}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Review extraction
         </h1>

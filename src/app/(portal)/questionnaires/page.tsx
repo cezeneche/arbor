@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { listTemplates } from '@/lib/questionnaires/templates'
 
 export default async function QuestionnairesPage() {
@@ -18,13 +18,7 @@ export default async function QuestionnairesPage() {
         </Link>
       </div>
       <h1
-        style={{
-          fontSize: typography.sizes.lg,
-          fontWeight: typography.weights.medium,
-          color: colours.textPrimary,
-          margin: 0,
-          letterSpacing: typography.tracking.tight,
-        }}
+        style={textStyles.pageTitle}
       >
         Questionnaires
       </h1>

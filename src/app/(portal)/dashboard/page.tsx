@@ -4,7 +4,7 @@ import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { Pagination, PAGE_SIZE } from '@/components/Pagination'
 import { summariseCorrections } from '@/lib/confidence/correction-summary'
 
@@ -198,13 +198,7 @@ export default async function DashboardPage({
         }}
       >
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Overview
         </h1>

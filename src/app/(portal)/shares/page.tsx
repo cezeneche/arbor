@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { shareState } from '@/lib/shares/share-status'
 import Link from 'next/link'
 import { SharesManager } from '@/components/SharesManager'
@@ -41,7 +41,7 @@ export default async function SharesPage() {
           ← Requests
         </Link>
       </div>
-      <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
+      <h1 style={textStyles.pageTitle}>
         Shared links
       </h1>
       <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[4]}`, maxWidth: '640px' }}>

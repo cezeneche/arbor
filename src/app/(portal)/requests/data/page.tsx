@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { RequestsList } from '@/components/RequestsList'
 
 // The data-request depth (respond, generate share link, pagination) lives here.
@@ -48,13 +48,7 @@ export default async function DataRequestsPage() {
       </Link>
       <div style={{ margin: `${spacing[3]} 0 ${spacing[5]}` }}>
         <h1
-          style={{
-            fontSize: typography.sizes.lg,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-            letterSpacing: typography.tracking.tight,
-          }}
+          style={textStyles.pageTitle}
         >
           Data requests
         </h1>

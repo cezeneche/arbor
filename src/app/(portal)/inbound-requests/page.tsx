@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 interface ParsedShape {
   parsed?: { domain?: string | null; fields?: string[]; periodStart?: string | null; periodEnd?: string | null }
@@ -36,7 +36,7 @@ export default async function InboundRequestsPage() {
           ← Requests
         </Link>
       </div>
-      <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, letterSpacing: typography.tracking.tight }}>
+      <h1 style={textStyles.pageTitle}>
         Email requests
       </h1>
       <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[4]}`, maxWidth: '640px' }}>
