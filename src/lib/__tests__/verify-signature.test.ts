@@ -34,14 +34,15 @@ describe('verifyBodyHmac', () => {
 describe('verifyWorkosSignature', () => {
   const body = '{"event":"user.deactivated"}'
   const now = new Date('2026-07-07T12:00:00Z')
-  const t = Math.floor(now.getTime() / 1000)
+  // WorkOS signs with a millisecond epoch timestamp (Date.now()).
+  const t = now.getTime()
 
   it('accepts a valid, in-tolerance signature', () => {
     const header = `t=${t}, v1=${workosSig(body, t)}`
     expect(verifyWorkosSignature(body, header, SECRET, { now })).toBe(true)
   })
   it('rejects a replayed (stale timestamp) delivery', () => {
-    const old = t - 10_000
+    const old = t - 10_000_000 // ~2.8h in ms, well past the 300s window
     const header = `t=${old}, v1=${workosSig(body, old)}`
     expect(verifyWorkosSignature(body, header, SECRET, { now, toleranceSec: 300 })).toBe(false)
   })
