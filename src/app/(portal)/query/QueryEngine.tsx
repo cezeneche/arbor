@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
-import { colours, typography, spacing, trustTierConfig } from '@/lib/design-system'
+import { colours, typography, spacing, trustTierConfig, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
 
 type NlRecord = {
@@ -213,12 +213,7 @@ export function QueryEngine() {
           {/* Interpretation + summary */}
           <div style={{ marginBottom: spacing[3] }}>
             <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                margin: '0 0 6px',
-              }}
+              style={{ ...textStyles.sectionSubtitle, margin: '0 0 6px' }}
             >
               <span style={{ fontWeight: typography.weights.medium, color: colours.textPrimary }}>
                 {result.summary}
@@ -491,12 +486,7 @@ function GapDisplay({ gapResult }: { gapResult: GapResult }) {
           }}
         >
           <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
-              margin: '0 0 10px',
-            }}
+            style={{ ...textStyles.rowTitle, margin: '0 0 10px' }}
           >
             Your organisation - missing domains
           </p>

@@ -18,7 +18,7 @@ function Unavailable() {
         <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
           This link is no longer available
         </h1>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[2]} 0 0` }}>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[2]} 0 0` }}>
           The shared data set has been revoked or has expired. Please ask the sender for a new link.
         </p>
       </div>
@@ -79,7 +79,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         <h1 style={textStyles.pageTitle}>
           {entity?.legalName ?? 'Shared data'}
         </h1>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[3]}` }}>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 ${spacing[3]}` }}>
           {records.length} certified record{records.length === 1 ? '' : 's'}
           {share.domain ? ` · ${DOMAIN_LABELS[share.domain] ?? share.domain}` : ''}
           {' · shared via Arbor. Every record carries its trust tier and provenance.'}

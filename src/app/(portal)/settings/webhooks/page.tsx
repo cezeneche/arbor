@@ -38,7 +38,7 @@ export default async function WebhooksPage() {
         <h1 style={textStyles.pageTitle}>
           Webhooks
         </h1>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Receive a signed HTTP callback when a certified record, supersession, or access change occurs for a supplier you can see. Verify the <code>X-Arbor-Signature</code> header with your signing secret.
         </p>
       </div>

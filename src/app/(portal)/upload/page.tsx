@@ -32,12 +32,7 @@ export default async function UploadPage({
           {isBuyer ? 'Ingest documents' : 'Upload document'}
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           Upload a document to extract and certify its data. Fields below the confidence
           threshold will be flagged for your review before records are written.

@@ -185,7 +185,7 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
       {/* STEP: scanning - show QR code */}
       {step === 'scanning' && (
         <div style={{ marginTop: spacing[2] }}>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[2]}` }}>
+          <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[2]}` }}>
             Scan this code with your authenticator app (Google Authenticator, Authy, or similar), then enter the code it shows below.
           </p>
           {qrDataUrl && (
@@ -268,7 +268,7 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
       {/* STEP: disabling */}
       {step === 'disabling' && (
         <div style={{ marginTop: spacing[2] }}>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[2]}` }}>
+          <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[2]}` }}>
             Enter your authenticator code to confirm you want to remove two-factor authentication.
           </p>
           <form onSubmit={handleDisable} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>

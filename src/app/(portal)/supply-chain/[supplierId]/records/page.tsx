@@ -107,12 +107,7 @@ export default async function SupplierRecordsPage({
             {supplier.legalName}
           </h1>
           <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `${spacing[1]} 0 0`,
-            }}
+            style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
           >
             {supplier.country} · {supplier.sector} · {totalRecords} records
           </p>
@@ -163,12 +158,7 @@ export default async function SupplierRecordsPage({
               {count}
             </p>
             <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                margin: `2px 0 0`,
-              }}
+              style={{ ...textStyles.sectionSubtitle, margin: `2px 0 0` }}
             >
               {totalRecords > 0 ? Math.round((count / totalRecords) * 100) : 0}% of records
             </p>
@@ -279,23 +269,13 @@ export default async function SupplierRecordsPage({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
                           <TierBadge tier={record.trustTier as 'A' | 'B' | 'C'} />
                           <p
-                            style={{
-                              fontSize: typography.sizes.base,
-                              fontWeight: typography.weights.medium,
-                              color: colours.textPrimary,
-                              margin: 0,
-                            }}
+                            style={textStyles.sectionTitle}
                           >
                             {record.fieldName.replace(/_/g, ' ')}
                           </p>
                         </div>
                         <p
-                          style={{
-                            fontSize: typography.sizes.sm,
-                            fontWeight: typography.weights.light,
-                            color: colours.textSecondary,
-                            margin: 0,
-                          }}
+                          style={textStyles.sectionSubtitle}
                         >
                           {record.value.toLocaleString()} {record.unit}
                           {' · '}

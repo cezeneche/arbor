@@ -90,7 +90,7 @@ export default async function ActivityPage({
         <h1 style={textStyles.pageTitle}>
           Activity
         </h1>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Full history of document submissions, extractions, and data record changes.
         </p>
       </div>
@@ -150,11 +150,11 @@ export default async function ActivityPage({
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[2] }}>
                               <div>
-                                <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+                                <p style={textStyles.rowTitle}>
                                   {eventLabel}
                                 </p>
                                 {record && (
-                                  <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>
+                                  <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
                                     {domainLabel}
                                     {fieldLabel ? ` · ${fieldLabel}` : ''}
                                     {periodLabel ? ` · ${periodLabel}` : ''}
@@ -164,7 +164,7 @@ export default async function ActivityPage({
                                   </p>
                                 )}
                                 {!record && (payload.domain as string | undefined) && (
-                                  <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>
+                                  <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
                                     {DOMAIN_LABELS[payload.domain as string] ?? String(payload.domain as string)}
                                     {(payload.fieldName as string | undefined) ? ` · ${String(payload.fieldName as string).replace(/_/g, ' ')}` : ''}
                                   </p>

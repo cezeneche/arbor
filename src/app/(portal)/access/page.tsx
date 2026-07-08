@@ -58,12 +58,7 @@ export default async function AccessPage() {
           Access
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           {buyers.length === 0
             ? "You haven't shared your data with anyone yet. When a buyer requests access, you'll see them here."
@@ -116,7 +111,7 @@ export default async function AccessPage() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3] }}>
                     <div>
-                      <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+                      <p style={textStyles.sectionTitle}>
                         {info.name}
                       </p>
                       <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0' }}>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 interface Buyer {
   id: string
@@ -131,12 +131,7 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
       }}
     >
       <p
-        style={{
-          fontSize: typography.sizes.base,
-          fontWeight: typography.weights.medium,
-          color: colours.textPrimary,
-          margin: `0 0 ${spacing[3]}`,
-        }}
+        style={{ ...textStyles.sectionTitle, margin: `0 0 ${spacing[3]}` }}
       >
         Share data with a buyer
       </p>

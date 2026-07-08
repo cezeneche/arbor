@@ -64,12 +64,7 @@ export default async function RequestsPage() {
           Requests
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           {waiting.length > 0
             ? `${waiting.length} waiting on you`
@@ -110,7 +105,7 @@ export default async function RequestsPage() {
         >
           Complete a questionnaire →
         </Link>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '4px 0 0' }}>
+        <p style={{ ...textStyles.sectionSubtitle, margin: '4px 0 0' }}>
           Answer a buyer&apos;s questionnaire from the data you already hold.
         </p>
       </div>

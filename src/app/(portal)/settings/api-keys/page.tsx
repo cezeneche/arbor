@@ -39,12 +39,7 @@ export default async function ApiKeysPage() {
           Integrations &amp; API keys
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           Connect your accounting or ERP system to push data into arbor automatically.
           Create an API key and configure your system to POST to the ingest endpoint below.
@@ -179,7 +174,7 @@ export default async function ApiKeysPage() {
         </div>
       </div>
 
-      <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[4]}` }}>
+      <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[4]}` }}>
         Read the full <a href="/docs/api" style={{ color: colours.navy }}>API reference</a>, including buyer query endpoints. Set up event callbacks in <a href="/settings/webhooks" style={{ color: colours.navy }}>Webhooks</a>.
       </p>
 

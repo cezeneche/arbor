@@ -2,7 +2,7 @@
 
 import { useState, useRef, DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 const DOCUMENT_TYPES = [
   { value: 'ELECTRICITY_BILL', label: 'Electricity Bill' },
@@ -180,10 +180,10 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
 
           {files.length > 0 ? (
             <div>
-              <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+              <p style={textStyles.sectionTitle}>
                 {files.length === 1 ? files[0].name : `${files.length} files selected`}
               </p>
-              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+              <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
                 Click to add more · up to {MAX_BATCH}
               </p>
             </div>

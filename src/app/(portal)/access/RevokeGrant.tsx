@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography } from '@/lib/design-system'
+import { colours, typography, textStyles } from '@/lib/design-system'
 
 export function RevokeGrant({
   grantId,
@@ -35,12 +35,7 @@ export function RevokeGrant({
     return (
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `0 0 6px`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `0 0 6px` }}
         >
           Revoke access for {buyerName} ({scopeLabel})?
         </p>

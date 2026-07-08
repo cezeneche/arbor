@@ -97,12 +97,7 @@ export default async function ReviewPage({
           Review extraction
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           {document.fileName} · {document.documentType.replace(/_/g, ' ')}
         </p>

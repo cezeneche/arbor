@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 interface ApiKeyRow {
   id: string
@@ -265,12 +265,7 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
               >
                 <div>
                   <p
-                    style={{
-                      fontSize: typography.sizes.base,
-                      fontWeight: typography.weights.medium,
-                      color: colours.textPrimary,
-                      margin: 0,
-                    }}
+                    style={textStyles.sectionTitle}
                   >
                     {key.label}
                   </p>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 const PAGE_SIZE = 20
 
@@ -199,22 +199,12 @@ export function RequestsList({ incoming, outgoing }: Props) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[2] }}>
                     <div>
                       <p
-                        style={{
-                          fontSize: typography.sizes.base,
-                          fontWeight: typography.weights.medium,
-                          color: colours.textPrimary,
-                          margin: 0,
-                        }}
+                        style={textStyles.sectionTitle}
                       >
                         {req.buyerEntity.legalName}
                       </p>
                       <p
-                        style={{
-                          fontSize: typography.sizes.sm,
-                          fontWeight: typography.weights.light,
-                          color: colours.textSecondary,
-                          margin: `4px 0 0`,
-                        }}
+                        style={{ ...textStyles.sectionSubtitle, margin: `4px 0 0` }}
                       >
                         {DOMAIN_LABELS[req.domain] ?? req.domain}
                         {' · '}
@@ -320,12 +310,7 @@ export function RequestsList({ incoming, outgoing }: Props) {
                     }}
                   >
                     <p
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.medium,
-                        color: colours.textPrimary,
-                        margin: `0 0 ${spacing[2]}`,
-                      }}
+                      style={{ ...textStyles.rowTitle, margin: `0 0 ${spacing[2]}` }}
                     >
                       Upload the requested data at{' '}
                       <a href="/upload" style={{ color: colours.navy }}>Upload documents</a>
@@ -428,22 +413,12 @@ export function RequestsList({ incoming, outgoing }: Props) {
               >
                 <div>
                   <p
-                    style={{
-                      fontSize: typography.sizes.sm,
-                      fontWeight: typography.weights.medium,
-                      color: colours.textPrimary,
-                      margin: 0,
-                    }}
+                    style={textStyles.rowTitle}
                   >
                     {req.supplierEntity.legalName}
                   </p>
                   <p
-                    style={{
-                      fontSize: typography.sizes.xs,
-                      fontWeight: typography.weights.light,
-                      color: colours.textSecondary,
-                      margin: '2px 0 0',
-                    }}
+                    style={{ ...textStyles.caption, margin: '2px 0 0' }}
                   >
                     {DOMAIN_LABELS[req.domain] ?? req.domain}
                     {' · '}

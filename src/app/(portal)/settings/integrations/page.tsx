@@ -31,7 +31,7 @@ export default async function IntegrationsPage() {
         <h1 style={textStyles.pageTitle}>
           ERP &amp; customs integrations
         </h1>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Connect your customs or ERP system to pull operational data automatically. Records arrive as Declared (Tier B); submit the source documents to upgrade them to Verified.
         </p>
       </div>

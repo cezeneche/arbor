@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { assembleAuditPackage } from '@/lib/audit-package/assemble'
 import { AuditPackageView } from '@/components/AuditPackageView'
 
@@ -47,7 +47,7 @@ export default async function AuditorEntityPage({ params }: { params: Promise<{ 
       >
         {pkg.entityName}
       </h1>
-      <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[4]}` }}>
+      <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 ${spacing[4]}` }}>
         Read-only audit package · {fmt(access.periodStart)} – {fmt(access.periodEnd)}
       </p>
 

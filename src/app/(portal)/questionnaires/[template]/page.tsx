@@ -94,7 +94,7 @@ export default async function QuestionnaireDetailPage({
           <h1 style={textStyles.pageTitle}>
             {template.name}
           </h1>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+          <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
             {answered} of {answers.length} answered from your records{gaps > 0 ? ` · ${gaps} still need data` : ''}
           </p>
         </div>
@@ -146,7 +146,7 @@ export default async function QuestionnaireDetailPage({
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[3], alignItems: 'flex-start' }}>
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+                      <p style={textStyles.rowTitle}>
                         {a.questionText}
                       </p>
                       {a.note && (

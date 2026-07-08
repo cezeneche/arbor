@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 const INTEREST_AREAS = [
   { value: 'BENCHMARKS', label: 'Sector benchmark data' },
@@ -287,12 +287,7 @@ export default function InstitutionalPage() {
             Express an interest
           </h2>
           <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `0 0 ${spacing[3]}`,
-            }}
+            style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}` }}
           >
             Tell us about your organisation and what you are looking for. We will follow up within five business days.
           </p>
@@ -317,12 +312,7 @@ export default function InstitutionalPage() {
                 Enquiry received
               </p>
               <p
-                style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
-                  margin: 0,
-                }}
+                style={textStyles.sectionSubtitle}
               >
                 Thank you. We will be in touch within five business days.
               </p>

@@ -101,12 +101,7 @@ export default async function SupplyChainPage({
             Supply chain
           </h1>
           <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `${spacing[1]} 0 0`,
-            }}
+            style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
           >
             {suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''} with data access grants
           </p>
@@ -244,12 +239,7 @@ export default async function SupplyChainPage({
                       )}
                     </p>
                     <p
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.light,
-                        color: colours.textSecondary,
-                        margin: '2px 0 0',
-                      }}
+                      style={{ ...textStyles.sectionSubtitle, margin: '2px 0 0' }}
                     >
                       {supplier.country} · {supplier.sector}
                       {lastDoc && ` · Last submission ${new Date(lastDoc.submittedAt).toLocaleDateString('en-GB')}`}

@@ -592,12 +592,7 @@ export default async function DashboardPage({
             }}
           >
             <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.medium,
-                color: colours.textPrimary,
-                margin: `0 0 ${spacing[1]}`,
-              }}
+              style={{ ...textStyles.rowTitle, margin: `0 0 ${spacing[1]}` }}
             >
               No records in the store yet.
             </p>

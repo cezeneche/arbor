@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { colours, typography } from '@/lib/design-system'
+import { colours, typography, textStyles } from '@/lib/design-system'
 
 const container = {
   maxWidth: '1140px',
@@ -346,12 +346,7 @@ export default function PricingPage() {
               Supplier plans
             </h2>
             <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                margin: 0,
-              }}
+              style={textStyles.sectionSubtitle}
             >
               For manufacturers, producers, and suppliers building a certified operational data record.
             </p>
@@ -386,12 +381,7 @@ export default function PricingPage() {
               Buyer plans
             </h2>
             <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                margin: 0,
-              }}
+              style={textStyles.sectionSubtitle}
             >
               For large companies, procurement teams, and sustainability functions accessing verified supply chain data.
             </p>

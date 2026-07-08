@@ -62,12 +62,7 @@ export default function ForgotPasswordPage() {
           Reset your password
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           Enter your email and we&apos;ll send you a link to set a new one.
         </p>

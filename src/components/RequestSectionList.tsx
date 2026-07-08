@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import type { RequestItem } from '@/lib/layer3/requests-overview'
 
 const SOURCE_LABELS: Record<RequestItem['source'], string> = {
@@ -50,7 +50,7 @@ export function RequestSectionList({
       </div>
 
       {items.length === 0 ? (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0 }}>
+        <p style={textStyles.sectionSubtitle}>
           {emptyText}
         </p>
       ) : (
@@ -75,7 +75,7 @@ export function RequestSectionList({
                 <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {item.title}
                 </p>
-                <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>
+                <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
                   {SOURCE_LABELS[item.source]} · {item.detail}
                 </p>
               </div>
