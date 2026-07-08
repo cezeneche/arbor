@@ -180,8 +180,8 @@ export default async function SettingsPage() {
               ].map((row) => (
                 <div key={row.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] }}>
                   <div>
-                    <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>{row.label}</p>
-                    <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>{row.desc}</p>
+                    <p style={textStyles.rowTitle}>{row.label}</p>
+                    <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>{row.desc}</p>
                   </div>
                   <Link
                     href={row.href}

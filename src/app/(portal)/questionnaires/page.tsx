@@ -82,12 +82,7 @@ export default async function QuestionnairesPage() {
                   )}
                 </div>
                 <p
-                  style={{
-                    fontSize: typography.sizes.sm,
-                    fontWeight: typography.weights.light,
-                    color: colours.textSecondary,
-                    margin: `6px 0 0`,
-                  }}
+                  style={{ ...textStyles.sectionSubtitle, margin: `6px 0 0` }}
                 >
                   {t.description}
                 </p>

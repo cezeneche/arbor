@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 const DOMAINS = [
   { value: 'ENERGY', label: 'Energy' },
@@ -231,7 +231,7 @@ export function ExportBuilder({
       {previewed && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0 }}>
+            <p style={textStyles.sectionSubtitle}>
               {records.length} record{records.length !== 1 ? 's' : ''} matched
             </p>
             {records.length > 0 && (

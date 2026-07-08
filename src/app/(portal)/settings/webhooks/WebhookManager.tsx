@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 interface Subscription {
   id: string
@@ -142,7 +142,7 @@ export function WebhookManager({ initialSubscriptions }: { initialSubscriptions:
             <div key={s.id} style={{ padding: spacing[2], borderBottom: i < initialSubscriptions.length - 1 ? `1px solid ${colours.border}` : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[2] }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, wordBreak: 'break-all' as const }}>{s.url}</p>
-                <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, margin: '2px 0 0' }}>
+                <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
                   {s.events.join(', ').toLowerCase().replace(/_/g, ' ')}
                 </p>
                 <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '2px 0 0' }}>

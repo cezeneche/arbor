@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 const POLL_INTERVAL_MS = 3000
 const MAX_ATTEMPTS = 40 // ~2 minutes at 3s intervals
@@ -59,22 +59,12 @@ export function ExtractionPoller({ documentId }: { documentId: string }) {
         }}
       >
         <p
-          style={{
-            fontSize: typography.sizes.base,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            margin: 0,
-          }}
+          style={textStyles.sectionTitle}
         >
           Extraction could not be completed
         </p>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           The document may be unsupported or unreadable. Try uploading it again.
         </p>
@@ -105,22 +95,12 @@ export function ExtractionPoller({ documentId }: { documentId: string }) {
       />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <p
-        style={{
-          fontSize: typography.sizes.base,
-          fontWeight: typography.weights.medium,
-          color: colours.textPrimary,
-          margin: 0,
-        }}
+        style={textStyles.sectionTitle}
       >
         Reading your document…
       </p>
       <p
-        style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
-          margin: `${spacing[1]} 0 0`,
-        }}
+        style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
       >
         This usually takes 10–30 seconds.
       </p>

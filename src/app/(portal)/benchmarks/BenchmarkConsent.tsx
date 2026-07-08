@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 export function BenchmarkConsent({
   entityId,
@@ -43,7 +43,7 @@ export function BenchmarkConsent({
       }}
     >
       <div>
-        <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+        <p style={textStyles.sectionTitle}>
           {opted ? 'You are contributing to sector benchmarks' : 'Contribute to sector benchmarks'}
         </p>
         <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0`, lineHeight: '1.5' }}>

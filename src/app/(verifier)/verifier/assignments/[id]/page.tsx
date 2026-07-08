@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { assembleAuditPackage } from '@/lib/audit-package/assemble'
 import { AuditPackageView } from '@/components/AuditPackageView'
 import { VerifyActions } from './VerifyActions'
@@ -50,7 +50,7 @@ export default async function VerifierAssignmentDetail({ params }: { params: Pro
       >
         {assignment.entity.legalName}
       </h1>
-      <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[4]}` }}>
+      <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 ${spacing[4]}` }}>
         Period {fmt(assignment.periodStart)} – {fmt(assignment.periodEnd)} · status {assignment.status.replace('_', ' ')}
       </p>
 

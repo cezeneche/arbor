@@ -143,12 +143,7 @@ export default async function RecordsPage({
             Records
           </h1>
           <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `${spacing[1]} 0 0`,
-            }}
+            style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
           >
             {total.toLocaleString()} active record{total !== 1 ? 's' : ''}
             {domainFilter ? ` · ${DOMAIN_LABELS[domainFilter] ?? domainFilter}` : ''}

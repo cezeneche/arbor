@@ -23,7 +23,7 @@ export default async function SsoSettingsPage() {
         <h1 style={textStyles.pageTitle}>
           Single sign-on
         </h1>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Connect your identity provider (Okta, Azure AD, Google Workspace) through WorkOS so your team signs in with your company account. Users are provisioned automatically on first sign-in.
         </p>
       </div>

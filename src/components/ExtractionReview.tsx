@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
 import { TrustIndicator } from './TrustIndicator'
 import { trustDisplay } from '@/lib/confidence/trust-display'
@@ -423,22 +423,12 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
       >
         <div>
           <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: 0,
-            }}
+            style={textStyles.sectionSubtitle}
           >
             Document type: <strong style={{ fontWeight: typography.weights.medium }}>{document.documentType.replace(/_/g, ' ')}</strong>
           </p>
           <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              margin: `4px 0 0`,
-            }}
+            style={{ ...textStyles.sectionSubtitle, margin: `4px 0 0` }}
           >
             {fields.length} fields extracted · {criticalFlags.length} critical missing
           </p>

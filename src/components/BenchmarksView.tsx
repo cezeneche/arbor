@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import type { BenchmarkPoint } from '@/app/api/benchmarks/route'
 
 interface BenchmarkResponse {
@@ -158,7 +158,7 @@ export function BenchmarksView() {
   return (
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[4] }}>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0 }}>
+        <p style={textStyles.sectionSubtitle}>
           Anonymised operational data distributions from verified records across participating businesses.
           Individual companies are never identifiable. Requires at least {data?.floor ?? 10} companies per benchmark.
         </p>
@@ -193,7 +193,7 @@ export function BenchmarksView() {
 
       {!loading && data && data.benchmarks.length === 0 && (
         <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[3] }}>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}` }}>
+          <p style={{ ...textStyles.rowTitle, margin: `0 0 ${spacing[1]}` }}>
             No benchmarks available yet
           </p>
           <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0, lineHeight: '1.6' }}>
@@ -214,7 +214,7 @@ export function BenchmarksView() {
                   <div key={i} style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', padding: spacing[2] }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                       <div>
-                        <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+                        <p style={textStyles.sectionTitle}>
                           {b.fieldName.replace(/_/g, ' ')}
                         </p>
                         <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '2px 0 0' }}>

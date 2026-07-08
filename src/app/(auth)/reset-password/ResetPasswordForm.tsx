@@ -81,12 +81,7 @@ export default function ResetPasswordForm() {
           Reset link missing
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[2]} 0 ${spacing[3]}`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[2]} 0 ${spacing[3]}` }}
         >
           This page needs a valid reset link. Please request a new one.
         </p>
@@ -109,12 +104,7 @@ export default function ResetPasswordForm() {
           Choose a new password
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           Enter a new password for your account.
         </p>

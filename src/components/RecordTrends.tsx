@@ -1,4 +1,4 @@
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import type { RecordTrends as Trends } from '@/lib/layer3/record-trends'
 
@@ -43,13 +43,13 @@ export function RecordTrends({ trends }: { trends: Trends }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {trends.quarters.map(q => (
             <div key={q.quarter} style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', padding: spacing[2] }}>
-              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 12px` }}>{q.quarter}</p>
+              <p style={{ ...textStyles.rowTitle, margin: `0 0 12px` }}>{q.quarter}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {q.domains.map(d => (
                   <div key={d.domain}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                       <div>
-                        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, margin: 0 }}>
+                        <p style={textStyles.value}>
                           {DOMAIN_LABELS[d.domain] ?? d.domain}
                         </p>
                         <div style={{ marginTop: '3px' }}>

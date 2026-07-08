@@ -97,12 +97,7 @@ export default function TwoFactorVerifyPage() {
           {showRecovery ? 'Use a recovery code' : 'Two-factor verification'}
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           {showRecovery
             ? 'Enter one of your saved recovery codes.'

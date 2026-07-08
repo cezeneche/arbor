@@ -11,12 +11,7 @@ export default function QueryPage() {
           Query
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           Ask a question in plain English. arbor finds the matching records and shows them with their trust tier.
         </p>

@@ -45,12 +45,7 @@ export default async function ExportPage() {
           Export data
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           Assemble records from across your supply chain and download with full provenance.
           Trust tiers and source references are included on every record.

@@ -53,12 +53,7 @@ export default async function DataRequestsPage() {
           Data requests
         </h1>
         <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
-            margin: `${spacing[1]} 0 0`,
-          }}
+          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
           {incoming.length} incoming · {outgoing.length} sent
         </p>
