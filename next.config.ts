@@ -2,13 +2,17 @@ import type { NextConfig } from "next";
 
 // Gap 7a — security headers applied to every response. Table stakes for any
 // enterprise procurement / security review (securityheaders.com).
+const isDev = process.env.NODE_ENV !== "production";
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Next.js requires inline styles/scripts for hydration and styled JSX.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // Next.js requires inline scripts for hydration/styled JSX (kept). 'unsafe-eval'
+      // is only needed by the dev HMR runtime, so it is excluded in production to
+      // tighten XSS containment.
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
