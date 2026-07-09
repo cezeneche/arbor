@@ -7,7 +7,7 @@ import { compare } from 'bcryptjs'
 import { authConfig } from '@/lib/auth.config'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
-import { verifySsoToken } from '@/lib/sso/sso-token'
+import { consumeSsoToken } from '@/lib/sso/sso-token'
 import { isNonceValid } from '@/lib/auth/two-factor-nonce'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -22,7 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const token = typeof credentials?.token === 'string' ? credentials.token : null
         if (!token) return null
-        const userId = verifySsoToken(token)
+        const userId = await consumeSsoToken(token)
         if (!userId) return null
         const user = await prisma.user.findUnique({ where: { id: userId } })
         // SSO users skip TOTP (their IdP enforces MFA), but must be active.

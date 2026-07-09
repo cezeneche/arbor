@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
-import { randomUUID } from 'crypto'
+import { generateOpaqueToken, hashOpaqueToken } from '@/lib/tokens/opaque-token'
 
 // Minting a 30-day public submission link is a write action — a read-only VIEWER
 // must not be able to create one, so gate on write access (not just membership).
@@ -21,12 +21,13 @@ export async function POST(
   if (!request) return err('Request not found', 'NOT_FOUND', 404)
   if (request.buyerEntityId !== entityId) return err('Forbidden', 'FORBIDDEN', 403)
 
-  const token = randomUUID()
+  // Raw token goes into the link (below); only its hash is stored.
+  const token = generateOpaqueToken()
   const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
 
   await prisma.dataRequest.update({
     where: { id },
-    data: { submissionToken: token, submissionTokenExpiry: expiry },
+    data: { submissionTokenHash: hashOpaqueToken(token), submissionTokenExpiry: expiry },
   })
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'

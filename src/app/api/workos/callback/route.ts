@@ -11,6 +11,17 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code')
   if (!code) return NextResponse.redirect(new URL('/login?error=sso_no_code', appUrl))
 
+  // CSRF / session-fixation defence: the state set in /authorize must round-trip
+  // through the IdP and match the httpOnly cookie. A missing or mismatched state
+  // means a forged or replayed callback.
+  const state = req.nextUrl.searchParams.get('state')
+  const cookieState = req.cookies.get('sso_state')?.value
+  if (!state || !cookieState || state !== cookieState) {
+    const bad = NextResponse.redirect(new URL('/login?error=sso_state', appUrl))
+    bad.cookies.set('sso_state', '', { maxAge: 0, path: '/' })
+    return bad
+  }
+
   let profile
   try {
     profile = await authenticateWithCode(code)
@@ -47,6 +58,8 @@ export async function GET(req: NextRequest) {
     userId = created.id
   }
 
-  const token = mintSsoToken(userId)
-  return NextResponse.redirect(new URL(`/sso/complete?token=${encodeURIComponent(token)}`, appUrl))
+  const token = await mintSsoToken(userId)
+  const res = NextResponse.redirect(new URL(`/sso/complete?token=${encodeURIComponent(token)}`, appUrl))
+  res.cookies.set('sso_state', '', { maxAge: 0, path: '/' }) // one-time state consumed
+  return res
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { isSsoConfigured, getAuthorizationUrl } from '@/lib/sso/workos'
 
@@ -18,6 +19,17 @@ export async function GET(req: NextRequest) {
   const orgId = user?.entity?.workosOrganisationId
   if (!orgId) return NextResponse.redirect(new URL('/login?error=sso_not_configured', appUrl))
 
+  // CSRF state: random value carried to the IdP and mirrored back on the callback,
+  // pinned to the browser via an httpOnly cookie the callback re-checks.
+  const state = randomBytes(16).toString('hex')
   const redirectUri = `${appUrl}/api/workos/callback`
-  return NextResponse.redirect(getAuthorizationUrl(orgId, redirectUri))
+  const res = NextResponse.redirect(getAuthorizationUrl(orgId, redirectUri, state))
+  res.cookies.set('sso_state', state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 600,
+    path: '/',
+  })
+  return res
 }

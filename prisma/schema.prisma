@@ -113,6 +113,10 @@ model User {
   // Distinct from the tenant-level ADMIN role, which only governs a user's own
   // entity. Never set by self-service — granted out of band. Default false.
   isPlatformAdmin  Boolean  @default(false)
+  // Single-use SSO bridge nonce (SHA-256 hash) minted by the WorkOS callback and
+  // consumed once when completing sign-in — makes the login token non-replayable.
+  ssoNonceHash     String?
+  ssoNonceExpires  DateTime?
 
   accounts                Account[]
   sessions                Session[]
@@ -627,7 +631,8 @@ model DataRequest {
   createdAt             DateTime      @default(now())
   respondedAt           DateTime?
   notes                 String?       @db.Text
-  submissionToken       String?       @unique
+  // SHA-256 hash of the public submission-link token (raw token shown once).
+  submissionTokenHash   String?       @unique
   submissionTokenExpiry DateTime?
 
   @@index([buyerEntityId, status])
@@ -859,8 +864,9 @@ model SharedExport {
   id          String      @id @default(cuid())
   entityId    String
   entity      Entity      @relation(fields: [entityId], references: [id])
-  // Unguessable high-entropy token used in the public URL.
-  token       String      @unique
+  // SHA-256 hash of the high-entropy token used in the public URL. The raw token
+  // is shown once at creation and never stored, so a DB leak exposes no live link.
+  tokenHash   String      @unique
   // Optional scope. Null domain = all domains; null period bounds = unbounded.
   domain      DataDomain?
   periodStart DateTime?

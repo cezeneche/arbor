@@ -22,9 +22,10 @@ export default async function SharesPage() {
   const proto = hdrs.get('x-forwarded-proto') ?? 'https'
   const origin = host ? `${proto}://${host}` : ''
 
+  // No token here — the raw token exists only at creation; listed shares can't
+  // reconstruct their link (shown once). state/revoke still work by id.
   const initial = shares.map((s) => ({
     id: s.id,
-    token: s.token,
     domain: s.domain,
     periodStart: s.periodStart?.toISOString() ?? null,
     periodEnd: s.periodEnd?.toISOString() ?? null,
