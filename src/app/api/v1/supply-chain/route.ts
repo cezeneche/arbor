@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateApiKey } from '@/lib/api-key-auth'
+import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 // buyer API: list suppliers that have granted the caller access, with
 // a data-coverage summary. Authenticated by API key (the caller is the buyer).
 export async function GET(req: NextRequest) {
-  const auth = await authenticateApiKey(req.headers.get('authorization'))
+  const auth = await authenticateApiKeyRequest(req)
   if (!auth.authorized || !auth.entityId) {
     return NextResponse.json({ error: auth.reason ?? 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
   }

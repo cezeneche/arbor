@@ -9,11 +9,23 @@ interface ApiKeyRow {
   label: string
   lastUsed: string | null
   createdAt: string
+  scope: 'READ' | 'READ_WRITE'
+  expiresAt: string | null
 }
+
+const EXPIRY_OPTIONS: { label: string; days?: number }[] = [
+  { label: 'Never' },
+  { label: '30 days', days: 30 },
+  { label: '90 days', days: 90 },
+  { label: '1 year', days: 365 },
+]
 
 export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
   const router = useRouter()
   const [label, setLabel] = useState('')
+  const [scope, setScope] = useState<'READ' | 'READ_WRITE'>('READ_WRITE')
+  const [expiry, setExpiry] = useState('Never')
+  const [ipAllowlist, setIpAllowlist] = useState('')
   const [creating, setCreating] = useState(false)
   const [newKey, setNewKey] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -37,10 +49,17 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
     setError(null)
     setNewKey(null)
 
+    const ips = ipAllowlist.split(',').map(s => s.trim()).filter(Boolean)
+    const days = EXPIRY_OPTIONS.find(o => o.label === expiry)?.days
     const res = await fetch('/api/api-keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label }),
+      body: JSON.stringify({
+        label,
+        scope,
+        ...(days ? { expiresInDays: days } : {}),
+        ...(ips.length > 0 ? { ipAllowlist: ips } : {}),
+      }),
     })
     const data = await res.json()
 
@@ -52,6 +71,9 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
 
     setNewKey(data.plaintext)
     setLabel('')
+    setScope('READ_WRITE')
+    setExpiry('Never')
+    setIpAllowlist('')
     setCreating(false)
     router.refresh()
   }
@@ -87,6 +109,16 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
     borderRadius: '4px',
     outline: 'none',
     boxSizing: 'border-box' as const,
+  }
+
+  const fieldLabel = {
+    display: 'block',
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colours.textSecondary,
+    letterSpacing: typography.tracking.wider,
+    textTransform: 'uppercase' as const,
+    marginBottom: '6px',
   }
 
   return (
@@ -160,22 +192,9 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
             padding: spacing[3],
           }}
         >
-          <form onSubmit={handleCreate} style={{ display: 'flex', gap: spacing[2], alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="label"
-                style={{
-                  display: 'block',
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.medium,
-                  color: colours.textSecondary,
-                  letterSpacing: typography.tracking.wider,
-                  textTransform: 'uppercase',
-                  marginBottom: '6px',
-                }}
-              >
-                Key label
-              </label>
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2], alignItems: 'flex-end' }}>
+            <div style={{ flex: '2 1 200px' }}>
+              <label htmlFor="label" style={fieldLabel}>Key label</label>
               <input
                 id="label"
                 type="text"
@@ -183,6 +202,30 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
                 onChange={e => setLabel(e.target.value)}
                 placeholder="e.g. Xero integration"
                 required
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ flex: '1 1 140px' }}>
+              <label htmlFor="scope" style={fieldLabel}>Access</label>
+              <select id="scope" value={scope} onChange={e => setScope(e.target.value as 'READ' | 'READ_WRITE')} style={inputStyle}>
+                <option value="READ_WRITE">Read &amp; write</option>
+                <option value="READ">Read-only</option>
+              </select>
+            </div>
+            <div style={{ flex: '1 1 120px' }}>
+              <label htmlFor="expiry" style={fieldLabel}>Expires</label>
+              <select id="expiry" value={expiry} onChange={e => setExpiry(e.target.value)} style={inputStyle}>
+                {EXPIRY_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: '2 1 220px' }}>
+              <label htmlFor="ips" style={fieldLabel}>IP allowlist (optional)</label>
+              <input
+                id="ips"
+                type="text"
+                value={ipAllowlist}
+                onChange={e => setIpAllowlist(e.target.value)}
+                placeholder="e.g. 203.0.113.4, 198.51.100.7"
                 style={inputStyle}
               />
             </div>
@@ -277,9 +320,11 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeyRow[] }) {
                       margin: '4px 0 0',
                     }}
                   >
-                    Created {new Date(key.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {key.scope === 'READ' ? 'Read-only' : 'Read & write'}
+                    {` · Created ${new Date(key.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
                     {key.lastUsed && ` · Last used ${new Date(key.lastUsed).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
                     {!key.lastUsed && ' · Never used'}
+                    {key.expiresAt && ` · Expires ${new Date(key.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
                   </p>
                 </div>
                 {revokeConfirm === key.id ? (

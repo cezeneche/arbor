@@ -4,7 +4,7 @@
 // A source document must be submitted separately to upgrade to Tier A.
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { authenticateApiKey } from '@/lib/api-key-auth'
+import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
 import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
@@ -35,9 +35,12 @@ type RecordResult =
   | { index: number; status: 'rejected'; reason: string; domain?: string; fieldName?: string }
 
 export async function POST(req: NextRequest) {
-  const authResult = await authenticateApiKey(req.headers.get('authorization'))
+  const authResult = await authenticateApiKeyRequest(req)
   if (!authResult.authorized) {
     return NextResponse.json({ error: authResult.reason ?? 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
+  }
+  if (authResult.scope !== 'READ_WRITE') {
+    return NextResponse.json({ error: 'This API key is read-only', code: 'FORBIDDEN' }, { status: 403 })
   }
 
   const entityId = authResult.entityId!

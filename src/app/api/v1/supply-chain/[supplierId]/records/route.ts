@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { authenticateApiKey } from '@/lib/api-key-auth'
+import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { logRecordAccess } from '@/lib/layer3/grant-access'
@@ -18,7 +18,7 @@ const querySchema = z.object({
 // buyer API: paginated records for a supplier the caller has been
 // granted access to. Returns 403 without an active grant. Logs API access.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ supplierId: string }> }) {
-  const auth = await authenticateApiKey(req.headers.get('authorization'))
+  const auth = await authenticateApiKeyRequest(req)
   if (!auth.authorized || !auth.entityId) {
     return NextResponse.json({ error: auth.reason ?? 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
   }

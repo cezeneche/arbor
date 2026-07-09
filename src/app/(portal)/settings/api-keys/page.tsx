@@ -19,7 +19,7 @@ export default async function ApiKeysPage() {
 
   const keys = await prisma.apiKey.findMany({
     where: { entityId, isActive: true },
-    select: { id: true, label: true, lastUsed: true, createdAt: true },
+    select: { id: true, label: true, lastUsed: true, createdAt: true, scope: true, expiresAt: true },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -27,6 +27,7 @@ export default async function ApiKeysPage() {
     ...k,
     lastUsed: k.lastUsed?.toISOString() ?? null,
     createdAt: k.createdAt.toISOString(),
+    expiresAt: k.expiresAt?.toISOString() ?? null,
   }))
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://your-arbor-instance.com'

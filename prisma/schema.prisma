@@ -735,6 +735,11 @@ model CrossValidationResult {
 
 // ── API KEY ───────────────────────────────────────────────────────────────────
 
+enum ApiKeyScope {
+  READ
+  READ_WRITE
+}
+
 model ApiKey {
   id        String    @id @default(cuid())
   entityId  String
@@ -742,6 +747,13 @@ model ApiKey {
   keyPrefix String    @unique
   keyHash   String    @unique
   label     String
+  // Read-only vs read+write. Enforced on write endpoints. Default READ_WRITE keeps
+  // existing keys fully capable; new keys can be minted read-only.
+  scope       ApiKeyScope @default(READ_WRITE)
+  // Optional hard expiry; null never expires.
+  expiresAt   DateTime?
+  // Optional source-IP allowlist; empty permits any IP, else exact match required.
+  ipAllowlist String[]  @default([])
   lastUsed  DateTime?
   createdAt DateTime  @default(now())
   revokedAt DateTime?

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { authenticateApiKey } from '@/lib/api-key-auth'
+import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { ALL_DOMAINS } from '@/lib/constants'
@@ -15,7 +15,7 @@ const querySchema = z.object({
 // buyer API: which supplier+domain combinations have no records, or
 // only Tier C (estimated) records, for the requested period.
 export async function GET(req: NextRequest) {
-  const auth = await authenticateApiKey(req.headers.get('authorization'))
+  const auth = await authenticateApiKeyRequest(req)
   if (!auth.authorized || !auth.entityId) {
     return NextResponse.json({ error: auth.reason ?? 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
   }
