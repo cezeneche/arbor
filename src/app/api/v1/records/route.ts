@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { authenticateApiKey } from '@/lib/api-key-auth'
+import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { ok, err } from '@/lib/api-helpers'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
 import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { domainSchema, tierSchema } from '@/lib/constants'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { TrustTier, ExtractionMethod } from '@prisma/client'
 
 const recordSchema = z.object({
@@ -22,10 +23,13 @@ const recordSchema = z.object({
 const bodySchema = z.array(recordSchema).min(1).max(500)
 
 export async function GET(req: NextRequest) {
-  const auth = await authenticateApiKey(req.headers.get('authorization'))
+  const auth = await authenticateApiKeyRequest(req)
   if (!auth.authorized) {
     return err(auth.reason ?? 'Unauthorized', 'UNAUTHORIZED', 401)
   }
+
+  const { allowed } = await checkRateLimit(RATE_LIMITS.buyerApi, auth.entityId!)
+  if (!allowed) return err('Rate limit exceeded', 'RATE_LIMITED', 429)
 
   const { searchParams } = req.nextUrl
   const domainParam = searchParams.get('domain')
@@ -92,10 +96,16 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await authenticateApiKey(req.headers.get('authorization'))
+  const auth = await authenticateApiKeyRequest(req)
   if (!auth.authorized) {
     return err(auth.reason ?? 'Unauthorized', 'UNAUTHORIZED', 401)
   }
+  if (auth.scope !== 'READ_WRITE') {
+    return err('This API key is read-only', 'FORBIDDEN', 403)
+  }
+
+  const { allowed } = await checkRateLimit(RATE_LIMITS.buyerApi, auth.entityId!)
+  if (!allowed) return err('Rate limit exceeded', 'RATE_LIMITED', 429)
 
   let body: unknown
   try {

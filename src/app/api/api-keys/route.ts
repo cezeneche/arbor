@@ -6,7 +6,14 @@ import { hash } from 'bcryptjs'
 import { requireAuth, requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
-const createSchema = z.object({ label: z.string().min(1).max(100) })
+const createSchema = z.object({
+  label: z.string().min(1).max(100),
+  scope: z.enum(['READ', 'READ_WRITE']).default('READ_WRITE'),
+  // Optional lifetime; omitted = never expires.
+  expiresInDays: z.number().int().positive().max(3650).optional(),
+  // Optional source-IP allowlist (exact match). Omitted/empty = any IP.
+  ipAllowlist: z.array(z.string().trim().min(1).max(45)).max(50).optional(),
+})
 
 export async function GET() {
   const { session, response } = await requireAuth()
@@ -36,9 +43,21 @@ export async function POST(req: NextRequest) {
   const plaintext = `arb_${prefix}_${secret}`
   const keyHash = await hash(plaintext, 12)
 
+  const expiresAt = parsed.data.expiresInDays
+    ? new Date(Date.now() + parsed.data.expiresInDays * 24 * 60 * 60 * 1000)
+    : null
+
   const key = await prisma.apiKey.create({
-    data: { entityId, label: parsed.data.label, keyPrefix: prefix, keyHash },
-    select: { id: true, label: true, createdAt: true },
+    data: {
+      entityId,
+      label: parsed.data.label,
+      keyPrefix: prefix,
+      keyHash,
+      scope: parsed.data.scope,
+      expiresAt,
+      ipAllowlist: parsed.data.ipAllowlist ?? [],
+    },
+    select: { id: true, label: true, createdAt: true, scope: true, expiresAt: true },
   })
 
   // Plaintext returned once  -  never stored, never retrievable again

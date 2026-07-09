@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { authenticateApiKey } from '@/lib/api-key-auth'
+import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { err } from '@/lib/api-helpers'
 import { inngest } from '@/inngest/client'
 import { documentTypeSchema } from '@/lib/constants'
@@ -14,9 +14,12 @@ const bodySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const auth = await authenticateApiKey(req.headers.get('authorization'))
+  const auth = await authenticateApiKeyRequest(req)
   if (!auth.authorized) {
     return err(auth.reason ?? 'Unauthorized', 'UNAUTHORIZED', 401)
+  }
+  if (auth.scope !== 'READ_WRITE') {
+    return err('This API key is read-only', 'FORBIDDEN', 403)
   }
 
   let body: unknown

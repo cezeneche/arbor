@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth-helpers'
-import { authenticateApiKey } from '@/lib/api-key-auth'
+import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { enforceBuyerApiLimit } from '@/lib/rate-limit-guard'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   // Support both session auth (portal) and API key auth (integration layer)
   let entityId: string | null = null
 
-  const apiKeyAuth = await authenticateApiKey(req.headers.get('authorization'))
+  const apiKeyAuth = await authenticateApiKeyRequest(req)
   if (apiKeyAuth.authorized) {
     entityId = apiKeyAuth.entityId!
   } else {
