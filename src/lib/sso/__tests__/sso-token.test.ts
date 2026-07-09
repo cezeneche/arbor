@@ -1,30 +1,31 @@
-import { mintSsoToken, verifySsoToken } from '../sso-token'
+import { buildSsoToken, parseSsoToken } from '../sso-token'
 
-// one-time signed token bridging the WorkOS callback to the NextAuth
-// session. HMAC-signed with an expiry; tamper- and replay-window-bounded.
+// Pure build/parse of the HMAC-signed SSO bridge token. The single-use consume
+// (mintSsoToken/consumeSsoToken) is DB-backed and not unit-tested here.
 const ORIGINAL = process.env.NEXTAUTH_SECRET
 beforeAll(() => { process.env.NEXTAUTH_SECRET = 'test-nextauth-secret' })
 afterAll(() => { process.env.NEXTAUTH_SECRET = ORIGINAL })
 
-describe('SSO token', () => {
-  it('round-trips a userId', () => {
-    const token = mintSsoToken('usr_123')
-    expect(verifySsoToken(token)).toBe('usr_123')
+describe('SSO token (build/parse)', () => {
+  const future = Date.now() + 60_000
+
+  it('round-trips its parts', () => {
+    const token = buildSsoToken('usr_123', future, 'nonce_abc')
+    expect(parseSsoToken(token)).toEqual({ userId: 'usr_123', expiry: future, nonce: 'nonce_abc' })
   })
 
   it('rejects a tampered token', () => {
-    const token = mintSsoToken('usr_123')
-    const tampered = token.slice(0, -4) + 'aaaa'
-    expect(verifySsoToken(tampered)).toBeNull()
+    const token = buildSsoToken('usr_123', future, 'nonce_abc')
+    expect(parseSsoToken(token.slice(0, -4) + 'aaaa')).toBeNull()
   })
 
   it('rejects a malformed token', () => {
-    expect(verifySsoToken('garbage')).toBeNull()
-    expect(verifySsoToken('')).toBeNull()
+    expect(parseSsoToken('garbage')).toBeNull()
+    expect(parseSsoToken('')).toBeNull()
   })
 
   it('rejects an expired token', () => {
-    const token = mintSsoToken('usr_123', Date.now() - 1000) // already expired
-    expect(verifySsoToken(token)).toBeNull()
+    const token = buildSsoToken('usr_123', Date.now() - 1000, 'nonce_abc')
+    expect(parseSsoToken(token)).toBeNull()
   })
 })

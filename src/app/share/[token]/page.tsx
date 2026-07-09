@@ -5,6 +5,7 @@ import { TierBadge } from '@/components/TierBadge'
 import { ShareVerifyButton } from '@/components/ShareVerifyButton'
 import { isShareViewable } from '@/lib/shares/share-status'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { hashOpaqueToken } from '@/lib/tokens/opaque-token'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ function Unavailable() {
 export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
-  const share = await prisma.sharedExport.findUnique({ where: { token } })
+  const share = await prisma.sharedExport.findUnique({ where: { tokenHash: hashOpaqueToken(token) } })
   if (!share || !isShareViewable(share)) return <Unavailable />
 
   const entity = await prisma.entity.findUnique({
@@ -57,7 +58,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   // Throttled per token so a refresh loop can't amplify writes: at most one log
   // batch per window. Fails open (logs) if the limiter is unavailable.
   if (records.length > 0) {
-    const { allowed } = await checkRateLimit(RATE_LIMITS.shareView, share.token)
+    const { allowed } = await checkRateLimit(RATE_LIMITS.shareView, share.id)
     if (allowed) {
       await prisma.recordAccessLog.createMany({
         data: records.map((r) => ({

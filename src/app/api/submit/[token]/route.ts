@@ -9,6 +9,7 @@ import { ExtractionMethod, TrustTier } from '@prisma/client'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
 import { MAX_BATCH_ENTRIES } from '@/lib/constants'
+import { hashOpaqueToken } from '@/lib/tokens/opaque-token'
 
 const entrySchema = z.object({
   fieldName: z.string().min(1),
@@ -32,7 +33,7 @@ export async function GET(
   const { token } = await params
 
   const request = await prisma.dataRequest.findUnique({
-    where: { submissionToken: token },
+    where: { submissionTokenHash: hashOpaqueToken(token) },
     include: { buyerEntity: { select: { legalName: true } } },
   })
 
@@ -67,7 +68,7 @@ export async function POST(
   const { token } = await params
 
   const request = await prisma.dataRequest.findUnique({
-    where: { submissionToken: token },
+    where: { submissionTokenHash: hashOpaqueToken(token) },
     include: {
       buyerEntity: { select: { id: true, legalName: true } },
       supplierEntity: { select: { id: true, legalName: true } },

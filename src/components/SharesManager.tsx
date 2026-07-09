@@ -5,7 +5,9 @@ import { colours, typography, spacing } from '@/lib/design-system'
 
 interface ShareRow {
   id: string
-  token: string
+  // Only present for a share created in this browser session — the raw token is
+  // shown once and never returned by the server afterwards.
+  token?: string
   domain: string | null
   periodStart: string | null
   periodEnd: string | null
@@ -146,7 +148,7 @@ export function SharesManager({ initial, origin }: { initial: ShareRow[]; origin
             </thead>
             <tbody>
               {shares.map((s, i) => {
-                const url = `${origin}/share/${s.token}`
+                const url = s.token ? `${origin}/share/${s.token}` : null
                 return (
                   <tr key={s.id} style={{ borderBottom: i < shares.length - 1 ? `1px solid ${colours.border}` : 'none' }}>
                     <td style={{ padding: '12px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary }}>
@@ -162,10 +164,12 @@ export function SharesManager({ initial, origin }: { initial: ShareRow[]; origin
                       {s.state}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      {s.state === 'active' ? (
+                      {s.state === 'active' && url ? (
                         <button type="button" onClick={() => navigator.clipboard?.writeText(url)} style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.navy, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                           Copy link
                         </button>
+                      ) : s.state === 'active' ? (
+                        <span style={{ fontSize: typography.sizes.xs, color: colours.textTertiary }} title="The link is shown only once, when the share is created.">Shown once</span>
                       ) : (
                         <span style={{ fontSize: typography.sizes.xs, color: colours.textTertiary }}>-</span>
                       )}

@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
 import { getSessionUser } from '@/lib/session'
-import { randomBytes } from 'crypto'
 import { z } from 'zod'
 import { requireWriteAccess, requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
@@ -8,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { domainSchema } from '@/lib/constants'
 import { assembleAuditPackage } from '@/lib/audit-package/assemble'
 import { shareState } from '@/lib/shares/share-status'
+import { generateOpaqueToken, hashOpaqueToken } from '@/lib/tokens/opaque-token'
 
 const bodySchema = z.object({
   domain: domainSchema.optional(),
@@ -48,12 +48,13 @@ export async function POST(req: NextRequest) {
     logRequestedById: createdById,
   })
 
-  const token = randomBytes(32).toString('base64url')
+  // Raw token is returned once (below); only its hash is stored.
+  const token = generateOpaqueToken()
 
   const share = await prisma.sharedExport.create({
     data: {
       entityId,
-      token,
+      tokenHash: hashOpaqueToken(token),
       domain: parsed.data.domain ?? null,
       periodStart,
       periodEnd,
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return ok({ id: share.id, token: share.token, url: shareUrl(req, token), packageHash: share.packageHash }, 201)
+  return ok({ id: share.id, token, url: shareUrl(req, token), packageHash: share.packageHash }, 201)
 }
 
 // Lists the caller entity's own shares with their current lifecycle state.
@@ -77,10 +78,10 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   })
 
+  // The raw token is never returned in a list — it exists only at creation time.
   return ok({
     shares: shares.map((s) => ({
       id: s.id,
-      token: s.token,
       domain: s.domain,
       periodStart: s.periodStart,
       periodEnd: s.periodEnd,
