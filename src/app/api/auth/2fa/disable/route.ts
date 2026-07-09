@@ -1,25 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-helpers'
+import { getSessionUser } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { decryptTotpSecret, verifyTotpCode } from '@/lib/auth/totp'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 const bodySchema = z.object({ code: z.string().length(6) })
 
 // POST /api/auth/2fa/disable
-// Requires a full authenticated session (not pending2fa).
+// requireAuth() enforces a full (non-pending2fa) session and re-checks tokenVersion.
 // ADMIN users cannot disable 2FA — policy enforced here.
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  const user = session?.user as unknown as Record<string, unknown> | undefined
-  if (!session || !user?.id || user.pending2fa) {
-    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  }
+  const { session, response } = await requireAuth()
+  if (!session) return response!
+  const sessionUser = getSessionUser(session)
 
-  if (user.role === 'ADMIN') {
+  if (sessionUser.role === 'ADMIN') {
     return NextResponse.json(
       { error: 'Administrators must keep two-factor authentication enabled.' },
       { status: 403 },
+    )
+  }
+
+  const userId = sessionUser.id
+
+  // Disabling verifies a 6-digit TOTP code, so it needs the same brute-force gate
+  // as the login challenge. Fail closed if the limiter is unavailable.
+  const { allowed } = await checkRateLimit(RATE_LIMITS.twoFactor, userId, { failMode: 'closed' })
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait a few minutes and try again.' },
+      { status: 429 },
     )
   }
 
@@ -27,8 +39,6 @@ export async function POST(req: NextRequest) {
   if (!body.success) {
     return NextResponse.json({ error: 'A 6-digit code is required.' }, { status: 400 })
   }
-
-  const userId = user.id as string
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { twoFactorSecret: true, twoFactorEnabled: true },

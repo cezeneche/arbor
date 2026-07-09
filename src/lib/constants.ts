@@ -83,6 +83,10 @@ export const ALL_TIERS = Object.values(TrustTier)
 
 export const DOCUMENT_MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 
+// Caps on a single inbound email so a hostile sender cannot fan one message out
+// into unbounded storage/extraction work.
+export const MAX_INBOUND_ATTACHMENTS = 10
+
 // Upper bound on records written in a single request/transaction. Caps how long a
 // serializable transaction can hold locks and how much memory one payload consumes.
 export const MAX_BATCH_ENTRIES = 200

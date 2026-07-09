@@ -1,15 +1,17 @@
 import { NextRequest } from 'next/server'
 import { getSessionUser } from '@/lib/session'
-import { requireAuth } from '@/lib/auth-helpers'
+import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 
+// Minting a 30-day public submission link is a write action — a read-only VIEWER
+// must not be able to create one, so gate on write access (not just membership).
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, response } = await requireAuth()
+  const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
   const { id } = await params

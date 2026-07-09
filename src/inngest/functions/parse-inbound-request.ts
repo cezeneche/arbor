@@ -6,6 +6,7 @@ import { inngest } from '@/inngest/client'
 import { prisma } from '@/lib/prisma'
 import { parseDataRequestEmail } from '@/lib/requests/parse-request'
 import { matchRequestToRecords, type MatchRecord } from '@/lib/requests/inbound-parse'
+import { anyGrantAuthorisesRequest } from '@/lib/requests/authorise-sender'
 import type { Prisma } from '@prisma/client'
 
 let _resend: Resend | null = null
@@ -63,6 +64,36 @@ export const parseInboundRequestFunction = inngest.createFunction(
     })
 
     if (match.covered) {
+      // Never email certified values to an unauthenticated sender. Auto-answer only
+      // when the sender maps to an entity holding an active grant that covers this
+      // request; otherwise hold it for the supplier to review and answer manually.
+      const authorised = await step.run('check-sender-authorised', async () => {
+        if (!fromEmail) return false
+        const sender = await prisma.user.findUnique({
+          where: { email: fromEmail.toLowerCase() },
+          select: { entityId: true },
+        })
+        if (!sender?.entityId) return false
+        const grants = await prisma.dataAccessGrant.findMany({
+          where: { grantorEntityId: entity.id, granteeEntityId: sender.entityId, isActive: true, revokedAt: null },
+          select: { domain: true, periodStart: true, periodEnd: true },
+        })
+        return anyGrantAuthorisesRequest(grants, parsed)
+      })
+
+      if (!authorised) {
+        await step.run('hold-unauthorised-request', async () => {
+          await prisma.inboundRequest.update({
+            where: { id: requestId },
+            data: {
+              status: 'NEEDS_DATA',
+              parsedFields: { parsed, blocked: 'sender_not_authorised' } as unknown as Prisma.InputJsonValue,
+            },
+          })
+        })
+        return { requestId, status: 'NEEDS_DATA', blocked: 'sender_not_authorised' }
+      }
+
       await step.run('answer-request', async () => {
         await prisma.inboundRequest.update({
           where: { id: requestId },

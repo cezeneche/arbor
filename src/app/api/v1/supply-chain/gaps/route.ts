@@ -4,6 +4,8 @@ import { authenticateApiKey } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { ALL_DOMAINS } from '@/lib/constants'
+import { computeScopedGaps, type GapRecord } from '@/lib/layer3/supply-chain-gaps'
+import type { GrantScope } from '@/lib/layer3/grant-scope'
 
 const querySchema = z.object({
   periodStart: z.string().datetime().optional(),
@@ -33,6 +35,9 @@ export async function GET(req: NextRequest) {
     where: { granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },
     select: {
       grantorEntityId: true,
+      domain: true,
+      periodStart: true,
+      periodEnd: true,
       grantorEntity: {
         select: {
           legalName: true,
@@ -42,32 +47,31 @@ export async function GET(req: NextRequest) {
               ...(ps ? { periodEnd: { gte: ps } } : {}),
               ...(pe ? { periodStart: { lte: pe } } : {}),
             },
-            select: { domain: true, trustTier: true },
+            select: { id: true, domain: true, trustTier: true, periodStart: true, periodEnd: true },
           },
         },
       },
     },
   })
 
-  const bySupplier = new Map<string, { name: string; records: { domain: string; trustTier: string }[] }>()
+  // Group per supplier, collecting that supplier's grants and de-duplicating its
+  // records (a record repeats once per grant of the same grantor).
+  type SupplierAcc = { name: string; grants: GrantScope[]; records: Map<string, GapRecord> }
+  const bySupplier = new Map<string, SupplierAcc>()
   for (const g of grants) {
-    const entry = bySupplier.get(g.grantorEntityId) ?? { name: g.grantorEntity.legalName, records: [] }
-    entry.records.push(...g.grantorEntity.dataRecords)
+    const entry: SupplierAcc = bySupplier.get(g.grantorEntityId) ?? { name: g.grantorEntity.legalName, grants: [], records: new Map() }
+    entry.grants.push({ domain: g.domain, periodStart: g.periodStart, periodEnd: g.periodEnd })
+    for (const r of g.grantorEntity.dataRecords) {
+      entry.records.set(r.id, { domain: r.domain, trustTier: r.trustTier, periodStart: r.periodStart, periodEnd: r.periodEnd })
+    }
     bySupplier.set(g.grantorEntityId, entry)
   }
 
+  // Gaps are computed strictly within each grant's domain/period scope, so a buyer
+  // can only see coverage for what they were actually granted.
   const gaps = [...bySupplier.entries()].map(([supplierId, info]) => {
-    const missing: string[] = []
-    const estimatedOnly: string[] = []
-    for (const domain of ALL_DOMAINS) {
-      const domainRecords = info.records.filter((r) => r.domain === domain)
-      if (domainRecords.length === 0) {
-        missing.push(domain)
-      } else if (domainRecords.every((r) => r.trustTier === 'C')) {
-        estimatedOnly.push(domain)
-      }
-    }
-    return { supplierId, supplierName: info.name, missingDomains: missing, estimatedOnlyDomains: estimatedOnly }
+    const { missingDomains, estimatedOnlyDomains } = computeScopedGaps(info.grants, [...info.records.values()], ALL_DOMAINS)
+    return { supplierId, supplierName: info.name, missingDomains, estimatedOnlyDomains }
   })
 
   return NextResponse.json({ periodStart: parsed.data.periodStart ?? null, periodEnd: parsed.data.periodEnd ?? null, gaps })

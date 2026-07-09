@@ -1,22 +1,21 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/session'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { generateTotpSecret, getTotpUri, encryptTotpSecret } from '@/lib/auth/totp'
 import QRCode from 'qrcode'
 
 // POST /api/auth/2fa/setup
 // Generates a TOTP secret, stores it (encrypted, not yet enabled), returns QR code.
-// Requires a full authenticated session (not pending2fa).
+// requireAuth() enforces a full (non-pending2fa) session AND re-checks tokenVersion
+// revocation and account status server-side — raw auth() skipped both.
 export async function POST() {
-  const session = await auth()
-  const user = session?.user as unknown as Record<string, unknown> | undefined
-  if (!session || !user?.id || user.pending2fa) {
-    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  }
+  const { session, response } = await requireAuth()
+  if (!session) return response!
 
-  const userId = user.id as string
-  const email = getSessionUser(session).email as string ?? ''
+  const sessionUser = getSessionUser(session)
+  const userId = sessionUser.id
+  const email = (sessionUser.email as string) ?? ''
 
   const secret = generateTotpSecret()
   const encrypted = encryptTotpSecret(secret)
