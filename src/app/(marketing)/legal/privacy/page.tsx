@@ -1,4 +1,5 @@
 import { colours, typography } from '@/lib/design-system'
+import { SUB_PROCESSORS } from '@/lib/legal/subprocessors'
 
 // IMPORTANT: This document must be reviewed by a qualified solicitor before publication.
 // Placeholder company details (marked with []) must be replaced before going live.
@@ -181,33 +182,7 @@ export default function PrivacyPolicyPage() {
               marginBottom: '16px',
             }}
           >
-            {[
-              {
-                name: 'Supabase / PostgreSQL',
-                purpose: 'Database hosting and storage',
-                location: 'EU (Ireland)',
-              },
-              {
-                name: 'Anthropic',
-                purpose: 'AI-powered document extraction (Layer 1)',
-                location: 'United States',
-              },
-              {
-                name: 'Inngest',
-                purpose: 'Asynchronous job processing for document extraction pipeline',
-                location: 'United States',
-              },
-              {
-                name: 'Resend',
-                purpose: 'Transactional email delivery',
-                location: 'United States',
-              },
-              {
-                name: 'Vercel',
-                purpose: 'Application hosting and edge infrastructure',
-                location: 'EU and United States',
-              },
-            ].map(({ name, purpose, location }, i) => (
+            {SUB_PROCESSORS.map(({ name, activity: purpose, location }, i) => (
               <div
                 key={name}
                 style={{

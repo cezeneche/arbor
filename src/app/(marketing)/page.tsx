@@ -61,7 +61,7 @@ export default function HomePage() {
       {/* Hero */}
       <section style={{ backgroundColor: colours.navy, padding: '128px 0 160px' }}>
         <div style={container}>
-          <span style={eyebrow}>Operational data infrastructure</span>
+          <span style={eyebrow}>For manufacturers, suppliers &amp; producers</span>
           <h1
             style={{
               fontSize: typography.sizes.heroXl,
@@ -72,7 +72,7 @@ export default function HomePage() {
               margin: '0 0 28px',
             }}
           >
-            Operational data, all in one verified data record.
+            Answer any customer&apos;s data request in minutes, not days.
           </h1>
           <p
             style={{
@@ -83,8 +83,9 @@ export default function HomePage() {
               margin: '0 0 40px',
             }}
           >
-            arbor reads your operational data, certifies the data, and stores it permanently.
-            One verified source for every data request.
+            Upload the documents you already have — energy bills, invoices, delivery notes.
+            arbor reads them, certifies the data, and keeps one verified record you can share
+            the moment a customer, auditor, or regulator asks.
           </p>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <Link
@@ -134,10 +135,10 @@ export default function HomePage() {
           }}
         >
           {[
-            { stat: '8', label: 'Data domains' },
-            { stat: '3', label: 'Trust tiers' },
-            { stat: 'HMAC', label: 'Audit chain' },
-            { stat: 'API', label: 'Direct access' },
+            { stat: 'Source-checked', label: 'Every figure ties back to a document' },
+            { stat: 'Permanent', label: 'Records are never overwritten' },
+            { stat: 'Seconds', label: 'Share the moment you are asked' },
+            { stat: 'Free to start', label: 'No card required' },
           ].map(({ stat, label }) => (
             <div
               key={label}

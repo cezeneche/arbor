@@ -65,6 +65,7 @@ export default function SecurityPage() {
         <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
           <li style={li}>Role-based access: administrator, contributor, viewer, verifier, and external auditor roles, each scoped to what they need.</li>
           <li style={li}>Two-factor authentication is mandatory for every administrator account.</li>
+          <li style={li}>Enterprise single sign-on (SAML/OIDC) and automatic user provisioning and de-provisioning via SCIM, through WorkOS.</li>
           <li style={li}>API keys are scoped to a single organisation and stored only as a bcrypt hash.</li>
           <li style={li}>A session version stamp lets us revoke every active session for an account instantly.</li>
         </ul>
@@ -96,9 +97,9 @@ export default function SecurityPage() {
 
         <h2 style={h2}>Independent assurance</h2>
         <p style={p}>
-          SOC 2 Type I audit is in progress, with completion expected in Q4 2026.
-          A penetration test is scheduled for Q3 2026; a results summary will be
-          published here. Our Data Processing Agreement is available on the{' '}
+          We follow SOC 2-aligned controls; formal certification is on our
+          roadmap. A penetration test is scheduled for Q3 2026; a results summary
+          will be published here. Our Data Processing Agreement is available on the{' '}
           <a href="/legal/dpa" style={{ color: colours.navy }}>legal page</a>.
         </p>
 

@@ -1,7 +1,7 @@
 // sub-processor list (DPA appendix). Update DPA_VERSION whenever this
 // list changes; buyers may have signed a specific version.
 export const DPA_VERSION = 'v1'
-export const DPA_LAST_UPDATED = '19 June 2026'
+export const DPA_LAST_UPDATED = '9 July 2026'
 
 export interface SubProcessor {
   name: string
@@ -17,4 +17,5 @@ export const SUB_PROCESSORS: SubProcessor[] = [
   { name: 'Resend Inc.', activity: 'Transactional email delivery', location: 'USA (SCCs in place)', dpaUrl: 'https://resend.com/legal/dpa' },
   { name: 'Inngest Inc.', activity: 'Background job queue and scheduling', location: 'USA (SCCs in place)', dpaUrl: 'https://www.inngest.com/legal/dpa' },
   { name: 'Upstash Inc.', activity: 'Rate-limiting (Redis)', location: 'EU (SCCs in place)', dpaUrl: 'https://upstash.com/trust/dpa.pdf' },
+  { name: 'WorkOS, Inc.', activity: 'Enterprise SSO authentication and SCIM directory provisioning', location: 'USA (SCCs in place)', dpaUrl: 'https://workos.com/legal/dpa' },
 ]
