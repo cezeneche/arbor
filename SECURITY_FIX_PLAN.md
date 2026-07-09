@@ -54,17 +54,18 @@ is an authorised buyer ([parse-inbound-request.ts:65-89](src/inngest/functions/p
 The only gate is knowing `requests-<token>@…`, and that token is the entity's
 reused `uploadEmailToken`.
 
-**Fix (PR 1) — policy decision required (see Open decisions):**
-- **Default (recommended):** stop auto-emailing answers to unauthenticated senders.
-  Resolve `fromEmail` → `User`/`Entity`; require an **active `DataAccessGrant`**
-  (grantor = this entity, grantee = sender's entity) whose `domain`/period covers
-  the parsed request. Only then send. Otherwise store the `InboundRequest` as
-  `NEEDS_REVIEW` and notify the supplier to approve — never auto-disclose.
-- Add an optional per-entity sender allowlist for the auto-answer path.
+**Fix (PR 1) — DECIDED: route everything to supplier approval.** The inbound
+function no longer emails anyone. Every matched request is held for the supplier:
+covered requests are stored with the matched answers and `awaiting:
+'supplier_review'`, uncovered ones stay `NEEDS_DATA` (missing/unparsed). The
+`/inbound-requests` portal page now shows a "Ready to review and send" queue and
+never claims anything was auto-answered. Because nothing is auto-disclosed, the
+sender-authorisation grant check is not needed and was removed.
+- Follow-up (later PR): a supplier "approve & send" endpoint to actually deliver a
+  reviewed answer, and a dedicated `NEEDS_REVIEW` status (schema) instead of
+  overloading `NEEDS_DATA` with an `awaiting` marker.
 - Consider a **separate** high-entropy `requestEmailToken` distinct from
-  `uploadEmailToken` so a leaked upload address can't pull data.
-- Test: request from a non-granted sender → no email sent, status `NEEDS_REVIEW`;
-  request from a granted buyer within scope → answered.
+  `uploadEmailToken` so a leaked upload address can't be used to probe requests.
 
 ### S3. Inbound attachments stored public, unvalidated — **confirmed**
 Attachments are trusted by provider `contentType` (no magic-byte sniff), have no

@@ -1,21 +1,12 @@
-// parse an inbound data-request email, match it against stored records,
-// and either auto-answer it or flag it as needing data. Reuses the Gap-8.4 inbound
-// email infrastructure; the requests-<token>@ address routes here instead of upload.
-import { Resend } from 'resend'
+// Parse an inbound data-request email and match it against stored records. We
+// NEVER email certified values back to the sender — the sender's address is
+// attacker-controlled, so every request is held for the supplier to review and
+// send from the portal. Matched answers are stored to make that review one click.
 import { inngest } from '@/inngest/client'
 import { prisma } from '@/lib/prisma'
 import { parseDataRequestEmail } from '@/lib/requests/parse-request'
 import { matchRequestToRecords, type MatchRecord } from '@/lib/requests/inbound-parse'
-import { anyGrantAuthorisesRequest } from '@/lib/requests/authorise-sender'
 import type { Prisma } from '@prisma/client'
-
-let _resend: Resend | null = null
-function getResend(): Resend | null {
-  const key = process.env.RESEND_API_KEY
-  if (!key) return null
-  if (!_resend) _resend = new Resend(key)
-  return _resend
-}
 
 export const parseInboundRequestFunction = inngest.createFunction(
   { id: 'parse-inbound-request', retries: 2, concurrency: { limit: 5 }, triggers: [{ event: 'request/inbound' }] },
@@ -64,59 +55,20 @@ export const parseInboundRequestFunction = inngest.createFunction(
     })
 
     if (match.covered) {
-      // Never email certified values to an unauthenticated sender. Auto-answer only
-      // when the sender maps to an entity holding an active grant that covers this
-      // request; otherwise hold it for the supplier to review and answer manually.
-      const authorised = await step.run('check-sender-authorised', async () => {
-        if (!fromEmail) return false
-        const sender = await prisma.user.findUnique({
-          where: { email: fromEmail.toLowerCase() },
-          select: { entityId: true },
-        })
-        if (!sender?.entityId) return false
-        const grants = await prisma.dataAccessGrant.findMany({
-          where: { grantorEntityId: entity.id, granteeEntityId: sender.entityId, isActive: true, revokedAt: null },
-          select: { domain: true, periodStart: true, periodEnd: true },
-        })
-        return anyGrantAuthorisesRequest(grants, parsed)
-      })
-
-      if (!authorised) {
-        await step.run('hold-unauthorised-request', async () => {
-          await prisma.inboundRequest.update({
-            where: { id: requestId },
-            data: {
-              status: 'NEEDS_DATA',
-              parsedFields: { parsed, blocked: 'sender_not_authorised' } as unknown as Prisma.InputJsonValue,
-            },
-          })
-        })
-        return { requestId, status: 'NEEDS_DATA', blocked: 'sender_not_authorised' }
-      }
-
-      await step.run('answer-request', async () => {
+      // We have the data, but we do not disclose it automatically. Hold it for the
+      // supplier to review and send, storing the matched answers so the portal can
+      // show exactly what would be shared. `awaiting: 'supplier_review'` distinguishes
+      // this from a genuinely-missing request within the NEEDS_DATA queue.
+      await step.run('hold-for-review', async () => {
         await prisma.inboundRequest.update({
           where: { id: requestId },
           data: {
-            status: 'ANSWERED',
-            answeredAt: new Date(),
-            parsedFields: { parsed, answers: match.answers } as unknown as Prisma.InputJsonValue,
+            status: 'NEEDS_DATA',
+            parsedFields: { parsed, answers: match.answers, awaiting: 'supplier_review' } as unknown as Prisma.InputJsonValue,
           },
         })
-        // Reply with the assembled answer packet, if email delivery is configured.
-        const resend = getResend()
-        if (resend && fromEmail) {
-          await resend.emails
-            .send({
-              from: 'arbor <onboarding@resend.dev>',
-              to: fromEmail,
-              subject: `Re: your data request to ${entity.legalName}`,
-              html: buildAnswerHtml(entity.legalName, match.answers),
-            })
-            .catch(() => {})
-        }
       })
-      return { requestId, status: 'ANSWERED' }
+      return { requestId, status: 'NEEDS_DATA', awaiting: 'supplier_review' }
     }
 
     await step.run('mark-needs-data', async () => {
@@ -131,37 +83,3 @@ export const parseInboundRequestFunction = inngest.createFunction(
     return { requestId, status: 'NEEDS_DATA', missing: match.missingFields }
   },
 )
-
-function buildAnswerHtml(
-  entityName: string,
-  answers: { fieldName: string; records: { value: number; unit: string; trustTier: string }[] }[],
-): string {
-  const rows = answers
-    .map((a) => {
-      const total = a.records.reduce((s, r) => s + r.value, 0)
-      const unit = a.records[0]?.unit ?? ''
-      const tier = worstTier(a.records.map((r) => r.trustTier))
-      return `<tr><td>${escapeHtml(a.fieldName.replace(/_/g, ' '))}</td><td>${escapeHtml(total)} ${escapeHtml(unit)}</td><td>${escapeHtml(tier)}</td></tr>`
-    })
-    .join('')
-  return `<p>${escapeHtml(entityName)} has answered your data request directly from their certified records.</p>
-<table border="1" cellpadding="6" cellspacing="0"><thead><tr><th>Field</th><th>Value</th><th>Trust tier</th></tr></thead><tbody>${rows}</tbody></table>
-<p>Every value above is backed by source documents in Arbor.</p>`
-}
-
-function worstTier(tiers: string[]): string {
-  const rank: Record<string, number> = { A: 0, B: 1, C: 2 }
-  const label: Record<string, string> = { A: 'Verified', B: 'Declared', C: 'Estimated' }
-  if (tiers.length === 0) return ''
-  const worst = tiers.reduce((w, t) => ((rank[t] ?? 0) > (rank[w] ?? 0) ? t : w), tiers[0])
-  return label[worst] ?? worst
-}
-
-function escapeHtml(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
