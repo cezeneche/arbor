@@ -130,6 +130,7 @@ const buyerPlans: Plan[] = [
       'Advanced cross-supplier query',
       'All export formats',
       'Full API access with higher rate limits',
+      'SAML/OIDC SSO & SCIM provisioning',
       'Data Processing Agreement included',
       'SLA and uptime guarantee',
       'Dedicated customer success',

@@ -208,18 +208,12 @@ export default function DpaPage() {
               marginBottom: '16px',
             }}
           >
-            {[
-              { name: 'Supabase', purpose: 'Database hosting', location: 'EU (Ireland)', transfers: 'Adequacy decision' },
-              { name: 'Anthropic', purpose: 'AI extraction', location: 'United States', transfers: 'Standard Contractual Clauses' },
-              { name: 'Inngest', purpose: 'Job processing', location: 'United States', transfers: 'Standard Contractual Clauses' },
-              { name: 'Resend', purpose: 'Email delivery', location: 'United States', transfers: 'Standard Contractual Clauses' },
-              { name: 'Vercel', purpose: 'Application hosting', location: 'EU / United States', transfers: 'Standard Contractual Clauses' },
-            ].map(({ name, purpose, location, transfers }, i) => (
+            {SUB_PROCESSORS.map(({ name, activity, location }, i) => (
               <div
                 key={name}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '140px 1fr 160px 200px',
+                  gridTemplateColumns: '160px 1fr 200px',
                   gap: '12px',
                   padding: '12px 16px',
                   borderTop: i === 0 ? 'none' : `1px solid ${colours.border}`,
@@ -230,13 +224,10 @@ export default function DpaPage() {
                   {name}
                 </span>
                 <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary }}>
-                  {purpose}
+                  {activity}
                 </span>
                 <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary }}>
                   {location}
-                </span>
-                <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary }}>
-                  {transfers}
                 </span>
               </div>
             ))}
