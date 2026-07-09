@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { KILL_SIGNAL_GROUPS, ECE_KILL_THRESHOLD } from '@/lib/confidence/calibration-metrics'
@@ -8,7 +8,7 @@ import { KILL_SIGNAL_GROUPS, ECE_KILL_THRESHOLD } from '@/lib/confidence/calibra
 // observable over time and the kill signal is watchable: is the calibration ECE
 // under 5% for supplier identity, mass, and emissions intensity? Read-only.
 export async function GET() {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
   const latest = await prisma.calibrationRun.findFirst({

@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { buildCertificateClaims, type RawClaim } from '@/lib/flow/build-claims'
@@ -16,7 +16,7 @@ const REF_FIELDS = ['certificate_number', 'bill_of_lading_number', 'declaration_
 const FIELD_CAP = 50000
 
 export async function GET() {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
   const fields = await prisma.extractedField.findMany({

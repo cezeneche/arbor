@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
@@ -17,7 +17,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
   const userId = getSessionUser(session).id
   const { id } = await params

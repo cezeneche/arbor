@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
@@ -14,7 +14,7 @@ const bodySchema = z.object({
 
 // an admin grants a scoped, time-limited read-only audit access.
 export async function POST(req: NextRequest) {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
   const body = await req.json().catch(() => null)

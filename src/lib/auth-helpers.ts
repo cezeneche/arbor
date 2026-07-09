@@ -81,6 +81,32 @@ export async function requireAdmin() {
   return { session, response: null }
 }
 
+/** Requires an authenticated platform operator (User.isPlatformAdmin).
+ *  Gates cross-tenant /api/admin surfaces — a tenant-level ADMIN governs only
+ *  their own entity and must NOT reach these. The flag is read fresh from the DB
+ *  (not the JWT) so it is revocable immediately. Returns the session on success,
+ *  or a 401/403 response on failure.
+ */
+export async function requirePlatformAdmin() {
+  const { session, response } = await requireAuth()
+  if (!session) return { session: null, response: response! }
+  const userId = getSessionUser(session).id
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isPlatformAdmin: true },
+  })
+  if (!dbUser?.isPlatformAdmin) {
+    return {
+      session: null,
+      response: NextResponse.json(
+        { error: 'Forbidden — platform operator access required', code: 'FORBIDDEN' },
+        { status: 403 },
+      ),
+    }
+  }
+  return { session, response: null }
+}
+
 /** requires an authenticated session with the VERIFIER role.
  *  Verifiers belong to no entity; they act on assigned verification packages.
  */
