@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-helpers'
+import { getSessionUser } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { decryptTotpSecret, verifyTotpCode, generateRecoveryCodes, hashRecoveryCode } from '@/lib/auth/totp'
 
@@ -9,19 +10,17 @@ const bodySchema = z.object({ code: z.string().length(6) })
 // POST /api/auth/2fa/enable
 // Verifies the first TOTP code, marks 2FA enabled, generates recovery codes.
 // Returns plaintext recovery codes — shown once, never again.
+// requireAuth() enforces a full (non-pending2fa) session and re-checks tokenVersion.
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  const user = session?.user as unknown as Record<string, unknown> | undefined
-  if (!session || !user?.id || user.pending2fa) {
-    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  }
+  const { session, response } = await requireAuth()
+  if (!session) return response!
 
   const body = bodySchema.safeParse(await req.json().catch(() => null))
   if (!body.success) {
     return NextResponse.json({ error: 'A 6-digit code is required.' }, { status: 400 })
   }
 
-  const userId = user.id as string
+  const userId = getSessionUser(session).id
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { twoFactorSecret: true, twoFactorEnabled: true },
