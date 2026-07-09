@@ -3,21 +3,16 @@
 // [PRD §15.3  -  Governance gate: min 10 entities enforced by computeSectorBenchmarks()]
 
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { computeSectorBenchmarks } from '@/lib/aggregation/sector-benchmark'
 
-export async function POST(req: Request) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-
-  // Platform-level operation: requires PLATFORM_ADMIN_SECRET header, not just entity ADMIN role.
-  // Entity admins must not be able to trigger global benchmark recomputation.
-  const platformSecret = process.env.PLATFORM_ADMIN_SECRET
-  if (!platformSecret) return NextResponse.json({ error: 'Platform admin secret not configured' }, { status: 500 })
-  if (req.headers.get('x-platform-admin-secret') !== platformSecret) {
-    return NextResponse.json({ error: 'Forbidden : platform admin only' }, { status: 403 })
-  }
+// Platform-level operation: recomputes global sector benchmarks across all
+// consenting entities. Gated on the platform-operator flag (like the sibling
+// benchmarks/dp route) — a tenant ADMIN must not be able to trigger it.
+export async function POST() {
+  const { session, response } = await requirePlatformAdmin()
+  if (!session) return response!
 
   const year = new Date().getFullYear()
 
