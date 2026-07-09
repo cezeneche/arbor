@@ -109,6 +109,10 @@ model User {
   tokenVersion     Int      @default(0)
   // Gap 10 — set false by SCIM deprovision; all auth checks require true.
   isActive         Boolean  @default(true)
+  // Platform operator (Arbor staff). Gates cross-tenant /api/admin surfaces.
+  // Distinct from the tenant-level ADMIN role, which only governs a user's own
+  // entity. Never set by self-service — granted out of band. Default false.
+  isPlatformAdmin  Boolean  @default(false)
 
   accounts                Account[]
   sessions                Session[]

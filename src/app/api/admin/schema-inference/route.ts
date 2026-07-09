@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { inferSchema } from '@/lib/brain/schema-client'
@@ -14,7 +14,7 @@ import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 const JOB_CAP = 5000
 
 export async function GET(req: NextRequest) {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
   const documentType = req.nextUrl.searchParams.get('documentType')

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { merkleRoot } from '@/lib/layer2/merkle'
@@ -37,7 +37,7 @@ const predicateSchema = z.discriminatedUnion('kind', [
 const bodySchema = z.object({ entityId: z.string().min(1), predicate: predicateSchema })
 
 export async function POST(req: NextRequest) {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))

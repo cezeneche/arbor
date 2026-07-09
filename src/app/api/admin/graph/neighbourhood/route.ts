@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { nodeId, type GraphEdgeType } from '@/lib/graph/project'
@@ -17,7 +17,7 @@ const EDGE_CAP = 100000
 const EDGE_TYPES: GraphEdgeType[] = ['SUBMITTED', 'OWNS', 'YIELDED', 'SAME_AS', 'SUPPLIES']
 
 export async function GET(req: NextRequest) {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
   const sp = req.nextUrl.searchParams

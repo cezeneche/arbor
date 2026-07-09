@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma'
 // human can confirm or reject. Read-only; resolution is cross-tenant platform
 // work, hence admin-scoped. Nothing here mutates the entities.
 export async function GET() {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
   const links = await prisma.entityLink.findMany({

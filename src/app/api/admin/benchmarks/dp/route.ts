@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { requireAdmin } from '@/lib/auth-helpers'
+import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { buildCanonicalMap } from '@/lib/aggregation/entity-canonical'
@@ -18,7 +18,7 @@ import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 const RECORD_CAP = 50000
 
 export async function GET(req: NextRequest) {
-  const { session, response } = await requireAdmin()
+  const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
   const eps = Number.parseFloat(req.nextUrl.searchParams.get('epsilon') ?? '1')
