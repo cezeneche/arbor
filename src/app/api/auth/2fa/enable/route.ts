@@ -12,7 +12,8 @@ const bodySchema = z.object({ code: z.string().length(6) })
 // Returns plaintext recovery codes — shown once, never again.
 // requireAuth() enforces a full (non-pending2fa) session and re-checks tokenVersion.
 export async function POST(req: NextRequest) {
-  const { session, response } = await requireAuth()
+  // exempt: an unenrolled admin must be able to reach enable to finish enrolling.
+  const { session, response } = await requireAuth({ exemptAdminTwoFactorSetup: true })
   if (!session) return response!
 
   const body = bodySchema.safeParse(await req.json().catch(() => null))

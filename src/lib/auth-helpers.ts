@@ -1,21 +1,27 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import { evaluateSessionSecurity, type SessionSecurityCode } from '@/lib/auth-helpers-pure'
+import {
+  evaluateSessionSecurity,
+  type SessionSecurityCode,
+  type SessionSecurityOptions,
+} from '@/lib/auth-helpers-pure'
 import { getSessionUser } from '@/lib/session'
 
-const unauthorised = (reason: string, code: string) => ({
+const unauthorised = (reason: string, code: string, status = 401) => ({
   session: null,
-  response: NextResponse.json({ error: reason, code }, { status: 401 }),
+  response: NextResponse.json({ error: reason, code }, { status }),
 })
 
 const SECURITY_MESSAGES: Record<SessionSecurityCode, string> = {
   TWO_FACTOR_REQUIRED: 'Two-factor verification required',
   ACCOUNT_GONE: 'Account no longer exists',
   SESSION_REVOKED: 'Session has been revoked. Please sign in again.',
+  ADMIN_TWO_FACTOR_SETUP_REQUIRED:
+    'Administrators must enable two-factor authentication before using the API.',
 }
 
-export async function requireAuth() {
+export async function requireAuth(opts: SessionSecurityOptions = {}) {
   const session = await auth()
   if (!session?.user) {
     return unauthorised('Unauthorised', 'AUTH_REQUIRED')
@@ -25,19 +31,25 @@ export async function requireAuth() {
   const userId = user.id as string | undefined
 
   // Look up the live tokenVersion so a password reset / forced logout actually
-  // invalidates old JWTs, and re-check the 2FA gate server-side (defence in depth:
-  // the middleware redirect is bypassed on API routes exempted from it).
+  // invalidates old JWTs, and re-check the 2FA gates server-side (defence in
+  // depth: the middleware/layout redirects are bypassed on direct API calls).
   const dbUser = userId
-    ? await prisma.user.findUnique({ where: { id: userId }, select: { tokenVersion: true } })
+    ? await prisma.user.findUnique({
+        where: { id: userId },
+        select: { tokenVersion: true, role: true, twoFactorEnabled: true },
+      })
     : { tokenVersion: 0 }
 
   const verdict = evaluateSessionSecurity(
     { pending2fa: user.pending2fa, tokenVersion: user.tokenVersion },
     dbUser,
+    opts,
   )
 
   if (!verdict.ok) {
-    return unauthorised(SECURITY_MESSAGES[verdict.code], verdict.code)
+    // Enrolment is a policy gate on an otherwise-valid session → 403, not 401.
+    const status = verdict.code === 'ADMIN_TWO_FACTOR_SETUP_REQUIRED' ? 403 : 401
+    return unauthorised(SECURITY_MESSAGES[verdict.code], verdict.code, status)
   }
 
   return { session, response: null }
