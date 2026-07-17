@@ -187,7 +187,9 @@ async def check_db_health() -> bool:
     """Returns True if the Supabase database is reachable."""
     try:
         client = get_admin_client()
-        result = await client.rpc("pg_sleep", {"seconds": 0}).execute()
+        # HEAD request — proves gateway auth + PostgREST + database without
+        # transferring rows. pg_sleep is not exposed as an RPC by PostgREST.
+        await client.table("cases").select("id", head=True).limit(1).execute()
         return True
     except Exception as exc:
         logger.error("Supabase health check failed: %s", exc)
