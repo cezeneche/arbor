@@ -140,7 +140,10 @@ api/shared_auth/
 |---|---|
 | `DATABASE_URL` | PostgreSQL DSN; SQLite (`sqlite:///./cbam_test.db`) in tests |
 | `SUPABASE_URL` | Supabase project URL (enables Supabase client + Storage) |
-| `SUPABASE_SERVICE_KEY` | Supabase service role key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase secret key (`sb_secret_...`) — full access, bypasses RLS |
+| `SUPABASE_ANON_KEY` | Supabase publishable key (`sb_publishable_...`) — RLS enforced |
+
+Supabase key notes: legacy `anon`/`service_role` JWT keys are deprecated end of 2026 — use the `sb_publishable_...`/`sb_secret_...` formats. New-format keys must be sent in the `apikey` header only; passing one as `Authorization: Bearer` makes the gateway parse it as a JWT and reject it (supabase-js ≥2.x and supabase-py ≥2.30 handle this correctly). The bare `/rest/v1/` root (OpenAPI schema) always requires a secret key — test against a table path, not the root.
 | `JWT_SECRET` | HS256 signing key; default `dev-jwt-secret-change-me` |
 | `JWT_ISSUER` | default `scope3-agentic` |
 | `JWT_AUDIENCE` | default `scope3-clients` |
