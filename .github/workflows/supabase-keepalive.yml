@@ -16,11 +16,11 @@ jobs:
       - name: Ping REST API
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_API_KEY: ${{ secrets.SUPABASE_KEEPALIVE_API_KEY }}
         run: |
           curl --fail -sS -o /dev/null "$SUPABASE_URL/rest/v1/" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+            -H "apikey: $SUPABASE_API_KEY" \
+            -H "Authorization: Bearer $SUPABASE_API_KEY"
 
       - name: Ping database
         env:
