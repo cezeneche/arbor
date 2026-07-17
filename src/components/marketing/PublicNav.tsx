@@ -9,6 +9,16 @@ const navLink = {
   letterSpacing: typography.tracking.normal,
 }
 
+const burgerBar = {
+  display: 'block',
+  width: '18px',
+  height: '2px',
+  backgroundColor: colours.textPrimary,
+  borderRadius: '1px',
+}
+
+// Server component. The mobile menu is a CSS-only disclosure (hidden checkbox +
+// label) driven by marketing.css — no client JS, no modal, per design rules.
 export function PublicNav() {
   return (
     <nav
@@ -18,7 +28,7 @@ export function PublicNav() {
         zIndex: 100,
         backgroundColor: colours.surface,
         borderBottom: `1px solid ${colours.border}`,
-        height: '64px',
+        minHeight: '64px',
         display: 'flex',
         alignItems: 'center',
       }}
@@ -28,10 +38,11 @@ export function PublicNav() {
           maxWidth: '1140px',
           width: '100%',
           margin: '0 auto',
-          padding: '0 40px',
+          padding: '0 clamp(20px, 5vw, 40px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          position: 'relative',
         }}
       >
         {/* Wordmark */}
@@ -48,15 +59,19 @@ export function PublicNav() {
           arbor
         </Link>
 
-        {/* Centre links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+        {/* Mobile menu state — must precede .mk-nav-links for the CSS sibling
+            selector. Invisible at every breakpoint. */}
+        <input type="checkbox" id="mk-nav-toggle" className="mk-nav-toggle" aria-label="Toggle navigation menu" />
+
+        {/* Centre links: row on desktop, dropdown panel on mobile (marketing.css) */}
+        <div className="mk-nav-links">
           <Link href="/how-it-works" style={navLink}>How it works</Link>
           <Link href="/pricing" style={navLink}>Pricing</Link>
           <Link href="/about" style={navLink}>About</Link>
         </div>
 
-        {/* Auth actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        {/* Auth actions + burger */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(14px, 3vw, 24px)' }}>
           <Link
             href="/login"
             style={{
@@ -81,6 +96,11 @@ export function PublicNav() {
           >
             Get started
           </Link>
+          <label htmlFor="mk-nav-toggle" className="mk-nav-burger" aria-label="Open menu">
+            <span style={burgerBar} />
+            <span style={burgerBar} />
+            <span style={burgerBar} />
+          </label>
         </div>
       </div>
     </nav>

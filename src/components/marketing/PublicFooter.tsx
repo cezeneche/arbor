@@ -33,13 +33,13 @@ export function PublicFooter() {
         style={{
           maxWidth: '1140px',
           margin: '0 auto',
-          padding: '0 40px',
+          padding: '0 clamp(20px, 5vw, 40px)',
         }}
       >
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '2fr 1fr 1fr 1fr',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
             gap: '48px',
             marginBottom: '48px',
           }}

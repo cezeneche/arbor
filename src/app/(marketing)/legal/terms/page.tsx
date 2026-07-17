@@ -5,7 +5,7 @@ import { colours, typography } from '@/lib/design-system'
 const container = {
   maxWidth: '1140px',
   margin: '0 auto',
-  padding: '0 40px',
+  padding: '0 clamp(20px, 5vw, 40px)',
 }
 
 const h2Style = {
@@ -61,7 +61,7 @@ export default function TermsPage() {
           </span>
           <h1
             style={{
-              fontSize: '44px',
+              fontSize: 'clamp(30px, 6vw, 44px)',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
               letterSpacing: typography.tracking.tight,
