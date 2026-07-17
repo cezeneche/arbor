@@ -140,15 +140,16 @@ export default function HomePage() {
           }}
         >
           {[
-            { stat: 'Source-checked', label: 'Every figure ties back to a document' },
-            { stat: 'Permanent', label: 'Records are never overwritten' },
-            { stat: 'Seconds', label: 'Share the moment you are asked' },
-            { stat: 'Free to start', label: 'No card required' },
+            { stat: '8', label: 'Data domains' },
+            { stat: '3', label: 'Trust tiers' },
+            { stat: 'HMAC', label: 'Audit chain' },
+            { stat: 'API', label: 'Direct access' },
           ].map(({ stat, label }) => (
             <div
               key={label}
               style={{
                 padding: '24px 32px',
+                textAlign: 'center' as const,
                 borderRight: `1px solid ${colours.border}`,
                 borderTop: `1px solid ${colours.border}`,
                 borderBottom: `1px solid ${colours.border}`,
