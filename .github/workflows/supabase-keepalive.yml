@@ -2,17 +2,25 @@ name: Supabase Keepalive
 
 on:
   schedule:
-    - cron: "0 6 */4 * *"
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
   ping:
-    name: Ping Supabase database
+    name: Ping Supabase
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install postgresql-client
-        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+      # Supabase free-tier inactivity detection counts API-gateway traffic,
+      # not raw pooler connections — the REST ping is what prevents pausing.
+      - name: Ping REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          curl --fail -sS -o /dev/null "$SUPABASE_URL/rest/v1/" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
 
       - name: Ping database
         env:
