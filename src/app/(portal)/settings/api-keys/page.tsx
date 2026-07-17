@@ -30,7 +30,8 @@ export default async function ApiKeysPage() {
     expiresAt: k.expiresAt?.toISOString() ?? null,
   }))
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://your-arbor-instance.com'
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? 'https://your-arbor-instance.com'
 
   return (
     <div>

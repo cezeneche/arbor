@@ -30,7 +30,10 @@ export async function POST(
     data: { submissionTokenHash: hashOpaqueToken(token), submissionTokenExpiry: expiry },
   })
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+  // NEXT_PUBLIC_APP_URL is the canonical external origin (set in production —
+  // asserted at build). BASE_URL kept as a legacy fallback only.
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
   const link = `${baseUrl}/submit/${token}`
 
   return ok({ link, expiresAt: expiry.toISOString() }, 201)
