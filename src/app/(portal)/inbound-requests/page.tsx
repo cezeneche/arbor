@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { requestsAddress } from '@/lib/email/config'
+import { worstTier } from '@/lib/requests/answer-email'
+import { SendAnswerButton } from './SendAnswerButton'
 
 interface ParsedShape {
   parsed?: { domain?: string | null; fields?: string[]; periodStart?: string | null; periodEnd?: string | null }
@@ -13,7 +15,7 @@ interface ParsedShape {
   // Set when we matched the request to certified records and are holding it for the
   // supplier to review and send — we never disclose data to the sender automatically.
   awaiting?: string
-  answers?: { fieldName: string }[]
+  answers?: { fieldName: string; records: { value: number; unit: string; trustTier: string }[] }[]
 }
 
 export default async function InboundRequestsPage() {
@@ -100,16 +102,42 @@ export default async function InboundRequestsPage() {
           <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', overflow: 'hidden' }}>
             {readyToSend.map((r, i) => {
               const pf = (r.parsedFields ?? {}) as ParsedShape
-              const fieldCount = pf.answers?.length ?? 0
+              const answers = pf.answers ?? []
               return (
                 <div key={r.id} style={{ padding: `${spacing[2]} ${spacing[3]}`, borderBottom: i < readyToSend.length - 1 ? `1px solid ${colours.border}` : 'none', backgroundColor: colours.greenBg }}>
                   <div style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
                     {r.fromEmail ?? 'A customer'} asked for data {pf.parsed?.domain ? `(${pf.parsed.domain.replace(/_/g, ' ').toLowerCase()})` : ''}
                   </div>
                   <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, marginTop: '4px' }}>
-                    We matched {fieldCount > 0 ? `${fieldCount} field${fieldCount === 1 ? '' : 's'}` : 'this'} to your certified records. Review the request and reply to share it — nothing is sent until you do.
+                    Matched to your certified records — this is exactly what will be sent. Nothing goes out until you confirm.
                   </div>
-                  <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, marginTop: '6px' }}>
+                  {/* The values under review, with their certification labels. */}
+                  {answers.length > 0 && (
+                    <div style={{ marginTop: '10px', backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+                      {answers.map((a, j) => {
+                        const total = a.records.reduce((s, rec) => s + rec.value, 0)
+                        const unit = a.records[0]?.unit ?? ''
+                        return (
+                          <div key={a.fieldName} style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[2], padding: '8px 12px', borderBottom: j < answers.length - 1 ? `1px solid ${colours.border}` : 'none' }}>
+                            <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textPrimary }}>
+                              {a.fieldName.replace(/_/g, ' ')}
+                            </span>
+                            <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+                              {total.toLocaleString('en-GB')} {unit} · {worstTier(a.records.map((rec) => rec.trustTier))}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {r.fromEmail ? (
+                    <SendAnswerButton requestId={r.id} toEmail={r.fromEmail} />
+                  ) : (
+                    <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, marginTop: '8px' }}>
+                      The original email had no reply address, so this can&apos;t be sent from here.
+                    </div>
+                  )}
+                  <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, marginTop: '8px' }}>
                     {new Date(r.createdAt).toLocaleDateString('en-GB')}
                   </div>
                 </div>

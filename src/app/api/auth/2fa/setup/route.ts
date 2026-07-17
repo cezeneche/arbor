@@ -10,7 +10,8 @@ import QRCode from 'qrcode'
 // requireAuth() enforces a full (non-pending2fa) session AND re-checks tokenVersion
 // revocation and account status server-side — raw auth() skipped both.
 export async function POST() {
-  const { session, response } = await requireAuth()
+  // exempt: an unenrolled admin must be able to reach setup to enrol at all.
+  const { session, response } = await requireAuth({ exemptAdminTwoFactorSetup: true })
   if (!session) return response!
 
   const sessionUser = getSessionUser(session)

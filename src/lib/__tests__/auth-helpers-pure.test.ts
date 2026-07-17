@@ -50,3 +50,33 @@ describe('evaluateSessionSecurity', () => {
     expect(result).toEqual({ ok: false, code: 'TWO_FACTOR_REQUIRED' })
   })
 })
+
+describe('evaluateSessionSecurity — admin 2FA enrolment gate', () => {
+  const base = { pending2fa: false, tokenVersion: 1 }
+
+  it('rejects an ADMIN who has not enrolled 2FA (API-level gate, not just the page redirect)', () => {
+    const result = evaluateSessionSecurity(base, { tokenVersion: 1, role: 'ADMIN', twoFactorEnabled: false })
+    expect(result).toEqual({ ok: false, code: 'ADMIN_TWO_FACTOR_SETUP_REQUIRED' })
+  })
+
+  it('accepts an ADMIN with 2FA enrolled', () => {
+    expect(evaluateSessionSecurity(base, { tokenVersion: 1, role: 'ADMIN', twoFactorEnabled: true })).toEqual({ ok: true })
+  })
+
+  it('does not gate non-admin roles on enrolment', () => {
+    expect(evaluateSessionSecurity(base, { tokenVersion: 1, role: 'CONTRIBUTOR', twoFactorEnabled: false })).toEqual({ ok: true })
+  })
+
+  it('exemptAdminTwoFactorSetup allows the enrolment endpoints themselves through', () => {
+    const result = evaluateSessionSecurity(
+      base,
+      { tokenVersion: 1, role: 'ADMIN', twoFactorEnabled: false },
+      { exemptAdminTwoFactorSetup: true },
+    )
+    expect(result).toEqual({ ok: true })
+  })
+
+  it('callers that do not pass role/twoFactorEnabled keep the old behaviour', () => {
+    expect(evaluateSessionSecurity(base, { tokenVersion: 1 })).toEqual({ ok: true })
+  })
+})
