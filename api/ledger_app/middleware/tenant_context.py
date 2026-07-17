@@ -21,7 +21,7 @@ Integration
 -----------
 Add to FastAPI app in main.py:
 
-    from supabase.middleware import TenantContextMiddleware
+    from ledger_app.middleware.tenant_context import TenantContextMiddleware
     app.add_middleware(TenantContextMiddleware)
 
 The middleware must be added AFTER the Supabase client is initialised
