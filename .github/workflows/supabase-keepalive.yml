@@ -12,15 +12,16 @@ jobs:
 
     steps:
       # Supabase free-tier inactivity detection counts API-gateway traffic,
-      # not raw pooler connections — the REST ping is what prevents pausing.
-      - name: Ping REST API
+      # not raw pooler connections — the API ping is what prevents pausing.
+      # This project's Data API rejects non-secret keys, so ping Auth health
+      # with the publishable key instead of /rest/v1/.
+      - name: Ping API gateway
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_API_KEY: ${{ secrets.SUPABASE_KEEPALIVE_API_KEY }}
         run: |
-          curl --fail -sS -o /dev/null "$SUPABASE_URL/rest/v1/" \
-            -H "apikey: $SUPABASE_API_KEY" \
-            -H "Authorization: Bearer $SUPABASE_API_KEY"
+          curl --fail -sS -o /dev/null "$SUPABASE_URL/auth/v1/health" \
+            -H "apikey: $SUPABASE_API_KEY"
 
       - name: Ping database
         env:
