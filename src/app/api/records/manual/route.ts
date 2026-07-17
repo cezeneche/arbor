@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { domainSchema } from '@/lib/constants'
+import { assertRecordCapacity } from '@/lib/plan-guard'
 import { ExtractionMethod, TrustTier } from '@prisma/client'
 
 const bodySchema = z.object({
@@ -39,6 +40,9 @@ export async function POST(req: NextRequest) {
   if (periodEnd <= periodStart) {
     return err('periodEnd must be after periodStart', 'VALIDATION_ERROR', 400)
   }
+
+  const capacity = await assertRecordCapacity(entityId, 1)
+  if (!capacity.allowed) return err(capacity.reason!, 'PLAN_LIMIT', 402)
 
   const { recordId } = await runSerializable((tx) =>
     writeRecordWithAuditEntry(

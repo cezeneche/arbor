@@ -9,6 +9,7 @@ import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { domainSchema, tierSchema } from '@/lib/constants'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { assertRecordCapacity } from '@/lib/plan-guard'
 import { TrustTier, ExtractionMethod } from '@prisma/client'
 
 const recordSchema = z.object({
@@ -126,6 +127,9 @@ export async function POST(req: NextRequest) {
 
   const entity = await prisma.entity.findUnique({ where: { id: auth.entityId! } })
   if (!entity) return err('Entity not found', 'NOT_FOUND', 404)
+
+  const capacity = await assertRecordCapacity(auth.entityId!, records.length)
+  if (!capacity.allowed) return err(capacity.reason!, 'PLAN_LIMIT', 402)
 
   const systemUser = await getSystemUser(auth.entityId!)
   let createdCount = 0

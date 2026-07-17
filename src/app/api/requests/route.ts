@@ -5,6 +5,7 @@ import { requireAuth, requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
+import { assertSupplierConnection } from '@/lib/plan-guard'
 
 const createSchema = z.object({
   supplierEntityId: z.string().cuid(),
@@ -51,6 +52,10 @@ export async function POST(req: NextRequest) {
     select: { legalName: true },
   })
   if (!supplier) return err('Supplier entity not found', 'NOT_FOUND', 404)
+
+  // Buyer plans cap distinct connected suppliers; an existing connection is free.
+  const connection = await assertSupplierConnection(entityId, parsed.data.supplierEntityId)
+  if (!connection.allowed) return err(connection.reason!, 'PLAN_LIMIT', 402)
 
   const buyer = await prisma.entity.findUnique({
     where: { id: entityId },
