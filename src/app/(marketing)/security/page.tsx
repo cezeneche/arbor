@@ -3,7 +3,7 @@ import { SUB_PROCESSORS } from '@/lib/legal/subprocessors'
 
 // public security posture page. Referenced in the DPA and sent to
 // enterprise buyer procurement / security teams.
-const container = { maxWidth: '900px', margin: '0 auto', padding: '0 40px' }
+const container = { maxWidth: '900px', margin: '0 auto', padding: '0 clamp(20px, 5vw, 40px)' }
 
 const h2 = {
   fontSize: '20px',
@@ -41,7 +41,7 @@ export default function SecurityPage() {
           >
             Trust
           </span>
-          <h1 style={{ fontSize: '40px', fontWeight: typography.weights.light, color: colours.textPrimary, letterSpacing: typography.tracking.tight, margin: 0 }}>
+          <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 40px)', fontWeight: typography.weights.light, color: colours.textPrimary, letterSpacing: typography.tracking.tight, margin: 0 }}>
             Security at Arbor
           </h1>
           <p style={{ ...p, marginTop: '16px', maxWidth: '640px' }}>

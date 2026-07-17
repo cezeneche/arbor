@@ -4,7 +4,7 @@ import { colours, typography } from '@/lib/design-system'
 const container = {
   maxWidth: '1140px',
   margin: '0 auto',
-  padding: '0 40px',
+  padding: '0 clamp(20px, 5vw, 40px)',
 }
 
 const eyebrow = {
@@ -42,7 +42,7 @@ export default function HowItWorksPage() {
           <span style={eyebrow}>How it works</span>
           <h1
             style={{
-              fontSize: '44px',
+              fontSize: 'clamp(30px, 6vw, 44px)',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
               letterSpacing: typography.tracking.tight,
@@ -75,7 +75,7 @@ export default function HowItWorksPage() {
           <h2 style={sectionHeading}>
             Three separate layers. Each with a single job.
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: colours.border, marginTop: '40px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', backgroundColor: colours.border, marginTop: '40px' }}>
             {[
               {
                 num: '01',
@@ -297,7 +297,7 @@ export default function HowItWorksPage() {
             is a property of the record, computed from facts.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: colours.border }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', backgroundColor: colours.border }}>
             {[
               {
                 tier: 'Verified',
@@ -438,7 +438,7 @@ export default function HowItWorksPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
               gap: '1px',
               backgroundColor: colours.border,
               marginTop: '40px',

@@ -1,0 +1,50 @@
+/* Responsive rules the inline-style design system cannot express (media
+   queries). Kept deliberately tiny: everything else on the marketing site is
+   responsive via clamp()/auto-fit inline. Colours are CSS variables set by the
+   marketing layout from design-system.ts — no hardcoded values here. */
+
+/* Centre nav links: row on desktop, collapsible panel on mobile. Display must
+   live here (not inline) so the media query can win. */
+.mk-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.mk-nav-toggle {
+  display: none;
+}
+
+.mk-nav-burger {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mk-nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    background-color: var(--mk-surface);
+    border-bottom: 1px solid var(--mk-border);
+    padding: 20px clamp(20px, 5vw, 40px);
+  }
+
+  .mk-nav-toggle:checked ~ .mk-nav-links {
+    display: flex;
+  }
+
+  .mk-nav-burger {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 8px;
+    margin: -8px;
+  }
+}

@@ -4,7 +4,7 @@ import { colours, typography, textStyles } from '@/lib/design-system'
 const container = {
   maxWidth: '1140px',
   margin: '0 auto',
-  padding: '0 40px',
+  padding: '0 clamp(20px, 5vw, 40px)',
 }
 
 interface Plan {
@@ -305,7 +305,7 @@ export default function PricingPage() {
           </span>
           <h1
             style={{
-              fontSize: '44px',
+              fontSize: 'clamp(30px, 6vw, 44px)',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
               letterSpacing: typography.tracking.tight,
@@ -355,7 +355,7 @@ export default function PricingPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
               gap: '16px',
             }}
           >
@@ -390,7 +390,7 @@ export default function PricingPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
               gap: '16px',
             }}
           >

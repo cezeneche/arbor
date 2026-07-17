@@ -6,7 +6,7 @@ import { SUB_PROCESSORS, DPA_LAST_UPDATED } from '@/lib/legal/subprocessors'
 const container = {
   maxWidth: '1140px',
   margin: '0 auto',
-  padding: '0 40px',
+  padding: '0 clamp(20px, 5vw, 40px)',
 }
 
 const h2Style = {
@@ -62,7 +62,7 @@ export default function DpaPage() {
           </span>
           <h1
             style={{
-              fontSize: '44px',
+              fontSize: 'clamp(30px, 6vw, 44px)',
               fontWeight: typography.weights.medium,
               color: colours.textPrimary,
               letterSpacing: typography.tracking.tight,
@@ -204,7 +204,7 @@ export default function DpaPage() {
             style={{
               border: `1px solid ${colours.border}`,
               borderRadius: '4px',
-              overflow: 'hidden',
+              overflowX: 'auto',
               marginBottom: '16px',
             }}
           >
@@ -214,6 +214,7 @@ export default function DpaPage() {
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '160px 1fr 200px',
+                  minWidth: '600px',
                   gap: '12px',
                   padding: '12px 16px',
                   borderTop: i === 0 ? 'none' : `1px solid ${colours.border}`,

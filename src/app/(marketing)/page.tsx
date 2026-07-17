@@ -4,7 +4,7 @@ import { colours, typography } from '@/lib/design-system'
 const container = {
   maxWidth: '1140px',
   margin: '0 auto',
-  padding: '0 40px',
+  padding: '0 clamp(20px, 5vw, 40px)',
 }
 
 const eyebrow = {
@@ -28,7 +28,7 @@ const sectionEyebrow = {
 }
 
 const sectionHeading = {
-  fontSize: '32px',
+  fontSize: 'clamp(24px, 4.5vw, 32px)',
   fontWeight: typography.weights.medium,
   color: colours.textPrimary,
   letterSpacing: typography.tracking.heading,
@@ -59,12 +59,12 @@ export default function HomePage() {
     <div>
 
       {/* Hero */}
-      <section style={{ backgroundColor: colours.navy, padding: '128px 0 160px' }}>
+      <section style={{ backgroundColor: colours.navy, padding: 'clamp(72px, 14vw, 128px) 0 clamp(88px, 16vw, 160px)' }}>
         <div style={container}>
           <span style={eyebrow}>For manufacturers, suppliers &amp; producers</span>
           <h1
             style={{
-              fontSize: typography.sizes.heroXl,
+              fontSize: 'clamp(32px, 6.5vw, 72px)',
               fontWeight: typography.weights.medium,
               color: '#FFFFFF',
               letterSpacing: typography.tracking.tight,
@@ -87,7 +87,7 @@ export default function HomePage() {
             arbor reads them, certifies the data, and keeps one verified record you can share
             the moment a customer, auditor, or regulator asks.
           </p>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' as const }}>
             <Link
               href="/signup"
               style={{
@@ -130,7 +130,7 @@ export default function HomePage() {
           style={{
             ...container,
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
             borderLeft: `1px solid ${colours.border}`,
           }}
         >
@@ -186,7 +186,7 @@ export default function HomePage() {
             auditors, and regulators. Each request triggers the same process: find the documents,
             extract the figures, format the output. Hours spent. Same data arrived at differently.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: colours.border }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', backgroundColor: colours.border }}>
             {[
               {
                 heading: 'Rebuilt every time',
@@ -238,7 +238,7 @@ export default function HomePage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
               gap: '40px',
               marginTop: '48px',
             }}
@@ -321,7 +321,7 @@ export default function HomePage() {
             Trust tiers are assigned automatically from the quality of the source. They travel
             with the data in every output and cannot be removed or hidden.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: colours.border }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', backgroundColor: colours.border }}>
             {[
               {
                 tier: 'Verified',
@@ -379,9 +379,9 @@ export default function HomePage() {
       {/* For who */}
       <section style={{ backgroundColor: colours.surface, padding: '88px 0' }}>
         <div style={container}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', backgroundColor: colours.border }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1px', backgroundColor: colours.border }}>
             {/* Suppliers */}
-            <div style={{ backgroundColor: colours.surface, padding: '48px' }}>
+            <div style={{ backgroundColor: colours.surface, padding: 'clamp(24px, 5vw, 48px)' }}>
               <span style={{ ...sectionEyebrow, marginBottom: '20px' }}>For suppliers and manufacturers</span>
               <h3
                 style={{
@@ -458,7 +458,7 @@ export default function HomePage() {
             </div>
 
             {/* Buyers */}
-            <div style={{ backgroundColor: colours.background, padding: '48px' }}>
+            <div style={{ backgroundColor: colours.background, padding: 'clamp(24px, 5vw, 48px)' }}>
               <span style={{ ...sectionEyebrow, marginBottom: '20px' }}>For buyers and large companies</span>
               <h3
                 style={{
@@ -549,7 +549,7 @@ export default function HomePage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
               gap: '1px',
               backgroundColor: colours.border,
             }}
@@ -598,7 +598,7 @@ export default function HomePage() {
         <div style={{ ...container, textAlign: 'center' }}>
           <h2
             style={{
-              fontSize: '32px',
+              fontSize: 'clamp(24px, 4.5vw, 32px)',
               fontWeight: typography.weights.medium,
               color: '#FFFFFF',
               letterSpacing: typography.tracking.tight,
@@ -618,7 +618,7 @@ export default function HomePage() {
           >
             Free to get started. No credit card required.
           </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' as const }}>
             <Link
               href="/signup"
               style={{
