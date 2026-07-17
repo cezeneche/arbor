@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { requestsAddress } from '@/lib/email/config'
 
 interface ParsedShape {
   parsed?: { domain?: string | null; fields?: string[]; periodStart?: string | null; periodEnd?: string | null }
@@ -30,7 +31,8 @@ export default async function InboundRequestsPage() {
   const readyToSend = pending.filter((r) => (r.parsedFields as ParsedShape | null)?.awaiting === 'supplier_review')
   const missing = pending.filter((r) => (r.parsedFields as ParsedShape | null)?.awaiting !== 'supplier_review')
 
-  const requestsEmail = entity?.uploadEmailToken ? `requests-${entity.uploadEmailToken}@arbor.io` : null
+  // Null until INBOUND_EMAIL_DOMAIN is configured — never show an address that bounces.
+  const requestsEmail = requestsAddress(entity?.uploadEmailToken)
 
   return (
     <div style={{ width: '100%' }}>
@@ -67,7 +69,7 @@ export default async function InboundRequestsPage() {
         </div>
       </div>
 
-      {requestsEmail && (
+      {requestsEmail ? (
         <div style={{ marginBottom: spacing[4], padding: spacing[2], backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px' }}>
           <p style={{ margin: 0, fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: typography.tracking.wide, textTransform: 'uppercase' }}>
             Your requests address
@@ -77,6 +79,14 @@ export default async function InboundRequestsPage() {
           </p>
           <p style={{ margin: '6px 0 0', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>
             Give this to customers, or forward their requests here.
+          </p>
+        </div>
+      ) : (
+        <div style={{ marginBottom: spacing[4], padding: spacing[2], backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px' }}>
+          <p style={{ margin: 0, fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary }}>
+            Email request intake isn&apos;t enabled on this workspace yet. You&apos;ll get a
+            dedicated address here once it is — in the meantime, customers can send
+            structured requests through the platform.
           </p>
         </div>
       )}

@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { UploadZone } from '@/components/UploadZone'
+import { uploadAddress } from '@/lib/email/config'
 
 export default async function UploadPage({
   searchParams,
@@ -21,7 +22,8 @@ export default async function UploadPage({
     where: { id: entityId },
     select: { uploadEmailToken: true, entityType: true },
   })
-  const uploadEmail = entity?.uploadEmailToken ? `upload-${entity.uploadEmailToken}@arbor.io` : null
+  // Null until INBOUND_EMAIL_DOMAIN is configured — never show an address that bounces.
+  const uploadEmail = uploadAddress(entity?.uploadEmailToken)
   const isBuyer = entity?.entityType === 'BUYER'
   return (
     <div style={{ width: '100%' }}>

@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { EMAIL_FROM } from '@/lib/email/config'
 
 // Lazily instantiated so importing this module (e.g. during `next build`) never
 // requires RESEND_API_KEY. Mirrors the pattern in src/lib/notifications.ts.
@@ -38,13 +39,18 @@ export async function sendPasswordResetEmail(to: string, name: string, resetUrl:
     `<p>If you didn't ask to reset your password, you can ignore this email — your password won't change.</p>`
 
   try {
-    await resend.emails.send({
-      from: 'arbor <onboarding@resend.dev>',
+    const { error } = await resend.emails.send({
+      from: EMAIL_FROM,
       to,
       subject: 'Reset your arbor password',
       html,
     })
-  } catch {
-    // Non-fatal: never surface delivery errors to the caller.
+    // Resend reports most failures (e.g. sandbox sender restrictions) in the
+    // result, not as a throw — log them or delivery problems stay invisible.
+    if (error) console.error('[reset-email] delivery failed:', error)
+  } catch (e) {
+    // Non-fatal for the caller (constant response prevents account enumeration),
+    // but must be visible in logs.
+    console.error('[reset-email] send threw:', e)
   }
 }
