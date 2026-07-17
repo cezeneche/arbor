@@ -5,6 +5,7 @@ import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { err } from '@/lib/api-helpers'
 import { inngest } from '@/inngest/client'
 import { documentTypeSchema } from '@/lib/constants'
+import { assertUploadAllowed } from '@/lib/plan-guard'
 
 const bodySchema = z.object({
   documentType: documentTypeSchema,
@@ -44,6 +45,9 @@ export async function POST(req: NextRequest) {
 
   const entity = await prisma.entity.findUnique({ where: { id: auth.entityId! } })
   if (!entity) return err('Entity not found', 'NOT_FOUND', 404)
+
+  const uploadCheck = await assertUploadAllowed(auth.entityId!)
+  if (!uploadCheck.allowed) return err(uploadCheck.reason!, 'PLAN_LIMIT', 402)
 
   const adminUser = await prisma.user.findFirst({
     where: { entityId: auth.entityId!, role: 'ADMIN' },

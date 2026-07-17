@@ -44,6 +44,17 @@ model VerificationToken {
 
 // ── ENTITY ────────────────────────────────────────────────────────────────────
 
+enum PlanTier {
+  PILOT
+  STARTER
+  MICRO
+  SMALL
+  GROWTH
+  STANDARD
+  BUSINESS
+  ENTERPRISE
+}
+
 enum EntityType {
   SUPPLIER
   BUYER
@@ -56,6 +67,10 @@ model Entity {
   country                   String
   sector                    String
   entityType                EntityType @default(SUPPLIER)
+  // Pricing tier driving usage limits (src/lib/plan-limits.ts). PILOT is the
+  // uncapped demo/pilot default; assignment to a paid tier is an operator
+  // action until billing exists.
+  planTier                  PlanTier   @default(PILOT)
   allowBenchmarkAggregation Boolean    @default(false)
   // Gap 8.4 — unique token for the entity's email-to-upload address.
   uploadEmailToken          String?    @unique

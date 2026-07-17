@@ -12,6 +12,7 @@ import { getSystemUser } from '@/lib/layer2/system-actor'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { domainSchema } from '@/lib/constants'
+import { assertRecordCapacity } from '@/lib/plan-guard'
 import { TrustTier, ExtractionMethod } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
 
@@ -62,6 +63,11 @@ export async function POST(req: NextRequest) {
   }
 
   const { records, idempotencyKey } = parsed.data
+
+  const capacity = await assertRecordCapacity(entityId, records.length)
+  if (!capacity.allowed) {
+    return NextResponse.json({ error: capacity.reason, code: 'PLAN_LIMIT' }, { status: 402 })
+  }
 
   // Idempotency: if this key was already processed, return the previous result.
   if (idempotencyKey) {

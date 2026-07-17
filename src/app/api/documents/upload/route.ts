@@ -8,6 +8,7 @@ import { storeDocument } from '@/lib/storage'
 import { sniffFileType } from '@/lib/upload/sniff'
 import { inngest } from '@/inngest/client'
 import { documentTypeSchema, DOCUMENT_MAX_BYTES, ALLOWED_MIME_TYPES } from '@/lib/constants'
+import { assertUploadAllowed } from '@/lib/plan-guard'
 
 const bodySchema = z.object({
   documentType: documentTypeSchema,
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest) {
 
   const entityId = getSessionUser(session).entityId as string
   if (!entityId) return err('Entity not found for session user', 'NO_ENTITY', 403)
+
+  const uploadCheck = await assertUploadAllowed(entityId)
+  if (!uploadCheck.allowed) return err(uploadCheck.reason!, 'PLAN_LIMIT', 402)
 
   let file: File | null = null
   let documentType: z.infer<typeof documentTypeSchema>
