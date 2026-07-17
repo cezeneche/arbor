@@ -70,9 +70,13 @@ export default function HomePage() {
               letterSpacing: typography.tracking.tight,
               lineHeight: typography.lineHeight.display,
               margin: '0 0 28px',
+              maxWidth: '880px',
+              textAlign: 'left' as const,
             }}
           >
-            Answer any customer&apos;s data request in minutes, not days.
+            Answer any data request in{' '}
+            <s style={{ color: 'rgba(255,255,255,0.35)', textDecorationThickness: '4px' }}>days</s>{' '}
+            minutes.
           </h1>
           <p
             style={{
@@ -81,11 +85,12 @@ export default function HomePage() {
               color: 'rgba(255,255,255,0.65)',
               lineHeight: typography.lineHeight.body,
               margin: '0 0 40px',
+              maxWidth: '560px',
+              textAlign: 'left' as const,
             }}
           >
-            Upload the documents you already have — energy bills, invoices, delivery notes.
-            arbor reads them, certifies the data, and keeps one verified record you can share
-            the moment a customer, auditor, or regulator asks.
+            Never rebuild the same numbers twice — one certified record, ready the
+            moment anyone asks.
           </p>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' as const }}>
             <Link
