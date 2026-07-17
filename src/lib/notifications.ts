@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { prisma } from '@/lib/prisma'
+import { EMAIL_FROM } from '@/lib/email/config'
 import type { NotificationType, Prisma } from '@prisma/client'
 
 export type { NotificationType }
@@ -105,17 +106,26 @@ export async function sendNotification<T extends NotificationType>(
   const subject = notificationSubject(input.type, input.payload as NotificationPayloads[NotificationType])
   const html = notificationHtml(input.type, input.payload as NotificationPayloads[NotificationType], appUrl)
 
-  // Email delivery failures are non-fatal — logged but do not throw.
-  await Promise.allSettled(
+  // Email delivery failures are non-fatal — but they MUST be visible in logs.
+  // Resend reports most failures (e.g. sandbox sender restrictions) in the
+  // resolved result's `error`, not as a rejection, so check both.
+  const results = await Promise.allSettled(
     users.map((u) =>
       resend.emails.send({
-        from: 'arbor <onboarding@resend.dev>',
+        from: EMAIL_FROM,
         to: u.email,
         subject,
         html,
       }),
     ),
   )
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.error(`[notifications] send to ${users[i].email} threw:`, r.reason)
+    } else if (r.value.error) {
+      console.error(`[notifications] send to ${users[i].email} failed:`, r.value.error)
+    }
+  })
 }
 
 function notificationSubject(type: NotificationType, payload: NotificationPayloads[NotificationType]): string {
