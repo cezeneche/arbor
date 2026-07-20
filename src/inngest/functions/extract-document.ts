@@ -10,6 +10,7 @@ import type { ExtractedFieldResult } from '@/lib/extraction/types'
 import { shouldAutoAccept } from '@/lib/review/review-policy'
 import { autoAcceptDocument } from '@/lib/layer2/auto-accept'
 import { gateAutoAcceptOnConstraints } from '@/lib/constraints/auto-accept-gate'
+import { EXTRACTOR_VERSION } from '@/lib/extraction/extractor-version'
 import type { Prisma } from '@prisma/client'
 
 export const extractDocumentFunction = inngest.createFunction(
@@ -87,6 +88,7 @@ export const extractDocumentFunction = inngest.createFunction(
             errorMessage: extractionResult.extractionNotes,
             detectedLanguage,
             imageQualityScore: quality.quality,
+            extractorVersion: EXTRACTOR_VERSION,
             // Persist the raw model response on failure too — without it, a parse
             // failure leaves nothing to diagnose.
             rawOutput: extractionResult as unknown as Prisma.InputJsonValue,
@@ -116,6 +118,7 @@ export const extractDocumentFunction = inngest.createFunction(
           imageQualityScore: quality.quality,
           imageQualityIssues: quality.issues as unknown as Prisma.InputJsonValue,
           documentClass: extractionResult.documentClass ?? null,
+          extractorVersion: EXTRACTOR_VERSION,
           rawOutput: extractionResult as unknown as Prisma.InputJsonValue,
           extractedFields: {
             create: extractionResult.fields.map((f: ExtractedFieldResult) => {

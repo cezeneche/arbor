@@ -260,6 +260,10 @@ model ExtractionJob {
   imageQualityIssues Json? // string[] of detected issues e.g. ["blurry","skewed"]
   // Core 3 — best-guess free-text document class for GENERIC (schema-on-read) docs.
   documentClass      String?
+  // MLOps guardrail — the extractor (model id + prompt version) that produced
+  // these fields, so a later accuracy regression is attributable to the exact
+  // model/prompt change that caused it. Null for jobs run before stamping.
+  extractorVersion   String?
 
   extractedFields ExtractedField[]
 }
@@ -419,11 +423,16 @@ model GroundTruthLabel {
   // before this instrumentation (and any non-review source) have no ranking signal.
   expectedInformationGain Float?
   lowInformation          Boolean?
+  // MLOps guardrail — the extractor (model id + prompt version) that produced
+  // this field. Lets the accuracy monitor slice correct-rate by extractor and
+  // attribute a regression to a model/prompt change. Null for pre-stamping labels.
+  extractorVersion        String?
   createdAt              DateTime          @default(now())
 
   @@index([fieldName, documentClass])
   @@index([domain, createdAt])
   @@index([entityId])
+  @@index([extractorVersion, createdAt])
 }
 
 // ── CALIBRATION METRICS (Upgrade 1 — measurement loop) ────────────────────────
@@ -455,6 +464,46 @@ model CalibrationGroupMetric {
   sufficient        Boolean
   isKillSignalGroup Boolean
   breached          Boolean
+
+  @@index([runId])
+  @@index([group, id])
+}
+
+// ── ACCURACY & DRIFT MONITOR (MLOps guardrail) ────────────────────────────────
+// Calibration ECE says whether confidence is honest; it says nothing about
+// whether extraction is CORRECT or whether the input mix has DRIFTED. Each drift
+// cron records one AccuracyRun plus a per-group metric row: recent correct-rate
+// vs baseline, and the confidence-distribution PSI between the windows. This is
+// how extraction-accuracy degradation is tracked over time and made alertable.
+// Derived measurement, not certified data — never touches the audit chain.
+model AccuracyRun {
+  id           String                @id @default(cuid())
+  createdAt    DateTime              @default(now())
+  labelCount   Int
+  recentWindow Int
+  minSamples   Int
+  // True if any group degraded or drifted this run — the headline alarm.
+  degraded     Boolean               @default(false)
+  groupMetrics AccuracyGroupMetric[]
+
+  @@index([createdAt])
+}
+
+model AccuracyGroupMetric {
+  id                String      @id @default(cuid())
+  runId             String
+  run               AccuracyRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  group             String
+  recentN           Int
+  baselineN         Int
+  recentAccuracy    Float?
+  baselineAccuracy  Float?
+  accuracyDelta     Float?
+  confidencePsi     Float?
+  sufficient        Boolean
+  isKillSignalGroup Boolean
+  accuracyDegraded  Boolean
+  confidenceDrift   Boolean
 
   @@index([runId])
   @@index([group, id])

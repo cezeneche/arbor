@@ -194,6 +194,7 @@ export async function POST(
         entityId,
         documentId,
         documentClass: job.documentClass ?? document.documentType,
+        extractorVersion: job.extractorVersion ?? null,
         extractedFields: job.extractedFields.map((f) => ({
           fieldName: f.fieldName,
           rawValue: f.rawValue,
@@ -224,6 +225,7 @@ export async function POST(
             source: l.source as GroundTruthSource,
             expectedInformationGain: l.expectedInformationGain,
             lowInformation: l.lowInformation,
+            extractorVersion: l.extractorVersion,
           })),
         })
       }

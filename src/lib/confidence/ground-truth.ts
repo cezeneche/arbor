@@ -32,6 +32,9 @@ export interface ReviewFieldDecision {
    *  by, and whether it was de-emphasised as low-information. Null when unknown. */
   expectedInformationGain?: number | null
   lowInformation?: boolean | null
+  /** The extractor (model + prompt version) that produced this field, so a later
+   *  accuracy regression is attributable. Null for pre-stamping labels. */
+  extractorVersion?: string | null
 }
 
 export interface GroundTruthLabelInput {
@@ -49,6 +52,8 @@ export interface GroundTruthLabelInput {
   /** The ranking signal, correlated later with wasCorrect. */
   expectedInformationGain: number | null
   lowInformation: boolean | null
+  /** The extractor (model + prompt version) that produced this field. */
+  extractorVersion: string | null
 }
 
 /** Normalise a value for the "did it survive review" comparison. */
@@ -103,5 +108,6 @@ export function buildGroundTruthLabel(decision: ReviewFieldDecision): GroundTrut
     source: wasCorrect ? 'REVIEW_CONFIRMED' : 'REVIEW_CORRECTED',
     expectedInformationGain: decision.expectedInformationGain ?? null,
     lowInformation: decision.lowInformation ?? null,
+    extractorVersion: decision.extractorVersion ?? null,
   }
 }

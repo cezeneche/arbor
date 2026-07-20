@@ -17,6 +17,8 @@ import {
 } from '@/lib/brain/calibration-client'
 import { buildPosteriorUpdates, parseMinSamples } from '@/lib/confidence/backfill'
 import { evaluateCalibrationRun } from '@/lib/confidence/calibration-metrics'
+import { shouldAlert, buildCalibrationAlert } from '@/lib/monitoring/drift-alert'
+import { dispatchDriftAlert } from '@/lib/monitoring/drift-alert-dispatch'
 import type { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -70,6 +72,14 @@ export async function GET(req: NextRequest) {
   // intensity). This is derived measurement, not certified data — it never
   // touches the audit chain.
   const { metrics, killSignalBreached } = evaluateCalibrationRun(fit.groups)
+
+  // Prior alarm state, read before this run is written, so the alert is
+  // edge-triggered (fires only on the transition into breach).
+  const previousRun = await prisma.calibrationRun.findFirst({
+    orderBy: { createdAt: 'desc' },
+    select: { killSignalBreached: true },
+  })
+
   const run = await prisma.calibrationRun.create({
     data: {
       labelCount: labels.length,
@@ -80,6 +90,14 @@ export async function GET(req: NextRequest) {
     },
     select: { id: true },
   })
+
+  // Push an alert only on the transition into breach. Fail-soft — dispatch never
+  // throws and never blocks the cron; the breach is persisted above and readable
+  // on /api/admin/calibration/health regardless.
+  let alert: { sent: boolean; reason?: string } | null = null
+  if (shouldAlert(killSignalBreached, previousRun?.killSignalBreached ?? null)) {
+    alert = await dispatchDriftAlert(buildCalibrationAlert(run.id, metrics, new Date()))
+  }
 
   // 3. Apply calibration to active records in batches. Records that share a
   // (group, rawScore) share a posterior, so collapse them into one updateMany.
@@ -123,6 +141,7 @@ export async function GET(req: NextRequest) {
     labels: labels.length,
     minSamples: minSamples ?? 30,
     killSignalBreached,
+    alert,
     groups: fit.groups.map(g => ({ group: g.group, n: g.n, ece: g.ece, sufficient: g.sufficient })),
     recordsScanned: scanned,
     recordsUpdated: updated,
