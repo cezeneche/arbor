@@ -22,6 +22,7 @@ import {
   buildGenericExtractionPrompt,
   parseGenericExtractionResponse,
 } from './generic'
+import { EXTRACTION_MODEL } from './extractor-version'
 
 // How many self-consistency samples to draw per document. k>1 turns
 // on Bayesian fusion of the samples' agreement into an honest, varying
@@ -35,8 +36,6 @@ function getClient(): Anthropic {
   if (!_client) _client = new Anthropic()
   return _client
 }
-
-const EXTRACTION_MODEL = 'claude-sonnet-4-6'
 
 // Build the document content block once — shared by all three Layer 1 calls.
 function documentContentBlock(

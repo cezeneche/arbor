@@ -105,4 +105,30 @@ describe('buildReviewLabels', () => {
     })
     expect(labels[0].lowInformation).toBe(false)
   })
+
+  it('stamps the extractor version on every label, so accuracy is sliceable by model/prompt', () => {
+    const labels = buildReviewLabels({
+      ...base,
+      extractorVersion: 'claude-sonnet-4-6+v1',
+      extractedFields: [
+        { fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.7, admissibility: 'COMPULSORY', flagged: false },
+        { fieldName: 'total_consumption_kwh', rawValue: '100', confidenceScore: 0.9, admissibility: 'COMPULSORY', flagged: false },
+      ],
+      confirmedFields: [
+        { fieldName: 'supplier_name', confirmedValue: 'Acme', domain: 'ENERGY' },
+        { fieldName: 'total_consumption_kwh', confirmedValue: '100', domain: 'ENERGY' },
+      ],
+    })
+    expect(labels).toHaveLength(2)
+    expect(labels.every(l => l.extractorVersion === 'claude-sonnet-4-6+v1')).toBe(true)
+  })
+
+  it('defaults extractorVersion to null when the job has none (pre-stamping)', () => {
+    const labels = buildReviewLabels({
+      ...base,
+      extractedFields: [{ fieldName: 'supplier_name', rawValue: 'Acme', confidenceScore: 0.8, admissibility: 'COMPULSORY', flagged: false }],
+      confirmedFields: [{ fieldName: 'supplier_name', confirmedValue: 'Acme', domain: 'ENERGY' }],
+    })
+    expect(labels[0].extractorVersion).toBeNull()
+  })
 })

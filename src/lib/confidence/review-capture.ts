@@ -38,6 +38,9 @@ export interface BuildReviewLabelsInput {
   confirmedFields: ConfirmedFieldLite[]
   /** fieldName -> the DataRecord id written for it, when one was (numeric fields). */
   recordIdByField?: Record<string, string | null>
+  /** The extractor (model + prompt version) that produced this job's fields.
+   *  Stamped onto every label so accuracy can be sliced by extractor. */
+  extractorVersion?: string | null
 }
 
 export function buildReviewLabels(input: BuildReviewLabelsInput): GroundTruthLabelInput[] {
@@ -71,6 +74,7 @@ export function buildReviewLabels(input: BuildReviewLabelsInput): GroundTruthLab
         confidenceAtExtraction: extracted.confidenceScore,
         expectedInformationGain: gain,
         lowInformation,
+        extractorVersion: input.extractorVersion ?? null,
       }),
     )
   }
