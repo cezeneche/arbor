@@ -232,8 +232,12 @@ export function buildExtractionPrompt(
   documentType: string,
   requiredFields: string[],
   detectedLanguage?: string | null,
+  exemplarSection?: string,
 ): string {
   const typeNotes = DOCUMENT_TYPE_NOTES[documentType] ?? ''
+  // Relearning hints (may be empty). Rendered by the engine from correctionHints;
+  // pure attention guidance, never past values.
+  const corrections = exemplarSection ? `${exemplarSection}\n` : ''
 
   // For non-English documents, instruct the model to preserve values verbatim and
   // only translate field names. Translating a numeric value or unit would corrupt
@@ -248,7 +252,7 @@ export function buildExtractionPrompt(
 ${languageInstruction}
 Required fields: ${requiredFields.join(', ')}
 ${typeNotes}
-Return this exact JSON structure with no other text:
+${corrections}Return this exact JSON structure with no other text:
 {
   "documentTypeConfirmed": "your assessment of document type",
   "extractionNotes": "observations about quality or unusual features",

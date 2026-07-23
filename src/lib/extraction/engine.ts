@@ -23,6 +23,7 @@ import {
   parseGenericExtractionResponse,
 } from './generic'
 import { EXTRACTION_MODEL } from './extractor-version'
+import { renderCorrectionHints } from './correction-exemplars'
 
 // How many self-consistency samples to draw per document. k>1 turns
 // on Bayesian fusion of the samples' agreement into an honest, varying
@@ -175,7 +176,16 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
 
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[input.documentType] ?? []
   const requiredFields = fieldDefs.map((f) => f.name)
-  const userPrompt = buildExtractionPrompt(input.documentType, requiredFields, input.detectedLanguage)
+  // Relearning: fold the tenant's own past-correction attention hints into the
+  // prompt. Rendered here (pure) from hints the orchestrator passed in — the
+  // engine never reads the DB. Empty when absent, so the prompt is unchanged.
+  const exemplarSection = renderCorrectionHints(input.correctionHints ?? [])
+  const userPrompt = buildExtractionPrompt(
+    input.documentType,
+    requiredFields,
+    input.detectedLanguage,
+    exemplarSection,
+  )
 
   const isForeign =
     !!input.detectedLanguage &&

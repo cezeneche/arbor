@@ -45,3 +45,18 @@ describe('buildQualityAssessmentPrompt', () => {
     expect(prompt).toMatch(/JSON/i)
   })
 })
+
+describe('buildExtractionPrompt — relearning exemplar section', () => {
+  it('is byte-for-byte unchanged when no exemplar section is supplied', () => {
+    const withArg = buildExtractionPrompt('CUSTOMS_DECLARATION', ['declared_weight'], 'en', '')
+    const withoutArg = buildExtractionPrompt('CUSTOMS_DECLARATION', ['declared_weight'], 'en')
+    expect(withArg).toBe(withoutArg)
+  })
+
+  it('inserts the supplied exemplar section before the JSON structure', () => {
+    const section = '\nAttention: read declared_weight with extra care.\n'
+    const prompt = buildExtractionPrompt('CUSTOMS_DECLARATION', ['declared_weight'], 'en', section)
+    expect(prompt).toContain('read declared_weight with extra care')
+    expect(prompt.indexOf('extra care')).toBeLessThan(prompt.indexOf('Return this exact JSON'))
+  })
+})
