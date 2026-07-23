@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "test": "prisma generate && jest"
+    "test": "prisma generate && jest",
+    "eval": "jest --config jest.eval.config.ts",
+    "eval:baseline": "EVAL_UPDATE_BASELINE=1 jest --config jest.eval.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
