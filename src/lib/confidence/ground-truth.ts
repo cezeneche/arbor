@@ -11,7 +11,14 @@
 // performed by the review flow; the correctness logic lives — and is tested —
 // here.
 
-export type GroundTruthSource = 'REVIEW_CONFIRMED' | 'REVIEW_CORRECTED'
+export type GroundTruthSource =
+  | 'REVIEW_CONFIRMED'
+  | 'REVIEW_CORRECTED'
+  // Buyer-originated signal on a shared record. A third-party opinion, not the
+  // data owner's confirmation — captured for the correction loop, but deliberately
+  // excluded from the calibration fit (see the calibrate cron's source filter).
+  | 'BUYER_CONFIRMED'
+  | 'BUYER_DISPUTED'
 
 export interface ReviewFieldDecision {
   entityId: string

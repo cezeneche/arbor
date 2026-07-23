@@ -60,6 +60,13 @@ export interface NotificationPayloads {
     estimatedMinutes: number
     documentCount: number
   }
+  BUYER_DISPUTE_RAISED: {
+    recordId: string
+    fieldName: string
+    buyerEntityId: string
+    suggestedValue: string | null
+    note: string | null
+  }
 }
 
 export type NotificationInput<T extends NotificationType = NotificationType> = {

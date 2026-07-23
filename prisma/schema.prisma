@@ -399,6 +399,8 @@ enum ExtractionMethod {
 enum GroundTruthSource {
   REVIEW_CONFIRMED // reviewer accepted the extracted value unchanged → correct
   REVIEW_CORRECTED // reviewer changed or cleared the extracted value → incorrect
+  BUYER_CONFIRMED // a buyer with access vouched the shared value looks right
+  BUYER_DISPUTED // a buyer with access flagged the shared value as wrong
 }
 
 model GroundTruthLabel {
@@ -537,6 +539,7 @@ enum FlagType {
   DOUBLE_COUNTING
   MISSING_CONDITIONAL_FIELD
   STALE_RECORD
+  BUYER_DISPUTED // a buyer with access disputed this record's value
 }
 
 enum Severity {
@@ -756,6 +759,7 @@ enum NotificationType {
   CERTIFICATE_EXPIRED
   RECORD_SUPERSEDED
   REVIEW_DIGEST
+  BUYER_DISPUTE_RAISED // a buyer disputed one of your shared records
 }
 
 // ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────
