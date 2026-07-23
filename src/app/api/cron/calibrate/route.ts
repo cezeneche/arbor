@@ -42,6 +42,10 @@ export async function GET(req: NextRequest) {
 
   // 1. Ground-truth labels (bounded) → grouped calibration samples.
   const labels = await prisma.groundTruthLabel.findMany({
+    // Calibration maps model confidence -> P(correct), so the ground truth must be
+    // authoritative: only the data owner's review labels. Buyer-sourced signal
+    // (BUYER_*) is a third-party opinion and is deliberately excluded from the fit.
+    where: { source: { in: ['REVIEW_CONFIRMED', 'REVIEW_CORRECTED'] } },
     select: {
       fieldName: true,
       documentClass: true,

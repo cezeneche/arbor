@@ -45,6 +45,10 @@ export async function GET(req: NextRequest) {
   const minSamples = parsePositiveInt(params.get('minSamples'), DEFAULT_MIN_SAMPLES)
 
   const labels = await prisma.groundTruthLabel.findMany({
+    // Correct-rate is measured on the data owner's authoritative review labels
+    // only. Buyer-sourced signal (BUYER_*) is a third-party opinion — captured
+    // for the correction loop, but excluded here so it cannot distort accuracy.
+    where: { source: { in: ['REVIEW_CONFIRMED', 'REVIEW_CORRECTED'] } },
     select: { fieldName: true, wasCorrect: true, confidenceAtExtraction: true, createdAt: true },
     orderBy: { createdAt: 'desc' },
     take: LABEL_CAP,
