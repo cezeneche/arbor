@@ -1,3 +1,5 @@
+import type { ExemplarHint } from './correction-exemplars'
+
 export interface ExtractionInput {
   documentBase64: string
   mediaType: 'application/pdf' | 'image/jpeg' | 'image/png'
@@ -5,6 +7,10 @@ export interface ExtractionInput {
   entityName: string
   /** ISO 639-1 code from the language-detection pre-call; calibrates the prompt. */
   detectedLanguage?: string | null
+  /** Relearning: the tenant's own past correction hints for this document type,
+   *  fetched by the orchestrator (never by the engine). Empty/undefined = no
+   *  change to the prompt. Attention only — carries no past values. */
+  correctionHints?: ExemplarHint[]
 }
 
 export interface ExtractedFieldResult {

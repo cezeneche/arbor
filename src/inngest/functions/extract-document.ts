@@ -11,6 +11,7 @@ import { shouldAutoAccept } from '@/lib/review/review-policy'
 import { autoAcceptDocument } from '@/lib/layer2/auto-accept'
 import { gateAutoAcceptOnConstraints } from '@/lib/constraints/auto-accept-gate'
 import { EXTRACTOR_VERSION } from '@/lib/extraction/extractor-version'
+import { fetchCorrectionExemplars, exemplarsEnabled } from '@/lib/extraction/fetch-exemplars'
 import type { Prisma } from '@prisma/client'
 
 export const extractDocumentFunction = inngest.createFunction(
@@ -74,8 +75,18 @@ export const extractDocumentFunction = inngest.createFunction(
       return { success: false, reason: 'low_quality', quality: quality.quality }
     }
 
+    // Relearning (opt-in via EXTRACTION_EXEMPLARS): fold this tenant's own past
+    // review-correction hints for this document type into the extraction prompt so
+    // error-prone fields are read with extra care. Off by default → no step, no
+    // prompt change. Within-tenant only and fail-soft — never blocks extraction.
+    const correctionHints = exemplarsEnabled()
+      ? await step.run('fetch-correction-exemplars', async () =>
+          fetchCorrectionExemplars(entityId, documentType),
+        )
+      : []
+
     const extractionResult = await step.run('run-extraction', async () => {
-      return extractDocumentWithConsistency({ documentBase64: base64, mediaType, documentType, entityName, detectedLanguage })
+      return extractDocumentWithConsistency({ documentBase64: base64, mediaType, documentType, entityName, detectedLanguage, correctionHints })
     })
 
     if (!extractionResult.success) {
