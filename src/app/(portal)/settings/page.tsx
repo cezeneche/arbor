@@ -106,6 +106,7 @@ export default async function SettingsPage() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {[
+              { href: '/settings/stewards', label: 'Who looks after what', desc: 'Name one person for each kind of data, so anything that needs checking goes to them.' },
               { href: '/activity', label: entity.entityType === 'BUYER' ? 'Audit log' : 'Activity', desc: 'A time-ordered log of every action taken on your data.' },
               ...(entity.entityType === 'BUYER'
                 ? [{ href: '/access', label: 'Access control', desc: 'Manage which buyers can see which of your records.' }]

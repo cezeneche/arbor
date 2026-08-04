@@ -7,6 +7,7 @@ import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { formatRecordsAsCSV } from '@/lib/export/csv-formatter'
 import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
+import { withDefinitions } from '@/lib/layer3/load-definitions'
 import { domainSchema } from '@/lib/constants'
 import type { DataDomain } from '@prisma/client'
 
@@ -79,6 +80,7 @@ export async function GET(req: NextRequest) {
       periodEnd: true,
       extractionMethod: true,
       documentId: true,
+      submittedAt: true,
     },
     orderBy: [{ entityId: 'asc' }, { domain: 'asc' }, { periodStart: 'asc' }],
   })
@@ -94,15 +96,20 @@ export async function GET(req: NextRequest) {
     })
   })
 
+  // Attach the agreed business definition in force when each record was submitted,
+  // plus this buyer's agreement state for that wording. Travels with the data on
+  // the same terms as trust tier — a number without its boundary is not usable.
+  const decorated = await withDefinitions(records, buyerEntityId)
+
   if (format === 'xml') {
-    const xml = formatRecordsAsXML(records)
+    const xml = formatRecordsAsXML(decorated)
     return new NextResponse(xml, {
       status: 200,
       headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-export.xml"' },
     })
   }
 
-  const csv = formatRecordsAsCSV(records)
+  const csv = formatRecordsAsCSV(decorated)
   return new NextResponse(csv, {
     status: 200,
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-export.csv"' },

@@ -7,6 +7,7 @@ import { logRecordAccess } from '@/lib/layer3/grant-access'
 import { anyGrantCoversRecord } from '@/lib/layer3/grant-scope'
 import { buildBuyerLabel } from '@/lib/confidence/buyer-signal'
 import { sendNotification } from '@/lib/notifications'
+import { stampFlagOwnership } from '@/lib/stewardship/route-flags'
 import type { DataDomain, GroundTruthSource, Prisma } from '@prisma/client'
 
 // Buyer-side learning signal. A buyer with an active grant on a shared record can
@@ -120,16 +121,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rec
   })
 
   if (decision === 'dispute') {
+    // A disputed record is routed to whoever stewards that domain for the
+    // supplier, with a deadline, rather than landing in an unowned queue.
+    const [owned] = await stampFlagOwnership(
+      [
+        {
+          dataRecordId: record.id,
+          flagType: 'BUYER_DISPUTED' as const,
+          severity: 'WARNING' as const,
+          message:
+            `A buyer disputes this value` +
+            (suggestedValue ? ` (suggested: ${suggestedValue})` : '') +
+            (note ? ` — ${note}` : ''),
+        },
+      ],
+      record.entityId,
+    )
     await prisma.validationFlag.create({
-      data: {
-        dataRecordId: record.id,
-        flagType: 'BUYER_DISPUTED',
-        severity: 'WARNING',
-        message:
-          `A buyer disputes this value` +
-          (suggestedValue ? ` (suggested: ${suggestedValue})` : '') +
-          (note ? ` — ${note}` : ''),
-      } satisfies Prisma.ValidationFlagUncheckedCreateInput,
+      data: owned satisfies Prisma.ValidationFlagUncheckedCreateInput,
     })
     await sendNotification({
       entityId: record.entityId,

@@ -67,6 +67,35 @@ export interface NotificationPayloads {
     suggestedValue: string | null
     note: string | null
   }
+  DEFINITION_PROPOSED: {
+    fieldDefinitionId: string
+    fieldLabel: string
+    domain: string
+    proposedByName: string
+  }
+  DEFINITION_AGREED: {
+    fieldDefinitionId: string
+    fieldLabel: string
+    domain: string
+    agreedByName: string
+  }
+  DEFINITION_SUPERSEDED: {
+    fieldLabel: string
+    domain: string
+    previousVersion: number
+    newVersion: number
+  }
+  FLAG_ASSIGNED: {
+    flagCount: number
+    domain: string
+    severity: string
+    dueAt: string | null
+  }
+  FLAG_OVERDUE: {
+    flagCount: number
+    stewardName: string
+    domain: string
+  }
 }
 
 export type NotificationInput<T extends NotificationType = NotificationType> = {
@@ -161,6 +190,26 @@ function notificationSubject(type: NotificationType, payload: NotificationPayloa
       const p = payload as NotificationPayloads['REVIEW_DIGEST']
       return `${p.fieldCount} value${p.fieldCount === 1 ? '' : 's'} to check — about ${p.estimatedMinutes} min`
     }
+    case 'DEFINITION_PROPOSED': {
+      const p = payload as NotificationPayloads['DEFINITION_PROPOSED']
+      return `${p.proposedByName} suggested what "${p.fieldLabel}" should mean`
+    }
+    case 'DEFINITION_AGREED': {
+      const p = payload as NotificationPayloads['DEFINITION_AGREED']
+      return `${p.agreedByName} agreed what "${p.fieldLabel}" means`
+    }
+    case 'DEFINITION_SUPERSEDED': {
+      const p = payload as NotificationPayloads['DEFINITION_SUPERSEDED']
+      return `The wording of "${p.fieldLabel}" has changed`
+    }
+    case 'FLAG_ASSIGNED': {
+      const p = payload as NotificationPayloads['FLAG_ASSIGNED']
+      return `${p.flagCount} thing${p.flagCount === 1 ? '' : 's'} to check on your ${p.domain.toLowerCase()} data`
+    }
+    case 'FLAG_OVERDUE': {
+      const p = payload as NotificationPayloads['FLAG_OVERDUE']
+      return `${p.flagCount} item${p.flagCount === 1 ? '' : 's'} past the date they were due`
+    }
     default:
       return `arbor notification`
   }
@@ -212,6 +261,27 @@ function notificationHtml(
     case 'REVIEW_DIGEST': {
       const p = payload as NotificationPayloads['REVIEW_DIGEST']
       return `<p>You have <strong>${escapeHtml(p.fieldCount)}</strong> value${p.fieldCount === 1 ? '' : 's'} across ${escapeHtml(p.documentCount)} document${p.documentCount === 1 ? '' : 's'} waiting to be checked — about ${escapeHtml(p.estimatedMinutes)} minutes of work. Nothing else needs your attention.<br><a href="${appUrl}/review">Open your review list</a></p>`
+    }
+    case 'DEFINITION_PROPOSED': {
+      const p = payload as NotificationPayloads['DEFINITION_PROPOSED']
+      return `<p><strong>${escapeHtml(p.proposedByName)}</strong> has suggested exactly what <strong>${escapeHtml(p.fieldLabel)}</strong> should mean, so you both count it the same way. Have a read and agree it if it matches how you record it.<br><a href="${appUrl}/definitions">Read the wording</a></p>`
+    }
+    case 'DEFINITION_AGREED': {
+      const p = payload as NotificationPayloads['DEFINITION_AGREED']
+      return `<p><strong>${escapeHtml(p.agreedByName)}</strong> has agreed what <strong>${escapeHtml(p.fieldLabel)}</strong> means. From now on this figure travels with that wording attached.<br><a href="${appUrl}/definitions">View agreed wording</a></p>`
+    }
+    case 'DEFINITION_SUPERSEDED': {
+      const p = payload as NotificationPayloads['DEFINITION_SUPERSEDED']
+      return `<p>The wording of <strong>${escapeHtml(p.fieldLabel)}</strong> has changed. Data you already shared keeps the wording it was agreed under — nothing you sent before has changed. New figures use the new wording, so it is worth agreeing it.<br><a href="${appUrl}/definitions">Read what changed</a></p>`
+    }
+    case 'FLAG_ASSIGNED': {
+      const p = payload as NotificationPayloads['FLAG_ASSIGNED']
+      const by = p.dueAt ? ` We have suggested getting to ${p.flagCount === 1 ? 'it' : 'them'} by ${escapeHtml(p.dueAt)}.` : ''
+      return `<p>There ${p.flagCount === 1 ? 'is' : 'are'} <strong>${escapeHtml(p.flagCount)}</strong> thing${p.flagCount === 1 ? '' : 's'} to check on your ${escapeHtml(p.domain.toLowerCase())} data, and you are the person who looks after it.${by}<br><a href="${appUrl}/records">See what needs checking</a></p>`
+    }
+    case 'FLAG_OVERDUE': {
+      const p = payload as NotificationPayloads['FLAG_OVERDUE']
+      return `<p><strong>${escapeHtml(p.flagCount)}</strong> item${p.flagCount === 1 ? '' : 's'} on your ${escapeHtml(p.domain.toLowerCase())} data ${p.flagCount === 1 ? 'has' : 'have'} gone past the date ${p.flagCount === 1 ? 'it was' : 'they were'} due, so we are letting you know as well as ${escapeHtml(p.stewardName)}.<br><a href="${appUrl}/records">See what is outstanding</a></p>`
     }
     default:
       return `<p><a href="${appUrl}">Log in to arbor</a></p>`

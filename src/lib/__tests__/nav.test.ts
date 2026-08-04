@@ -68,4 +68,11 @@ describe('isLinkActive', () => {
     expect(isLinkActive(records, '/records/abc')).toBe(true)
     expect(isLinkActive(records, '/requests')).toBe(false)
   })
+
+  it('marks Records active on Definitions — what the records mean folds into Records', () => {
+    // Definitions describes the stored records rather than being a seventh verb,
+    // so it gets the same treatment Query and Data quality already have and the
+    // spine stays six items wide.
+    expect(isLinkActive(records, '/definitions')).toBe(true)
+  })
 })
