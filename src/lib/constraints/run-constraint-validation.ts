@@ -15,6 +15,7 @@ import { groupRecordsByDocument, type RecordRow } from './group-records'
 import { planConstraintFlags, dedupeNewFlags, type RecordRef, type PlannedFlag } from './plan-flags'
 import { checkConstraints } from '@/lib/brain/constraints-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
+import { stampFlagOwnership } from '@/lib/stewardship/route-flags'
 
 /**
  * Check a document's stored records against the algebraic constraints and write a
@@ -29,6 +30,7 @@ export async function runConstraintValidation(documentId: string): Promise<Plann
       id: true,
       fieldName: true,
       value: true,
+      entityId: true,
       entity: { select: { sector: true } },
     },
   })
@@ -76,7 +78,11 @@ export async function runConstraintValidation(documentId: string): Promise<Plann
   })
   const toWrite = dedupeNewFlags(flags, existing)
   if (toWrite.length > 0) {
-    await prisma.validationFlag.createMany({ data: toWrite })
+    // Route each flag to the steward for its record's domain (falling back to an
+    // entity admin) and stamp a proportionate deadline. A physics violation nobody
+    // owns is a finding, not a control.
+    const owned = await stampFlagOwnership(toWrite, records[0].entityId)
+    await prisma.validationFlag.createMany({ data: owned })
   }
   return flags
 }

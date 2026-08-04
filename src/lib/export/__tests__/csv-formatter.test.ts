@@ -17,9 +17,14 @@ const record: ExportRecord = {
 
 describe('formatRecordsAsCSV', () => {
   it('produces a header row as the first line', () => {
+    // The definition columns are part of the contract, not an optional annex:
+    // the agreed wording travels with every record exactly as trust tier does.
     const csv = formatRecordsAsCSV([record])
     const lines = csv.split('\r\n')
-    expect(lines[0]).toBe('id,domain,fieldName,value,unit,trustTier,confidenceScore,periodStart,periodEnd,extractionMethod,sourceDocumentId')
+    expect(lines[0]).toBe(
+      'id,domain,fieldName,value,unit,trustTier,confidenceScore,periodStart,periodEnd,extractionMethod,sourceDocumentId,' +
+        'definitionVersion,definitionLabel,definitionText,definitionBoundary,definitionSource,definitionAgreement,definitionAgreedVersion',
+    )
   })
 
   it('always includes trustTier in the output', () => {

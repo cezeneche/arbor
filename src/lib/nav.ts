@@ -18,11 +18,16 @@ export type NavLink = {
 
 const REQUESTS_GROUP = ['/inbound-requests', '/shares', '/questionnaires']
 
+// Definitions describes what the stored records mean, so it folds into Records
+// rather than claiming a seventh slot — the same treatment Query and Data quality
+// already get. Reached from the Records page and from a notification link.
+const RECORDS_GROUP = ['/definitions']
+
 const SUPPLIER_LINKS: NavLink[] = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/upload', label: 'Upload' },
   { href: '/review', label: 'Review' },
-  { href: '/records', label: 'Records' },
+  { href: '/records', label: 'Records', match: RECORDS_GROUP },
   { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
   { href: '/settings', label: 'Settings' },
 ]
@@ -31,7 +36,7 @@ const BUYER_LINKS: NavLink[] = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/upload', label: 'Ingest' },
   { href: '/review', label: 'Review' },
-  { href: '/records', label: 'Records' },
+  { href: '/records', label: 'Records', match: RECORDS_GROUP },
   { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
   { href: '/supply-chain', label: 'Entity network' },
   { href: '/export', label: 'Export' },

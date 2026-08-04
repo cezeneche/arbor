@@ -100,6 +100,9 @@ model Entity {
   merkleRoots             MerkleRoot[]
   entityLinksA            EntityLink[]             @relation("EntityLinkA")
   entityLinksB            EntityLink[]             @relation("EntityLinkB")
+  domainStewards          DomainSteward[]
+  supplierAgreements      DefinitionAgreement[]    @relation("AgreementSupplier")
+  buyerAgreements         DefinitionAgreement[]    @relation("AgreementBuyer")
 }
 
 // ── USER ──────────────────────────────────────────────────────────────────────
@@ -142,6 +145,11 @@ model User {
   verificationAssignments VerificationAssignment[]
   auditorAccess           AuditorAccess[]
   entityLinkReviews       EntityLink[]
+  stewardships            DomainSteward[]          @relation("StewardUser")
+  assignedFlags           ValidationFlag[]         @relation("FlagAssignee")
+  definitionsAuthored     FieldDefinition[]        @relation("DefinitionAuthor")
+  agreementsProposed      DefinitionAgreement[]    @relation("AgreementProposer")
+  agreementsAnswered      DefinitionAgreement[]    @relation("AgreementResponder")
 }
 
 // ── TOTP RECOVERY CODES ───────────────────────────────────────────────────────
@@ -522,6 +530,23 @@ model ValidationFlag {
   severity     Severity
   resolvedAt   DateTime?
   resolvedNote String?
+  // ── Stewardship. A flag with no owner is nobody's job, which is how a CRITICAL
+  // finding sits open for a quarter. Routed at raise time to the steward for the
+  // record's domain, falling back to an entity admin (src/lib/stewardship/assign.ts).
+  // Nullable: a tenant with neither is UNASSIGNED, and the workload summary shows
+  // that as its own bucket rather than hiding it.
+  assigneeId   String?
+  assignee     User?      @relation("FlagAssignee", fields: [assigneeId], references: [id])
+  assignedAt   DateTime?
+  assignedVia  String? // STEWARD | ENTITY_ADMIN — how ownership was reached
+  // Proportionate deadline from severity (CRITICAL 3d, WARNING 14d, INFO none).
+  // Null means no deadline, never "overdue".
+  dueAt        DateTime?
+  // Stamped once by the escalation cron so an overdue flag notifies exactly once.
+  escalatedAt  DateTime?
+
+  @@index([assigneeId, resolvedAt])
+  @@index([dueAt, resolvedAt, escalatedAt])
 }
 
 enum FlagType {
@@ -546,6 +571,109 @@ enum Severity {
   INFO
   WARNING
   CRITICAL
+}
+
+// ── GOVERNED DATA DICTIONARY ──────────────────────────────────────────────────
+// The agreed business definition of a field: what the number is, what is counted,
+// and what is deliberately left out. Versioned by effective date and NEVER edited
+// in place — the same discipline DataRecord supersession already applies, for the
+// same reason. A record certified in March under v1 must keep carrying v1's
+// wording after v2 narrows the boundary in June, or the store silently rewrites
+// the meaning of its own history.
+//
+// Versions of one (fieldName, domain) tile the timeline: [effectiveFrom,
+// effectiveTo) is half-open, so a cutover instant belongs to exactly one version.
+// field_name is unique only WITHIN a domain — "quantity" on a fuel receipt is not
+// "quantity" on a waste transfer note.
+model FieldDefinition {
+  id             String             @id @default(cuid())
+  fieldName      String
+  domain         DataDomain
+  version        Int
+  effectiveFrom  DateTime
+  // Null means still current. Exclusive bound when set.
+  effectiveTo    DateTime?
+  // Plain English, for an SME reader (PRD §7).
+  label          String
+  definition     String             @db.Text
+  boundary       String             @db.Text
+  // SI base unit the value is stored in; null for dimensionless or categorical.
+  canonicalUnit  String?
+  admissibility  FieldAdmissibility
+  sourceStandard String?
+  createdAt      DateTime           @default(now())
+  createdById    String?
+  createdBy      User?              @relation("DefinitionAuthor", fields: [createdById], references: [id])
+
+  agreements DefinitionAgreement[]
+
+  @@unique([fieldName, domain, version])
+  @@index([fieldName, domain, effectiveFrom])
+  @@index([domain, effectiveTo])
+}
+
+enum AgreementStatus {
+  PROPOSED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+// ── BILATERAL DEFINITION AGREEMENT ────────────────────────────────────────────
+// A published definition is Arbor's declaration. An agreed one is a fact about
+// two organisations: this supplier and this buyer are both on record that they
+// mean the same thing by a field. Only the second makes a number safely
+// comparable across their systems.
+//
+// Bound to a definition VERSION, never a field name. When the boundary changes,
+// the earlier agreement does not carry forward — Layer 3 reports that state as
+// SUPERSEDED so the gap is visible rather than papered over. Either side may
+// propose; only the other side may answer (src/lib/definitions/agreement.ts).
+model DefinitionAgreement {
+  id                String          @id @default(cuid())
+  fieldDefinitionId String
+  fieldDefinition   FieldDefinition @relation(fields: [fieldDefinitionId], references: [id])
+  // Denormalised so ordering by version needs no join on the read path.
+  definitionVersion Int
+  supplierEntityId  String
+  supplierEntity    Entity          @relation("AgreementSupplier", fields: [supplierEntityId], references: [id])
+  buyerEntityId     String
+  buyerEntity       Entity          @relation("AgreementBuyer", fields: [buyerEntityId], references: [id])
+  status            AgreementStatus @default(PROPOSED)
+  proposedByEntityId String
+  proposedById      String
+  proposedBy        User            @relation("AgreementProposer", fields: [proposedById], references: [id])
+  proposedAt        DateTime        @default(now())
+  respondedById     String?
+  respondedBy       User?           @relation("AgreementResponder", fields: [respondedById], references: [id])
+  respondedAt       DateTime?
+  note              String?         @db.Text
+
+  // Explicit map: the auto-derived name would be 72 chars, past Postgres's 63-char
+  // identifier limit, so it is pinned to match the migration exactly.
+  @@unique([fieldDefinitionId, supplierEntityId, buyerEntityId], map: "DefinitionAgreement_definition_supplier_buyer_key")
+  @@index([supplierEntityId, status])
+  @@index([buyerEntityId, status])
+}
+
+// ── DOMAIN STEWARD ────────────────────────────────────────────────────────────
+// The named person accountable for the quality of one domain's data at one
+// entity. Distinct from authorship: submittedById says who entered a record,
+// which the store has always known. This says who owns it being right — the
+// difference between the system noticing a problem and someone fixing it.
+// One steward per (entity, domain); flags route here first.
+model DomainSteward {
+  id           String     @id @default(cuid())
+  entityId     String
+  entity       Entity     @relation(fields: [entityId], references: [id])
+  domain       DataDomain
+  userId       String
+  user         User       @relation("StewardUser", fields: [userId], references: [id])
+  assignedAt   DateTime   @default(now())
+  assignedById String
+
+  @@unique([entityId, domain])
+  @@index([userId])
 }
 
 // ── AUDIT ENTRY ───────────────────────────────────────────────────────────────
@@ -760,6 +888,11 @@ enum NotificationType {
   RECORD_SUPERSEDED
   REVIEW_DIGEST
   BUYER_DISPUTE_RAISED // a buyer disputed one of your shared records
+  DEFINITION_PROPOSED // a counterparty proposed wording for a field you share
+  DEFINITION_AGREED // a counterparty agreed your proposed wording
+  DEFINITION_SUPERSEDED // wording you had agreed has been replaced by a new version
+  FLAG_ASSIGNED // a data-quality flag was routed to you to resolve
+  FLAG_OVERDUE // a flag passed its resolution deadline and was escalated
 }
 
 // ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────

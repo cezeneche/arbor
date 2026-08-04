@@ -150,22 +150,44 @@ export default async function RecordsPage({
             {tierFilter ? ` · ${isSupplier ? tierLabel(tierFilter as 'A' | 'B' | 'C', { plain: true }) : `Tier ${tierFilter}`}` : ''}
           </p>
         </div>
-        <Link
-          href="/api/audit-package/me"
-          style={{
-            padding: '10px 20px',
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            backgroundColor: colours.surface,
-            border: `1px solid ${colours.border}`,
-            borderRadius: '4px',
-            textDecoration: 'none',
-            display: 'inline-block',
-          }}
-        >
-          Download audit package
-        </Link>
+        <div style={{ display: 'flex', gap: spacing[1], alignItems: 'center' }}>
+          {/* What these figures mean — folded into Records rather than a seventh
+              nav slot, since it describes the records on this page. */}
+          <Link
+            href="/definitions"
+            style={{
+              padding: '10px 20px',
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.medium,
+              color: colours.textPrimary,
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '4px',
+              textDecoration: 'none',
+              display: 'inline-block',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            What these mean
+          </Link>
+          <Link
+            href="/api/audit-package/me"
+            style={{
+              padding: '10px 20px',
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.medium,
+              color: colours.textPrimary,
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '4px',
+              textDecoration: 'none',
+              display: 'inline-block',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Download audit package
+          </Link>
+        </div>
       </div>
 
       <RecordQualitySummary summary={quality} />

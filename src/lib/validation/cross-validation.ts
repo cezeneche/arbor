@@ -2,6 +2,7 @@
 // runCrossValidation is Layer 1 (reads DB, raises flags).
 
 import { prisma } from '@/lib/prisma'
+import { stampFlagOwnership } from '@/lib/stewardship/route-flags'
 
 export interface CrossValidationInput {
   entityId: string
@@ -194,22 +195,27 @@ export async function runCrossValidation(
           })
 
           if (!result.passed) {
-            await prisma.validationFlag.createMany({
-              data: [
+            // Both sides of the discrepancy get an owner and a deadline, routed
+            // by the domain each record sits in — the two records can belong to
+            // different domains and therefore different stewards.
+            const owned = await stampFlagOwnership(
+              [
                 {
                   dataRecordId: recordA.id,
-                  flagType: 'CROSS_DOC_DISCREPANCY',
+                  flagType: 'CROSS_DOC_DISCREPANCY' as const,
                   message: result.message,
-                  severity: 'WARNING',
+                  severity: 'WARNING' as const,
                 },
                 {
                   dataRecordId: recordB.id,
-                  flagType: 'CROSS_DOC_DISCREPANCY',
+                  flagType: 'CROSS_DOC_DISCREPANCY' as const,
                   message: result.message,
-                  severity: 'WARNING',
+                  severity: 'WARNING' as const,
                 },
               ],
-            })
+              entityId,
+            )
+            await prisma.validationFlag.createMany({ data: owned })
           }
         }
       }
