@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       logRequestedById: userId,
     })
 
-  return NextResponse.json({
+  const body = {
     generatedAt: pkg.generatedAt.toISOString(),
     entityId,
     entityName: pkg.entityName,
@@ -43,5 +43,24 @@ export async function GET(req: NextRequest) {
     verification: pkg.verification,
     packageIntegrityHash: pkg.packageIntegrityHash,
     verificationInstructions: pkg.verificationInstructions,
+  }
+
+  // Delivered as a named download rather than a bare JSON body. The package is a
+  // machine-verifiable artefact a supplier hands to their verifier — it has to
+  // arrive as a file with a meaningful name, not a blob the browser renders
+  // inline and saves as "me". Pretty-printed for the same reason: a human opens
+  // it before forwarding it. Whitespace is outside packageIntegrityHash, which is
+  // computed over the canonical core object, so formatting cannot affect
+  // verification.
+  const safeName = pkg.entityName.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
+  const scope = periodStart && periodEnd ? `-${periodStart.slice(0, 10)}-to-${periodEnd.slice(0, 10)}` : ''
+  const filename = `arbor-audit-package-${safeName || 'entity'}${scope}.json`
+
+  return new NextResponse(JSON.stringify(body, null, 2), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
   })
 }
