@@ -1,4 +1,4 @@
-import { PLAN_LIMITS, checkUploadAllowed, checkRecordCapacity, checkSupplierConnection } from '@/lib/plan-limits'
+import { PLAN_LIMITS, checkUploadAllowed, checkRecordCapacity, checkSupplierConnection, checkAuditPackageAllowed } from '@/lib/plan-limits'
 
 describe('PLAN_LIMITS', () => {
   it('PILOT is uncapped everywhere (demo/pilot default — a demo can never hit a wall)', () => {
@@ -64,5 +64,42 @@ describe('checkSupplierConnection', () => {
   it('ENTERPRISE and PILOT are unlimited', () => {
     expect(checkSupplierConnection('ENTERPRISE', 10_000, false).allowed).toBe(true)
     expect(checkSupplierConnection('PILOT', 10_000, false).allowed).toBe(true)
+  })
+})
+
+// ── Audit package entitlement (PRD §22.4) ─────────────────────────────────────
+// Audit package generation is a paid service, not a free button on every screen.
+// Metered per-entity-per-period billing does not exist yet, so this is the
+// entitlement seam rather than a real paywall — see checkAuditPackageAllowed.
+
+describe('checkAuditPackageAllowed', () => {
+  it('allows PILOT, which is uncapped while Arbor is at pilot stage', () => {
+    expect(checkAuditPackageAllowed('PILOT').allowed).toBe(true)
+  })
+
+  it('refuses STARTER, which cannot hold source documents at all', () => {
+    // A package whose whole value is document-backed provenance is meaningless
+    // on a declaration-only tier.
+    const got = checkAuditPackageAllowed('STARTER')
+    expect(got.allowed).toBe(false)
+    expect(got.reason).toMatch(/plan/i)
+  })
+
+  it('allows the document-carrying supplier tiers', () => {
+    expect(checkAuditPackageAllowed('MICRO').allowed).toBe(true)
+    expect(checkAuditPackageAllowed('SMALL').allowed).toBe(true)
+    expect(checkAuditPackageAllowed('GROWTH').allowed).toBe(true)
+  })
+
+  it('allows every buyer tier', () => {
+    expect(checkAuditPackageAllowed('STANDARD').allowed).toBe(true)
+    expect(checkAuditPackageAllowed('BUSINESS').allowed).toBe(true)
+    expect(checkAuditPackageAllowed('ENTERPRISE').allowed).toBe(true)
+  })
+
+  it('gives a reason a non-technical user can act on when it refuses', () => {
+    const reason = checkAuditPackageAllowed('STARTER').reason ?? ''
+    expect(reason.length).toBeGreaterThan(20)
+    expect(reason).not.toMatch(/tier [ABC]|STARTER|null|undefined/)
   })
 })
