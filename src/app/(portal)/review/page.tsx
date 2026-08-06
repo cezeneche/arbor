@@ -33,7 +33,7 @@ export default async function ReviewPage() {
     const fields = doc.extractionJobs[0]?.extractedFields ?? []
     const values: Record<string, string | null> = {}
     for (const f of fields) values[f.fieldName] = f.rawValue
-    const { periodStart, periodEnd } = derivePeriod(values)
+    const { periodStart, periodEnd } = derivePeriod(values, { documentType: doc.documentType })
 
     const numeric = fields.filter((f) => NUMERIC_FIELDS.has(f.fieldName) && f.rawValue !== null && f.rawValue !== '')
     if (numeric.length === 0) continue

@@ -37,7 +37,7 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
 
   const values: Record<string, string | null> = {}
   for (const f of job.extractedFields) values[f.fieldName] = f.rawValue
-  const { periodStart, periodEnd } = derivePeriod(values)
+  const { periodStart, periodEnd } = derivePeriod(values, { documentType: document.documentType })
 
   const prepared = job.extractedFields
     .filter((f) => NUMERIC_FIELDS.has(f.fieldName) && f.rawValue !== null && f.rawValue !== '')

@@ -50,19 +50,26 @@ describe('derivePeriod', () => {
   const now = new Date('2026-06-20T00:00:00.000Z')
 
   it('uses period_start / period_end when present', () => {
-    const { periodStart, periodEnd } = derivePeriod({ period_start: '2026-01-01', period_end: '2026-03-31' }, now)
+    const { periodStart, periodEnd } = derivePeriod(
+      { period_start: '2026-01-01', period_end: '2026-03-31' },
+      { now },
+    )
     expect(periodStart.toISOString().slice(0, 10)).toBe('2026-01-01')
     expect(periodEnd.toISOString().slice(0, 10)).toBe('2026-03-31')
   })
 
   it('falls back to production_period_* fields', () => {
-    const { periodEnd } = derivePeriod({ production_period_end: '2025-12-31' }, now)
+    const { periodEnd } = derivePeriod({ production_period_end: '2025-12-31' }, { now })
     expect(periodEnd.toISOString().slice(0, 10)).toBe('2025-12-31')
   })
 
-  it('falls back to a trailing 12-month window when absent', () => {
-    const { periodStart, periodEnd } = derivePeriod({}, now)
-    expect(periodEnd.getTime()).toBe(now.getTime())
-    expect(periodStart.toISOString().slice(0, 10)).toBe('2025-06-20')
+  it('falls back to a day-truncated trailing 12-month window when absent', () => {
+    // Was `periodEnd === now` to the millisecond. That made the period a function
+    // of upload time, so the same document uploaded twice produced two different
+    // periods and supersession missed — see derive-period.test.ts. The window is
+    // now truncated to whole days so a same-day re-upload supersedes.
+    const { periodStart, periodEnd } = derivePeriod({}, { now })
+    expect(periodEnd.toISOString()).toBe('2026-06-20T23:59:59.999Z')
+    expect(periodStart.toISOString()).toBe('2025-06-20T00:00:00.000Z')
   })
 })

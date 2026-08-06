@@ -8,7 +8,7 @@ import { TrustIndicator } from './TrustIndicator'
 import { trustDisplay } from '@/lib/confidence/trust-display'
 import { rankReviewFields } from '@/lib/review/information-gain'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
-import { NUMERIC_FIELDS } from '@/lib/review/review-policy'
+import { NUMERIC_FIELDS, derivePeriod } from '@/lib/review/review-policy'
 
 interface ExtractedField {
   id: string
@@ -63,12 +63,6 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const [confirmed, setConfirmed] = useState(false)
 
   const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
-  const periodStartField = fields.find(
-    f => f.fieldName === 'period_start' || f.fieldName === 'production_period_start'
-  )
-  const periodEndField = fields.find(
-    f => f.fieldName === 'period_end' || f.fieldName === 'production_period_end'
-  )
 
   const criticalFlags = fields.filter(
     f => f.admissibility === 'COMPULSORY' && (f.rawValue === null || f.rawValue === '')
@@ -82,12 +76,12 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   async function handleConfirm() {
     setError(null)
 
-    const periodStart = periodStartField
-      ? new Date(values[periodStartField.fieldName] || new Date().toISOString()).toISOString()
-      : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
-    const periodEnd = periodEndField
-      ? new Date(values[periodEndField.fieldName] || new Date().toISOString()).toISOString()
-      : new Date().toISOString()
+    // Shared with the auto-accept path so both derive identically. This used to
+    // be an inline copy that anchored the period to upload time, which meant the
+    // same document confirmed twice wrote two records instead of superseding.
+    const derived = derivePeriod(values, { documentType: document.documentType })
+    const periodStart = derived.periodStart.toISOString()
+    const periodEnd = derived.periodEnd.toISOString()
 
     const numericFieldEntries = fields
       .filter(f => NUMERIC_FIELDS.has(f.fieldName) && values[f.fieldName])
