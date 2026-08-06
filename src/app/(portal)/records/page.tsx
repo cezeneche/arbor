@@ -17,6 +17,8 @@ import { summariseRecordQuality } from '@/lib/layer3/record-quality'
 import { buildRecordTrends } from '@/lib/layer3/record-trends'
 import { getCompulsoryFieldsByDomain } from '@/lib/layer3/compulsory-fields'
 import { tierLabel } from '@/lib/tier-label'
+import { checkAuditPackageAllowed, type PlanTier } from '@/lib/plan-limits'
+import { AuditPackageDownload } from './AuditPackageDownload'
 
 const DOMAINS = ['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']
 const TIERS = ['A', 'B', 'C']
@@ -60,11 +62,14 @@ export default async function RecordsPage({
       where,
       select: { domain: true, fieldName: true, trustTier: true, staleAfterDate: true },
     }),
-    prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true } }),
+    prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true, planTier: true } }),
   ])
 
   // Suppliers see plain English (no tier codes); buyers see full technical detail.
   const isSupplier = entity?.entityType !== 'BUYER'
+
+  // PRD §22.4 — verifier package generation is a paid service, not a free button.
+  const packageEntitlement = checkAuditPackageAllowed((entity?.planTier ?? 'PILOT') as PlanTier)
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
@@ -170,23 +175,11 @@ export default async function RecordsPage({
           >
             What these mean
           </Link>
-          <Link
-            href="/api/audit-package/me"
-            style={{
-              padding: '10px 20px',
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '4px',
-              textDecoration: 'none',
-              display: 'inline-block',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Download audit package
-          </Link>
+          <AuditPackageDownload
+            plain={isSupplier}
+            allowed={packageEntitlement.allowed}
+            deniedReason={packageEntitlement.reason}
+          />
         </div>
       </div>
 

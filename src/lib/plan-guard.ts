@@ -7,6 +7,7 @@ import {
   checkUploadAllowed,
   checkRecordCapacity,
   checkSupplierConnection,
+  checkAuditPackageAllowed,
   type LimitCheck,
   type PlanTier,
 } from '@/lib/plan-limits'
@@ -56,4 +57,11 @@ export async function assertSupplierConnection(
   })
   const alreadyConnected = connected.some((c) => c.supplierEntityId === supplierEntityId)
   return checkSupplierConnection(tier, connected.length, alreadyConnected)
+}
+
+/** Gate audit package generation against the entity's plan (PRD §22.4). */
+export async function assertAuditPackageAllowed(entityId: string): Promise<LimitCheck> {
+  const tier = await tierOf(entityId)
+  if (!tier) return { allowed: true }
+  return checkAuditPackageAllowed(tier)
 }
