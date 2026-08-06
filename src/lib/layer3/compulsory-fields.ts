@@ -1,30 +1,21 @@
 import { DOCUMENT_FIELD_DEFINITIONS } from '@/lib/extraction/field-definitions'
+import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 
 // Layer 3 — read-only reference. Derives, per data domain, the set of compulsory
 // field names from the admissibility definitions. This reads Layer 1 constants
 // only; it runs no extraction and writes nothing. Used to report which compulsory
 // fields are absent from records already in the database.
-
-const DOC_TYPE_TO_DOMAIN: Record<string, string> = {
-  ELECTRICITY_BILL: 'ENERGY', GAS_BILL: 'ENERGY', FUEL_RECEIPT: 'ENERGY',
-  RENEWABLE_CERTIFICATE: 'ENERGY',
-  PRODUCTION_LOG: 'PRODUCTION', BILL_OF_MATERIALS: 'PRODUCTION',
-  PROCESS_DATA_SHEET: 'PRODUCTION',
-  MATERIAL_INTAKE: 'MATERIALS',
-  FREIGHT_INVOICE: 'LOGISTICS', DELIVERY_NOTE: 'LOGISTICS',
-  BILL_OF_LADING: 'LOGISTICS',
-  CUSTOMS_DECLARATION: 'COMPLIANCE', CBAM_DECLARATION: 'COMPLIANCE',
-  ENVIRONMENTAL_CERTIFICATE: 'COMPLIANCE', PRODUCT_CERTIFICATE: 'COMPLIANCE',
-  CHAIN_OF_CUSTODY: 'COMPLIANCE', SUPPLIER_QUESTIONNAIRE: 'COMPLIANCE',
-  SUPPLIER_INVOICE: 'MATERIALS', PURCHASE_ORDER: 'MATERIALS',
-  WASTE_RECORD: 'WASTE_AND_WATER', WATER_RECORD: 'WASTE_AND_WATER',
-  CARBON_FOOTPRINT_REPORT: 'EMISSIONS', EMISSIONS_FACTOR_DOC: 'EMISSIONS',
-  CROP_YIELD_RECORD: 'AGRICULTURE', FERTILISER_RECORD: 'AGRICULTURE',
-  LIVESTOCK_RECORD: 'AGRICULTURE', LAND_USE_CERTIFICATE: 'AGRICULTURE',
-}
+//
+// This module used to keep its own document-type → domain table. It drifted from
+// the one the review UI writes with (customs declarations were written as
+// LOGISTICS and read as COMPLIANCE), which meant records were interpreted under a
+// domain they were never stored in — and, once definitions arrived, resolved to no
+// agreed meaning at all. There is now exactly one map, in constants, and
+// catalogue-coverage.test.ts fails if a storable field/domain pair loses its
+// definition.
 
 export function docTypeToDomain(docType: string): string | null {
-  return DOC_TYPE_TO_DOMAIN[docType] ?? null
+  return DOMAIN_BY_DOCUMENT_TYPE[docType] ?? null
 }
 
 export function getCompulsoryFieldsByDomain(): Record<string, string[]> {

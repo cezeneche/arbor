@@ -110,18 +110,28 @@ export const DOMAIN_BY_DOCUMENT_TYPE: Record<string, DataDomain> = {
   RENEWABLE_CERTIFICATE: DataDomain.ENERGY,
   PRODUCTION_LOG: DataDomain.PRODUCTION,
   PROCESS_DATA_SHEET: DataDomain.PRODUCTION,
+  // A bill of materials is the recipe for a product, not an inbound material
+  // flow — grouped with the production documents in the admissibility spec (§2.3).
+  BILL_OF_MATERIALS: DataDomain.PRODUCTION,
   MATERIAL_INTAKE: DataDomain.MATERIALS,
-  BILL_OF_MATERIALS: DataDomain.MATERIALS,
   SUPPLIER_INVOICE: DataDomain.MATERIALS,
   PURCHASE_ORDER: DataDomain.MATERIALS,
   FREIGHT_INVOICE: DataDomain.LOGISTICS,
   DELIVERY_NOTE: DataDomain.LOGISTICS,
-  CUSTOMS_DECLARATION: DataDomain.LOGISTICS,
   BILL_OF_LADING: DataDomain.LOGISTICS,
+  // PRD §9 lists customs declarations under Compliance, and the payload is
+  // regulatory — commodity code, country of origin, MRN, the 8-digit CN rule —
+  // rather than movement of goods. The admissibility spec files it under its
+  // "Logistics Documents" heading, but that groups documents for extraction; the
+  // PRD table is what assigns the data domain.
+  CUSTOMS_DECLARATION: DataDomain.COMPLIANCE,
   CBAM_DECLARATION: DataDomain.COMPLIANCE,
   PRODUCT_CERTIFICATE: DataDomain.COMPLIANCE,
   ENVIRONMENTAL_CERTIFICATE: DataDomain.COMPLIANCE,
   CHAIN_OF_CUSTODY: DataDomain.COMPLIANCE,
+  // Explicit rather than relying on the caller's `?? COMPLIANCE` fallback — a
+  // silent default is how a document type drifts out of this map unnoticed.
+  SUPPLIER_QUESTIONNAIRE: DataDomain.COMPLIANCE,
   ESG_REPORT: DataDomain.COMPLIANCE,
   AUDIT_REPORT: DataDomain.COMPLIANCE,
   OTHER: DataDomain.COMPLIANCE,
