@@ -36,6 +36,12 @@ export interface TrustDisplay {
   interval: { low: number; high: number; mass: number } | null
   /** True when the UI must visually break the scanning pattern for this field. */
   breaksPattern: boolean
+  /**
+   * True when the point estimate was overruled by a wide interval. The UI must
+   * not print that number: showing "Moderate · 100%" states the figure the band
+   * just rejected, and reads as a contradiction. Show the interval instead.
+   */
+  overruled: boolean
   /** Plain-English one-liner for the field. */
   summary: string
 }
@@ -63,7 +69,8 @@ export function trustDisplay(input: TrustDisplayInput): TrustDisplay {
       manual: true,
       interval: null,
       breaksPattern: false,
-      summary: 'Confirmed by you',
+      overruled: false,
+      summary: 'Entered by you, not read from a document',
     }
   }
 
@@ -74,9 +81,10 @@ export function trustDisplay(input: TrustDisplayInput): TrustDisplay {
     : null
   const wide = interval !== null && interval.high - interval.low >= WIDE_INTERVAL
 
-  let band: TrustBand = value >= TRUST_HIGH ? 'high' : value >= TRUST_MODERATE ? 'moderate' : 'low'
+  const rawBand: TrustBand =
+    value >= TRUST_HIGH ? 'high' : value >= TRUST_MODERATE ? 'moderate' : 'low'
   // Honest uncertainty: a wide interval never reads as high confidence.
-  if (wide && band === 'high') band = 'moderate'
+  const band: TrustBand = wide && rawBand === 'high' ? 'moderate' : rawBand
 
   return {
     band,
@@ -85,6 +93,7 @@ export function trustDisplay(input: TrustDisplayInput): TrustDisplay {
     manual: false,
     interval,
     breaksPattern: band === 'low' || wide,
+    overruled: band !== rawBand,
     summary: SUMMARIES[band],
   }
 }

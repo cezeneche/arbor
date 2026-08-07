@@ -24,14 +24,21 @@ export function TrustIndicator({
   const t = trustDisplay({ confidenceScore, confidencePosterior })
   const style = BAND_STYLE[t.band]
   const pct = Math.round(t.value * 100)
-  const label = t.manual ? 'Confirmed' : style.label
+  // "Confirmed" sat next to a Verified / Declared certification badge and read
+  // as the same scale, and as stronger than Declared. It is a different axis:
+  // where the value came from, not how sure the reader was.
+  const label = t.manual ? 'Entered by you' : style.label
 
-  const intervalText =
-    detail && t.interval
-      ? ` · ${Math.round(t.interval.low * 100)}–${Math.round(t.interval.high * 100)}%`
-      : ''
+  const range = t.interval
+    ? `${Math.round(t.interval.low * 100)}–${Math.round(t.interval.high * 100)}%`
+    : null
+
+  // Never print the number the band just overruled. "Moderate · 100%" states a
+  // figure the classifier rejected; the interval is the actual claim.
+  const figure = t.overruled && range ? range : `${pct}%${detail && range ? ` · ${range}` : ''}`
+
   const title = t.manual
-    ? 'Confirmed by you'
+    ? 'Entered by you, not read from a document'
     : `${t.summary}${
         t.interval
           ? ` (calibrated; ${Math.round(t.interval.mass * 100)}% interval ${Math.round(
@@ -63,7 +70,7 @@ export function TrustIndicator({
         aria-hidden
         style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: style.colour }}
       />
-      {t.manual ? label : `${label} · ${pct}%${intervalText}`}
+      {t.manual ? label : `${label} · ${figure}`}
     </span>
   )
 }

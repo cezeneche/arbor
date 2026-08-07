@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing, trustTierConfig, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
@@ -432,7 +433,7 @@ function RecordsTable({ records }: { records: NlRecord[] }) {
                   color: colours.textPrimary,
                 }}
               >
-                {record.fieldName.replace(/_/g, ' ')}
+                {fieldLabel(record.fieldName, record.domain)}
               </td>
               <td
                 style={{

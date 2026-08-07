@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 
 const DOMAINS = [
@@ -311,7 +312,7 @@ export function ExportBuilder({
                         {r.supplierName ?? r.entityId.slice(0, 8)}
                       </td>
                       <td style={{ padding: '10px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
-                        {r.fieldName.replace(/_/g, ' ')}
+                        {fieldLabel(r.fieldName)}
                       </td>
                       <td style={{ padding: '10px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                         {r.value.toLocaleString('en-GB', { maximumFractionDigits: 4 })} {r.unit}

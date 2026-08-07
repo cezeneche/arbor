@@ -75,3 +75,44 @@ describe('trustDisplay', () => {
     expect(WIDE_INTERVAL).toBeLessThan(1)
   })
 })
+
+// ── the "Moderate · 100%" contradiction ──────────────────────────────────────
+describe('overruled point estimates', () => {
+  it('flags a point estimate the band overruled', () => {
+    // 100% certain on the strength of one observation: the classifier downgrades
+    // it, so the UI must not go on printing 100%.
+    const t = trustDisplay({
+      confidenceScore: 1,
+      confidencePosterior: {
+        posteriorMean: 1, ciLow: 0.55, ciHigh: 1, ciMass: 0.9,
+        method: 'beta', priorClass: 'n=1', rawScore: 1,
+      },
+    })
+    expect(t.band).toBe('moderate')
+    expect(t.overruled).toBe(true)
+  })
+
+  it('does not flag a band that was never downgraded', () => {
+    const t = trustDisplay({
+      confidenceScore: 0.7,
+      confidencePosterior: {
+        posteriorMean: 0.7, ciLow: 0.66, ciHigh: 0.74, ciMass: 0.9,
+        method: 'beta', priorClass: 'n=40', rawScore: 0.7,
+      },
+    })
+    expect(t.band).toBe('moderate')
+    expect(t.overruled).toBe(false)
+  })
+
+  it('does not flag a manually entered value', () => {
+    expect(trustDisplay({ confidenceScore: 1 }).overruled).toBe(false)
+  })
+
+  it('describes a manual value by where it came from, not as a confidence grade', () => {
+    // "Confirmed" sat beside a Verified / Declared badge and read as the same
+    // scale, and as stronger than Declared.
+    const t = trustDisplay({ confidenceScore: 1 })
+    expect(t.summary).toMatch(/entered by you/i)
+    expect(t.summary).not.toMatch(/^Confirmed$/)
+  })
+})

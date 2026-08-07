@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing, layout } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
@@ -382,7 +383,7 @@ export function RecordsQueryPanel({
                         style={{ borderBottom: i < result.records.length - 1 ? `1px solid ${colours.border}` : 'none' }}
                       >
                         <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textPrimary, whiteSpace: 'nowrap' }}>
-                          {r.fieldName.replace(/_/g, ' ')}
+                          {fieldLabel(r.fieldName, r.domain)}
                         </td>
                         <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textPrimary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                           {r.value.toLocaleString('en-GB', { maximumFractionDigits: 4 })} {r.unit}
