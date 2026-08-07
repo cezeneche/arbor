@@ -1,10 +1,11 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
+import { findDuplicates } from '@/lib/layer2/duplicate-check'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
 import { runConstraintValidation } from '@/lib/constraints/run-constraint-validation'
@@ -31,6 +32,10 @@ const fieldSchema = z.object({
 
 const bodySchema = z.object({
   fields: z.array(fieldSchema).min(1),
+  // Absent means the client has not been asked yet. When a confirm would
+  // duplicate something already stored, the request is refused with the list so
+  // the user can decide — the write path never picks for them.
+  onDuplicate: z.enum(['replace', 'keep_both']).optional(),
 })
 
 export async function POST(
@@ -110,6 +115,43 @@ export async function POST(
 
   // Single serializable transaction: all records + supersessions + document status.
   // If any field write fails the entire confirmation rolls back — no partial state.
+  // Always ask before duplicating. The supersession below matches exactly on
+  // domain, field and both period boundaries; this check is looser — same
+  // field, overlapping period — because that is what the exact match misses,
+  // and a miss leaves two active records that double-count on every total.
+  const candidates = preparedFields.map(({ field, periodStart, periodEnd }) => ({
+    fieldName: field.fieldName,
+    domain: field.domain,
+    periodStart,
+    periodEnd,
+  }))
+  const priors = await prisma.dataRecord.findMany({
+    where: {
+      entityId,
+      isActive: true,
+      fieldName: { in: [...new Set(candidates.map(c => c.fieldName))] },
+      documentId: { not: documentId },
+    },
+    select: { id: true, fieldName: true, domain: true, value: true, unit: true, periodStart: true, periodEnd: true },
+  })
+  const duplicates = findDuplicates(candidates, priors)
+
+  if (duplicates.length > 0 && !parsed.data.onDuplicate) {
+    // The list travels with the refusal so the prompt can quote what already
+    // exists rather than asking the user to go and look.
+    return NextResponse.json(
+      {
+        error: 'These figures already exist for this period. Choose whether to replace them or keep both.',
+        code: 'DUPLICATE_RECORDS',
+        duplicates,
+      },
+      { status: 409 },
+    )
+  }
+  const replacePriorIds = new Set(
+    parsed.data.onDuplicate === 'replace' ? duplicates.flatMap(d => d.priorIds) : [],
+  )
+
   // scopes whose prior records were superseded, so we can notify buyers.
   const supersededScopes: { domain: string; periodStart: Date; periodEnd: Date }[] = []
 
@@ -118,10 +160,20 @@ export async function POST(
 
     for (const { field, rawNum, siValue, siUnit, periodStart, periodEnd } of preparedFields) {
       // Supersede any existing active records for the same entity+domain+fieldName+period.
-      const prior = await tx.dataRecord.findMany({
-        where: { entityId, domain: field.domain, fieldName: field.fieldName, periodStart, periodEnd, isActive: true },
-        select: { id: true },
-      })
+      // keep_both means exactly that: write alongside, supersede nothing.
+      const prior = parsed.data.onDuplicate === 'keep_both'
+        ? []
+        : await tx.dataRecord.findMany({
+            where: {
+              entityId,
+              isActive: true,
+              OR: [
+                { domain: field.domain, fieldName: field.fieldName, periodStart, periodEnd },
+                { id: { in: [...replacePriorIds] } },
+              ],
+            },
+            select: { id: true },
+          })
 
       const result = await writeRecordWithAuditEntry(
         tx,
