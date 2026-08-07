@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, trustTierConfig, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { getTemplate } from '@/lib/questionnaires/templates'
 import { toPrefillRecords } from '@/lib/questionnaires/load'
 import { prefillQuestionnaire } from '@/lib/questionnaires/prefill'
@@ -81,15 +82,10 @@ export default async function QuestionnaireDetailPage({
   }
 
   return (
-    <div style={{ maxWidth: '880px' }}>
-      <Link
-        href="/questionnaires"
-        style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.navy, textDecoration: 'none' }}
-      >
-        ← All questionnaires
-      </Link>
+    <div style={{ width: '100%' }}>
+      <BackLink current={template.name} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3], margin: `${spacing[2]} 0 ${spacing[3]}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3], margin: `0 0 ${spacing[3]}` }}>
         <div>
           <h1 style={textStyles.pageTitle}>
             {template.name}
@@ -132,16 +128,26 @@ export default async function QuestionnaireDetailPage({
           <h2 style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: typography.tracking.wider, textTransform: 'uppercase', margin: `0 0 ${spacing[1]}` }}>
             {section.name}
           </h2>
-          <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', overflow: 'hidden' }}>
-            {section.answers.map((a, i) => {
+          {/* Answers flow into as many columns as the window allows, so the page
+              fills its width instead of stranding every value against the right
+              margin. One column on a narrow window, unchanged. */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))',
+              gap: '10px',
+            }}
+          >
+            {section.answers.map((a) => {
               const isGap = a.status === 'gap'
               return (
                 <div
                   key={a.questionId}
                   style={{
                     padding: `${spacing[2]} ${spacing[3]}`,
-                    borderBottom: i < section.answers.length - 1 ? `1px solid ${colours.border}` : 'none',
-                    backgroundColor: isGap ? colours.amberBg : 'transparent',
+                    border: `1px solid ${isGap ? colours.amber : colours.border}`,
+                    borderRadius: '8px',
+                    backgroundColor: isGap ? colours.amberBg : colours.surface,
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[3], alignItems: 'flex-start' }}>

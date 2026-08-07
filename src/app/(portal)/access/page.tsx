@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { GrantAccessForm } from './GrantAccessForm'
 import { RevokeAllForBuyer } from './RevokeAllForBuyer'
 
@@ -51,6 +52,7 @@ export default async function AccessPage() {
 
   return (
     <div>
+      <BackLink current="Access control" />
       <div style={{ marginBottom: spacing[5] }}>
         <h1
           style={textStyles.pageTitle}

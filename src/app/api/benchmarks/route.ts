@@ -1,8 +1,15 @@
 // Layer 3  -  read-only. Computes anonymised sector benchmarks on-the-fly from Tier A records.
 // Only includes entities with allowBenchmarkAggregation=true.
 // Population floor: 10 distinct entities required before any figure is shown (PRD §16.3).
+//
+// Access is reciprocal, and enforced here rather than only in the UI: an entity
+// that has not put its own verified records into the pool cannot read the pool.
+// A locked caller gets a 200 with no figures and a plain English reason, because
+// this is a closed door with a key on the wall, not an error.
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-helpers'
+import { getSessionUser } from '@/lib/session'
+import { resolveBenchmarkAccess } from '@/lib/layer3/benchmark-access'
 import { prisma } from '@/lib/prisma'
 
 export interface BenchmarkPoint {
@@ -47,6 +54,27 @@ export async function GET(req: NextRequest) {
   const filterDomain = sp.get('domain') ?? undefined
   const filterYear = sp.get('year') ? parseInt(sp.get('year')!, 10) : undefined
 
+  const callerEntityId = getSessionUser(session).entityId as string | undefined
+  const caller = callerEntityId
+    ? await prisma.entity.findUnique({
+        where: { id: callerEntityId },
+        select: { allowBenchmarkAggregation: true },
+      })
+    : null
+
+  const access = resolveBenchmarkAccess(caller)
+  if (!access.unlocked) {
+    return NextResponse.json({
+      locked: true,
+      lockedReason: access.reason,
+      benchmarks: [],
+      floor: POPULATION_FLOOR,
+      optedInEntities: 0,
+      availableSectors: [],
+      availableDomains: [],
+    })
+  }
+
   // Find all entities that have opted in
   const optedInEntities = await prisma.entity.findMany({
     where: { allowBenchmarkAggregation: true },
@@ -54,7 +82,14 @@ export async function GET(req: NextRequest) {
   })
 
   if (optedInEntities.length === 0) {
-    return NextResponse.json({ benchmarks: [], floor: POPULATION_FLOOR, optedInEntities: 0 })
+    return NextResponse.json({
+      locked: false,
+      benchmarks: [],
+      floor: POPULATION_FLOOR,
+      optedInEntities: 0,
+      availableSectors: [],
+      availableDomains: [],
+    })
   }
 
   const entityIds = optedInEntities.map(e => e.id)
@@ -137,6 +172,7 @@ export async function GET(req: NextRequest) {
   const availableDomains = [...new Set(records.map(r => r.domain))].sort()
 
   return NextResponse.json({
+    locked: false,
     benchmarks,
     floor: POPULATION_FLOOR,
     optedInEntities: optedInEntities.length,

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing, textStyles, borders } from '@/lib/design-system'
+import { searchDefinitions } from '@/lib/layer3/definition-search'
 import type { DefinitionOverviewRow, CounterpartyAgreement } from '@/lib/layer3/definitions-overview'
 
 // Confirmations are inline — no modals. A definition is agreed by reading the
@@ -53,6 +54,21 @@ export function DefinitionsList({ definitions, counterparties, showTechnicalDeta
   const [error, setError] = useState<string | null>(null)
   const [openProposal, setOpenProposal] = useState<string | null>(null)
   const [target, setTarget] = useState<string>('')
+  const [query, setQuery] = useState('')
+
+  // Filtering happens here, over the wordings already on the page — no request,
+  // no re-query, and nothing is hidden until the user has actually typed.
+  const visible = useMemo(
+    () =>
+      searchDefinitions(
+        definitions.map(def => ({
+          ...def,
+          counterpartyNames: def.counterparties.map(c => c.counterpartyName),
+        })),
+        query,
+      ),
+    [definitions, query],
+  )
 
   async function respond(agreementId: string, decision: 'accept' | 'reject') {
     setBusy(agreementId)
@@ -109,6 +125,52 @@ export function DefinitionsList({ definitions, counterparties, showTechnicalDeta
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+      {/* Find the figure you are looking for by the words you remember — the
+          name, the wording itself, or the customer who asked about it. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' }}>
+        <input
+          type="search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search — try “electricity”, “packaging”, or a customer’s name"
+          aria-label="Search your figures"
+          style={{
+            flex: 1,
+            minWidth: '260px',
+            padding: '10px 14px',
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            fontFamily: typography.fontFamily,
+            color: colours.textPrimary,
+            backgroundColor: colours.surface,
+            border: `1px solid ${colours.border}`,
+            borderRadius: borders.radius.sm,
+            outline: 'none',
+          }}
+        />
+        <span style={textStyles.caption}>
+          {query.trim()
+            ? `${visible.length} of ${definitions.length} shown`
+            : `${definitions.length} figure${definitions.length === 1 ? '' : 's'}`}
+        </span>
+      </div>
+
+      {query.trim() && visible.length === 0 && (
+        <div
+          style={{
+            backgroundColor: colours.surface,
+            border: `1px solid ${colours.border}`,
+            borderRadius: borders.radius.lg,
+            padding: spacing[3],
+          }}
+        >
+          <p style={textStyles.rowTitle}>Nothing matches “{query.trim()}”</p>
+          <p style={{ ...textStyles.caption, marginTop: '2px' }}>
+            Try a shorter word, or clear the search to see everything again.
+          </p>
+        </div>
+      )}
+
       {error && (
         <p
           style={{
@@ -123,7 +185,7 @@ export function DefinitionsList({ definitions, counterparties, showTechnicalDeta
         </p>
       )}
 
-      {definitions.map(def => {
+      {visible.map(def => {
         const awaiting = def.counterparties.filter(c => c.awaitingUs)
         const alreadyWith = new Set(def.counterparties.map(c => c.counterpartyEntityId))
         const available = counterparties.filter(c => !alreadyWith.has(c.entityId))

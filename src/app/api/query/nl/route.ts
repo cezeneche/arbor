@@ -1,7 +1,14 @@
 // Layer 3 — Natural language query endpoint. Read-only.
-// Accepts a plain English question, parses it to structured params via the query interpreter,
-// executes the appropriate Layer 3 query, and returns plain-English results with a data table.
-// Trust tier is always present on every record in every response.
+//
+// The assistant is a three-step pipeline, and only the first and last steps use
+// AI: Claude reads the question into structured query parameters, Layer 3
+// retrieves the records the user is authorised to see, and Claude reads those
+// records back as a plain English answer. The retrieval step in the middle is
+// ordinary scoped SQL — the model never touches the database, and no figure in
+// the answer comes from anywhere but a stored record.
+//
+// Trust tier is present on every record in every response, and travels into the
+// answer text as well as the table (PRD §20.2).
 
 import { NextRequest } from 'next/server'
 import { getSessionUser } from '@/lib/session'
@@ -11,6 +18,7 @@ import { anyGrantCoversRecord } from '@/lib/layer3/grant-scope'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { parseNlQuery } from '@/lib/query-interpreter/nl-parser'
+import { composeAnswer, answerWithoutModel } from '@/lib/query-interpreter/answer'
 import type { DataDomain, TrustTier } from '@prisma/client'
 
 const CALCULATION_NOTE =
@@ -39,11 +47,17 @@ export async function POST(req: NextRequest) {
   if (question.length > 500) return err('question must be 500 characters or fewer', 'VALIDATION_ERROR', 400)
 
   // Resolve the user's authorised supplier IDs for supply-chain queries
-  const grants = await prisma.dataAccessGrant.findMany({
-    where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
-    select: { grantorEntityId: true, grantorEntity: { select: { legalName: true } } },
-  })
+  const [grants, entity] = await Promise.all([
+    prisma.dataAccessGrant.findMany({
+      where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
+      select: { grantorEntityId: true, grantorEntity: { select: { legalName: true } } },
+    }),
+    prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true } }),
+  ])
   const authorisedSupplierIds = [...new Set(grants.map(g => g.grantorEntityId))]
+
+  // SME suppliers get plain English only; buyers get the full technical vocabulary.
+  const plainEnglish = entity?.entityType !== 'BUYER'
 
   // Parse the question into structured query parameters
   let parsed
@@ -87,8 +101,22 @@ export async function POST(req: NextRequest) {
   // Build plain English summary
   const summary = buildSummary(records.length, hasMore, queryType, domain, gapResult)
 
+  // The spoken answer, grounded strictly in the records just retrieved. A model
+  // failure degrades to a factual sentence rather than failing the request —
+  // the table underneath is the product, and it is already assembled.
+  const answer = isCalculation
+    ? `${calculationNote ?? CALCULATION_NOTE} ${answerWithoutModel({ recordCount: records.length, interpretation })}`
+    : await composeAnswer({
+        question,
+        interpretation,
+        records: records.map(r => ({ ...r, trustTier: r.trustTier as 'A' | 'B' | 'C' })),
+        gapResult,
+        plainEnglish,
+      })
+
   return ok({
     interpretation,
+    answer,
     isCalculation,
     ...(isCalculation ? { calculationNote: calculationNote ?? CALCULATION_NOTE } : {}),
     queryType,

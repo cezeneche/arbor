@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import Link from 'next/link'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { requestsAddress } from '@/lib/email/config'
 import { worstTier } from '@/lib/requests/answer-email'
 import { SendAnswerButton } from './SendAnswerButton'
@@ -38,11 +38,7 @@ export default async function InboundRequestsPage() {
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ marginBottom: spacing[3] }}>
-        <Link href="/requests" style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, textDecoration: 'none' }}>
-          ← Requests
-        </Link>
-      </div>
+      <BackLink current="Email requests" />
       <h1 style={textStyles.pageTitle}>
         Email requests
       </h1>

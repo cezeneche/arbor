@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { shareState } from '@/lib/shares/share-status'
-import Link from 'next/link'
+import { BackLink } from '@/components/BackLink'
 import { SharesManager } from '@/components/SharesManager'
 
 export default async function SharesPage() {
@@ -37,11 +37,7 @@ export default async function SharesPage() {
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ marginBottom: spacing[3] }}>
-        <Link href="/requests" style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, textDecoration: 'none' }}>
-          ← Requests
-        </Link>
-      </div>
+      <BackLink current="Shared links" />
       <h1 style={textStyles.pageTitle}>
         Shared links
       </h1>

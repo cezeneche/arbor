@@ -6,6 +6,9 @@ import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import type { BenchmarkPoint } from '@/app/api/benchmarks/route'
 
 interface BenchmarkResponse {
+  /** True when this business has not opted in to sharing, so cannot read the pool. */
+  locked?: boolean
+  lockedReason?: string | null
   benchmarks: BenchmarkPoint[]
   floor: number
   optedInEntities: number
@@ -143,6 +146,48 @@ export function BenchmarksView() {
     grouped[b.domain].push(b)
   }
 
+  // Benchmarks are reciprocal: contributing is what unlocks reading. Until this
+  // business switches sharing on, the whole surface stays closed — with the one
+  // sentence that opens it, and the link that does it.
+  if (!loading && data?.locked) {
+    return (
+      <div
+        style={{
+          backgroundColor: colours.surface,
+          border: `1px solid ${colours.border}`,
+          borderRadius: '8px',
+          padding: spacing[4],
+          maxWidth: '640px',
+        }}
+      >
+        <p style={{ ...textStyles.eyebrow, marginBottom: spacing[1] }}>Locked</p>
+        <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
+          Share your data to see how you compare
+        </p>
+        <p style={{ ...textStyles.sectionSubtitle, lineHeight: typography.lineHeight.body }}>
+          {data.lockedReason}
+        </p>
+        <a
+          href="/settings"
+          style={{
+            display: 'inline-block',
+            marginTop: spacing[3],
+            padding: '10px 20px',
+            backgroundColor: colours.navy,
+            color: colours.surface,
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.medium,
+            borderRadius: '4px',
+            textDecoration: 'none',
+            letterSpacing: typography.tracking.wide,
+          }}
+        >
+          Turn on data sharing
+        </a>
+      </div>
+    )
+  }
+
   const selectStyle: React.CSSProperties = {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.light,
@@ -255,8 +300,9 @@ export function BenchmarksView() {
         <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0, lineHeight: '1.6' }}>
           Benchmarks show statistical distributions of verified operational data from businesses that have opted in to anonymous data sharing.
           No individual business is identifiable in any benchmark. Minimum {data?.floor ?? 10} businesses required per data point.
-          To contribute your data and unlock benchmarks for your sector, enable data sharing in{' '}
-          <a href="/settings/api-keys" style={{ color: colours.navy, textDecoration: 'none' }}>Settings</a>.
+          You can see these figures because you share yours; switching sharing off in{' '}
+          <a href="/settings" style={{ color: colours.navy, textDecoration: 'none' }}>Settings</a> removes your records from
+          future benchmarks and closes this view again.
         </p>
       </div>
     </div>

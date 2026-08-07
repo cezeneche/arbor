@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { ApiKeyManager } from './ApiKeyManager'
 import { BenchmarkConsentToggle } from './BenchmarkConsentToggle'
-import { SettingsBreadcrumb } from '../SettingsBreadcrumb'
+import { BackLink } from '@/components/BackLink'
 
 export default async function ApiKeysPage() {
   const session = await auth()
@@ -35,7 +35,7 @@ export default async function ApiKeysPage() {
 
   return (
     <div>
-      <SettingsBreadcrumb current="Integrations & API keys" />
+      <BackLink current="Integrations & API keys" />
       <div style={{ marginBottom: spacing[5] }}>
         <h1
           style={textStyles.pageTitle}

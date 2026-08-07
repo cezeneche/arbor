@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { Pagination, PAGE_SIZE } from '@/components/Pagination'
 
 const EVENT_LABELS: Record<string, string> = {
@@ -86,6 +87,7 @@ export default async function ActivityPage({
 
   return (
     <div>
+      <BackLink current="Activity" />
       <div style={{ marginBottom: spacing[5] }}>
         <h1 style={textStyles.pageTitle}>
           Activity

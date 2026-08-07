@@ -43,12 +43,14 @@ export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean
             Sector benchmarks
           </p>
           <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
-            Contribute to anonymous sector data
+            Share anonymously, and see how you compare
           </p>
           <p style={{ ...textStyles.sectionSubtitle, lineHeight: '1.6' }}>
-            When enabled, your verified records are included in anonymised statistical benchmarks for your sector.
-            Your business is never identified. Benchmarks require at least 10 businesses before any figure is shown.
-            You can withdraw consent at any time. Your records are removed from future benchmark calculations.
+            Benchmarks work both ways. Switch this on and your verified records join the anonymised
+            figures for your sector — which is also what unlocks those figures for you, under
+            Records → Benchmarks. Your business is never identified, and no figure is ever shown
+            unless at least 10 businesses are behind it. Switch it off at any time: your records
+            come out of future benchmarks, and the benchmark view closes again.
           </p>
         </div>
 
