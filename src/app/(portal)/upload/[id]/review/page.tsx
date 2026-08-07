@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { ExtractionReview } from '@/components/ExtractionReview'
 import { ExtractionPoller } from '@/components/ExtractionPoller'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
@@ -90,6 +91,7 @@ export default async function ReviewPage({
 
   return (
     <div>
+      <BackLink current="Review extraction" />
       <div style={{ marginBottom: spacing[5] }}>
         <h1
           style={textStyles.pageTitle}

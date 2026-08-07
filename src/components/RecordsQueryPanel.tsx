@@ -5,7 +5,8 @@ import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing, layout } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
 
-const PANEL_HEIGHT = 300
+// Tall enough for an answer plus the first few records that back it up.
+const PANEL_HEIGHT = 380
 
 type NlRecord = {
   id: string
@@ -23,11 +24,19 @@ type NlRecord = {
 
 type QueryResult = {
   interpretation: string
+  /** Claude's plain English answer, grounded only in the records below it. */
+  answer?: string
   summary: string
   recordCount: number
   hasMore: boolean
   records: NlRecord[]
 }
+
+const EXAMPLES = [
+  'What energy records do we have for last year?',
+  'Show me everything that still needs a document',
+  'What did we record for Q1?',
+]
 
 export function RecordsQueryPanel({ children, plainTiers = false }: { children: React.ReactNode; plainTiers?: boolean }) {
   const [open, setOpen] = useState(false)
@@ -44,9 +53,11 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
     })
   }
 
-  async function handleSearch(e: React.FormEvent) {
+  async function handleSearch(e: React.FormEvent, preset?: string) {
     e.preventDefault()
-    if (!question.trim() || loading) return
+    const asked = preset ?? question
+    if (!asked.trim() || loading) return
+    if (preset) setQuestion(preset)
 
     setLoading(true)
     setResult(null)
@@ -56,7 +67,7 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
       const res = await fetch('/api/query/nl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question: asked }),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -246,9 +257,31 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
           {/* Idle state */}
           {!result && !error && !loading && (
             <div style={{ padding: `${spacing[2]} ${spacing[2]}` }}>
-              <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
-                Type a question and press Enter or click Search. Results appear here without leaving this page.
+              <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: `0 0 8px` }}>
+                Ask about your own data in your own words. You get an answer and the exact records behind it, without leaving this page.
               </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {EXAMPLES.map(ex => (
+                  <button
+                    key={ex}
+                    onClick={e => handleSearch(e, ex)}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.light,
+                      fontFamily: typography.fontFamily,
+                      color: colours.textSecondary,
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${colours.border}`,
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -256,7 +289,7 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
           {loading && (
             <div style={{ padding: `${spacing[2]} ${spacing[2]}` }}>
               <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
-                Searching…
+                Reading your records…
               </p>
             </div>
           )}
@@ -273,6 +306,23 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
           {/* Results summary */}
           {result && (
             <div>
+              {/* The answer leads; the records that justify it sit underneath,
+                  so nothing is ever asserted without its evidence in view. */}
+              {result.answer && (
+                <div style={{ padding: `${spacing[2]} ${spacing[2]}`, borderBottom: `1px solid ${colours.border}` }}>
+                  <p
+                    style={{
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.light,
+                      color: colours.textPrimary,
+                      lineHeight: typography.lineHeight.body,
+                      margin: 0,
+                    }}
+                  >
+                    {result.answer}
+                  </p>
+                </div>
+              )}
               <div style={{ padding: `8px ${spacing[2]}`, borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background, display: 'flex', alignItems: 'center', gap: spacing[2] }}>
                 <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
                   {result.summary}

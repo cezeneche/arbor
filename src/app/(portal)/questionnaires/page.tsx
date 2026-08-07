@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { listTemplates } from '@/lib/questionnaires/templates'
 
 export default async function QuestionnairesPage() {
@@ -12,11 +13,7 @@ export default async function QuestionnairesPage() {
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ marginBottom: spacing[3] }}>
-        <Link href="/requests" style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, textDecoration: 'none' }}>
-          ← Requests
-        </Link>
-      </div>
+      <BackLink current="Questionnaires" />
       <h1
         style={textStyles.pageTitle}
       >

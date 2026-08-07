@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/session'
 import { colours, spacing, textStyles, borders, typography } from '@/lib/design-system'
 import { loadDefinitionsOverview } from '@/lib/layer3/definitions-overview'
+import { BackLink } from '@/components/BackLink'
 import { DefinitionsList } from './DefinitionsList'
 
 // The agreed meaning of every figure this company shares.
@@ -28,6 +29,7 @@ export default async function DefinitionsPage() {
 
   return (
     <div style={{ width: '100%' }}>
+      <BackLink current="What your figures mean" />
       <div style={{ marginBottom: spacing[4] }}>
         <h1 style={textStyles.pageTitle}>What your figures mean</h1>
         <p style={{ ...textStyles.pageSubtitle, marginTop: spacing[1] }}>

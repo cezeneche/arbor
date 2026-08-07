@@ -1,4 +1,4 @@
-import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { spacing, textStyles } from '@/lib/design-system'
 import { QueryEngine } from './QueryEngine'
 
 export default function QueryPage() {
@@ -13,7 +13,8 @@ export default function QueryPage() {
         <p
           style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
-          Ask a question in plain English. arbor finds the matching records and shows them with their trust tier.
+          Ask a question in plain English. arbor answers from your own certified records and shows
+          you every one it used, with its certification. It never works figures out for you.
         </p>
       </div>
 

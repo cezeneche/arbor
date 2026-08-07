@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/session'
 import { colours, spacing, textStyles, borders, typography } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { summariseStewardWorkload, type WorkloadFlag } from '@/lib/layer3/steward-workload'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { StewardEditor } from './StewardEditor'
@@ -83,19 +83,8 @@ export default async function StewardsPage() {
 
   return (
     <div style={{ width: '100%' }}>
+      <BackLink current="Who looks after what" />
       <div style={{ marginBottom: spacing[4] }}>
-        <Link
-          href="/settings"
-          style={{
-            ...textStyles.caption,
-            color: colours.textSecondary,
-            textDecoration: 'none',
-            display: 'inline-block',
-            marginBottom: spacing[1],
-          }}
-        >
-          ← Settings
-        </Link>
         <h1 style={textStyles.pageTitle}>Who looks after what</h1>
         <p style={{ ...textStyles.pageSubtitle, marginTop: spacing[1] }}>
           Name one person for each kind of data. When something needs checking, it goes to them by

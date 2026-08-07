@@ -26,6 +26,8 @@ type GapResult = {
 
 type QueryResult = {
   interpretation: string
+  /** Claude's plain English answer, grounded only in the records returned with it. */
+  answer?: string
   isCalculation: boolean
   calculationNote?: string
   queryType: string
@@ -210,6 +212,31 @@ export function QueryEngine() {
       {/* Results */}
       {result && (
         <div>
+          {/* The answer first, the evidence for it immediately below. */}
+          {result.answer && (
+            <div
+              style={{
+                backgroundColor: colours.surface,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '8px',
+                padding: spacing[3],
+                marginBottom: spacing[3],
+              }}
+            >
+              <p
+                style={{
+                  fontSize: typography.sizes.base,
+                  fontWeight: typography.weights.light,
+                  color: colours.textPrimary,
+                  lineHeight: typography.lineHeight.body,
+                  margin: 0,
+                }}
+              >
+                {result.answer}
+              </p>
+            </div>
+          )}
+
           {/* Interpretation + summary */}
           <div style={{ marginBottom: spacing[3] }}>
             <p

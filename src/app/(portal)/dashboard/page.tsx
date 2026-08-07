@@ -5,29 +5,14 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
-import { Pagination, PAGE_SIZE } from '@/components/Pagination'
+import { TierBadge } from '@/components/TierBadge'
 import { summariseCorrections } from '@/lib/confidence/correction-summary'
+import { summariseOperationalPosition } from '@/lib/layer3/overview-summary'
 
 const DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
   'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
 ] as const
-
-const DOC_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Queued',
-  EXTRACTING: 'Processing',
-  REVIEW_REQUIRED: 'Review required',
-  ACCEPTED: 'Accepted',
-  REJECTED: 'Failed',
-}
-
-const DOC_STATUS_COLOURS: Record<string, string> = {
-  PENDING: colours.textTertiary,
-  EXTRACTING: colours.navy,
-  REVIEW_REQUIRED: colours.amber,
-  ACCEPTED: colours.green,
-  REJECTED: colours.red,
-}
 
 const TIER_COLOURS: Record<string, string> = {
   A: colours.green,
@@ -40,6 +25,9 @@ const TIER_LABELS: Record<string, string> = {
   B: 'Declared',
   C: 'Estimated',
 }
+
+// How many headline figures fit before the screen stops being a glance.
+const HEADLINE_LIMIT = 6
 
 const colStyle = {
   padding: '10px 14px',
@@ -60,38 +48,22 @@ const cellStyle = {
   fontVariantNumeric: 'tabular-nums' as const,
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | undefined>>
-}) {
+export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
   const entityId = getSessionUser(session).entityId as string
-  const sp = await searchParams
-  const reqPage = Math.max(1, parseInt(sp.reqPage ?? '1', 10))
 
   const now = new Date()
-  const [recentDocuments, [pendingRequests, totalPending], allRecords, expiringDocs, staleRecords, reviewLabels] = await Promise.all([
-    prisma.document.findMany({
-      where: { entityId },
-      orderBy: { submittedAt: 'desc' },
-      take: 8,
-    }),
-    Promise.all([
-      prisma.dataRequest.findMany({
-        where: { supplierEntityId: entityId, status: 'PENDING' },
-        include: { buyerEntity: { select: { legalName: true } } },
-        orderBy: { createdAt: 'desc' },
-        skip: (reqPage - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      }),
-      prisma.dataRequest.count({ where: { supplierEntityId: entityId, status: 'PENDING' } }),
-    ]),
+  const [entity, allRecords, expiringDocs, staleRecords, reviewLabels] = await Promise.all([
+    prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true } }),
+    // One read serves both the headline figures and the domain × tier matrix.
     prisma.dataRecord.findMany({
       where: { entityId, isActive: true },
-      select: { domain: true, trustTier: true },
+      select: {
+        domain: true, fieldName: true, trustTier: true,
+        value: true, unit: true, periodStart: true, periodEnd: true,
+      },
     }),
     // documents with a flagged expiry_date field (certificate expiry).
     prisma.document.findMany({
@@ -126,6 +98,24 @@ export default async function DashboardPage({
 
   const corrections = summariseCorrections(reviewLabels)
 
+  // Suppliers see plain English certification; buyers keep the technical form.
+  const isSupplier = entity?.entityType !== 'BUYER'
+
+  // What the company's own documents say it used, made, moved and declared this
+  // year. A roll-up of stored values only — never a derived or converted figure.
+  const position = summariseOperationalPosition(
+    allRecords.map(r => ({
+      domain: r.domain,
+      fieldName: r.fieldName,
+      value: r.value,
+      unit: r.unit,
+      trustTier: r.trustTier as 'A' | 'B' | 'C',
+      periodStart: r.periodStart,
+      periodEnd: r.periodEnd,
+    })),
+  )
+  const headlines = position.headlines.slice(0, HEADLINE_LIMIT)
+
   // build a plain-English "needs attention" list (certificate expiry + staleness).
   const readableDocType = (t: string) =>
     t.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -157,8 +147,6 @@ export default async function DashboardPage({
     })
   }
 
-  const reqTotalPages = Math.ceil(totalPending / PAGE_SIZE)
-
   type DomainRow = { domain: string; A: number; B: number; C: number; total: number }
   const matrix: DomainRow[] = DOMAINS.map(domain => {
     const rows = allRecords.filter(r => r.domain === domain)
@@ -173,8 +161,6 @@ export default async function DashboardPage({
   const declaredCount = allRecords.filter(r => r.trustTier === 'B').length
   const estimatedCount = allRecords.filter(r => r.trustTier === 'C').length
   const verifiedPct = totalRecords > 0 ? Math.round((verifiedCount / totalRecords) * 100) : 0
-  const openRequestsCount = totalPending
-  const reviewCount = recentDocuments.filter(d => d.status === 'REVIEW_REQUIRED').length
 
   return (
     <div>
@@ -328,14 +314,13 @@ export default async function DashboardPage({
           },
           { label: 'Domains', value: String(matrix.length), sub: `of ${DOMAINS.length} total`, col: undefined },
           {
-            label: 'Open requests',
-            value: String(totalPending),
-            sub: totalPending > 0 ? 'awaiting response' : 'none pending',
-            col: totalPending > 0 ? colours.amber : undefined,
+            label: 'Latest year',
+            value: position.reportingYear ? String(position.reportingYear) : '—',
+            sub: position.reportingYear
+              ? `${position.recordsInPeriod.toLocaleString()} record${position.recordsInPeriod === 1 ? '' : 's'}`
+              : 'no records yet',
+            col: undefined,
           },
-          ...(reviewCount > 0
-            ? [{ label: 'Review queue', value: String(reviewCount), sub: 'need attention', col: colours.amber }]
-            : []),
         ].map(({ label, value, sub, col }) => (
           <div
             key={label}
@@ -387,6 +372,139 @@ export default async function DashboardPage({
           </div>
         ))}
       </div>
+
+      {/* What your documents say — the figures a customer asks for, as recorded.
+          Each is the sum of your own stored records for that field in the same
+          unit; nothing here is converted, weighted, or calculated. */}
+      {headlines.length > 0 && (
+        <section style={{ marginBottom: spacing[4] }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              marginBottom: spacing[1],
+              gap: spacing[2],
+              flexWrap: 'wrap' as const,
+            }}
+          >
+            <span
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.medium,
+                color: colours.textSecondary,
+                letterSpacing: typography.tracking.wider,
+                textTransform: 'uppercase' as const,
+              }}
+            >
+              What your records say for {position.reportingYear}
+            </span>
+            <Link
+              href="/records"
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.navy,
+                textDecoration: 'none',
+              }}
+            >
+              All records
+            </Link>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: '12px',
+            }}
+          >
+            {headlines.map(h => (
+              <div
+                key={`${h.domain}-${h.fieldName}-${h.unit}`}
+                style={{
+                  backgroundColor: colours.surface,
+                  border: `1px solid ${colours.border}`,
+                  borderRadius: '4px',
+                  padding: spacing[2],
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.medium,
+                    color: colours.textTertiary,
+                    letterSpacing: typography.tracking.wider,
+                    textTransform: 'uppercase' as const,
+                    marginBottom: '6px',
+                  }}
+                >
+                  {h.domainLabel}
+                </div>
+                <div
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.light,
+                    color: colours.textSecondary,
+                    marginBottom: '6px',
+                  }}
+                >
+                  {h.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: typography.weights.medium,
+                    color: colours.textPrimary,
+                    letterSpacing: typography.tracking.tight,
+                    lineHeight: 1.1,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {h.total.toLocaleString('en-GB', { maximumFractionDigits: 2 })}
+                  <span
+                    style={{
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.light,
+                      color: colours.textSecondary,
+                      marginLeft: '5px',
+                    }}
+                  >
+                    {h.unit}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', flexWrap: 'wrap' as const }}>
+                  {h.tierComposition.meet && (
+                    <TierBadge tier={h.tierComposition.meet} plain={isSupplier} />
+                  )}
+                  <span
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.light,
+                      color: colours.textTertiary,
+                    }}
+                  >
+                    from {h.recordCount} record{h.recordCount === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p
+            style={{
+              ...textStyles.caption,
+              color: colours.textTertiary,
+              marginTop: spacing[2],
+              lineHeight: typography.lineHeight.body,
+            }}
+          >
+            These are your own figures added up exactly as your documents recorded them, in the
+            units they were recorded in. Arbor does not convert between units or work anything out
+            from them — the status shown against each figure is the weakest of the records behind it.
+          </p>
+        </section>
+      )}
 
       {/* Domain x Tier matrix */}
       {matrix.length > 0 && (
@@ -562,246 +680,6 @@ export default async function DashboardPage({
           </div>
         </section>
       )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3] }}>
-        {/* Open requests */}
-        <section>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: spacing[1],
-            }}
-          >
-            <span
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.medium,
-                color: colours.textSecondary,
-                letterSpacing: typography.tracking.wider,
-                textTransform: 'uppercase' as const,
-              }}
-            >
-              Open requests
-            </span>
-            <Link
-              href="/requests"
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.light,
-                color: colours.navy,
-                textDecoration: 'none',
-              }}
-            >
-              All requests
-            </Link>
-          </div>
-          <div
-            style={{
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}
-          >
-            {pendingRequests.length === 0 ? (
-              <div style={{ padding: `${spacing[2]} 14px` }}>
-                <p
-                  style={{
-                    fontSize: typography.sizes.sm,
-                    fontWeight: typography.weights.light,
-                    color: colours.textTertiary,
-                    margin: 0,
-                  }}
-                >
-                  No pending requests.
-                </p>
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr
-                    style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}
-                  >
-                    <th style={colStyle}>From</th>
-                    <th style={colStyle}>Domain</th>
-                    <th style={colStyle}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingRequests.map((req, i) => (
-                    <tr
-                      key={req.id}
-                      style={{
-                        borderBottom:
-                          i < pendingRequests.length - 1 ? `1px solid ${colours.border}` : 'none',
-                      }}
-                    >
-                      <td
-                        style={{
-                          ...cellStyle,
-                          fontWeight: typography.weights.medium,
-                          maxWidth: '140px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap' as const,
-                        }}
-                      >
-                        {req.buyerEntity.legalName}
-                      </td>
-                      <td style={{ ...cellStyle, color: colours.textSecondary }}>
-                        {DOMAIN_LABELS[req.domain] ?? req.domain}
-                      </td>
-                      <td style={{ ...cellStyle, textAlign: 'right' as const }}>
-                        <Link
-                          href="/requests"
-                          style={{
-                            fontSize: typography.sizes.xs,
-                            fontWeight: typography.weights.medium,
-                            color: colours.navy,
-                            textDecoration: 'none',
-                            whiteSpace: 'nowrap' as const,
-                          }}
-                        >
-                          Respond
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <Pagination
-            page={reqPage}
-            totalPages={reqTotalPages}
-            buildUrl={(p) => p > 1 ? `/dashboard?reqPage=${p}` : '/dashboard'}
-          />
-        </section>
-
-        {/* Document ingestion queue */}
-        <section>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: spacing[1],
-            }}
-          >
-            <span
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.medium,
-                color: colours.textSecondary,
-                letterSpacing: typography.tracking.wider,
-                textTransform: 'uppercase' as const,
-              }}
-            >
-              Document queue
-            </span>
-          </div>
-          <div
-            style={{
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}
-          >
-            {recentDocuments.length === 0 ? (
-              <div style={{ padding: `${spacing[2]} 14px` }}>
-                <p
-                  style={{
-                    fontSize: typography.sizes.sm,
-                    fontWeight: typography.weights.light,
-                    color: colours.textTertiary,
-                    margin: 0,
-                  }}
-                >
-                  No documents submitted yet.
-                </p>
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr
-                    style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}
-                  >
-                    <th style={colStyle}>Document</th>
-                    <th style={colStyle}>Date</th>
-                    <th style={colStyle}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentDocuments.map((doc, i) => {
-                    const statusLabel = DOC_STATUS_LABELS[doc.status] ?? doc.status
-                    const statusColour = DOC_STATUS_COLOURS[doc.status] ?? colours.textTertiary
-                    return (
-                      <tr
-                        key={doc.id}
-                        style={{
-                          borderBottom:
-                            i < recentDocuments.length - 1 ? `1px solid ${colours.border}` : 'none',
-                        }}
-                      >
-                        <td
-                          style={{
-                            ...cellStyle,
-                            maxWidth: '160px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap' as const,
-                          }}
-                          title={doc.fileName}
-                        >
-                          {doc.status === 'REVIEW_REQUIRED' ? (
-                            <Link
-                              href={`/upload/${doc.id}/review`}
-                              style={{
-                                color: colours.navy,
-                                textDecoration: 'none',
-                                fontWeight: typography.weights.medium,
-                              }}
-                            >
-                              {doc.fileName}
-                            </Link>
-                          ) : (
-                            doc.fileName
-                          )}
-                        </td>
-                        <td
-                          style={{
-                            ...cellStyle,
-                            color: colours.textTertiary,
-                            whiteSpace: 'nowrap' as const,
-                          }}
-                        >
-                          {new Date(doc.submittedAt).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </td>
-                        <td
-                          style={{
-                            ...cellStyle,
-                            color: statusColour,
-                            fontWeight: typography.weights.medium,
-                            whiteSpace: 'nowrap' as const,
-                          }}
-                        >
-                          {statusLabel}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </section>
-      </div>
 
       {/* Tier legend */}
       {totalRecords > 0 && (

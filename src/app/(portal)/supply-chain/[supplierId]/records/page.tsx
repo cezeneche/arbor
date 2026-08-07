@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { TierBadge } from '@/components/TierBadge'
 import { TrustIndicator } from '@/components/TrustIndicator'
 import type { ConfidencePosterior } from '@/lib/confidence/types'
@@ -88,19 +89,7 @@ export default async function SupplierRecordsPage({
         }}
       >
         <div>
-          <Link
-            href="/supply-chain"
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              textDecoration: 'none',
-              display: 'block',
-              marginBottom: spacing[1],
-            }}
-          >
-            ← Supply chain
-          </Link>
+          <BackLink current={supplier.legalName} />
           <h1
             style={textStyles.pageTitle}
           >

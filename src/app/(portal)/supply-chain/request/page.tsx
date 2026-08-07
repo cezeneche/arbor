@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 
 const DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
@@ -100,6 +101,7 @@ function RequestForm() {
 
   return (
     <div>
+      <BackLink current="Request data" />
       <div style={{ marginBottom: spacing[5] }}>
         <h1
           style={textStyles.pageTitle}

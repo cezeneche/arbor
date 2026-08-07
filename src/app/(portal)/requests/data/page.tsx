@@ -1,9 +1,9 @@
-import Link from 'next/link'
 import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { spacing, textStyles } from '@/lib/design-system'
+import { BackLink } from '@/components/BackLink'
 import { RequestsList } from '@/components/RequestsList'
 
 // The data-request depth (respond, generate share link, pagination) lives here.
@@ -43,10 +43,8 @@ export default async function DataRequestsPage() {
 
   return (
     <div style={{ width: '100%' }}>
-      <Link href="/requests" style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, textDecoration: 'none' }}>
-        ← Requests
-      </Link>
-      <div style={{ margin: `${spacing[3]} 0 ${spacing[5]}` }}>
+      <BackLink current="Data requests" />
+      <div style={{ margin: `0 0 ${spacing[5]}` }}>
         <h1
           style={textStyles.pageTitle}
         >
