@@ -118,8 +118,11 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         return
       }
 
+      // Straight to the records the confirmation just created. The interstitial
+      // it used to sit on for a second and a half told the user nothing the
+      // records page does not show better.
       setConfirmed(true)
-      setTimeout(() => router.push('/records'), 1500)
+      router.push('/records')
     } catch {
       setError('Confirmation failed. Check your connection.')
       setSubmitting(false)

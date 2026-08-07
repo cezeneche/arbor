@@ -4,13 +4,16 @@ import { summariseRecordQuality, type QualityRecord } from '@/lib/layer3/record-
 // database. No calculation, no AI, no writes. It powers the calm "data quality"
 // summary now folded into the Records screen.
 
+// Keyed by document type now, not domain: a record set is only held to the
+// admissibility spec of the documents actually behind it, which is what stops
+// one freight invoice being marked as missing every bill-of-lading field.
 const compulsory = {
-  ENERGY: ['total_consumption_kwh', 'supplier_name', 'meter_reference'],
-  LOGISTICS: ['gross_weight', 'origin'],
+  ELECTRICITY_BILL: ['total_consumption_kwh', 'supplier_name', 'meter_reference'],
+  BILL_OF_LADING: ['gross_weight', 'origin'],
 }
 
 function rec(p: Partial<QualityRecord>): QualityRecord {
-  return { domain: 'ENERGY', fieldName: 'supplier_name', trustTier: 'A', staleAfterDate: null, ...p }
+  return { domain: 'ENERGY', fieldName: 'supplier_name', trustTier: 'A', staleAfterDate: null, documentType: 'ELECTRICITY_BILL', ...p }
 }
 
 describe('summariseRecordQuality', () => {

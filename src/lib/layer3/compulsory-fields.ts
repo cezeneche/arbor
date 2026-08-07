@@ -1,5 +1,6 @@
 import { DOCUMENT_FIELD_DEFINITIONS } from '@/lib/extraction/field-definitions'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
+import { NUMERIC_FIELDS } from '@/lib/review/review-policy'
 
 // Layer 3 — read-only reference. Derives, per data domain, the set of compulsory
 // field names from the admissibility definitions. This reads Layer 1 constants
@@ -16,6 +17,48 @@ import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 
 export function docTypeToDomain(docType: string): string | null {
   return DOMAIN_BY_DOCUMENT_TYPE[docType] ?? null
+}
+
+/**
+ * Compulsory fields, per document type, restricted to those that can actually
+ * become records.
+ *
+ * Two rules, both learned from a metric that told a company with two clean
+ * documents it was missing 110 compulsory fields:
+ *
+ *  - Compulsory-ness belongs to a *document type*, not a domain. Unioning a
+ *    domain's document types marks a freight invoice as missing bill-of-lading
+ *    fields and an electricity bill as missing REGO certificate fields.
+ *  - A DataRecord holds a number. Compulsory text fields — account holder,
+ *    site address, supplier name — are collected and checked at ingest, but
+ *    can never appear here, so counting their absence is counting nothing.
+ */
+export function getCompulsoryStorableFieldsByDocumentType(): Record<string, string[]> {
+  const byType: Record<string, string[]> = {}
+  for (const [docType, defs] of Object.entries(DOCUMENT_FIELD_DEFINITIONS)) {
+    const fields = defs
+      .filter(d => d.admissibility === 'compulsory' && NUMERIC_FIELDS.has(d.name))
+      .map(d => d.name)
+    byType[docType] = [...new Set(fields)]
+  }
+  return byType
+}
+
+/**
+ * What this record set can honestly be held to: the compulsory storable fields
+ * of the document types actually submitted. Records with no document behind
+ * them expect nothing — manual entry has no admissibility spec to fail.
+ */
+export function expectedFieldsFor(
+  documentTypes: (string | null | undefined)[],
+  byType: Record<string, string[]>,
+): string[] {
+  const expected = new Set<string>()
+  for (const docType of documentTypes) {
+    if (!docType) continue
+    for (const field of byType[docType] ?? []) expected.add(field)
+  }
+  return [...expected]
 }
 
 export function getCompulsoryFieldsByDomain(): Record<string, string[]> {
