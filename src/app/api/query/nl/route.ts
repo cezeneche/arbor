@@ -19,6 +19,8 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { parseNlQuery } from '@/lib/query-interpreter/nl-parser'
 import { composeAnswer, answerWithoutModel } from '@/lib/query-interpreter/answer'
+import type { VocabularyEntry } from '@/lib/query-interpreter/field-vocabulary'
+import { periodOverlapWhere } from '@/lib/layer3/period-filter'
 import type { DataDomain, TrustTier } from '@prisma/client'
 
 const CALCULATION_NOTE =
@@ -59,10 +61,21 @@ export async function POST(req: NextRequest) {
   // SME suppliers get plain English only; buyers get the full technical vocabulary.
   const plainEnglish = entity?.entityType !== 'BUYER'
 
+  // The field names this caller can actually reach — their own, plus anything
+  // an authorised supplier has shared. Given to the parser so it chooses from
+  // what exists instead of guessing a name that matches no row.
+  const vocabularyRows = await prisma.dataRecord.findMany({
+    where: { entityId: { in: [entityId, ...authorisedSupplierIds] }, isActive: true },
+    select: { domain: true, fieldName: true, unit: true },
+    distinct: ['domain', 'fieldName', 'unit'],
+    take: 200,
+  })
+  const vocabulary: VocabularyEntry[] = vocabularyRows
+
   // Parse the question into structured query parameters
   let parsed
   try {
-    parsed = await parseNlQuery(question)
+    parsed = await parseNlQuery(question, vocabulary)
   } catch (e) {
     return err(e instanceof Error ? e.message : 'Failed to parse question', 'PARSE_ERROR', 422)
   }
@@ -173,8 +186,7 @@ async function runEntityQuery(params: {
       ...(domain ? { domain } : {}),
       ...(fieldName ? { fieldName } : {}),
       ...(trustTier ? { trustTier } : {}),
-      ...(periodStart ? { periodStart: { gte: new Date(periodStart) } } : {}),
-      ...(periodEnd ? { periodEnd: { lte: new Date(periodEnd) } } : {}),
+      ...periodOverlapWhere(periodStart, periodEnd),
     },
     select: {
       id: true, domain: true, fieldName: true, value: true, unit: true,
@@ -213,8 +225,7 @@ async function runSupplyChainQuery(params: {
       ...(domain ? { domain } : {}),
       ...(fieldName ? { fieldName } : {}),
       ...(trustTier ? { trustTier } : {}),
-      ...(periodStart ? { periodStart: { gte: new Date(periodStart) } } : {}),
-      ...(periodEnd ? { periodEnd: { lte: new Date(periodEnd) } } : {}),
+      ...periodOverlapWhere(periodStart, periodEnd),
     },
     select: {
       id: true, entityId: true, domain: true, fieldName: true, value: true, unit: true,
@@ -286,8 +297,7 @@ async function runGapQuery(params: {
     where: {
       entityId, isActive: true,
       ...(domain ? { domain } : {}),
-      ...(periodStart ? { periodStart: { gte: new Date(periodStart) } } : {}),
-      ...(periodEnd ? { periodEnd: { lte: new Date(periodEnd) } } : {}),
+      ...periodOverlapWhere(periodStart, periodEnd),
     },
     select: { domain: true },
   })
@@ -303,8 +313,7 @@ async function runGapQuery(params: {
       where: {
         entityId: { in: authorisedSupplierIds }, isActive: true,
         ...(domain ? { domain } : {}),
-        ...(periodStart ? { periodStart: { gte: new Date(periodStart) } } : {}),
-        ...(periodEnd ? { periodEnd: { lte: new Date(periodEnd) } } : {}),
+        ...periodOverlapWhere(periodStart, periodEnd),
       },
       select: { entityId: true, domain: true },
     })

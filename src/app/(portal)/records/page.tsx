@@ -16,6 +16,7 @@ import { BenchmarksView } from '@/components/BenchmarksView'
 import { summariseRecordQuality } from '@/lib/layer3/record-quality'
 import { buildRecordTrends } from '@/lib/layer3/record-trends'
 import { getCompulsoryFieldsByDomain } from '@/lib/layer3/compulsory-fields'
+import { buildQuerySuggestions } from '@/lib/layer3/query-suggestions'
 import { tierLabel } from '@/lib/tier-label'
 import { checkAuditPackageAllowed, type PlanTier } from '@/lib/plan-limits'
 import { AuditPackageDownload } from './AuditPackageDownload'
@@ -45,7 +46,7 @@ export default async function RecordsPage({
     ...(tierFilter ? { trustTier: tierFilter as never } : {}),
   }
 
-  const [records, total, summaryRecords, entity] = await Promise.all([
+  const [records, total, summaryRecords, entity, suggestionRows] = await Promise.all([
     prisma.dataRecord.findMany({
       where,
       include: {
@@ -63,7 +64,21 @@ export default async function RecordsPage({
       select: { domain: true, fieldName: true, trustTier: true, staleAfterDate: true },
     }),
     prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true, planTier: true } }),
+    // Unfiltered and newest-first: the query suggestions describe what this
+    // entity actually holds, so they must not shift as the table is filtered.
+    prisma.dataRecord.findMany({
+      where: { entityId, isActive: true },
+      select: { domain: true, periodEnd: true },
+      orderBy: { periodEnd: 'desc' },
+      take: 200,
+    }),
   ])
+
+  const latestYear = suggestionRows[0] ? new Date(suggestionRows[0].periodEnd).getFullYear() : null
+  const querySuggestions = buildQuerySuggestions({
+    domains: [...new Set(suggestionRows.map(r => r.domain))],
+    latestYear,
+  })
 
   // Suppliers see plain English (no tier codes); buyers see full technical detail.
   const isSupplier = entity?.entityType !== 'BUYER'
@@ -138,7 +153,7 @@ export default async function RecordsPage({
   }
 
   return (
-    <RecordsQueryPanel plainTiers={isSupplier}>
+    <RecordsQueryPanel plainTiers={isSupplier} suggestions={querySuggestions}>
     <div style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[4] }}>
         <div>
