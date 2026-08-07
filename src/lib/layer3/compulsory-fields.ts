@@ -61,17 +61,8 @@ export function expectedFieldsFor(
   return [...expected]
 }
 
-export function getCompulsoryFieldsByDomain(): Record<string, string[]> {
-  const byDomain: Record<string, string[]> = {}
-  for (const [docType, defs] of Object.entries(DOCUMENT_FIELD_DEFINITIONS)) {
-    const domain = docTypeToDomain(docType)
-    if (!domain) continue
-    if (!byDomain[domain]) byDomain[domain] = []
-    for (const d of defs) {
-      if (d.admissibility === 'compulsory' && !byDomain[domain].includes(d.name)) {
-        byDomain[domain].push(d.name)
-      }
-    }
-  }
-  return byDomain
-}
+// getCompulsoryFieldsByDomain used to live here, rolling every document type in
+// a domain into one expectation list. That is the union that told a freight
+// invoice it was missing bill-of-lading fields, and it has no callers left —
+// expectations are per document type now. Deleted rather than deprecated, so it
+// cannot be reached for again.
