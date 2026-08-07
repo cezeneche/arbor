@@ -153,6 +153,7 @@ export default async function ReviewPage({
           <ExtractionReview
             document={{
               id: document.id,
+              fileName: document.fileName,
               documentType: document.documentType,
               status: document.status,
               extractionJobs: document.extractionJobs.map(j => ({

@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
-import { TrustIndicator } from './TrustIndicator'
-import { trustDisplay } from '@/lib/confidence/trust-display'
 import { rankReviewFields } from '@/lib/review/information-gain'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 import { NUMERIC_FIELDS, derivePeriod } from '@/lib/review/review-policy'
@@ -31,6 +30,7 @@ interface ExtractionJob {
 
 interface Document {
   id: string
+  fileName: string
   documentType: string
   status: string
   extractionJobs: ExtractionJob[]
@@ -61,6 +61,11 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
+  // Set when the server refuses because these figures already exist. The choice
+  // is always the user's — the write path never picks for them.
+  const [duplicates, setDuplicates] = useState<{ fieldName: string; priorSummary: string }[] | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
 
@@ -73,8 +78,9 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const conditionalFields = fields.filter(f => f.admissibility === 'CONDITIONAL')
   const optionalFields = fields.filter(f => f.admissibility === 'OPTIONAL')
 
-  async function handleConfirm() {
+  async function handleConfirm(onDuplicate?: 'replace' | 'keep_both') {
     setError(null)
+    setDuplicates(null)
 
     // Shared with the auto-accept path so both derive identically. This used to
     // be an inline copy that anchored the period to upload time, which meant the
@@ -107,12 +113,17 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
       const res = await fetch(`/api/documents/${document.id}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: numericFieldEntries }),
+        body: JSON.stringify({ fields: numericFieldEntries, ...(onDuplicate ? { onDuplicate } : {}) }),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
+        if (res.status === 409 && data.code === 'DUPLICATE_RECORDS') {
+          setDuplicates(data.duplicates ?? [])
+          setSubmitting(false)
+          return
+        }
         setError(data.error ?? 'Confirmation failed.')
         setSubmitting(false)
         return
@@ -198,71 +209,74 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     marginBottom: '4px',
   }
 
-  const inputStyle = (flagged: boolean) => ({
+  const inputStyle = () => ({
     width: '100%',
     padding: '8px 10px',
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.light,
     color: colours.textPrimary,
-    backgroundColor: flagged ? colours.amberBg : colours.surface,
-    border: `1px solid ${flagged ? colours.amber : colours.border}`,
+    backgroundColor: colours.surface,
+    border: `1px solid ${colours.border}`,
     borderRadius: '4px',
     outline: 'none',
   })
 
+  async function handleDelete() {
+    setError(null)
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/documents/${document.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? 'Could not delete this document.')
+        setDeleting(false)
+        return
+      }
+      router.push('/upload')
+    } catch {
+      setError('Could not delete this document. Check your connection.')
+      setDeleting(false)
+    }
+  }
+
   function renderCard(field: ExtractedField) {
     const isMissing = field.rawValue === null || field.rawValue === ''
-    const trust = trustDisplay({ confidenceScore: field.confidenceScore })
-    // Low confidence must break the scanning pattern — a distinct red treatment
-    // with a left accent bar, never the same amber as a merely flagged/missing
-    // field. Missing/flagged/moderate stay amber.
-    const isLow = !isMissing && trust.band === 'low'
-    const showWarning = field.flagged || isMissing || trust.breaksPattern
 
+    // A confidence badge on every field said the same thing on every field, and
+    // an amber border on all of them made the whole form read as a warning. The
+    // score still drives which fields are ranked first and which are collapsed,
+    // and it still decides the trust tier server-side — it is simply not
+    // furniture around every input. Only a value that is genuinely absent is
+    // marked, and the border stays neutral throughout.
     return (
       <div
         key={field.id}
         style={{
-          backgroundColor: isLow ? colours.redBg : colours.surface,
-          border: `1px solid ${isLow ? colours.red : showWarning ? colours.amber : colours.border}`,
-          borderLeft: isLow ? `3px solid ${colours.red}` : undefined,
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: colours.surface,
+          border: `1px solid ${colours.border}`,
           borderRadius: '6px',
           padding: spacing[2],
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[1], marginBottom: '8px' }}>
           <label htmlFor={field.id} style={labelStyle}>
-            {field.fieldName.replace(/_/g, ' ')}
+            {fieldLabel(field.fieldName)}
           </label>
-          {isMissing ? (
+          {isMissing && (
             <span
               style={{
                 fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.medium,
-                letterSpacing: typography.tracking.wide,
-                color: colours.amber,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
                 whiteSpace: 'nowrap',
               }}
             >
               Not found
             </span>
-          ) : (
-            <TrustIndicator confidenceScore={field.confidenceScore} />
           )}
         </div>
-
-        {isLow && (
-          <p
-            style={{
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.medium,
-              color: colours.red,
-              margin: '0 0 6px',
-            }}
-          >
-            Please check this value carefully before saving.
-          </p>
-        )}
 
         <input
           id={field.id}
@@ -270,7 +284,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
           value={values[field.fieldName] ?? ''}
           onChange={e => setValues(prev => ({ ...prev, [field.fieldName]: e.target.value }))}
           placeholder={isMissing ? 'Not found in document' : undefined}
-          style={inputStyle(showWarning)}
+          style={inputStyle()}
         />
 
         {field.rawUnit && (
@@ -286,13 +300,16 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
             Unit: {field.rawUnit}
           </span>
         )}
+        {/* Pushes the optional notes to the bottom so every card in a row ends
+            level, whatever it happens to carry. */}
+        <div style={{ flex: 1 }} />
 
-        {field.flagReason && (
+        {field.flagReason && !/confidence/i.test(field.flagReason) && (
           <p
             style={{
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.light,
-              color: colours.amber,
+              color: colours.textTertiary,
               margin: '6px 0 0',
             }}
           >
@@ -300,33 +317,6 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
           </p>
         )}
 
-        {field.sourceText && (
-          <details style={{ marginTop: '8px' }}>
-            <summary
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
-                cursor: 'pointer',
-              }}
-            >
-              Where this came from
-            </summary>
-            <blockquote
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                borderLeft: `2px solid ${colours.border}`,
-                margin: '6px 0 0',
-                paddingLeft: '10px',
-                fontStyle: 'italic',
-              }}
-            >
-              {field.sourceText}
-            </blockquote>
-          </details>
-        )}
       </div>
     )
   }
@@ -353,7 +343,15 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         .filter((f): f is ExtractedField => Boolean(f))
     const prominent = pick(false)
     const confident = pick(true)
-    const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: spacing[2] } as const
+    // `stretch` is what makes the two columns line up: without it a card with a
+    // unit note is taller than its neighbour and the rows go ragged, which is
+    // what left a hole down the right-hand side.
+    const gridStyle = {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gap: spacing[2],
+      alignItems: 'stretch',
+    } as const
 
     return (
       <section style={{ marginBottom: spacing[4] }}>
@@ -534,6 +532,97 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         </p>
       )}
 
+      {duplicates && (
+        <div
+          style={{
+            border: `1px solid ${colours.border}`,
+            borderLeft: `3px solid ${colours.textPrimary}`,
+            borderRadius: '6px',
+            padding: spacing[3],
+            marginBottom: spacing[3],
+          }}
+        >
+          <p style={{ ...textStyles.rowTitle, margin: 0 }}>
+            These figures already exist for this period
+          </p>
+          <ul
+            style={{
+              margin: `${spacing[1]} 0 0`,
+              paddingLeft: '18px',
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+            }}
+          >
+            {duplicates.map(d => (
+              <li key={d.fieldName}>
+                {fieldLabel(d.fieldName)} — already recorded as {d.priorSummary}
+              </li>
+            ))}
+          </ul>
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textTertiary,
+              margin: `${spacing[1]} 0 ${spacing[2]}`,
+              lineHeight: typography.lineHeight.body,
+            }}
+          >
+            Replacing keeps the original in your audit trail and marks it as superseded. Keeping
+            both leaves two figures for the same period, which will double-count on any total.
+          </p>
+          <div style={{ display: 'flex', gap: spacing[1], flexWrap: 'wrap' }}>
+            <button
+              onClick={() => handleConfirm('replace')}
+              disabled={submitting}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: colours.navy,
+                color: colours.surface,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Replace the existing figures
+            </button>
+            <button
+              onClick={() => handleConfirm('keep_both')}
+              disabled={submitting}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                color: colours.textSecondary,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '4px',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Keep both
+            </button>
+            <button
+              onClick={() => setDuplicates(null)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                color: colours.textTertiary,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing[2], marginTop: spacing[3] }}>
         <button
           onClick={() => router.push('/records')}
@@ -551,7 +640,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
           Save for later
         </button>
         <button
-          onClick={handleConfirm}
+          onClick={() => handleConfirm()}
           disabled={submitting}
           style={{
             padding: '12px 24px',
@@ -567,6 +656,102 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         >
           {submitting ? 'Confirming…' : 'Confirm and save records'}
         </button>
+      </div>
+
+      {/* Danger zone. Separated from the actions above by whitespace and its own
+          rule, so it can never be hit while reaching for Confirm. Confirmation is
+          inline — the product has no modals. */}
+      <div
+        style={{
+          marginTop: spacing[6],
+          paddingTop: spacing[3],
+          borderTop: `1px solid ${colours.border}`,
+        }}
+      >
+        <p
+          style={{
+            fontSize: typography.sizes.xs,
+            fontWeight: typography.weights.medium,
+            color: colours.red,
+            letterSpacing: typography.tracking.wider,
+            textTransform: 'uppercase',
+            margin: `0 0 ${spacing[1]}`,
+          }}
+        >
+          Danger zone
+        </p>
+        {confirmDelete ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' }}>
+            <span
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textPrimary,
+              }}
+            >
+              Delete {document.fileName} and everything read from it? This cannot be undone.
+            </span>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: colours.red,
+                color: colours.surface,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: deleting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {deleting ? 'Deleting…' : 'Yes, delete it'}
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                color: colours.textSecondary,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Keep it
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' }}>
+            <span
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textSecondary,
+              }}
+            >
+              Nothing here has been saved yet. Deleting discards the document and everything read
+              from it.
+            </span>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                color: colours.red,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                border: `1px solid ${colours.red}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Delete document
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
