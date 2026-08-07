@@ -4,6 +4,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
+import { describeVocabulary, resolveFieldName, type VocabularyEntry } from './field-vocabulary'
 
 export type QueryType = 'entity' | 'supply_chain' | 'gap' | 'historical'
 export type DataDomain = 'ENERGY' | 'MATERIALS' | 'PRODUCTION' | 'LOGISTICS' | 'EMISSIONS' | 'AGRICULTURE' | 'WASTE_AND_WATER' | 'COMPLIANCE'
@@ -35,10 +36,12 @@ const parsedQuerySchema = z.object({
   supplierEntityId: z.string().nullable().optional(),
 })
 
-function buildSystemPrompt(todayIso: string): string {
+function buildSystemPrompt(todayIso: string, vocabulary: VocabularyEntry[]): string {
   return `You are a query parameter extractor for arbor, a certified operational data repository for manufacturers and suppliers.
 
 Your only job is to translate a plain English question into structured query parameters. You do NOT answer questions — you extract parameters.
+
+${describeVocabulary(vocabulary)}
 
 DATABASE STRUCTURE:
 - DOMAINS: ENERGY, MATERIALS, PRODUCTION, LOGISTICS, EMISSIONS, AGRICULTURE, WASTE_AND_WATER, COMPLIANCE
@@ -92,13 +95,16 @@ function getClient(): Anthropic {
   return _client
 }
 
-export async function parseNlQuery(question: string): Promise<ParsedQuery> {
+export async function parseNlQuery(
+  question: string,
+  vocabulary: VocabularyEntry[] = [],
+): Promise<ParsedQuery> {
   const todayIso = new Date().toISOString().split('T')[0]
 
   const response = await getClient().messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
-    system: buildSystemPrompt(todayIso),
+    system: buildSystemPrompt(todayIso, vocabulary),
     messages: [{ role: 'user', content: question }],
   })
 
@@ -133,7 +139,12 @@ export async function parseNlQuery(question: string): Promise<ParsedQuery> {
     ...(d.calculationNote ? { calculationNote: d.calculationNote } : {}),
     queryType: d.queryType,
     ...(d.domain ? { domain: d.domain } : {}),
-    ...(d.fieldName ? { fieldName: d.fieldName } : {}),
+    // A field the store does not have is dropped, not filtered on. Narrowing to
+    // an invented name returns nothing; widening to the domain returns the
+    // records the user was actually asking about.
+    ...(resolveFieldName(d.fieldName, vocabulary)
+      ? { fieldName: resolveFieldName(d.fieldName, vocabulary)! }
+      : {}),
     ...(d.periodStart ? { periodStart: d.periodStart } : {}),
     ...(d.periodEnd ? { periodEnd: d.periodEnd } : {}),
     ...(d.trustTier ? { trustTier: d.trustTier } : {}),

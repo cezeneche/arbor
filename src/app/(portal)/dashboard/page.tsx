@@ -6,25 +6,12 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
-import { summariseCorrections } from '@/lib/confidence/correction-summary'
 import { summariseOperationalPosition } from '@/lib/layer3/overview-summary'
 
 const DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
   'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
 ] as const
-
-const TIER_COLOURS: Record<string, string> = {
-  A: colours.green,
-  B: colours.amber,
-  C: colours.textTertiary,
-}
-
-const TIER_LABELS: Record<string, string> = {
-  A: 'Verified',
-  B: 'Declared',
-  C: 'Estimated',
-}
 
 // How many headline figures fit before the screen stops being a glance.
 const HEADLINE_LIMIT = 6
@@ -55,7 +42,7 @@ export default async function DashboardPage() {
   const entityId = getSessionUser(session).entityId as string
 
   const now = new Date()
-  const [entity, allRecords, expiringDocs, staleRecords, reviewLabels] = await Promise.all([
+  const [entity, allRecords, expiringDocs, staleRecords] = await Promise.all([
     prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true } }),
     // One read serves both the headline figures and the domain × tier matrix.
     prisma.dataRecord.findMany({
@@ -88,15 +75,7 @@ export default async function DashboardPage() {
       orderBy: { staleAfterDate: 'asc' },
       take: 20,
     }),
-    // the user's review decisions, for agency reinforcement.
-    prisma.groundTruthLabel.findMany({
-      where: { entityId },
-      select: { source: true, wasCorrect: true },
-      take: 5000,
-    }),
   ])
-
-  const corrections = summariseCorrections(reviewLabels)
 
   // Suppliers see plain English certification; buyers keep the technical form.
   const isSupplier = entity?.entityType !== 'BUYER'
@@ -161,6 +140,8 @@ export default async function DashboardPage() {
   const declaredCount = allRecords.filter(r => r.trustTier === 'B').length
   const estimatedCount = allRecords.filter(r => r.trustTier === 'C').length
   const verifiedPct = totalRecords > 0 ? Math.round((verifiedCount / totalRecords) * 100) : 0
+  const verifiedColour =
+    verifiedPct >= 75 ? colours.green : verifiedPct >= 40 ? colours.amber : colours.red
 
   return (
     <div>
@@ -193,50 +174,6 @@ export default async function DashboardPage() {
           Upload documents
         </Link>
       </div>
-
-      {/* agency reinforcement: reflect the user's review vigilance
-          back to them so trust stays calibrated, not automatic. */}
-      {corrections.reviewed > 0 && (
-        <section style={{ marginBottom: spacing[4] }}>
-          <div
-            style={{
-              backgroundColor: colours.greenBg,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '8px',
-              padding: spacing[3],
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: spacing[3],
-              flexWrap: 'wrap' as const,
-            }}
-          >
-            <span style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.green }}>
-              {corrections.reviewed.toLocaleString('en-GB')} checked
-              {corrections.corrected > 0 && (
-                <span style={{ color: colours.textSecondary }}>
-                  {' · '}
-                  {corrections.corrected.toLocaleString('en-GB')} corrected
-                </span>
-              )}
-            </span>
-            <span
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                lineHeight: typography.lineHeight.body,
-                flex: 1,
-                minWidth: '260px',
-              }}
-            >
-              {corrections.corrected > 0
-                ? 'Your checks catch values the reader gets wrong — and every correction helps Arbor read your next document more accurately.'
-                : 'Thanks for checking your extracted values. Your review is what keeps every record accurate.'}
-            </span>
-          </div>
-        </section>
-      )}
-
 
       {/* Needs attention: certificate expiry + batch staleness. Shown only when non-empty. */}
       {attentionItems.length > 0 && (
@@ -302,77 +239,6 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* Stats row */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: spacing[4], flexWrap: 'wrap' as const }}>
-        {[
-          { label: 'Total records', value: totalRecords.toLocaleString(), sub: undefined, col: undefined },
-          {
-            label: 'Verified',
-            value: `${verifiedPct}%`,
-            sub: `${verifiedCount.toLocaleString()} of ${totalRecords.toLocaleString()}`,
-            col: verifiedPct >= 75 ? colours.green : verifiedPct >= 40 ? colours.amber : totalRecords > 0 ? colours.red : undefined,
-          },
-          { label: 'Domains', value: String(matrix.length), sub: `of ${DOMAINS.length} total`, col: undefined },
-          {
-            label: 'Latest year',
-            value: position.reportingYear ? String(position.reportingYear) : '—',
-            sub: position.reportingYear
-              ? `${position.recordsInPeriod.toLocaleString()} record${position.recordsInPeriod === 1 ? '' : 's'}`
-              : 'no records yet',
-            col: undefined,
-          },
-        ].map(({ label, value, sub, col }) => (
-          <div
-            key={label}
-            style={{
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '4px',
-              padding: `${spacing[2]} ${spacing[2]}`,
-              flex: 1,
-              minWidth: '120px',
-            }}
-          >
-            <div
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.medium,
-                color: colours.textTertiary,
-                letterSpacing: typography.tracking.wider,
-                textTransform: 'uppercase' as const,
-                marginBottom: '6px',
-              }}
-            >
-              {label}
-            </div>
-            <div
-              style={{
-                fontSize: '28px',
-                fontWeight: typography.weights.medium,
-                color: col ?? colours.textPrimary,
-                letterSpacing: typography.tracking.tight,
-                lineHeight: 1,
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {value}
-            </div>
-            {sub && (
-              <div
-                style={{
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.light,
-                  color: colours.textTertiary,
-                  marginTop: '4px',
-                }}
-              >
-                {sub}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
       {/* What your documents say — the figures a customer asks for, as recorded.
           Each is the sum of your own stored records for that field in the same
           unit; nothing here is converted, weighted, or calculated. */}
@@ -388,24 +254,38 @@ export default async function DashboardPage() {
               flexWrap: 'wrap' as const,
             }}
           >
-            <span
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.medium,
-                color: colours.textSecondary,
-                letterSpacing: typography.tracking.wider,
-                textTransform: 'uppercase' as const,
-              }}
-            >
-              What your records say for {position.reportingYear}
-            </span>
+            <div>
+              <h2
+                style={{
+                  fontSize: typography.sizes.lg,
+                  fontWeight: typography.weights.medium,
+                  color: colours.textPrimary,
+                  letterSpacing: typography.tracking.tight,
+                  margin: 0,
+                }}
+              >
+                What your records say for {position.reportingYear}
+              </h2>
+              {/* The one number worth a headline: how much of what you would send
+                  a customer is backed by a document rather than your word. */}
+              <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
+                <span style={{ fontWeight: typography.weights.medium, color: verifiedColour }}>
+                  {verifiedPct}% verified
+                </span>
+                {' — '}
+                {verifiedCount.toLocaleString()} of {totalRecords.toLocaleString()} record
+                {totalRecords === 1 ? '' : 's'} backed by a document
+                {declaredCount > 0 && `, ${declaredCount.toLocaleString()} still on your word alone`}
+              </p>
+            </div>
             <Link
               href="/records"
               style={{
-                fontSize: typography.sizes.xs,
+                fontSize: typography.sizes.sm,
                 fontWeight: typography.weights.light,
                 color: colours.navy,
                 textDecoration: 'none',
+                whiteSpace: 'nowrap' as const,
               }}
             >
               All records
@@ -415,7 +295,7 @@ export default async function DashboardPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
               gap: '12px',
             }}
           >
@@ -681,35 +561,6 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* Tier legend */}
-      {totalRecords > 0 && (
-        <div style={{ marginTop: spacing[3], display: 'flex', gap: spacing[3], flexWrap: 'wrap' as const }}>
-          {(['A', 'B', 'C'] as const).map(tier => (
-            <span
-              key={tier}
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-              }}
-            >
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: TIER_COLOURS[tier],
-                }}
-              />
-              {TIER_LABELS[tier]}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

@@ -32,13 +32,18 @@ type QueryResult = {
   records: NlRecord[]
 }
 
-const EXAMPLES = [
-  'What energy records do we have for last year?',
-  'Show me everything that still needs a document',
-  'What did we record for Q1?',
-]
 
-export function RecordsQueryPanel({ children, plainTiers = false }: { children: React.ReactNode; plainTiers?: boolean }) {
+export function RecordsQueryPanel({
+  children,
+  plainTiers = false,
+  // Built from the records this entity actually holds, so a suggested question
+  // can never return an empty table.
+  suggestions = [],
+}: {
+  children: React.ReactNode
+  plainTiers?: boolean
+  suggestions?: string[]
+}) {
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
@@ -261,7 +266,7 @@ export function RecordsQueryPanel({ children, plainTiers = false }: { children: 
                 Ask about your own data in your own words. You get an answer and the exact records behind it, without leaving this page.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {EXAMPLES.map(ex => (
+                {suggestions.map(ex => (
                   <button
                     key={ex}
                     onClick={e => handleSearch(e, ex)}
