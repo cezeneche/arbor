@@ -18,7 +18,7 @@ export interface BenchmarkAccess {
 
 const LOCKED_REASON =
   'Benchmarks are shared both ways. Turn on data sharing in Settings and your verified ' +
-  'records join the anonymous pool for your sector — which unlocks the pool for you. ' +
+  'records join the anonymous pool for your sector, which unlocks the pool for you. ' +
   'Your business is never named in any figure, and you can switch it off again at any time.'
 
 export function resolveBenchmarkAccess(

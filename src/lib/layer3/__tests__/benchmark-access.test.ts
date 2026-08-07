@@ -25,6 +25,10 @@ describe('resolveBenchmarkAccess', () => {
     expect(reason).not.toMatch(/aggregation/i)
   })
 
+  it('uses ordinary punctuation, not em dashes', () => {
+    expect(resolveBenchmarkAccess({ allowBenchmarkAggregation: false }).reason).not.toContain('—')
+  })
+
   it('locks benchmarks when the entity cannot be resolved', () => {
     // A missing entity is never treated as consenting.
     expect(resolveBenchmarkAccess(null).unlocked).toBe(false)
