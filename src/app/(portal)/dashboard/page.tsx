@@ -68,11 +68,22 @@ const sectionLabel = {
 
 // How each coverage cell reads. "Missing" is the only alarming one, and it is
 // only ever shown for a period after this business started keeping that record.
-const CELL_STYLE: Record<CellState, { label: string; fg: string; bg: string }> = {
+const CELL_STYLE: Record<CellState, { label: string; fg: string; bg: string; hint?: string }> = {
   recorded: { label: 'Recorded', fg: colours.green, bg: colours.greenBg },
   awaiting_check: { label: 'To check', fg: colours.amber, bg: colours.amberBg },
   missing: { label: 'Missing', fg: colours.red, bg: colours.redBg },
-  before_first: { label: '—', fg: colours.textTertiary, bg: 'transparent' },
+  in_progress: {
+    label: 'In progress',
+    fg: colours.textSecondary,
+    bg: colours.background,
+    hint: 'This quarter has not finished yet',
+  },
+  before_first: {
+    label: 'None',
+    fg: colours.textTertiary,
+    bg: 'transparent',
+    hint: 'You were not keeping this yet',
+  },
 }
 
 function relativeDay(date: Date, now: Date): string {
@@ -475,9 +486,7 @@ export default async function DashboardPage() {
                             title={
                               cell.state === 'recorded'
                                 ? `${cell.count} record${cell.count === 1 ? '' : 's'}`
-                                : cell.state === 'before_first'
-                                  ? 'You were not keeping this yet'
-                                  : undefined
+                                : style.hint
                             }
                           >
                             {style.label}
