@@ -15,7 +15,7 @@ import { RecordTrends } from '@/components/RecordTrends'
 import { BenchmarksView } from '@/components/BenchmarksView'
 import { summariseRecordQuality } from '@/lib/layer3/record-quality'
 import { buildRecordTrends } from '@/lib/layer3/record-trends'
-import { getCompulsoryFieldsByDomain } from '@/lib/layer3/compulsory-fields'
+import { getCompulsoryStorableFieldsByDocumentType } from '@/lib/layer3/compulsory-fields'
 import { buildQuerySuggestions } from '@/lib/layer3/query-suggestions'
 import { tierLabel } from '@/lib/tier-label'
 import { checkAuditPackageAllowed, type PlanTier } from '@/lib/plan-limits'
@@ -61,7 +61,10 @@ export default async function RecordsPage({
     // Lightweight read across the full filtered set for the data-quality summary.
     prisma.dataRecord.findMany({
       where,
-      select: { domain: true, fieldName: true, trustTier: true, staleAfterDate: true },
+      select: {
+        domain: true, fieldName: true, trustTier: true, staleAfterDate: true,
+        document: { select: { documentType: true } },
+      },
     }),
     prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true, planTier: true } }),
     // Unfiltered and newest-first: the query suggestions describe what this
@@ -94,8 +97,9 @@ export default async function RecordsPage({
       fieldName: r.fieldName,
       trustTier: r.trustTier as 'A' | 'B' | 'C',
       staleAfterDate: r.staleAfterDate,
+      documentType: r.document?.documentType ?? null,
     })),
-    getCompulsoryFieldsByDomain(),
+    getCompulsoryStorableFieldsByDocumentType(),
   )
 
   // Trends is a secondary view of the same data - fetched only when selected, over
@@ -104,7 +108,10 @@ export default async function RecordsPage({
     ? buildRecordTrends(
         (await prisma.dataRecord.findMany({
           where: { entityId, isActive: true },
-          select: { domain: true, fieldName: true, trustTier: true, value: true, unit: true, periodStart: true },
+          select: {
+            domain: true, fieldName: true, trustTier: true, value: true, unit: true, periodStart: true,
+            document: { select: { documentType: true } },
+          },
           orderBy: { periodStart: 'asc' },
         })).map(r => ({
           domain: r.domain,
@@ -113,8 +120,9 @@ export default async function RecordsPage({
           value: r.value,
           unit: r.unit,
           periodStart: r.periodStart,
+          documentType: r.document?.documentType ?? null,
         })),
-        getCompulsoryFieldsByDomain(),
+        getCompulsoryStorableFieldsByDocumentType(),
       )
     : null
 

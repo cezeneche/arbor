@@ -3,10 +3,12 @@ import { buildRecordTrends, type TrendRecord } from '@/lib/layer3/record-trends'
 // Layer 3, read-only. Groups records that already exist into a coverage-by-quarter
 // view and a period-over-period table of STORED values. No new values are computed.
 
-const compulsory = { ENERGY: ['consumption', 'supplier'] }
+// Keyed by document type now, not domain: a record set is only held to the
+// admissibility spec of the documents actually behind it.
+const compulsory = { ELECTRICITY_BILL: ['consumption', 'supplier'] }
 
 function rec(p: Partial<TrendRecord>): TrendRecord {
-  return { domain: 'ENERGY', fieldName: 'consumption', trustTier: 'A', value: 1, unit: 'kWh', periodStart: '2026-01-01T00:00:00Z', ...p }
+  return { domain: 'ENERGY', fieldName: 'consumption', trustTier: 'A', value: 1, unit: 'kWh', periodStart: '2026-01-01T00:00:00Z', documentType: 'ELECTRICITY_BILL', ...p }
 }
 
 describe('buildRecordTrends', () => {

@@ -3,11 +3,14 @@
 // write. Powers the calm data-quality summary now folded into the Records screen.
 
 import { composeTiers, type TierComposition } from './tier-composition'
+import { expectedFieldsFor } from './compulsory-fields'
 
 export type QualityRecord = {
   domain: string
   fieldName: string
   trustTier: 'A' | 'B' | 'C'
+  /** The document type behind the record; null for manual entry. */
+  documentType?: string | null
   /** Batch/mill records go stale after this date; null means they never stale. */
   staleAfterDate: Date | string | null
 }
@@ -28,7 +31,7 @@ const DEFAULT_EXPIRY_WINDOW_DAYS = 30
 
 export function summariseRecordQuality(
   records: QualityRecord[],
-  compulsoryByDomain: Record<string, string[]>,
+  compulsoryByDocumentType: Record<string, string[]>,
   opts: { now?: Date; expiryWindowDays?: number } = {},
 ): RecordQualitySummary {
   const now = opts.now ?? new Date()
@@ -42,8 +45,10 @@ export function summariseRecordQuality(
 
   const tiers = records.map(r => r.trustTier)
 
-  // Track which compulsory fields are present, per domain that actually has data.
+  // Track what is present, and which document types were actually submitted —
+  // a record set is only held to the specs of the documents behind it.
   const presentByDomain: Record<string, Set<string>> = {}
+  const docTypesByDomain: Record<string, Set<string>> = {}
 
   for (const r of records) {
     if (r.trustTier === 'A') verified++
@@ -57,13 +62,19 @@ export function summariseRecordQuality(
 
     if (!presentByDomain[r.domain]) presentByDomain[r.domain] = new Set()
     presentByDomain[r.domain].add(r.fieldName)
+    if (!docTypesByDomain[r.domain]) docTypesByDomain[r.domain] = new Set()
+    if (r.documentType) docTypesByDomain[r.domain].add(r.documentType)
   }
 
-  // Only domains that have data can be "missing" a compulsory field — we never
-  // invent a gap for a domain the entity has never submitted to.
+  // A gap is only a gap against a document this entity actually submitted. The
+  // old version scored every domain against the union of its document types,
+  // which marked a freight invoice as missing bill-of-lading fields.
   let missingCompulsoryFields = 0
   for (const [domain, present] of Object.entries(presentByDomain)) {
-    const expected = compulsoryByDomain[domain] ?? []
+    const expected = expectedFieldsFor(
+      [...(docTypesByDomain[domain] ?? [])],
+      compulsoryByDocumentType,
+    )
     for (const field of expected) {
       if (!present.has(field)) missingCompulsoryFields++
     }
