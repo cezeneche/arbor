@@ -80,7 +80,11 @@ describe('RecordsQueryPanel', () => {
     render(<RecordsQueryPanel suggestions={[]}>content</RecordsQueryPanel>)
     await askAQuestion()
 
-    await waitFor(() => expect(screen.getByText('total consumption kwh')).toBeInTheDocument())
+    // Shown by its plain English name, not the raw identifier: the field is
+    // called total_consumption_kwh but the record is stored in MJ, so the
+    // identifier contradicts the value beside it.
+    await waitFor(() => expect(screen.getByText('Energy used')).toBeInTheDocument())
+    expect(screen.queryByText('total consumption kwh')).not.toBeInTheDocument()
     expect(screen.getByText('Found 1 energy record.')).toBeInTheDocument()
   })
 

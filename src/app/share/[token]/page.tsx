@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
@@ -115,7 +116,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                 {records.map((r, i) => (
                   <tr key={r.id} style={{ borderBottom: i < records.length - 1 ? `1px solid ${colours.border}` : 'none' }}>
                     <td style={{ padding: '12px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
-                      {r.fieldName.replace(/_/g, ' ')}
+                      {fieldLabel(r.fieldName)}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
                       {r.value.toLocaleString('en-GB', { maximumFractionDigits: 4 })} {r.unit}

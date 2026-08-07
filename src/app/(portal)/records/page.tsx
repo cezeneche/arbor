@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { fieldLabel, fieldMeaning } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
@@ -347,8 +348,14 @@ export default async function RecordsPage({
                         backgroundColor: hasCritical ? colours.redBg : 'transparent',
                       }}
                     >
-                      <td style={{ padding: '12px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
-                        {record.fieldName.replace(/_/g, ' ')}
+                      {/* The plain English name, with what it counts and what it
+                          leaves out on hover. The raw identifier is a legacy
+                          name that embeds a unit the record is not stored in. */}
+                      <td
+                        title={fieldMeaning(record.fieldName, record.domain) ?? undefined}
+                        style={{ padding: '12px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}
+                      >
+                        {fieldLabel(record.fieldName, record.domain)}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
                         {record.value.toLocaleString('en-GB', { maximumFractionDigits: 4 })} {record.unit}

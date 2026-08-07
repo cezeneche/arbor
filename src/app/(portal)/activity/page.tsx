@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
@@ -120,7 +121,7 @@ export default async function ActivityPage({
                       const eventLabel = EVENT_LABELS[entry.eventType] ?? entry.eventType.replace(/_/g, ' ').toLowerCase()
                       const colour = eventColour(entry.eventType)
                       const domainLabel = record ? (DOMAIN_LABELS[record.domain] ?? record.domain) : null
-                      const fieldLabel = record ? record.fieldName.replace(/_/g, ' ') : null
+                      const readableField = record ? fieldLabel(record.fieldName, record.domain) : null
                       const periodLabel = record
                         ? [
                             new Date(record.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
@@ -158,7 +159,7 @@ export default async function ActivityPage({
                                 {record && (
                                   <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
                                     {domainLabel}
-                                    {fieldLabel ? ` · ${fieldLabel}` : ''}
+                                    {readableField ? ` · ${readableField}` : ''}
                                     {periodLabel ? ` · ${periodLabel}` : ''}
                                     {!record.isActive && (
                                       <span style={{ color: colours.amber, marginLeft: '6px' }}>(superseded)</span>

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import { getSessionUser } from '@/lib/session'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -116,7 +117,7 @@ export default async function InboundRequestsPage() {
                         return (
                           <div key={a.fieldName} style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[2], padding: '8px 12px', borderBottom: j < answers.length - 1 ? `1px solid ${colours.border}` : 'none' }}>
                             <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textPrimary }}>
-                              {a.fieldName.replace(/_/g, ' ')}
+                              {fieldLabel(a.fieldName)}
                             </span>
                             <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
                               {total.toLocaleString('en-GB')} {unit} · {worstTier(a.records.map((rec) => rec.trustTier))}

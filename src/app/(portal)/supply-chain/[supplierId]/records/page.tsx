@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import { getSessionUser } from '@/lib/session'
 import { redirect, notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
@@ -260,7 +261,7 @@ export default async function SupplierRecordsPage({
                           <p
                             style={textStyles.sectionTitle}
                           >
-                            {record.fieldName.replace(/_/g, ' ')}
+                            {fieldLabel(record.fieldName, record.domain)}
                           </p>
                         </div>
                         <p
