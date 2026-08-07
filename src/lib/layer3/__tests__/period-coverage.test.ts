@@ -41,13 +41,13 @@ describe('buildPeriodCoverage', () => {
     expect(buildPeriodCoverage(input())).toEqual([])
   })
 
-  it('marks a quarter recorded when a record overlaps it, and a later blank one as a gap', () => {
+  it('marks a quarter recorded when a record overlaps it, and a later closed blank one as a gap', () => {
     const rows = buildPeriodCoverage(input({
-      records: [{ domain: 'ENERGY', periodStart: '2026-04-01', periodEnd: '2026-06-30' }],
+      records: [{ domain: 'ENERGY', periodStart: '2025-10-01', periodEnd: '2025-12-31' }],
     }))
     const cells = rows[0].cells
-    expect(cells.find(c => c.quarter.label === 'Q2 2026')!.state).toBe('recorded')
-    expect(cells.find(c => c.quarter.label === 'Q3 2026')!.state).toBe('missing')
+    expect(cells.find(c => c.quarter.label === 'Q4 2025')!.state).toBe('recorded')
+    expect(cells.find(c => c.quarter.label === 'Q1 2026')!.state).toBe('missing')
   })
 
   it('marks every quarter a long record spans, not just the one it starts in', () => {
@@ -145,19 +145,40 @@ describe('buildPeriodCoverage', () => {
     expect(rows[0].cells.every(c => c.state !== 'recorded')).toBe(true)
   })
 
+  it('does not call the quarter we are still in a gap', () => {
+    // NOW is 7 August, a month into Q3. The quarter has not finished, so the
+    // bill for it has not arrived — calling that "missing" paints a red column
+    // down every row for two thirds of every quarter, and the grid stops
+    // meaning anything.
+    const rows = buildPeriodCoverage(input({
+      records: [{ domain: 'ENERGY', periodStart: '2026-01-01', periodEnd: '2026-03-31' }],
+    }))
+    const byQuarter = Object.fromEntries(rows[0].cells.map(c => [c.quarter.label, c.state]))
+    expect(byQuarter['Q3 2026']).toBe('in_progress')
+    // The quarter that has closed with nothing in it is still a real gap.
+    expect(byQuarter['Q2 2026']).toBe('missing')
+  })
+
+  it('still shows the current quarter as recorded once something lands in it', () => {
+    const rows = buildPeriodCoverage(input({
+      records: [{ domain: 'ENERGY', periodStart: '2026-07-01', periodEnd: '2026-09-30' }],
+    }))
+    const byQuarter = Object.fromEntries(rows[0].cells.map(c => [c.quarter.label, c.state]))
+    expect(byQuarter['Q3 2026']).toBe('recorded')
+  })
+
   it('does not call a quarter missing when it predates the first record of that type', () => {
     // A business that started keeping energy records in Q2 has not "missed"
     // Q4 last year. Marking it as a gap invents a failure that never happened,
     // and a wall of red on day one teaches the user to ignore the grid.
     const rows = buildPeriodCoverage(input({
-      records: [{ domain: 'ENERGY', periodStart: '2026-04-01', periodEnd: '2026-06-30' }],
+      records: [{ domain: 'ENERGY', periodStart: '2026-01-01', periodEnd: '2026-03-31' }],
     }))
     const byQuarter = Object.fromEntries(rows[0].cells.map(c => [c.quarter.label, c.state]))
     expect(byQuarter['Q4 2025']).toBe('before_first')
-    expect(byQuarter['Q1 2026']).toBe('before_first')
-    expect(byQuarter['Q2 2026']).toBe('recorded')
-    // After the first record, a blank quarter is a real gap.
-    expect(byQuarter['Q3 2026']).toBe('missing')
+    expect(byQuarter['Q1 2026']).toBe('recorded')
+    // After the first record, a quarter that has closed with nothing is a real gap.
+    expect(byQuarter['Q2 2026']).toBe('missing')
   })
 
   it('treats an unconfirmed document as the start of the history too', () => {

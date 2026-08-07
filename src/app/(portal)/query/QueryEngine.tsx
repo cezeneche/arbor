@@ -73,7 +73,8 @@ export function QueryEngine() {
         setError(json.error ?? 'Something went wrong. Please try again.')
         return
       }
-      setResult(json.data)
+      // `ok()` sends the payload unwrapped — there is no `data` envelope.
+      setResult(json)
     } catch {
       setError('Could not connect to the query engine. Please try again.')
     } finally {

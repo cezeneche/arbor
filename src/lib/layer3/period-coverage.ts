@@ -30,10 +30,18 @@ export interface Quarter {
   end: Date
 }
 
-// `before_first` is the difference between "you missed this" and "you were not
-// keeping this yet" — without it a business in its first quarter opens the page
-// to a wall of gaps it never had, and learns to ignore the grid.
-export type CellState = 'recorded' | 'awaiting_check' | 'missing' | 'before_first'
+// Only `missing` is a problem. The other two blank states exist because the
+// alternative is a red column the user cannot act on: `before_first` is the
+// period before this business kept that record type at all, and `in_progress`
+// is the quarter still running, whose bill has not arrived yet. Without them a
+// new business, and every business for most of every quarter, opens the page to
+// gaps it never had — and learns to ignore the grid.
+export type CellState =
+  | 'recorded'
+  | 'awaiting_check'
+  | 'missing'
+  | 'before_first'
+  | 'in_progress'
 
 export interface CoverageCell {
   quarter: Quarter
@@ -144,8 +152,13 @@ export function buildPeriodCoverage(input: CoverageInput): CoverageRow[] {
       )
       if (awaiting) return { quarter, state: 'awaiting_check', count: 0 }
 
-      const state: CellState = quarter.end.getTime() < firstActivity ? 'before_first' : 'missing'
-      return { quarter, state, count: 0 }
+      if (quarter.end.getTime() < firstActivity) {
+        return { quarter, state: 'before_first', count: 0 }
+      }
+      // The quarter we are still living through is not yet owed anything.
+      if (now <= quarter.end) return { quarter, state: 'in_progress', count: 0 }
+
+      return { quarter, state: 'missing', count: 0 }
     })
 
     return {

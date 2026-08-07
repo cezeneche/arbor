@@ -78,7 +78,10 @@ export function RecordsQueryPanel({
       if (!res.ok) {
         setError(json.error ?? 'Query failed.')
       } else {
-        setResult(json.data)
+        // `ok()` sends the payload unwrapped — there is no `data` envelope.
+        // Reading one silently produced undefined, which left this panel
+        // sitting in its idle state however good the answer was.
+        setResult(json)
       }
     } catch {
       setError('Could not reach the query engine.')
