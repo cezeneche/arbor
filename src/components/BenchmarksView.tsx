@@ -153,11 +153,11 @@ export function BenchmarksView() {
     return (
       <div
         style={{
+          width: '100%',
           backgroundColor: colours.surface,
           border: `1px solid ${colours.border}`,
           borderRadius: '8px',
           padding: spacing[4],
-          maxWidth: '640px',
         }}
       >
         <p style={{ ...textStyles.eyebrow, marginBottom: spacing[1] }}>Locked</p>
