@@ -16,10 +16,20 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 
-// The assistant is the reading surface on the whole certified store — it is
-// worth the strongest model. Answers are short, so cost stays bounded by the
-// low effort setting rather than by a smaller model.
-export const ANSWER_MODEL = 'claude-opus-5'
+// Chosen by measurement, not by reflex.
+//
+// Haiku 4.5 holds the hard constraints — across the calculate, convert and
+// combine probes it refused every time, and never invented a figure. What it
+// does not hold is precision about the evidence: asked what energy records
+// exist, it called four records energy when one of them was logistics, in two
+// runs out of three. Sonnet 5 was exact in three of three. An assistant whose
+// entire job is reading records back accurately cannot miscount them, so the
+// answer step runs on Sonnet.
+//
+// The parser (nl-parser.ts) stays on Haiku: extracting query parameters from a
+// short question against a supplied field list is well within it, and it was
+// correct on every probe.
+export const ANSWER_MODEL = 'claude-sonnet-5'
 
 const DEFAULT_EVIDENCE_LIMIT = 60
 
