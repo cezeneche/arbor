@@ -6,7 +6,21 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
+import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
+import { NUMERIC_FIELDS, derivePeriod } from '@/lib/review/review-policy'
 import { summariseOperationalPosition } from '@/lib/layer3/overview-summary'
+import { buildOverviewPriorities } from '@/lib/layer3/overview-priorities'
+import { buildPeriodCoverage, type CellState } from '@/lib/layer3/period-coverage'
+
+// The Overview answers an ops manager's questions in the order they have them:
+//
+//   1. Is anything blocking me right now?      → Needs you now
+//   2. What breaks next?                        → Watch list
+//   3. Am I up to date?                         → the coverage grid
+//   4. What do my records actually say?         → headline figures
+//   5. What moved since I was last here?        → recent activity
+//
+// Nothing on this page is a statistic the user cannot act on.
 
 const DOMAINS = [
   'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
@@ -15,6 +29,15 @@ const DOMAINS = [
 
 // How many headline figures fit before the screen stops being a glance.
 const HEADLINE_LIMIT = 6
+
+const EVENT_LABELS: Record<string, string> = {
+  CREATED: 'Record saved',
+  CREATED_VIA_SUBMISSION_LINK: 'Record saved from a shared link',
+  SUPERSEDED: 'Record replaced',
+  CORRECTED: 'Record corrected',
+  TIER_UPGRADED: 'Record upgraded to Verified',
+  CHAIN_VERIFIED: 'Audit trail checked',
+}
 
 const colStyle = {
   padding: '10px 14px',
@@ -35,16 +58,44 @@ const cellStyle = {
   fontVariantNumeric: 'tabular-nums' as const,
 }
 
+const sectionLabel = {
+  fontSize: typography.sizes.xs,
+  fontWeight: typography.weights.medium,
+  color: colours.textSecondary,
+  letterSpacing: typography.tracking.wider,
+  textTransform: 'uppercase' as const,
+}
+
+// How each coverage cell reads. "Missing" is the only alarming one, and it is
+// only ever shown for a period after this business started keeping that record.
+const CELL_STYLE: Record<CellState, { label: string; fg: string; bg: string }> = {
+  recorded: { label: 'Recorded', fg: colours.green, bg: colours.greenBg },
+  awaiting_check: { label: 'To check', fg: colours.amber, bg: colours.amberBg },
+  missing: { label: 'Missing', fg: colours.red, bg: colours.redBg },
+  before_first: { label: '—', fg: colours.textTertiary, bg: 'transparent' },
+}
+
+function relativeDay(date: Date, now: Date): string {
+  const days = Math.floor((now.getTime() - date.getTime()) / 86_400_000)
+  if (days <= 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days} days ago`
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
 export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
   const entityId = getSessionUser(session).entityId as string
-
   const now = new Date()
-  const [entity, allRecords, expiringDocs, staleRecords] = await Promise.all([
+
+  const [
+    entity, allRecords, reviewDocs, criticalFlags, failedDocuments,
+    expiringDocs, staleRecords, recentEntries,
+  ] = await Promise.all([
     prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true } }),
-    // One read serves both the headline figures and the domain × tier matrix.
+    // One read serves the headline figures, the coverage grid and the matrix.
     prisma.dataRecord.findMany({
       where: { entityId, isActive: true },
       select: {
@@ -52,6 +103,24 @@ export default async function DashboardPage() {
         value: true, unit: true, periodStart: true, periodEnd: true,
       },
     }),
+    // Documents that arrived but were never confirmed — they hold no records yet.
+    prisma.document.findMany({
+      where: { entityId, status: 'REVIEW_REQUIRED' },
+      select: {
+        id: true,
+        documentType: true,
+        extractionJobs: {
+          orderBy: { completedAt: 'desc' },
+          take: 1,
+          select: { extractedFields: { select: { fieldName: true, rawValue: true } } },
+        },
+      },
+      take: 50,
+    }),
+    prisma.validationFlag.count({
+      where: { resolvedAt: null, severity: 'CRITICAL', dataRecord: { entityId, isActive: true } },
+    }),
+    prisma.document.count({ where: { entityId, status: 'REJECTED' } }),
     // documents with a flagged expiry_date field (certificate expiry).
     prisma.document.findMany({
       where: {
@@ -75,27 +144,45 @@ export default async function DashboardPage() {
       orderBy: { staleAfterDate: 'asc' },
       take: 20,
     }),
+    prisma.auditEntry.findMany({
+      where: { entityId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, eventType: true, createdAt: true },
+      take: 5,
+    }),
   ])
 
   // Suppliers see plain English certification; buyers keep the technical form.
   const isSupplier = entity?.entityType !== 'BUYER'
 
-  // What the company's own documents say it used, made, moved and declared this
-  // year. A roll-up of stored values only — never a derived or converted figure.
-  const position = summariseOperationalPosition(
-    allRecords.map(r => ({
-      domain: r.domain,
-      fieldName: r.fieldName,
-      value: r.value,
-      unit: r.unit,
-      trustTier: r.trustTier as 'A' | 'B' | 'C',
-      periodStart: r.periodStart,
-      periodEnd: r.periodEnd,
-    })),
-  )
-  const headlines = position.headlines.slice(0, HEADLINE_LIMIT)
+  // ── 1. Needs you now ────────────────────────────────────────────────────────
+  // Only the numeric fields count: those are the ones the user is asked to check.
+  let valuesAwaitingCheck = 0
+  const pendingPeriods: { domain: string; periodStart: Date; periodEnd: Date }[] = []
+  for (const doc of reviewDocs) {
+    const fields = doc.extractionJobs[0]?.extractedFields ?? []
+    const numeric = fields.filter(f => NUMERIC_FIELDS.has(f.fieldName) && f.rawValue)
+    if (numeric.length === 0) continue
+    valuesAwaitingCheck += numeric.length
 
-  // build a plain-English "needs attention" list (certificate expiry + staleness).
+    const values: Record<string, string | null> = {}
+    for (const f of fields) values[f.fieldName] = f.rawValue
+    const { periodStart, periodEnd } = derivePeriod(values, { documentType: doc.documentType })
+    pendingPeriods.push({
+      domain: DOMAIN_BY_DOCUMENT_TYPE[doc.documentType] ?? 'COMPLIANCE',
+      periodStart,
+      periodEnd,
+    })
+  }
+
+  const priorities = buildOverviewPriorities({
+    valuesAwaitingCheck,
+    documentsAwaitingCheck: pendingPeriods.length,
+    criticalFlags,
+    failedDocuments,
+  })
+
+  // ── 2. Watch list — certificate expiry and staleness ────────────────────────
   const readableDocType = (t: string) =>
     t.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
   type AttentionItem = { key: string; text: string; docType: string }
@@ -122,9 +209,35 @@ export default async function DashboardPage() {
     attentionItems.push({
       key: `stale-${rec.id}`,
       docType: rec.document?.documentType ?? '',
-      text: `Your ${label} for the period ending ${rec.staleAfterDate ? new Date(rec.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} is now stale - upload a current document to refresh it.`,
+      text: `Your ${label} for the period ending ${new Date(rec.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} is now stale - upload a current document to refresh it.`,
     })
   }
+
+  // ── 3. Am I up to date? ─────────────────────────────────────────────────────
+  const coverage = buildPeriodCoverage({
+    records: allRecords.map(r => ({ domain: r.domain, periodStart: r.periodStart, periodEnd: r.periodEnd })),
+    pending: pendingPeriods,
+    now,
+  })
+  const quarters = coverage[0]?.cells.map(c => c.quarter) ?? []
+  const gapCount = coverage.reduce(
+    (n, row) => n + row.cells.filter(c => c.state === 'missing').length,
+    0,
+  )
+
+  // ── 4. What your records say ────────────────────────────────────────────────
+  const position = summariseOperationalPosition(
+    allRecords.map(r => ({
+      domain: r.domain,
+      fieldName: r.fieldName,
+      value: r.value,
+      unit: r.unit,
+      trustTier: r.trustTier as 'A' | 'B' | 'C',
+      periodStart: r.periodStart,
+      periodEnd: r.periodEnd,
+    })),
+  )
+  const headlines = position.headlines.slice(0, HEADLINE_LIMIT)
 
   type DomainRow = { domain: string; A: number; B: number; C: number; total: number }
   const matrix: DomainRow[] = DOMAINS.map(domain => {
@@ -153,11 +266,7 @@ export default async function DashboardPage() {
           marginBottom: spacing[4],
         }}
       >
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Overview
-        </h1>
+        <h1 style={textStyles.pageTitle}>Overview</h1>
         <Link
           href="/upload"
           style={{
@@ -175,21 +284,64 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Needs attention: certificate expiry + batch staleness. Shown only when non-empty. */}
+      {/* 1. Needs you now — the only band that can stop the day. */}
+      {priorities.length > 0 && (
+        <section style={{ marginBottom: spacing[4] }}>
+          <span style={{ ...sectionLabel, color: colours.red, display: 'block', marginBottom: spacing[1] }}>
+            Needs you now
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {priorities.map(item => {
+              const critical = item.severity === 'critical'
+              return (
+                <div
+                  key={item.key}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: spacing[2],
+                    padding: `12px 14px`,
+                    backgroundColor: critical ? colours.redBg : colours.amberBg,
+                    border: `1px solid ${critical ? colours.red : colours.amber}`,
+                    borderLeft: `3px solid ${critical ? colours.red : colours.amber}`,
+                    borderRadius: '4px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.light,
+                      color: colours.textPrimary,
+                      lineHeight: typography.lineHeight.body,
+                    }}
+                  >
+                    {item.text}
+                  </span>
+                  <Link
+                    href={item.href}
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.medium,
+                      color: colours.navy,
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap' as const,
+                    }}
+                  >
+                    {item.actionLabel} →
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 2. Watch list — what breaks next, with enough notice to act. */}
       {attentionItems.length > 0 && (
         <section style={{ marginBottom: spacing[4] }}>
-          <span
-            style={{
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.medium,
-              color: colours.amber,
-              letterSpacing: typography.tracking.wider,
-              textTransform: 'uppercase' as const,
-              display: 'block',
-              marginBottom: spacing[1],
-            }}
-          >
-            Needs attention
+          <span style={{ ...sectionLabel, color: colours.amber, display: 'block', marginBottom: spacing[1] }}>
+            Coming up
           </span>
           <div
             style={{
@@ -239,9 +391,114 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* What your documents say — the figures a customer asks for, as recorded.
-          Each is the sum of your own stored records for that field in the same
-          unit; nothing here is converted, weighted, or calculated. */}
+      {/* 3. Am I up to date? — the record types this business keeps, by quarter.
+             The one view that answers "what am I missing" before a customer asks. */}
+      {coverage.length > 0 && (
+        <section style={{ marginBottom: spacing[4] }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing[2], marginBottom: spacing[1], flexWrap: 'wrap' as const }}>
+            <div>
+              <h2
+                style={{
+                  fontSize: typography.sizes.lg,
+                  fontWeight: typography.weights.medium,
+                  color: colours.textPrimary,
+                  letterSpacing: typography.tracking.tight,
+                  margin: 0,
+                }}
+              >
+                Are you up to date?
+              </h2>
+              <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
+                {gapCount === 0
+                  ? 'Every period you have been keeping records for is covered.'
+                  : `${gapCount} period${gapCount === 1 ? '' : 's'} with nothing recorded. Upload the document for ${gapCount === 1 ? 'it' : 'those'} and the gap closes.`}
+              </p>
+            </div>
+            <Link
+              href="/upload"
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.navy,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap' as const,
+              }}
+            >
+              Fill a gap
+            </Link>
+          </div>
+
+          <div
+            style={{
+              backgroundColor: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '4px',
+              overflow: 'auto',
+            }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
+                  <th style={colStyle}>Record type</th>
+                  {quarters.map(q => (
+                    <th key={q.label} style={{ ...colStyle, textAlign: 'center' as const }}>{q.label}</th>
+                  ))}
+                  <th style={{ ...colStyle, textAlign: 'right' as const }}>Last recorded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {coverage.map((row, i) => (
+                  <tr
+                    key={row.domain}
+                    style={{ borderBottom: i < coverage.length - 1 ? `1px solid ${colours.border}` : 'none' }}
+                  >
+                    <td style={{ ...cellStyle, fontWeight: typography.weights.medium, whiteSpace: 'nowrap' as const }}>
+                      {row.domainLabel}
+                    </td>
+                    {row.cells.map(cell => {
+                      const style = CELL_STYLE[cell.state]
+                      return (
+                        <td key={cell.quarter.label} style={{ ...cellStyle, textAlign: 'center' as const }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '3px 10px',
+                              borderRadius: '4px',
+                              backgroundColor: style.bg,
+                              color: style.fg,
+                              fontSize: typography.sizes.xs,
+                              fontWeight: cell.state === 'before_first'
+                                ? typography.weights.light
+                                : typography.weights.medium,
+                              whiteSpace: 'nowrap' as const,
+                            }}
+                            title={
+                              cell.state === 'recorded'
+                                ? `${cell.count} record${cell.count === 1 ? '' : 's'}`
+                                : cell.state === 'before_first'
+                                  ? 'You were not keeping this yet'
+                                  : undefined
+                            }
+                          >
+                            {style.label}
+                          </span>
+                        </td>
+                      )
+                    })}
+                    <td style={{ ...cellStyle, textAlign: 'right' as const, color: colours.textSecondary, whiteSpace: 'nowrap' as const }}>
+                      {row.lastCovered ?? 'Nothing saved yet'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* 4. What your records say — the figures a customer asks for, as recorded.
+             Each is the sum of your own stored records for that field in the same
+             unit; nothing here is converted, weighted, or calculated. */}
       {headlines.length > 0 && (
         <section style={{ marginBottom: spacing[4] }}>
           <div
@@ -386,137 +643,7 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* Domain x Tier matrix */}
-      {matrix.length > 0 && (
-        <section style={{ marginBottom: spacing[4] }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: spacing[1],
-            }}
-          >
-            <span
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.medium,
-                color: colours.textSecondary,
-                letterSpacing: typography.tracking.wider,
-                textTransform: 'uppercase',
-              }}
-            >
-              Record store
-            </span>
-            <Link
-              href="/records"
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.light,
-                color: colours.navy,
-                textDecoration: 'none',
-              }}
-            >
-              All records
-            </Link>
-          </div>
-          <div
-            style={{
-              backgroundColor: colours.surface,
-              border: `1px solid ${colours.border}`,
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}
-          >
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
-                  <th style={colStyle}>Domain</th>
-                  <th style={{ ...colStyle, color: colours.green }}>Verified</th>
-                  <th style={{ ...colStyle, color: colours.amber }}>Declared</th>
-                  <th style={{ ...colStyle, color: colours.textTertiary }}>Estimated</th>
-                  <th style={{ ...colStyle, textAlign: 'right' as const }}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {matrix.map((row, i) => (
-                  <tr
-                    key={row.domain}
-                    style={{
-                      borderBottom: i < matrix.length - 1 ? `1px solid ${colours.border}` : 'none',
-                    }}
-                  >
-                    <td style={{ ...cellStyle, fontWeight: typography.weights.medium }}>
-                      {DOMAIN_LABELS[row.domain] ?? row.domain}
-                    </td>
-                    <td style={cellStyle}>
-                      {row.A > 0 ? (
-                        <span style={{ color: colours.green, fontWeight: typography.weights.medium }}>
-                          {row.A}
-                        </span>
-                      ) : (
-                        <span style={{ color: colours.textTertiary }}>0</span>
-                      )}
-                    </td>
-                    <td style={cellStyle}>
-                      {row.B > 0 ? (
-                        <span style={{ color: colours.amber }}>{row.B}</span>
-                      ) : (
-                        <span style={{ color: colours.textTertiary }}>0</span>
-                      )}
-                    </td>
-                    <td style={cellStyle}>
-                      {row.C > 0 ? (
-                        <span style={{ color: colours.textTertiary }}>{row.C}</span>
-                      ) : (
-                        <span style={{ color: colours.textTertiary }}>0</span>
-                      )}
-                    </td>
-                    <td
-                      style={{
-                        ...cellStyle,
-                        textAlign: 'right' as const,
-                        fontWeight: typography.weights.medium,
-                        color: colours.textSecondary,
-                      }}
-                    >
-                      {row.total}
-                    </td>
-                  </tr>
-                ))}
-                <tr style={{ borderTop: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
-                  <td
-                    style={{
-                      ...cellStyle,
-                      fontWeight: typography.weights.medium,
-                      color: colours.textSecondary,
-                    }}
-                  >
-                    Total
-                  </td>
-                  <td style={{ ...cellStyle, color: colours.green, fontWeight: typography.weights.medium }}>
-                    {verifiedCount}
-                  </td>
-                  <td style={{ ...cellStyle, color: colours.amber }}>{declaredCount}</td>
-                  <td style={{ ...cellStyle, color: colours.textTertiary }}>{estimatedCount}</td>
-                  <td
-                    style={{
-                      ...cellStyle,
-                      textAlign: 'right' as const,
-                      fontWeight: typography.weights.medium,
-                      color: colours.textPrimary,
-                    }}
-                  >
-                    {totalRecords}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {totalRecords === 0 && (
+      {totalRecords === 0 && priorities.length === 0 && (
         <section style={{ marginBottom: spacing[4] }}>
           <div
             style={{
@@ -527,10 +654,8 @@ export default async function DashboardPage() {
               textAlign: 'center',
             }}
           >
-            <p
-              style={{ ...textStyles.rowTitle, margin: `0 0 ${spacing[1]}` }}
-            >
-              No records in the store yet.
+            <p style={{ ...textStyles.rowTitle, margin: `0 0 ${spacing[1]}` }}>
+              Nothing saved yet.
             </p>
             <p
               style={{
@@ -540,7 +665,8 @@ export default async function DashboardPage() {
                 margin: `0 0 ${spacing[2]}`,
               }}
             >
-              Upload energy bills, production logs, invoices, or delivery notes to populate your data record.
+              Upload the documents you already have — energy bills, production logs, invoices,
+              delivery notes — and this page fills itself in.
             </p>
             <Link
               href="/upload"
@@ -561,6 +687,122 @@ export default async function DashboardPage() {
         </section>
       )}
 
+      {/* 5. Record store and recent movement, side by side — reference, not action. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: spacing[3] }}>
+        {matrix.length > 0 && (
+          <section>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[1] }}>
+              <span style={sectionLabel}>Record store</span>
+              <Link
+                href="/records"
+                style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.navy, textDecoration: 'none' }}
+              >
+                All records
+              </Link>
+            </div>
+            <div
+              style={{
+                backgroundColor: colours.surface,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '4px',
+                overflow: 'hidden',
+              }}
+            >
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
+                    <th style={colStyle}>Type</th>
+                    <th style={{ ...colStyle, color: colours.green }}>Verified</th>
+                    <th style={{ ...colStyle, color: colours.amber }}>Declared</th>
+                    <th style={{ ...colStyle, color: colours.textTertiary }}>Estimated</th>
+                    <th style={{ ...colStyle, textAlign: 'right' as const }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrix.map((row, i) => (
+                    <tr
+                      key={row.domain}
+                      style={{ borderBottom: i < matrix.length - 1 ? `1px solid ${colours.border}` : 'none' }}
+                    >
+                      <td style={{ ...cellStyle, fontWeight: typography.weights.medium }}>
+                        {DOMAIN_LABELS[row.domain] ?? row.domain}
+                      </td>
+                      <td style={cellStyle}>
+                        {row.A > 0
+                          ? <span style={{ color: colours.green, fontWeight: typography.weights.medium }}>{row.A}</span>
+                          : <span style={{ color: colours.textTertiary }}>0</span>}
+                      </td>
+                      <td style={cellStyle}>
+                        {row.B > 0
+                          ? <span style={{ color: colours.amber }}>{row.B}</span>
+                          : <span style={{ color: colours.textTertiary }}>0</span>}
+                      </td>
+                      <td style={cellStyle}>
+                        <span style={{ color: colours.textTertiary }}>{row.C}</span>
+                      </td>
+                      <td style={{ ...cellStyle, textAlign: 'right' as const, fontWeight: typography.weights.medium, color: colours.textSecondary }}>
+                        {row.total}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr style={{ borderTop: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
+                    <td style={{ ...cellStyle, fontWeight: typography.weights.medium, color: colours.textSecondary }}>Total</td>
+                    <td style={{ ...cellStyle, color: colours.green, fontWeight: typography.weights.medium }}>{verifiedCount}</td>
+                    <td style={{ ...cellStyle, color: colours.amber }}>{declaredCount}</td>
+                    <td style={{ ...cellStyle, color: colours.textTertiary }}>{estimatedCount}</td>
+                    <td style={{ ...cellStyle, textAlign: 'right' as const, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
+                      {totalRecords}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {recentEntries.length > 0 && (
+          <section>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[1] }}>
+              <span style={sectionLabel}>Recent activity</span>
+              <Link
+                href="/activity"
+                style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.navy, textDecoration: 'none' }}
+              >
+                Full history
+              </Link>
+            </div>
+            <div
+              style={{
+                backgroundColor: colours.surface,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '4px',
+                overflow: 'hidden',
+              }}
+            >
+              {recentEntries.map((entry, i) => (
+                <div
+                  key={entry.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: spacing[2],
+                    padding: '10px 14px',
+                    borderBottom: i < recentEntries.length - 1 ? `1px solid ${colours.border}` : 'none',
+                  }}
+                >
+                  <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary }}>
+                    {EVENT_LABELS[entry.eventType] ?? entry.eventType}
+                  </span>
+                  <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, whiteSpace: 'nowrap' as const }}>
+                    {relativeDay(new Date(entry.createdAt), now)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   )
 }
