@@ -7,6 +7,12 @@
 // server fetches it, and the tenant gets to reach whatever that server can reach
 // — link-local metadata endpoints, databases on the private network, other
 // tenants' internal services. "Starts with https://" stopped none of that.
+//
+// These rules decide what is decidable from the string. They are one of three
+// layers, and on their own they stop nothing that hides behind a hostname:
+// safe-fetch.ts resolves the name and checks every address it answers with, and
+// pinned-agent.ts binds the socket to the address that was checked so DNS cannot
+// answer differently a moment later.
 
 export type OutboundUrlRejection =
   | 'not_a_url'
@@ -89,6 +95,14 @@ export function isPrivateIpv6(ip: string): boolean {
   return false
 }
 
+/** True when `host` is written as an IP address rather than a name. Brackets, as
+ *  a URL carries them around an IPv6 literal, are not part of the address. */
+export function isIpLiteral(host: string): boolean {
+  const bare = host.replace(/^\[|\]$/g, '')
+  if (bare.includes(':')) return /^[0-9a-f:.%]+$/i.test(bare)
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(bare)
+}
+
 /** True when `host` is an IP literal that must not be dialled. Hostnames that are
  *  not IP literals return false here — they are settled by DNS at fetch time. */
 export function isPrivateAddress(host: string): boolean {
@@ -114,9 +128,14 @@ export function validateOutboundUrl(raw: string): OutboundUrlResult {
   if (!host) return { ok: false, reason: 'not_a_url' }
   if (BLOCKED_HOSTNAMES.has(host)) return { ok: false, reason: 'blocked_host' }
   if (BLOCKED_SUFFIXES.some(s => host.endsWith(s))) return { ok: false, reason: 'blocked_host' }
+  // An address written as an address is judged as one; only names go on to the
+  // bare-label rule. Checking `host.includes('.')` alone treated a public IPv6
+  // literal as a bare label and refused it, because IPv6 has no dots.
+  if (isIpLiteral(host)) {
+    return isPrivateAddress(host) ? { ok: false, reason: 'private_address' } : { ok: true, url }
+  }
   // A bare label ("intranet", "db") can only resolve inside a private search domain.
-  if (!host.includes('.') && !isPrivateAddress(host)) return { ok: false, reason: 'blocked_host' }
-  if (isPrivateAddress(host)) return { ok: false, reason: 'private_address' }
+  if (!host.includes('.')) return { ok: false, reason: 'blocked_host' }
 
   return { ok: true, url }
 }

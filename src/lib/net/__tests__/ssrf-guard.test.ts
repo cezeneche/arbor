@@ -1,4 +1,10 @@
-import { validateOutboundUrl, isPrivateIpv4, isPrivateIpv6, isPrivateAddress } from '../ssrf-guard'
+import {
+  validateOutboundUrl,
+  isPrivateIpv4,
+  isPrivateIpv6,
+  isPrivateAddress,
+  isIpLiteral,
+} from '../ssrf-guard'
 
 describe('isPrivateIpv4', () => {
   it.each([
@@ -86,5 +92,59 @@ describe('validateOutboundUrl', () => {
       ok: false,
       reason: 'blocked_host',
     })
+  })
+})
+
+describe('validateOutboundUrl — IP literals are judged as addresses, not names', () => {
+  // Regression: the bare-label rule ("a name with no dot can only resolve inside
+  // a private search domain") caught public IPv6 literals, because IPv6 has no
+  // dots. A tenant with a genuine IPv6 endpoint was refused as if it were
+  // "intranet".
+  it('accepts a public IPv6 literal', () => {
+    expect(validateOutboundUrl('https://[2606:4700:4700::1111]/hook').ok).toBe(true)
+  })
+
+  it('accepts a public IPv6 literal on a non-default port', () => {
+    expect(validateOutboundUrl('https://[2606:4700:4700::1111]:8443/hook').ok).toBe(true)
+  })
+
+  it('still refuses private IPv6 literals', () => {
+    expect(validateOutboundUrl('https://[fd00::1]/hook')).toEqual({
+      ok: false,
+      reason: 'private_address',
+    })
+    expect(validateOutboundUrl('https://[::1]/hook')).toEqual({
+      ok: false,
+      reason: 'private_address',
+    })
+  })
+
+  it('accepts a public IPv4 literal and refuses a private one', () => {
+    expect(validateOutboundUrl('https://93.184.216.34/hook').ok).toBe(true)
+    expect(validateOutboundUrl('https://10.0.0.1/hook')).toEqual({
+      ok: false,
+      reason: 'private_address',
+    })
+  })
+
+  it('still refuses a bare hostname label', () => {
+    expect(validateOutboundUrl('https://intranet/hook')).toEqual({
+      ok: false,
+      reason: 'blocked_host',
+    })
+  })
+})
+
+describe('isIpLiteral', () => {
+  it('recognises both address forms, bracketed or not', () => {
+    expect(isIpLiteral('10.0.0.1')).toBe(true)
+    expect(isIpLiteral('[2606:4700::1111]')).toBe(true)
+    expect(isIpLiteral('2606:4700::1111')).toBe(true)
+  })
+
+  it('does not mistake a hostname for an address', () => {
+    expect(isIpLiteral('example.com')).toBe(false)
+    expect(isIpLiteral('intranet')).toBe(false)
+    expect(isIpLiteral('1.2.3.4.example.com')).toBe(false)
   })
 })
