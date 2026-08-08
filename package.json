@@ -11,7 +11,9 @@
     "postinstall": "prisma generate",
     "test": "prisma generate && jest",
     "eval": "jest --config jest.eval.config.ts",
-    "eval:baseline": "EVAL_UPDATE_BASELINE=1 jest --config jest.eval.config.ts"
+    "eval:baseline": "EVAL_UPDATE_BASELINE=1 jest --config jest.eval.config.ts",
+    "inbound:sign": "node scripts/sign-inbound-email.mjs",
+    "audit:roles": "node scripts/audit-roles.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
