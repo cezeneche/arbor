@@ -2,8 +2,7 @@ import Link from 'next/link'
 import { fieldLabel, fieldMeaning } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { getSessionUser } from '@/lib/session'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
@@ -21,6 +20,9 @@ import { buildQuerySuggestions } from '@/lib/layer3/query-suggestions'
 import { tierLabel } from '@/lib/tier-label'
 import { checkAuditPackageAllowed, type PlanTier } from '@/lib/plan-limits'
 import { AuditPackageDownload } from './AuditPackageDownload'
+import { z } from 'zod'
+import { TrustTier } from '@prisma/client'
+import { domainSchema } from '@/lib/constants'
 
 const DOMAINS = ['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']
 const TIERS = ['A', 'B', 'C']
@@ -30,8 +32,7 @@ export default async function RecordsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>
 }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string
   const sp = await searchParams
@@ -40,11 +41,17 @@ export default async function RecordsPage({
   const page = Math.max(1, parseInt(sp.page ?? '1', 10))
   const view = sp.view === 'trends' ? 'trends' : sp.view === 'benchmarks' ? 'benchmarks' : 'records'
 
+  // Narrowed rather than cast: these come from the query string, so `as never`
+  // was handing an arbitrary string to Prisma as an enum. An unrecognised value
+  // now means "no filter", which is what an unreadable URL should do.
+  const domain = domainSchema.safeParse(domainFilter)
+  const tier = z.nativeEnum(TrustTier).safeParse(tierFilter)
+
   const where = {
     entityId,
     isActive: true,
-    ...(domainFilter ? { domain: domainFilter as never } : {}),
-    ...(tierFilter ? { trustTier: tierFilter as never } : {}),
+    ...(domain.success ? { domain: domain.data } : {}),
+    ...(tier.success ? { trustTier: tier.data } : {}),
   }
 
   const [records, total, summaryRecords, entity, suggestionRows] = await Promise.all([

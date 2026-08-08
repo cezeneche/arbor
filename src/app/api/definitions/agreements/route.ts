@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSessionUser } from '@/lib/session'
-import { requireWriteAccess } from '@/lib/auth-helpers'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
 
@@ -21,7 +21,10 @@ const proposeSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const { session, response } = await requireWriteAccess()
+  // Proposing a shared definition is ADMIN-only: an agreement binds the whole
+// organisation to a stated meaning for a field, which is what makes the number
+// comparable across two companies' systems.
+  const { session, response } = await requireAdmin()
   if (!session) return response!
   const user = getSessionUser(session)
   const entityId = user.entityId as string

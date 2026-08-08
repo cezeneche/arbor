@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/session'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { UploadZone } from '@/components/UploadZone'
@@ -12,8 +11,7 @@ export default async function UploadPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>
 }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
   const sp = await searchParams
   const initialType = sp.type ?? ''

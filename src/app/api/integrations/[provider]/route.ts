@@ -5,9 +5,13 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { encryptSecret } from '@/lib/crypto/credential-encryption'
+import { validateOutboundUrl, OUTBOUND_URL_MESSAGES } from '@/lib/net/ssrf-guard'
 import type { IntegrationProvider } from '@prisma/client'
 
 const PROVIDERS = ['CDS', 'SAP', 'NETSUITE', 'ORACLE'] as const
+
+// Credential keys whose value is a URL the sync job will fetch.
+const URL_CREDENTIAL_KEYS = ['baseUrl', 'accountUrl'] as const
 
 // Credentials are an opaque key→value blob, encrypted before storage.
 const bodySchema = z.object({ credentials: z.record(z.string(), z.string()).refine((c) => Object.keys(c).length > 0) })
@@ -27,6 +31,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return err('Invalid credentials payload', 'VALIDATION_ERROR', 400)
+
+  // Provider base URLs are dialled by Arbor's own server during sync, so they get
+  // the same treatment as a webhook destination: reject anything that is not a
+  // public https address before it is ever stored.
+  for (const key of URL_CREDENTIAL_KEYS) {
+    const value = parsed.data.credentials[key]
+    if (value === undefined) continue
+    const verdict = validateOutboundUrl(value)
+    if (!verdict.ok) {
+      return err(`${key}: ${OUTBOUND_URL_MESSAGES[verdict.reason]}`, 'VALIDATION_ERROR', 400)
+    }
+  }
 
   const encryptedCredentials = encryptSecret(JSON.stringify(parsed.data.credentials))
   await prisma.integrationCredential.upsert({

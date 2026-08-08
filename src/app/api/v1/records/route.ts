@@ -10,6 +10,7 @@ import { getSystemUser } from '@/lib/layer2/system-actor'
 import { domainSchema, tierSchema } from '@/lib/constants'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { assertRecordCapacity } from '@/lib/plan-guard'
+import { runSerializable } from '@/lib/layer2/serializable'
 import { TrustTier, ExtractionMethod } from '@prisma/client'
 
 const recordSchema = z.object({
@@ -128,6 +129,9 @@ export async function POST(req: NextRequest) {
   const entity = await prisma.entity.findUnique({ where: { id: auth.entityId! } })
   if (!entity) return err('Entity not found', 'NOT_FOUND', 404)
 
+  // A fast refusal for an obviously over-capacity batch; the binding check is the
+  // one inside each transaction below, which is where the count and the write
+  // settle together.
   const capacity = await assertRecordCapacity(auth.entityId!, records.length)
   if (!capacity.allowed) return err(capacity.reason!, 'PLAN_LIMIT', 402)
 
@@ -138,9 +142,10 @@ export async function POST(req: NextRequest) {
     if (new Date(r.periodEnd) <= new Date(r.periodStart)) continue
 
     // API key writes have no supporting document — Tier B per PRD §12.
-    await prisma.$transaction(
-      (tx) =>
-        writeRecordWithAuditEntry(tx, {
+    const written = await runSerializable(async (tx) => {
+      const room = await assertRecordCapacity(auth.entityId!, 1, tx)
+      if (!room.allowed) return null
+      return writeRecordWithAuditEntry(tx, {
           entityId: auth.entityId!,
           domain: r.domain,
           fieldName: r.fieldName,
@@ -150,12 +155,19 @@ export async function POST(req: NextRequest) {
           originalUnit: r.unit,
           periodStart: new Date(r.periodStart),
           periodEnd: new Date(r.periodEnd),
-          trustTier: TrustTier.B,
-          extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
-          submittedById: systemUser.id,
-        }),
-      { isolationLevel: 'Serializable' },
-    )
+        trustTier: TrustTier.B,
+        extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
+        submittedById: systemUser.id,
+      })
+    })
+
+    if (!written) {
+      return err(
+        `Wrote ${createdCount} of ${records.length} records before reaching your plan's limit.`,
+        'PLAN_LIMIT',
+        402,
+      )
+    }
     createdCount++
   }
 

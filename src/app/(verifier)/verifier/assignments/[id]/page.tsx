@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/session'
 import { notFound, redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { assembleAuditPackage } from '@/lib/audit-package/assemble'
@@ -10,8 +10,7 @@ import { VerifyActions } from './VerifyActions'
 
 export default async function VerifierAssignmentDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const verifierId = getSessionUser(session).id
 
   const assignment = await prisma.verificationAssignment.findUnique({

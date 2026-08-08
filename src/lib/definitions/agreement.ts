@@ -19,6 +19,11 @@ export interface StoredAgreement {
   fieldDefinitionId: string
   /** Denormalised from the definition so ordering by version needs no join. */
   definitionVersion: number
+  /** The definition's lineage: successive versions of one field in one domain.
+   *  Version numbers only mean anything within a lineage, so an "earlier agreed
+   *  version" lookup that ignores this compares wholly unrelated fields. */
+  fieldName: string
+  domain: string
   supplierEntityId: string
   buyerEntityId: string
   status: StoredAgreementStatus
@@ -46,6 +51,9 @@ export interface AgreementResolution {
 export interface AgreementLookup {
   fieldDefinitionId: string
   definitionVersion: number
+  /** Same lineage key as StoredAgreement — see the note there. */
+  fieldName: string
+  domain: string
   supplierEntityId: string
   buyerEntityId: string
 }
@@ -81,9 +89,18 @@ export function resolveAgreementFor(
     }
   }
 
-  // Nothing on this version. Did they agree an earlier wording of the same field?
+  // Nothing on this version. Did they agree an earlier wording OF THIS FIELD?
+  //
+  // The lineage filter is the point. A version number is only meaningful within
+  // one field's history, so without it an accepted v1 of `total_consumption_kwh`
+  // made an untouched v2 of `meter_reference` report SUPERSEDED — an agreement
+  // claimed on the strength of a conversation about something else entirely.
   const earlierAccepted = forPair.filter(
-    a => a.status === 'ACCEPTED' && a.definitionVersion < lookup.definitionVersion,
+    a =>
+      a.status === 'ACCEPTED' &&
+      a.fieldName === lookup.fieldName &&
+      a.domain === lookup.domain &&
+      a.definitionVersion < lookup.definitionVersion,
   )
   if (earlierAccepted.length === 0) return NONE
 

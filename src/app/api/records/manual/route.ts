@@ -3,7 +3,6 @@ import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
-import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { domainSchema } from '@/lib/constants'
@@ -41,11 +40,19 @@ export async function POST(req: NextRequest) {
     return err('periodEnd must be after periodStart', 'VALIDATION_ERROR', 400)
   }
 
-  const capacity = await assertRecordCapacity(entityId, 1)
-  if (!capacity.allowed) return err(capacity.reason!, 'PLAN_LIMIT', 402)
+  // Counted inside the transaction that writes: counting first and writing after
+  // let two requests both see room for the last record and both take it.
+  class OverCapacity extends Error {
+    constructor(readonly detail: string) { super(detail) }
+  }
 
-  const { recordId } = await runSerializable((tx) =>
-    writeRecordWithAuditEntry(
+  let recordId: string
+  try {
+    ;({ recordId } = await runSerializable(async (tx) => {
+    const capacity = await assertRecordCapacity(entityId, 1, tx)
+    if (!capacity.allowed) throw new OverCapacity(capacity.reason!)
+
+    return writeRecordWithAuditEntry(
       tx,
       {
         entityId,
@@ -62,8 +69,12 @@ export async function POST(req: NextRequest) {
         extractionMethod: ExtractionMethod.MANUAL_ENTRY,
         submittedById: userId,
       },
-    ),
-  )
+    )
+    }))
+  } catch (e) {
+    if (e instanceof OverCapacity) return err(e.detail, 'PLAN_LIMIT', 402)
+    throw e
+  }
 
   return ok({ recordId, trustTier: 'B' }, 201)
 }

@@ -8,8 +8,10 @@ import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { findDuplicates } from '@/lib/layer2/duplicate-check'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
+import { assertRecordCapacity } from '@/lib/plan-guard'
 import { runConstraintValidation } from '@/lib/constraints/run-constraint-validation'
 import { buildReviewLabels } from '@/lib/confidence/review-capture'
+import { validateConfirmFields, deriveTrustTier } from '@/lib/layer2/confirm-validation'
 import { parseNumericValue } from '@/lib/parse-numeric'
 import { ExtractionMethod, TrustTier, type DataDomain, type GroundTruthSource } from '@prisma/client'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
@@ -66,26 +68,43 @@ export async function POST(
   if (document.entityId !== entityId) return err('Access denied', 'FORBIDDEN', 403)
   if (document.status === 'ACCEPTED') return err('Document already confirmed', 'ALREADY_CONFIRMED', 409)
 
-  // Re-derive trust tier server-side from the extraction job, not from the client.
   const job = document.extractionJobs[0]
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[document.documentType] ?? []
   const compulsoryFieldNames = new Set(
     fieldDefs.filter((f) => f.admissibility === 'compulsory').map((f) => f.name)
   )
 
-  let trustTier: TrustTier = TrustTier.A
-  if (job) {
-    const extractedFieldMap = new Map(job.extractedFields.map(f => [f.fieldName, f.rawValue]))
-    for (const name of compulsoryFieldNames) {
-      const raw = extractedFieldMap.get(name)
-      if (raw === null || raw === undefined || raw === '') {
-        trustTier = TrustTier.B
-        break
-      }
-    }
-  } else {
-    trustTier = TrustTier.B
+  // Nothing is written until the whole payload is admissible. A confirmation is
+  // the point at which a probabilistic extraction becomes a permanent chained
+  // record, so a value that cannot be parsed, a period that runs backwards, a
+  // field this document type does not have, or a unit that could never be
+  // converted are all refusals — not fields to quietly drop.
+  const fieldErrors = validateConfirmFields(parsed.data.fields, {
+    knownFieldNames: new Set(fieldDefs.map(f => f.name)),
+  })
+  if (fieldErrors.length > 0) {
+    return NextResponse.json(
+      {
+        error: 'Some of these figures could not be saved. Check the ones highlighted.',
+        code: 'FIELD_VALIDATION_ERROR',
+        fields: fieldErrors,
+      },
+      { status: 400 },
+    )
   }
+
+  // Trust tier is re-derived server-side, and from the effective document — the
+  // extraction with the reviewer's corrections applied — so clearing a compulsory
+  // field during review downgrades the record instead of leaving it Verified.
+  const trustTier: TrustTier =
+    deriveTrustTier({
+      extracted: new Map((job?.extractedFields ?? []).map(f => [f.fieldName, f.rawValue])),
+      confirmed: new Map(parsed.data.fields.map(f => [f.fieldName, f.confirmedValue])),
+      compulsory: compulsoryFieldNames,
+      hasExtraction: Boolean(job),
+    }) === 'A'
+      ? TrustTier.A
+      : TrustTier.B
 
   // Pre-compute normalised values outside the transaction (pure, no DB).
   type PreparedField = {
@@ -97,21 +116,24 @@ export async function POST(
     periodEnd: Date
   }
 
-  const preparedFields: PreparedField[] = []
-  for (const field of parsed.data.fields) {
-    const rawNum = parseNumericValue(field.confirmedValue) ?? NaN
-    if (isNaN(rawNum)) continue
-
+  const preparedFields: PreparedField[] = parsed.data.fields.map(field => {
+    // validateConfirmFields has already established that every value parses and
+    // every supplied unit is one normaliseToSI knows.
+    const rawNum = parseNumericValue(field.confirmedValue)!
     const unit = field.confirmedUnit ?? 'unknown'
     const { value: siValue, siUnit } = isSupportedUnit(unit)
       ? normaliseToSI(rawNum, unit)
       : { value: rawNum, siUnit: unit }
 
-    const periodStart = new Date(field.periodStart)
-    const periodEnd = new Date(field.periodEnd)
-
-    preparedFields.push({ field, rawNum, siValue, siUnit, periodStart, periodEnd })
-  }
+    return {
+      field,
+      rawNum,
+      siValue,
+      siUnit,
+      periodStart: new Date(field.periodStart),
+      periodEnd: new Date(field.periodEnd),
+    }
+  })
 
   // Single serializable transaction: all records + supersessions + document status.
   // If any field write fails the entire confirmation rolls back — no partial state.
@@ -155,8 +177,33 @@ export async function POST(
   // scopes whose prior records were superseded, so we can notify buyers.
   const supersededScopes: { domain: string; periodStart: Date; periodEnd: Date }[] = []
 
-  const createdRecords = await runSerializable(async (tx) => {
+  // A sentinel rather than a returned error, so a second confirmation aborts the
+  // transaction instead of half-writing. runSerializable rethrows anything that
+  // is not a write conflict, so it reaches the handler below untouched.
+  class AlreadyConfirmed extends Error {}
+  class OverCapacity extends Error {
+    constructor(readonly detail: string) { super(detail) }
+  }
+
+  let createdRecords: string[]
+  try {
+    createdRecords = await runSerializable(async (tx) => {
     const recordIds: string[] = []
+
+    // The interactive confirm path wrote records without ever consulting the
+    // plan cap. Counted inside the transaction that writes, so concurrent
+    // confirmations cannot both take the last of the allowance.
+    const capacity = await assertRecordCapacity(entityId, preparedFields.length, tx)
+    if (!capacity.allowed) throw new OverCapacity(capacity.reason!)
+
+    // Claim the document inside the transaction. The check above is a fast path
+    // for the common case; on its own it left a window in which two confirmations
+    // in flight together both passed it and both wrote a full set of records.
+    const claimed = await tx.document.updateMany({
+      where: { id: documentId, entityId, status: { not: 'ACCEPTED' } },
+      data: { status: 'ACCEPTED' },
+    })
+    if (claimed.count === 0) throw new AlreadyConfirmed()
 
     for (const { field, rawNum, siValue, siUnit, periodStart, periodEnd } of preparedFields) {
       // Supersede any existing active records for the same entity+domain+fieldName+period.
@@ -209,14 +256,17 @@ export async function POST(
       recordIds.push(result.recordId)
     }
 
-    // Mark document accepted inside the transaction so status and records are consistent.
-    await tx.document.update({
-      where: { id: documentId },
-      data: { status: 'ACCEPTED' },
-    })
-
     return recordIds
-  })
+    })
+  } catch (e) {
+    if (e instanceof AlreadyConfirmed) {
+      return err('Document already confirmed', 'ALREADY_CONFIRMED', 409)
+    }
+    if (e instanceof OverCapacity) {
+      return err(e.detail, 'PLAN_LIMIT', 402)
+    }
+    throw e
+  }
 
   // Cross-validation runs after commit — it reads accepted records and writes CV results.
   // Failures here do not roll back the confirmation (warnings only, not blocking).

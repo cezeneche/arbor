@@ -74,12 +74,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         // If 2FA is enabled, return a partial session that signals the challenge step.
         // The JWT callback will set pending2fa: true; the proxy redirects to /2fa-verify.
+        // The tokenVersion travels with the half-session so a password reset or forced
+        // logout that lands mid-challenge invalidates it rather than being adopted.
         if (user.twoFactorEnabled) {
           return {
             id: user.id,
             email: '',
             name: '',
             pending2fa: true,
+            tokenVersion: user.tokenVersion,
           } as unknown as ReturnType<typeof Object.create>
         }
 
@@ -105,6 +108,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const u = user as unknown as Record<string, unknown>
         if (u.pending2fa) {
           token.pending2fa = true
+          token.tokenVersion = u.tokenVersion as number
         } else {
           token.entityId = u.entityId as string
           token.role = u.role as string
@@ -126,12 +130,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             entityId: true,
             role: true,
             tokenVersion: true,
+            isActive: true,
             twoFactorVerifiedNonce: true,
             twoFactorVerifiedExpires: true,
           },
         })
         if (
           dbUser &&
+          // A half-session must not survive a deprovision or a forced logout that
+          // happened while the challenge was open — previously the upgrade simply
+          // adopted whatever tokenVersion the DB now held.
+          dbUser.isActive &&
+          dbUser.tokenVersion === token.tokenVersion &&
           isNonceValid(
             { nonceHash: dbUser.twoFactorVerifiedNonce, expiresAt: dbUser.twoFactorVerifiedExpires },
             presentedNonce,

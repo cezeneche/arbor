@@ -23,7 +23,7 @@ export async function GET(
   const [entries, total] = await Promise.all([
     prisma.auditEntry.findMany({
       where: { entityId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { sequence: 'asc' },
       skip,
       take: limit,
     }),

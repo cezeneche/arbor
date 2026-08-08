@@ -1,0 +1,11 @@
+-- Field-level scope on a data access grant.
+--
+-- A grant created by answering a data request used to cover the whole domain for
+-- the period, even though the buyer had asked for named fields: answering a
+-- request for one figure handed over every record in that domain and period.
+-- The grant now carries the field list it was created for.
+--
+-- NULL means unrestricted, which is what every existing grant is. Existing
+-- whole-domain shares are deliberate and are left exactly as they are; the
+-- narrowing applies to grants created from this point on.
+ALTER TABLE "DataAccessGrant" ADD COLUMN IF NOT EXISTS "fieldNames" JSONB;

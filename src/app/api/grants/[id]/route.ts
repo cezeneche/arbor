@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/session'
-import { requireWriteAccess } from '@/lib/auth-helpers'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
 import { dispatchWebhook } from '@/lib/webhooks/dispatch'
@@ -9,7 +9,10 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { session, response } = await requireWriteAccess()
+  // Revocation is ADMIN-only, matching the bar for creating a grant. Cutting a
+// buyer's access to a supplier's data mid-reporting-period is a commercial
+// decision about the relationship, not a routine edit.
+  const { session, response } = await requireAdmin()
   if (!session) return response!
 
   const entityId = getSessionUser(session).entityId as string

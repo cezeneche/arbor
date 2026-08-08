@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/session'
-import { notFound, redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { notFound } from 'next/navigation'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, trustTierConfig, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
@@ -40,8 +40,7 @@ export default async function QuestionnaireDetailPage({
   params: Promise<{ template: string }>
   searchParams: Promise<Record<string, string | undefined>>
 }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
 
   const { template: templateId } = await params

@@ -1,27 +1,14 @@
-import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { Nav } from '@/components/Nav'
 import { colours } from '@/lib/design-system'
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
-
-  const userId = getSessionUser(session).id
-  const role = getSessionUser(session).role
-
-  // Mandatory 2FA for administrators: an admin who has not yet enrolled is sent to
-  // the dedicated setup page and cannot use the portal until 2FA is enabled.
-  // Checked against the live DB so it clears the moment they finish enrolling.
-  if (role === 'ADMIN' && userId) {
-    const me = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { twoFactorEnabled: true },
-    })
-    if (me && !me.twoFactorEnabled) redirect('/security-setup')
-  }
+  // requirePageSession re-reads the user on every render: it rejects deactivated
+  // and revoked sessions, sends an unenrolled admin to /security-setup, and returns
+  // role/entityId from the database rather than the JWT.
+  const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string | undefined
 

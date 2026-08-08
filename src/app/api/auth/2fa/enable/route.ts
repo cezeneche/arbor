@@ -24,19 +24,19 @@ export async function POST(req: NextRequest) {
   const userId = getSessionUser(session).id
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { twoFactorSecret: true, twoFactorEnabled: true },
+    select: { twoFactorPendingSecret: true, twoFactorEnabled: true },
   })
 
-  if (!dbUser?.twoFactorSecret) {
+  // Only a pending secret can be promoted. An already-enabled account gets here
+  // only after /2fa/setup re-authenticated the caller, so re-enrolment (new phone)
+  // is allowed — it just has to be confirmed by a code from the new device.
+  if (!dbUser?.twoFactorPendingSecret) {
     return NextResponse.json({ error: 'No secret found. Please run setup first.' }, { status: 400 })
-  }
-  if (dbUser.twoFactorEnabled) {
-    return NextResponse.json({ error: '2FA is already enabled.' }, { status: 409 })
   }
 
   let secret: string
   try {
-    secret = decryptTotpSecret(dbUser.twoFactorSecret)
+    secret = decryptTotpSecret(dbUser.twoFactorPendingSecret)
   } catch {
     return NextResponse.json({ error: 'Failed to read 2FA secret.' }, { status: 500 })
   }
@@ -52,9 +52,15 @@ export async function POST(req: NextRequest) {
     prisma.totpRecoveryCode.createMany({
       data: plainCodes.map(code => ({ userId, codeHash: hashRecoveryCode(code) })),
     }),
+    // Promote pending → active in the same transaction that enables the gate, so
+    // the account is never left enabled against a secret nobody holds.
     prisma.user.update({
       where: { id: userId },
-      data: { twoFactorEnabled: true },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorSecret: dbUser.twoFactorPendingSecret,
+        twoFactorPendingSecret: null,
+      },
     }),
   ])
 

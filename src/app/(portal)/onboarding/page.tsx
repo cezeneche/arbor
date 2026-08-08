@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 export default async function OnboardingPage({
@@ -8,8 +7,7 @@ export default async function OnboardingPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>
 }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  await requirePageSession()
 
   const sp = await searchParams
   const customerName = sp.from ?? null

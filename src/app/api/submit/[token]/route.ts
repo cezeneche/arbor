@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runSerializable } from '@/lib/layer2/serializable'
-import { ExtractionMethod, TrustTier } from '@prisma/client'
+import { ExtractionMethod, Prisma, TrustTier } from '@prisma/client'
+import { canSubmitAgainstStatus, SUBMITTABLE_STATUSES } from '@/lib/requests/status-machine'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
 import { MAX_BATCH_ENTRIES } from '@/lib/constants'
@@ -76,8 +77,10 @@ export async function POST(
   })
 
   if (!request) return err('Invalid or expired submission link', 'NOT_FOUND', 404)
-  if (request.status === 'SUBMITTED' || request.status === 'ACCEPTED') {
-    return err('This request has already been responded to', 'ALREADY_RESPONDED', 409)
+  // A link is spent once the request has moved past the states a submission can
+  // answer. Naming only SUBMITTED and ACCEPTED left a closed request open to one.
+  if (!canSubmitAgainstStatus(request.status)) {
+    return err('This request is no longer open for a response', 'ALREADY_RESPONDED', 409)
   }
   if (!request.submissionTokenExpiry || request.submissionTokenExpiry < new Date()) {
     return err('This submission link has expired', 'TOKEN_EXPIRED', 410)
@@ -115,7 +118,7 @@ export async function POST(
       recordCount = 0
       // Atomic claim — prevents concurrent double-submissions.
       const claimed = await tx.dataRequest.updateMany({
-        where: { id: request.id, status: { notIn: ['SUBMITTED', 'ACCEPTED'] } },
+        where: { id: request.id, status: { in: SUBMITTABLE_STATUSES } },
         data: { status: 'SUBMITTED', respondedAt: new Date() },
       })
       if (claimed.count === 0) {
@@ -147,13 +150,25 @@ export async function POST(
         recordCount++
       }
 
-      // Grant buyer access to this domain + period.
+      // Grant the buyer access to exactly what they asked for: this domain, this
+      // period, and these fields. Answering a request is not a decision to open
+      // the whole domain, so the grant carries the field list the request named
+      // (falling back to the fields actually submitted). Without it, a request for
+      // one figure handed over every energy record in the quarter.
+      const grantedFieldNames =
+        requiredFields.length > 0
+          ? requiredFields
+          : [...new Set(parsed.data.entries.map(e => e.fieldName))]
+
       const existingGrant = await tx.dataAccessGrant.findFirst({
         where: {
           grantorEntityId: entityId,
           granteeEntityId: request.buyerEntityId,
           domain: request.domain,
           isActive: true,
+          // A field-scoped grant does not cover a later request for other fields,
+          // so only an unrestricted grant counts as already covering this one.
+          fieldNames: { equals: Prisma.DbNull },
           AND: [
             { OR: [{ periodStart: null }, { periodStart: { lte: request.periodStart } }] },
             { OR: [{ periodEnd: null }, { periodEnd: { gte: request.periodEnd } }] },
@@ -168,6 +183,7 @@ export async function POST(
             domain: request.domain,
             periodStart: request.periodStart,
             periodEnd: request.periodEnd,
+            fieldNames: grantedFieldNames,
             isActive: true,
           },
         })

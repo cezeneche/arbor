@@ -6,6 +6,7 @@ import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { ALL_DOMAINS } from '@/lib/constants'
 import { computeScopedGaps, type GapRecord } from '@/lib/layer3/supply-chain-gaps'
 import type { GrantScope } from '@/lib/layer3/grant-scope'
+import { GRANT_SCOPE_SELECT, toGrantScope } from '@/lib/layer3/grant-scope'
 
 const querySchema = z.object({
   periodStart: z.string().datetime().optional(),
@@ -35,9 +36,7 @@ export async function GET(req: NextRequest) {
     where: { granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },
     select: {
       grantorEntityId: true,
-      domain: true,
-      periodStart: true,
-      periodEnd: true,
+      ...GRANT_SCOPE_SELECT,
       grantorEntity: {
         select: {
           legalName: true,
@@ -47,7 +46,7 @@ export async function GET(req: NextRequest) {
               ...(ps ? { periodEnd: { gte: ps } } : {}),
               ...(pe ? { periodStart: { lte: pe } } : {}),
             },
-            select: { id: true, domain: true, trustTier: true, periodStart: true, periodEnd: true },
+            select: { id: true, domain: true, fieldName: true, trustTier: true, periodStart: true, periodEnd: true },
           },
         },
       },
@@ -60,9 +59,9 @@ export async function GET(req: NextRequest) {
   const bySupplier = new Map<string, SupplierAcc>()
   for (const g of grants) {
     const entry: SupplierAcc = bySupplier.get(g.grantorEntityId) ?? { name: g.grantorEntity.legalName, grants: [], records: new Map() }
-    entry.grants.push({ domain: g.domain, periodStart: g.periodStart, periodEnd: g.periodEnd })
+    entry.grants.push(toGrantScope(g))
     for (const r of g.grantorEntity.dataRecords) {
-      entry.records.set(r.id, { domain: r.domain, trustTier: r.trustTier, periodStart: r.periodStart, periodEnd: r.periodEnd })
+      entry.records.set(r.id, { domain: r.domain, fieldName: r.fieldName, trustTier: r.trustTier, periodStart: r.periodStart, periodEnd: r.periodEnd })
     }
     bySupplier.set(g.grantorEntityId, entry)
   }

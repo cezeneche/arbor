@@ -72,7 +72,13 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
     setLoading(true)
     const res = await fetch('/api/auth/2fa/setup', { method: 'POST' }).catch(() => null)
     setLoading(false)
-    if (!res?.ok) { setError('Could not start setup. Try again.'); return }
+    if (!res?.ok) {
+      // Surface the server's reason where there is one — re-enrolment on an
+      // already-protected account is refused, not silently retried.
+      const data = await res?.json().catch(() => null)
+      setError(data?.error ?? 'Could not start setup. Try again.')
+      return
+    }
     const data = await res.json()
     setQrDataUrl(data.qrDataUrl)
     setManualSecret(data.secret)

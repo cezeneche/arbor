@@ -86,8 +86,23 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (e) {
-    // Document is safely stored — log the Inngest failure but don't surface it to the caller.
+    // The file is stored, but nothing is going to read it. Left as PENDING the
+    // document sits in the list saying "Reading your document…" for ever, and the
+    // user has no way to tell that nothing is happening. Mark it so the state is
+    // the truth and the sweeper below can pick it up.
     console.error('[upload] inngest.send failed for document', document.id, e)
+    await prisma.document.update({
+      where: { id: document.id },
+      data: { status: 'REVIEW_REQUIRED' },
+    }).catch(() => {})
+    return ok(
+      {
+        documentId: document.id,
+        status: 'REVIEW_REQUIRED',
+        note: 'Your document was saved, but reading it could not be started. Try again from your documents list.',
+      },
+      201,
+    )
   }
 
   return ok({ documentId: document.id, status: 'PENDING' }, 201)

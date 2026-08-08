@@ -1,14 +1,13 @@
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import Link from 'next/link'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 // verifier portal shell. Verifiers belong to no entity; this is a
 // deliberately minimal chrome, separate from the entity portal Nav.
 export default async function VerifierLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const role = getSessionUser(session).role
   if (role !== 'VERIFIER') redirect('/dashboard')
 

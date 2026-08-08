@@ -5,9 +5,18 @@ import { fieldLabel } from '@/lib/layer3/field-label'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
-import { rankReviewFields } from '@/lib/review/information-gain'
+import { layoutReviewFields } from '@/lib/review/review-layout'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 import { NUMERIC_FIELDS, derivePeriod } from '@/lib/review/review-policy'
+
+// The requirement level used to be a section heading. Three headings meant three
+// grids and three ragged last rows, so it travels on the card instead — in the
+// words a supplier uses, not the admissibility codes.
+const REQUIREMENT_LABEL: Record<'COMPULSORY' | 'CONDITIONAL' | 'OPTIONAL', string> = {
+  COMPULSORY: 'Required',
+  CONDITIONAL: 'Required if it applies',
+  OPTIONAL: 'Optional',
+}
 
 interface ExtractedField {
   id: string
@@ -70,15 +79,28 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
   // Already written to the store, either just now or on an earlier visit.
   const isSaved = confirmed || document.status === 'ACCEPTED'
+  // Saved, then removed. Its records are out of the active set and the chain
+  // holds a WITHDRAWN entry for each; there is nothing left to do to it.
+  const isWithdrawn = document.status === 'WITHDRAWN'
 
   const criticalFlags = fields.filter(
     f => f.admissibility === 'COMPULSORY' && (f.rawValue === null || f.rawValue === '')
   )
   const trustTier = criticalFlags.length > 0 ? 'B' : 'A'
 
-  const compulsoryFields = fields.filter(f => f.admissibility === 'COMPULSORY')
-  const conditionalFields = fields.filter(f => f.admissibility === 'CONDITIONAL')
-  const optionalFields = fields.filter(f => f.admissibility === 'OPTIONAL')
+  // One grid over every field, ordered compulsory → conditional → optional and
+  // by information gain within each. Three separate grids left a hole beside the
+  // last card of any group with an odd count; twelve fields now fill six rows.
+  const laidOut = layoutReviewFields(
+    fields.map(f => ({
+      fieldName: f.fieldName,
+      admissibility: f.admissibility,
+      confidence: f.confidenceScore,
+      flagged: f.flagged,
+      hasValue: !(f.rawValue === null || f.rawValue === ''),
+    })),
+  )
+  const fieldByName = new Map(fields.map(f => [f.fieldName, f]))
 
   async function handleConfirm(onDuplicate?: 'replace' | 'keep_both') {
     setError(null)
@@ -211,6 +233,14 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     marginBottom: '4px',
   }
 
+  const footerStyle = {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginTop: spacing[3],
+  } as const
+
   const inputStyle = () => ({
     width: '100%',
     padding: '8px 10px',
@@ -228,28 +258,30 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     setDeleting(true)
     try {
       const res = await fetch(`/api/documents/${document.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
         setError(data.error ?? 'Could not delete this document.')
         setDeleting(false)
         return
       }
-      router.push('/upload')
+      // Figures were withdrawn, so send the user where they can see they are
+      // gone. A document that never became records has nothing to show there.
+      router.push(data.withdrawn > 0 ? '/records' : '/upload')
     } catch {
       setError('Could not delete this document. Check your connection.')
       setDeleting(false)
     }
   }
 
-  function renderCard(field: ExtractedField) {
+  function renderCard(field: ExtractedField, spansRow: boolean) {
     const isMissing = field.rawValue === null || field.rawValue === ''
 
     // A confidence badge on every field said the same thing on every field, and
     // an amber border on all of them made the whole form read as a warning. The
-    // score still drives which fields are ranked first and which are collapsed,
-    // and it still decides the trust tier server-side — it is simply not
-    // furniture around every input. Only a value that is genuinely absent is
-    // marked, and the border stays neutral throughout.
+    // score still drives which fields are ranked first, and it still decides the
+    // trust tier server-side — it is simply not furniture around every input.
+    // Only a value that is genuinely absent is marked, and the border stays
+    // neutral throughout.
     return (
       <div
         key={field.id}
@@ -260,24 +292,24 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
           border: `1px solid ${colours.border}`,
           borderRadius: '6px',
           padding: spacing[2],
+          // Closes a short last row rather than leaving half of it empty.
+          gridColumn: spansRow ? '1 / -1' : undefined,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[1], marginBottom: '8px' }}>
           <label htmlFor={field.id} style={labelStyle}>
             {fieldLabel(field.fieldName)}
           </label>
-          {isMissing && (
-            <span
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Not found
-            </span>
-          )}
+          <span
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textTertiary,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isMissing ? 'Not found' : REQUIREMENT_LABEL[field.admissibility]}
+          </span>
         </div>
 
         <input
@@ -323,83 +355,24 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     )
   }
 
-  function renderFieldGroup(title: string, groupFields: ExtractedField[], badge?: string) {
-    if (groupFields.length === 0) return null
-    // active learning: order fields by expected information gain
-    // (most-uncertain, most-important first) and collapse the confident,
-    // low-information ones, so the user's attention leads with what matters most.
-    const ranked = rankReviewFields(
-      groupFields.map(f => ({
-        fieldName: f.fieldName,
-        confidence: f.confidenceScore,
-        admissibility: f.admissibility,
-        flagged: f.flagged,
-        hasValue: !(f.rawValue === null || f.rawValue === ''),
-      })),
-    )
-    const byName = new Map(groupFields.map(f => [f.fieldName, f]))
-    const pick = (lowInfo: boolean) =>
-      ranked
-        .filter(r => r.lowInformation === lowInfo)
-        .map(r => byName.get(r.fieldName))
-        .filter((f): f is ExtractedField => Boolean(f))
-    const prominent = pick(false)
-    const confident = pick(true)
+  function renderFields() {
+    if (laidOut.length === 0) return null
     // `stretch` is what makes the two columns line up: without it a card with a
-    // unit note is taller than its neighbour and the rows go ragged, which is
-    // what left a hole down the right-hand side.
-    const gridStyle = {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-      gap: spacing[2],
-      alignItems: 'stretch',
-    } as const
-
+    // unit note is taller than its neighbour and the rows go ragged.
     return (
-      <section style={{ marginBottom: spacing[4] }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], marginBottom: spacing[2] }}>
-          <h3
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
-              margin: 0,
-              textTransform: 'uppercase',
-              letterSpacing: typography.tracking.wide,
-            }}
-          >
-            {title}
-          </h3>
-          {badge && (
-            <span
-              style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
-                fontStyle: 'italic',
-              }}
-            >
-              {badge}
-            </span>
-          )}
-        </div>
-        {prominent.length > 0 && <div style={gridStyle}>{prominent.map(renderCard)}</div>}
-        {confident.length > 0 && (
-          <details style={{ marginTop: prominent.length > 0 ? spacing[2] : 0 }}>
-            <summary
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
-                cursor: 'pointer',
-                padding: '4px 0',
-              }}
-            >
-              {confident.length} {confident.length === 1 ? 'field we’re' : 'fields we’re'} confident about — expand to review
-            </summary>
-            <div style={{ ...gridStyle, marginTop: spacing[2] }}>{confident.map(renderCard)}</div>
-          </details>
-        )}
+      <section
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: spacing[2],
+          alignItems: 'stretch',
+          marginBottom: spacing[4],
+        }}
+      >
+        {laidOut.map(l => {
+          const field = fieldByName.get(l.fieldName)
+          return field ? renderCard(field, l.spansRow) : null
+        })}
       </section>
     )
   }
@@ -444,9 +417,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         </div>
       </div>
 
-      {renderFieldGroup('Compulsory fields', compulsoryFields)}
-      {renderFieldGroup('Conditional fields', conditionalFields, '(required when conditions apply)')}
-      {renderFieldGroup('Optional fields', optionalFields)}
+      {renderFields()}
 
       {/* Cross-document conflict warning (PRD §12.3) */}
       {existingConflicts.length > 0 && (
@@ -625,19 +596,12 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         </div>
       )}
 
-      {/* A saved document has no primary action left: the records exist and the
-          audit chain is append-only, so confirming again is not a thing that can
-          happen. It used to render a live Confirm button that answered 409. */}
-      {isSaved ? (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            gap: spacing[2],
-            marginTop: spacing[3],
-          }}
-        >
+      {/* Three states, three sets of actions. A saved document has no primary
+          action left: the records exist and the audit chain is append-only, so
+          confirming again is not a thing that can happen. It used to render a
+          live Confirm button that answered 409. */}
+      <div style={footerStyle}>
+        {isWithdrawn ? (
           <span
             style={{
               fontSize: typography.sizes.sm,
@@ -645,137 +609,142 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
               color: colours.textSecondary,
             }}
           >
-            Saved. These figures are in your records.
+            Deleted. These figures are no longer in your records.
           </span>
-          <button
-            onClick={() => router.push('/records')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: colours.navy,
-              color: colours.surface,
-              fontSize: typography.sizes.base,
-              fontWeight: typography.weights.medium,
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              letterSpacing: typography.tracking.wide,
-            }}
-          >
-            View records
-          </button>
-        </div>
-      ) : (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            gap: spacing[2],
-            marginTop: spacing[3],
-          }}
-        >
-          {/* Destructive action sits with the others rather than in its own
-              section, but stays visually separate: outlined red, never filled,
-              and behind an inline confirmation so it cannot be hit in passing. */}
-          {confirmDelete ? (
-            <>
-              <span
-                style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textPrimary,
-                  marginRight: 'auto',
-                }}
-              >
-                Delete {document.fileName} and everything read from it? Nothing has been saved yet,
-                so nothing is recoverable.
-              </span>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: colours.red,
-                  color: colours.surface,
-                  fontSize: typography.sizes.base,
-                  fontWeight: typography.weights.medium,
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: deleting ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {deleting ? 'Deleting…' : 'Yes, delete it'}
-              </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: 'transparent',
-                  color: colours.textSecondary,
-                  fontSize: typography.sizes.base,
-                  fontWeight: typography.weights.light,
-                  border: `1px solid ${colours.border}`,
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}
-              >
-                Keep it
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setConfirmDelete(true)}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: 'transparent',
-                  color: colours.red,
-                  fontSize: typography.sizes.base,
-                  fontWeight: typography.weights.light,
-                  border: `1px solid ${colours.red}`,
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  marginRight: 'auto',
-                }}
-              >
-                Delete document
-              </button>
-              <button
-                onClick={() => router.push('/records')}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: 'transparent',
-                  color: colours.textSecondary,
-                  fontSize: typography.sizes.base,
-                  fontWeight: typography.weights.light,
-                  border: `1px solid ${colours.border}`,
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}
-              >
-                Save for later
-              </button>
-              <button
-                onClick={() => handleConfirm()}
-                disabled={submitting}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: submitting ? colours.navyHover : colours.navy,
-                  color: colours.surface,
-                  fontSize: typography.sizes.base,
-                  fontWeight: typography.weights.medium,
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: submitting ? 'not-allowed' : 'pointer',
-                  letterSpacing: typography.tracking.wide,
-                }}
-              >
-                {submitting ? 'Confirming…' : 'Confirm and save records'}
-              </button>
-            </>
-          )}
-        </div>
-      )}
+        ) : confirmDelete ? (
+          <>
+            <span
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textPrimary,
+                marginRight: 'auto',
+                lineHeight: typography.lineHeight.body,
+              }}
+            >
+              {isSaved
+                ? `Delete ${document.fileName}? Its figures come out of your records, totals and
+                   exports. The audit trail keeps an entry saying they were withdrawn, as it must —
+                   nothing certified is ever erased.`
+                : `Delete ${document.fileName} and everything read from it? Nothing has been saved
+                   yet, so nothing is recoverable.`}
+            </span>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: colours.red,
+                color: colours.surface,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.medium,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: deleting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {deleting ? 'Deleting…' : 'Yes, delete it'}
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: 'transparent',
+                color: colours.textSecondary,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.light,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Keep it
+            </button>
+          </>
+        ) : isSaved ? (
+          <>
+            <span
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textSecondary,
+              }}
+            >
+              Saved. These figures are in your records.
+            </span>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: colours.red,
+                color: colours.surface,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.medium,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                letterSpacing: typography.tracking.wide,
+              }}
+            >
+              Delete document
+            </button>
+          </>
+        ) : (
+          <>
+            {/* Destructive action sits with the others rather than in its own
+                section, but stays visually separate: outlined rather than filled
+                while there is a primary action to compete with. */}
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: 'transparent',
+                color: colours.red,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.light,
+                border: `1px solid ${colours.red}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                marginRight: 'auto',
+              }}
+            >
+              Delete document
+            </button>
+            <button
+              onClick={() => router.push('/records')}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: 'transparent',
+                color: colours.textSecondary,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.light,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Save for later
+            </button>
+            <button
+              onClick={() => handleConfirm()}
+              disabled={submitting}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: submitting ? colours.navyHover : colours.navy,
+                color: colours.surface,
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.medium,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                letterSpacing: typography.tracking.wide,
+              }}
+            >
+              {submitting ? 'Confirming…' : 'Confirm and save records'}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,13 +1,11 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
 import { listTemplates } from '@/lib/questionnaires/templates'
 
 export default async function QuestionnairesPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  await requirePageSession()
 
   const templates = listTemplates()
 

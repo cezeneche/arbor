@@ -76,9 +76,17 @@ export async function withDefinitions<T extends DecorableRecord>(
         status: true,
         proposedByEntityId: true,
         respondedAt: true,
+        // The lineage the version number belongs to — without it, "did they agree
+        // an earlier version" compares unrelated fields.
+        fieldDefinition: { select: { fieldName: true, domain: true } },
       },
     })
-    agreements = rows.map(r => ({ ...r, status: r.status as StoredAgreement['status'] }))
+    agreements = rows.map(({ fieldDefinition, ...r }) => ({
+      ...r,
+      fieldName: fieldDefinition.fieldName,
+      domain: fieldDefinition.domain as string,
+      status: r.status as StoredAgreement['status'],
+    }))
   }
 
   return attachDefinitions(records, { definitions, agreements, buyerEntityId })

@@ -8,7 +8,7 @@
 //
 // Call this inside prisma.$transaction(..., { isolationLevel: 'Serializable' })
 // to prevent concurrent requests from corrupting the per-entity audit chain.
-import { computeRecordHash } from './audit-chain'
+import { appendAuditEntry } from './audit-append'
 import type { AuditPayload } from './audit-chain'
 import type { DataDomain, TrustTier, ExtractionMethod, Prisma } from '@prisma/client'
 
@@ -50,13 +50,6 @@ export async function writeRecordWithAuditEntry(
   input: RecordInput,
   eventType = 'CREATED',
 ): Promise<RecordWriteResult> {
-  const lastEntry = await tx.auditEntry.findFirst({
-    where: { entityId: input.entityId },
-    orderBy: { createdAt: 'desc' },
-    select: { hash: true },
-  })
-  const previousHash = lastEntry?.hash ?? null
-
   const record = await tx.dataRecord.create({
     data: {
       entityId: input.entityId,
@@ -101,22 +94,18 @@ export async function writeRecordWithAuditEntry(
     submittedById: input.submittedById,
   }
 
-  const hash = computeRecordHash(auditPayload, previousHash)
+  // appendAuditEntry reads the tail and claims the next position in one place, so
+  // the ordering rule is not restated (and mis-stated) per write path.
+  const { hash } = await appendAuditEntry(tx, {
+    entityId: input.entityId,
+    recordId: record.id,
+    eventType,
+    payload: auditPayload,
+  })
 
   await tx.dataRecord.update({
     where: { id: record.id },
     data: { auditHash: hash },
-  })
-
-  await tx.auditEntry.create({
-    data: {
-      entityId: input.entityId,
-      recordId: record.id,
-      eventType,
-      payload: auditPayload as unknown as Prisma.InputJsonValue,
-      hash,
-      previousHash,
-    },
   })
 
   return { recordId: record.id, hash }

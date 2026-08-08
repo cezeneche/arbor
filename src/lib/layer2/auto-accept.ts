@@ -5,6 +5,7 @@
 // digest later invites the user to review and upgrade these to Verified.
 import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from './record-writer'
+import { assertRecordCapacity } from '@/lib/plan-guard'
 import { findDuplicates } from './duplicate-check'
 import { computeStaleAfterDate } from './staleness'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
@@ -89,6 +90,12 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
 
   return prisma.$transaction(
     async (tx) => {
+      // Auto-acceptance writes records without anyone pressing a button, so the
+      // plan cap has to hold here too — this path had no capacity check at all.
+      // Counted inside the transaction that writes.
+      const capacity = await assertRecordCapacity(document.entityId, prepared.length, tx)
+      if (!capacity.allowed) return []
+
       const ids: string[] = []
       for (const { f, rawNum, unit, siValue, siUnit } of prepared) {
         const prior = await tx.dataRecord.findMany({

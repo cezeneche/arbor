@@ -117,7 +117,12 @@ model User {
   entityId         String?
   entity           Entity?  @relation(fields: [entityId], references: [id])
   createdAt        DateTime @default(now())
-  twoFactorSecret  String? // AES-256-GCM encrypted TOTP secret
+  twoFactorSecret  String? // AES-256-GCM encrypted TOTP secret (the ACTIVE one)
+  // A secret from an in-progress enrolment, not yet confirmed by a valid code.
+  // Kept separate from twoFactorSecret so re-running setup on an account that
+  // already has 2FA cannot brick the authenticator that is currently working —
+  // the swap happens only when /2fa/enable verifies a code from the new device.
+  twoFactorPendingSecret String?
   twoFactorEnabled Boolean  @default(false)
   // Single-use proof (SHA-256 hash) that a 2FA challenge was passed server-side.
   // The jwt callback consumes this to upgrade a pending2fa session — the client
@@ -249,6 +254,10 @@ enum DocumentStatus {
   REVIEW_REQUIRED
   ACCEPTED
   REJECTED
+  // Was accepted, then removed by the user. Its records are deactivated and the
+  // audit chain keeps a WITHDRAWN entry for each. Distinct from REJECTED, which
+  // means the file could not be read — the Overview offers to help with those.
+  WITHDRAWN
 }
 
 // ── EXTRACTION JOB ────────────────────────────────────────────────────────────
@@ -687,8 +696,18 @@ model AuditEntry {
   payload      Json
   hash         String
   previousHash String?
+  // Position of this entry in its entity's chain, 1-based and gapless.
+  //
+  // createdAt cannot order the chain: Postgres gives every statement in one
+  // transaction the same now(), so several entries written together are tied and
+  // both "which entry is the tail" and "what order does verification walk" become
+  // ambiguous. The unique constraint below is also the concurrency guard — two
+  // appends racing for the same position collide instead of silently forking the
+  // chain, and runSerializable retries the loser.
+  sequence     Int
   createdAt    DateTime @default(now())
 
+  @@unique([entityId, sequence])
   @@index([entityId, createdAt])
   @@index([recordId])
 }
@@ -854,6 +873,14 @@ model DataAccessGrant {
   domain          DataDomain?
   periodStart     DateTime?
   periodEnd       DateTime?
+  // The field names this grant covers, as a JSON array. Null means every field in
+  // the domain — a deliberate, whole-domain share.
+  //
+  // A grant created by answering a data request is NOT that: the buyer asked for
+  // named fields, so the grant it produces covers those and nothing else. Without
+  // this, answering a request for "total_consumption_kwh" handed the buyer every
+  // energy record in the period, including ones they never asked for.
+  fieldNames      Json?
   grantedAt       DateTime    @default(now())
   revokedAt       DateTime?
   isActive        Boolean     @default(true)
@@ -897,6 +924,29 @@ enum NotificationType {
 
 // ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────
 
+// A differentially-private release that has already been made.
+//
+// DP protects one release, not a series of them: drawing fresh noise over the
+// same values on every request lets a caller average the answers back to the
+// truth. A release is therefore keyed by the group, the epsilon, and a
+// fingerprint of the exact values behind it — an identical request replays the
+// release already made rather than drawing again. See dp-release-ledger.ts.
+model DpBenchmarkRelease {
+  id               String   @id @default(cuid())
+  groupKey         String
+  epsilon          Float
+  /** SHA-256 of the group's sorted values and bounds. */
+  inputFingerprint String
+  suppressed       Boolean
+  n                Int
+  dpMean           Float?
+  dpCount          Float?
+  releasedAt       DateTime @default(now())
+
+  @@unique([groupKey, epsilon, inputFingerprint], map: "DpBenchmarkRelease_group_epsilon_fingerprint_key")
+  @@index([releasedAt])
+}
+
 model SectorBenchmark {
   id           String     @id @default(cuid())
   sector       String
@@ -913,7 +963,11 @@ model SectorBenchmark {
   tierAPercent Float
   computedAt   DateTime   @default(now())
 
-  @@unique([sector, domain, fieldName, year])
+  // Unit is part of the identity. Benchmarks are computed per unit — a field
+  // recorded in MJ by some entities and kWh by others is two distributions, not
+  // one — but the key omitted it, so the second upsert silently overwrote the
+  // first and whichever unit happened to be processed last became "the" benchmark.
+  @@unique([sector, domain, fieldName, unit, year], map: "SectorBenchmark_sector_domain_field_unit_year_key")
 }
 
 // ── CROSS-VALIDATION RESULT ───────────────────────────────────────────────────
@@ -923,6 +977,12 @@ model CrossValidationResult {
   entityId           String
   documentAId        String
   documentBId        String
+  // The specific records compared. Two documents can hold several records for the
+  // same field, so the document pair alone does not identify a comparison — which
+  // is why re-running cross-validation used to add a new row (and a new pair of
+  // flags) every time instead of updating the one it had already produced.
+  recordAId          String?
+  recordBId          String?
   fieldName          String
   valueA             Float
   valueB             Float
@@ -932,6 +992,11 @@ model CrossValidationResult {
   resolvedAt         DateTime?
   resolvedNote       String?
   createdAt          DateTime  @default(now())
+
+  // Mapped explicitly: the default name from five columns exceeds Postgres's
+  // 63-character identifier limit and would be silently truncated.
+  @@unique([documentAId, documentBId, fieldName, recordAId, recordBId], map: "CrossValidationResult_pair_key")
+  @@index([entityId, createdAt])
 }
 
 // ── API KEY ───────────────────────────────────────────────────────────────────

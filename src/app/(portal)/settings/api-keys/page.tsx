@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { ApiKeyManager } from './ApiKeyManager'
@@ -8,8 +7,7 @@ import { BenchmarkConsentToggle } from './BenchmarkConsentToggle'
 import { BackLink } from '@/components/BackLink'
 
 export default async function ApiKeysPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
 
   const entity = await prisma.entity.findUnique({

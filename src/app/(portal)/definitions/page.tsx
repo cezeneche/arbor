@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/session'
 import { colours, spacing, textStyles, borders, typography } from '@/lib/design-system'
@@ -14,8 +14,7 @@ import { DefinitionsList } from './DefinitionsList'
 // the field name, version and stored unit alongside it (PRD §7, §18).
 
 export default async function DefinitionsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string
 

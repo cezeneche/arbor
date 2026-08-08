@@ -14,7 +14,7 @@ import { NextRequest } from 'next/server'
 import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { enforceBuyerApiLimit } from '@/lib/rate-limit-guard'
-import { anyGrantCoversRecord } from '@/lib/layer3/grant-scope'
+import { GRANT_SCOPE_SELECT, anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { parseNlQuery } from '@/lib/query-interpreter/nl-parser'
@@ -215,7 +215,7 @@ async function runSupplyChainQuery(params: {
 
   const grants = await prisma.dataAccessGrant.findMany({
     where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
-    select: { grantorEntityId: true, domain: true, periodStart: true, periodEnd: true },
+    select: { grantorEntityId: true, ...GRANT_SCOPE_SELECT },
   })
 
   const rows = await prisma.dataRecord.findMany({
@@ -238,7 +238,9 @@ async function runSupplyChainQuery(params: {
   })
 
   return rows
-    .filter(r => anyGrantCoversRecord(grants.filter(g => g.grantorEntityId === r.entityId), r))
+    .filter(r =>
+      anyGrantCoversRecord(grants.filter(g => g.grantorEntityId === r.entityId).map(toGrantScope), r),
+    )
     .map(r => ({
       id: r.id,
       entityName: r.entity.legalName,

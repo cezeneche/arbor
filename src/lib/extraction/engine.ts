@@ -23,12 +23,13 @@ import {
   parseGenericExtractionResponse,
 } from './generic'
 import { EXTRACTION_MODEL } from './extractor-version'
+import { normaliseExtractionResponse, readPositiveIntEnv } from './response-schema'
 import { renderCorrectionHints } from './correction-exemplars'
 
 // How many self-consistency samples to draw per document. k>1 turns
 // on Bayesian fusion of the samples' agreement into an honest, varying
 // confidence; k=1 keeps single-sample extraction (model self-reported score).
-const EXTRACTION_SAMPLES = Math.max(1, Number(process.env.EXTRACTION_SAMPLES ?? 3))
+const EXTRACTION_SAMPLES = readPositiveIntEnv(process.env.EXTRACTION_SAMPLES, 3, 10)
 
 // Lazily instantiated so importing this module (e.g. during `next build` page
 // data collection) never requires ANTHROPIC_API_KEY to be present.
@@ -125,7 +126,7 @@ export async function extractDocumentWithConsistency(
   input: ExtractionInput,
   opts: { samples?: number } = {},
 ): Promise<ExtractionResult> {
-  const k = Math.max(1, opts.samples ?? EXTRACTION_SAMPLES)
+  const k = Number.isInteger(opts.samples) && opts.samples! >= 1 ? opts.samples! : EXTRACTION_SAMPLES
   if (k <= 1) return extractDocument(input)
 
   const settled = await Promise.allSettled(
@@ -217,31 +218,42 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
 
   const rawText = textFromResponse(response)
 
+  const failure = (notes: string): ExtractionResult => ({
+    success: false,
+    fields: [],
+    documentTypeConfirmed: input.documentType,
+    extractionNotes: notes,
+    rawResponse: rawText,
+    languageNote,
+    documentClass: null,
+  })
+
+  let parsed: unknown
   try {
-    const parsed = parseLooseJson(rawText) as {
-      documentTypeConfirmed?: string
-      extractionNotes?: string
-      fields?: ExtractionResult['fields']
-    }
-    return {
-      success: true,
-      fields: parsed.fields ?? [],
-      documentTypeConfirmed: parsed.documentTypeConfirmed ?? input.documentType,
-      extractionNotes: parsed.extractionNotes ?? '',
-      rawResponse: rawText,
-      languageNote,
-      documentClass: null,
-    }
+    parsed = parseLooseJson(rawText)
   } catch {
-    return {
-      success: false,
-      fields: [],
-      documentTypeConfirmed: input.documentType,
-      extractionNotes: 'Extraction failed : could not parse Claude response as JSON',
-      rawResponse: rawText,
-      languageNote,
-      documentClass: null,
-    }
+    return failure('Extraction failed : could not parse Claude response as JSON')
+  }
+
+  // Shape-checked, not cast. A field the model half-filled is read
+  // conservatively (no value, zero confidence, flagged for review) rather than
+  // trusted — Layer 1 is where a probabilistic answer stops being taken at its word.
+  const normalised = normaliseExtractionResponse(parsed)
+  if (!normalised) {
+    return failure('Extraction failed : the response was not in the expected shape')
+  }
+
+  return {
+    success: true,
+    fields: normalised.fields,
+    documentTypeConfirmed: normalised.documentTypeConfirmed ?? input.documentType,
+    extractionNotes:
+      normalised.discardedFieldCount > 0
+        ? `${normalised.extractionNotes} (${normalised.discardedFieldCount} unreadable field(s) discarded)`.trim()
+        : normalised.extractionNotes,
+    rawResponse: rawText,
+    languageNote,
+    documentClass: null,
   }
 }
 

@@ -1,14 +1,12 @@
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/session'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 // landing page listing the entities an auditor is scoped to.
 export default async function AuditorHome() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const userId = getSessionUser(session).id
 
   const grants = await prisma.auditorAccess.findMany({

@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     prisma.totpRecoveryCode.deleteMany({ where: { userId } }),
     prisma.user.update({
       where: { id: userId },
-      data: { twoFactorEnabled: false, twoFactorSecret: null },
+      data: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorPendingSecret: null },
     }),
   ])
 

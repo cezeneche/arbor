@@ -10,6 +10,7 @@ import { formatRecordsAsXML } from '@/lib/export/xml-formatter'
 import { withDefinitions } from '@/lib/layer3/load-definitions'
 import { domainSchema } from '@/lib/constants'
 import type { DataDomain } from '@prisma/client'
+import { GRANT_SCOPE_SELECT, toGrantScope, anyGrantCoversRecord } from '@/lib/layer3/grant-scope'
 
 export async function GET(req: NextRequest) {
   const { session, response } = await requireAuth()
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
       isActive: true,
       revokedAt: null,
     },
-    select: { grantorEntityId: true, domain: true, periodStart: true, periodEnd: true },
+    select: { grantorEntityId: true, ...GRANT_SCOPE_SELECT },
   })
   const authorisedSupplierIds = new Set(grants.map(g => g.grantorEntityId))
 
@@ -85,16 +86,15 @@ export async function GET(req: NextRequest) {
     orderBy: [{ entityId: 'asc' }, { domain: 'asc' }, { periodStart: 'asc' }],
   })
 
-  // Enforce each grant's domain and period bounds on the fetched records
-  const records = candidateRecords.filter(record => {
-    const entityGrants = grants.filter(g => g.grantorEntityId === record.entityId)
-    return entityGrants.some(grant => {
-      const domainMatch = !grant.domain || grant.domain === record.domain
-      const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
-      const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
-      return domainMatch && startMatch && endMatch
-    })
-  })
+  // Enforce each grant's scope on the fetched records, through grant-scope rather
+  // than a local restatement of the rule — an export that reads on its own copy of
+  // the rules is an export that keeps reading on the old ones.
+  const records = candidateRecords.filter(record =>
+    anyGrantCoversRecord(
+      grants.filter(g => g.grantorEntityId === record.entityId).map(toGrantScope),
+      record,
+    ),
+  )
 
   // Attach the agreed business definition in force when each record was submitted,
   // plus this buyer's agreement state for that wording. Travels with the data on

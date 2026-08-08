@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { assembleAuditPackage } from '@/lib/audit-package/assemble'
@@ -11,8 +11,7 @@ import { AuditPackageView } from '@/components/AuditPackageView'
 // single entity+period by their AuditorAccess grant. No actions.
 export default async function AuditorEntityPage({ params }: { params: Promise<{ entityId: string }> }) {
   const { entityId } = await params
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const role = getSessionUser(session).role
   if (role !== 'AUDITOR') redirect('/dashboard')
   const userId = getSessionUser(session).id

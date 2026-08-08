@@ -22,6 +22,8 @@ const accepted: StoredAgreement = {
   id: 'agr-1',
   fieldDefinitionId: 'def-1',
   definitionVersion: 1,
+  fieldName: 'total_consumption_kwh',
+  domain: 'ENERGY',
   supplierEntityId: SUPPLIER,
   buyerEntityId: BUYER,
   status: 'ACCEPTED',
@@ -34,6 +36,8 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([], {
       fieldDefinitionId: 'def-1',
       definitionVersion: 1,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: SUPPLIER,
       buyerEntityId: BUYER,
     })
@@ -45,6 +49,8 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([accepted], {
       fieldDefinitionId: 'def-1',
       definitionVersion: 1,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: SUPPLIER,
       buyerEntityId: BUYER,
     })
@@ -60,6 +66,8 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([accepted], {
       fieldDefinitionId: 'def-2',
       definitionVersion: 2,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: SUPPLIER,
       buyerEntityId: BUYER,
     })
@@ -71,6 +79,8 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([accepted], {
       fieldDefinitionId: 'def-1',
       definitionVersion: 1,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: SUPPLIER,
       buyerEntityId: 'ent-other-buyer',
     })
@@ -81,6 +91,8 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([accepted], {
       fieldDefinitionId: 'def-1',
       definitionVersion: 1,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: 'ent-other-supplier',
       buyerEntityId: BUYER,
     })
@@ -92,6 +104,8 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([pending], {
       fieldDefinitionId: 'def-1',
       definitionVersion: 1,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: SUPPLIER,
       buyerEntityId: BUYER,
     })
@@ -104,10 +118,68 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([rejected], {
       fieldDefinitionId: 'def-1',
       definitionVersion: 1,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: SUPPLIER,
       buyerEntityId: BUYER,
     })
     expect(got.status).toBe('NOT_AGREED')
+  })
+
+  // The defect: the earlier-version lookup filtered on the tenant pair and the
+  // version number but not the field, so an agreement about one field made an
+  // untouched definition of a DIFFERENT field report SUPERSEDED — consent claimed
+  // on the strength of a conversation about something else.
+  it('does not treat an agreement on another field as an earlier agreement', () => {
+    const otherField: StoredAgreement = {
+      ...accepted,
+      id: 'agr-other',
+      fieldDefinitionId: 'def-other-v1',
+      fieldName: 'meter_reference',
+      definitionVersion: 1,
+    }
+    const got = resolveAgreementFor([otherField], {
+      fieldDefinitionId: 'def-2',
+      definitionVersion: 2,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
+      supplierEntityId: SUPPLIER,
+      buyerEntityId: BUYER,
+    })
+    expect(got.status).toBe('NONE')
+    expect(got.agreedVersion).toBeNull()
+  })
+
+  it('does not treat the same field name in another domain as the same lineage', () => {
+    const otherDomain: StoredAgreement = {
+      ...accepted,
+      id: 'agr-other-domain',
+      fieldDefinitionId: 'def-prod-v1',
+      domain: 'PRODUCTION',
+      definitionVersion: 1,
+    }
+    const got = resolveAgreementFor([otherDomain], {
+      fieldDefinitionId: 'def-2',
+      definitionVersion: 2,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
+      supplierEntityId: SUPPLIER,
+      buyerEntityId: BUYER,
+    })
+    expect(got.status).toBe('NONE')
+  })
+
+  it('still reports SUPERSEDED for an earlier version of the SAME field', () => {
+    const got = resolveAgreementFor([accepted], {
+      fieldDefinitionId: 'def-2',
+      definitionVersion: 2,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
+      supplierEntityId: SUPPLIER,
+      buyerEntityId: BUYER,
+    })
+    expect(got.status).toBe('SUPERSEDED')
+    expect(got.agreedVersion).toBe(1)
   })
 
   it('a rejected earlier version does not count as a superseding agreement', () => {
@@ -115,6 +187,8 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([rejected], {
       fieldDefinitionId: 'def-2',
       definitionVersion: 2,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: SUPPLIER,
       buyerEntityId: BUYER,
     })
@@ -132,6 +206,8 @@ describe('resolveAgreementFor', () => {
     const got = resolveAgreementFor([accepted, alsoV2], {
       fieldDefinitionId: 'def-3',
       definitionVersion: 3,
+      fieldName: 'total_consumption_kwh',
+      domain: 'ENERGY',
       supplierEntityId: SUPPLIER,
       buyerEntityId: BUYER,
     })

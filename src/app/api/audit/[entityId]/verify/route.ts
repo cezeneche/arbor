@@ -21,7 +21,7 @@ export async function GET(
   const [entries, records] = await Promise.all([
     prisma.auditEntry.findMany({
       where: { entityId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { sequence: 'asc' },
     }),
     prisma.dataRecord.findMany({
       where: { entityId },

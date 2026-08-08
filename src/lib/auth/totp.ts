@@ -1,4 +1,4 @@
-import { generateSecret, generateSync, verifySync, generateURI } from 'otplib'
+import { generateSecret, verifySync, generateURI } from 'otplib'
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'

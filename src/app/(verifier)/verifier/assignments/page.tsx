@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/session'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing } from '@/lib/design-system'
 
@@ -20,8 +19,7 @@ const STATUS_COLOUR: Record<string, string> = {
 }
 
 export default async function VerifierAssignmentsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const verifierId = getSessionUser(session).id
 
   const assignments = await prisma.verificationAssignment.findMany({

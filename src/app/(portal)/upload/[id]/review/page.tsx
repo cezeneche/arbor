@@ -1,12 +1,13 @@
 import { notFound, redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
 import { ExtractionReview } from '@/components/ExtractionReview'
 import { ExtractionPoller } from '@/components/ExtractionPoller'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
+import type { DataDomain } from '@prisma/client'
 
 export default async function ReviewPage({
   params,
@@ -14,8 +15,7 @@ export default async function ReviewPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string
 
@@ -59,7 +59,7 @@ export default async function ReviewPage({
         existingConflicts = await prisma.dataRecord.findMany({
           where: {
             entityId,
-            domain: domain as never,
+            domain: domain as DataDomain,
             isActive: true,
             documentId: { not: document.id },
             periodStart: { lte: pe },

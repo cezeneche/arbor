@@ -111,3 +111,30 @@ export async function checkRateLimit(
     return { allowed: failMode === 'open', remaining: failMode === 'open' ? config.limit : 0 }
   }
 }
+
+/**
+ * Single-use claim on `key`, expiring after `ttlSeconds`. Returns true the first
+ * time a key is seen and false for every repeat inside the window.
+ *
+ * Used as the replay guard on signed inbound webhooks, alongside the timestamp
+ * tolerance in the signature itself: the timestamp bounds how long a captured
+ * delivery stays valid, and this stops it being delivered twice inside that
+ * window. Honest limit — with Upstash unconfigured there is nowhere to record the
+ * claim, so it returns true and the timestamp window is the only guard left.
+ */
+export async function claimOnce(key: string, ttlSeconds: number): Promise<boolean> {
+  const redis = getRedis()
+  if (!redis) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[replay-guard] Upstash not configured — deliveries are not de-duplicated')
+    }
+    return true
+  }
+  try {
+    const stored = await redis.set(`once:${key}`, '1', { nx: true, ex: ttlSeconds })
+    return stored === 'OK'
+  } catch (e) {
+    console.error('[replay-guard] claim failed, allowing delivery:', e)
+    return true
+  }
+}

@@ -24,6 +24,35 @@ export function verifyBodyHmac(rawBody: string, signatureHex: string | null, sec
   return safeEqualHex(signatureHex.trim().toLowerCase(), expected)
 }
 
+/**
+ * Verify a hex HMAC-SHA256 taken over `${timestamp}.${rawBody}`, with the
+ * timestamp supplied in its own header in unix SECONDS.
+ *
+ * A signature over the body alone is valid for ever: whoever captures one signed
+ * delivery can replay that exact payload indefinitely. Binding the timestamp into
+ * the signed material means a replay is only accepted inside `toleranceSec`, and
+ * shifting the timestamp to widen that window invalidates the signature.
+ */
+export function verifyTimestampedBodyHmac(
+  rawBody: string,
+  timestampHeader: string | null,
+  signatureHex: string | null,
+  secret: string,
+  opts: { now?: Date; toleranceSec?: number } = {},
+): boolean {
+  if (!timestampHeader || !signatureHex) return false
+
+  const timestamp = Number(timestampHeader.trim())
+  if (!Number.isFinite(timestamp)) return false
+
+  const nowSec = Math.floor((opts.now ?? new Date()).getTime() / 1000)
+  const toleranceSec = opts.toleranceSec ?? 300
+  if (Math.abs(nowSec - timestamp) > toleranceSec) return false
+
+  const expected = createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex')
+  return safeEqualHex(signatureHex.trim().toLowerCase(), expected)
+}
+
 interface WorkosSignatureParts {
   timestamp: number | null
   signature: string | null

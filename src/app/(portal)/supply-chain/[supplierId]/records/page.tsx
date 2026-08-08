@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { getSessionUser } from '@/lib/session'
-import { redirect, notFound } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { notFound } from 'next/navigation'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
@@ -21,8 +21,7 @@ export default async function SupplierRecordsPage({
 }: {
   params: Promise<{ supplierId: string }>
 }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const { supplierId } = await params
   const buyerEntityId = getSessionUser(session).entityId as string
