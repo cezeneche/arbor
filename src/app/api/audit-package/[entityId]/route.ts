@@ -37,7 +37,7 @@ export async function GET(
 
   const auditEntries = await prisma.auditEntry.findMany({
     where: { entityId },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { sequence: 'asc' },
   })
 
   const crossValidations = await prisma.crossValidationResult.findMany({

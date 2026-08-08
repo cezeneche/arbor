@@ -1,13 +1,12 @@
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import Link from 'next/link'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 // external-auditor shell. Read-only; scoped per AuditorAccess grant.
 export default async function AuditorLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const role = getSessionUser(session).role
   if (role !== 'AUDITOR') redirect('/dashboard')
 

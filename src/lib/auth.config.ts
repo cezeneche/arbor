@@ -16,6 +16,7 @@ export const authConfig = {
         const u = user as unknown as Record<string, unknown>
         if (u.pending2fa) {
           token.pending2fa = true
+          token.tokenVersion = u.tokenVersion as number
         } else {
           token.entityId = u.entityId as string
           token.role = u.role as string

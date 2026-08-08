@@ -1,14 +1,13 @@
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { spacing, textStyles } from '@/lib/design-system'
 import { SsoSetup } from './SsoSetup'
 import { BackLink } from '@/components/BackLink'
 
 export default async function SsoSettingsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const role = getSessionUser(session).role
   if (role !== 'ADMIN') redirect('/settings')
   const entityId = getSessionUser(session).entityId as string

@@ -6,12 +6,13 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { generateWebhookSecret } from '@/lib/webhooks/signing'
 import { encryptSecret } from '@/lib/crypto/credential-encryption'
+import { validateOutboundUrl, OUTBOUND_URL_MESSAGES } from '@/lib/net/ssrf-guard'
 import type { Prisma } from '@prisma/client'
 
 const EVENT_VALUES = ['RECORD_CERTIFIED', 'RECORD_SUPERSEDED', 'ACCESS_GRANTED', 'ACCESS_REVOKED'] as const
 
 const createSchema = z.object({
-  url: z.string().url().refine((u) => u.startsWith('https://'), 'URL must use HTTPS'),
+  url: z.string(),
   events: z.array(z.enum(EVENT_VALUES)).min(1),
 })
 
@@ -47,12 +48,20 @@ export async function POST(req: NextRequest) {
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
 
+  // The destination is dialled by Arbor's server, so it has to be somewhere a
+  // tenant is entitled to reach: public https only, no private or link-local
+  // address. Checked again at delivery time, because DNS can change afterwards.
+  const destination = validateOutboundUrl(parsed.data.url)
+  if (!destination.ok) {
+    return err(OUTBOUND_URL_MESSAGES[destination.reason], 'VALIDATION_ERROR', 400)
+  }
+
   // Generate the signing secret; show it once, store only the encrypted form.
   const secret = generateWebhookSecret()
   const sub = await prisma.webhookSubscription.create({
     data: {
       entityId,
-      url: parsed.data.url,
+      url: destination.url.toString(),
       events: parsed.data.events as unknown as Prisma.InputJsonValue,
       secretEncrypted: encryptSecret(secret),
       secretPrefix: secret.slice(0, 14),

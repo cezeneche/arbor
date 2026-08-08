@@ -5,9 +5,10 @@ import { requireVerifier } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { computeVerificationSignature } from '@/lib/layer2/verification-signature'
-import { computeRecordHash, type AuditPayload } from '@/lib/layer2/audit-chain'
+import { type AuditPayload } from '@/lib/layer2/audit-chain'
+import { appendAuditEntry } from '@/lib/layer2/audit-append'
+import { runSerializable } from '@/lib/layer2/serializable'
 import { sendNotification } from '@/lib/notifications'
-import type { Prisma } from '@prisma/client'
 
 const bodySchema = z.object({
   action: z.enum(['verify', 'reject']),
@@ -41,15 +42,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const now = new Date()
   const nowIso = now.toISOString()
 
-  // Write the audit-chain entry inside a serializable tx so the per-entity chain stays intact.
-  const result = await prisma.$transaction(async (tx) => {
-    const lastEntry = await tx.auditEntry.findFirst({
-      where: { entityId: assignment.entityId },
-      orderBy: { createdAt: 'desc' },
-      select: { hash: true },
-    })
-    const previousHash = lastEntry?.hash ?? null
-
+  // Serializable, not the default: previousHash is read and the next link written
+  // in one unit, so a concurrent write cannot fork the entity's chain.
+  const result = await runSerializable(async (tx) => {
     let signatureHash: string | null = null
     let eventType: string
     if (action === 'verify') {
@@ -85,17 +80,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       submittedAt: nowIso,
       submittedById: verifierId,
     }
-    const hash = computeRecordHash(payload, previousHash)
-
-    await tx.auditEntry.create({
-      data: {
-        entityId: assignment.entityId,
-        recordId: payload.recordId,
-        eventType,
-        payload: payload as unknown as Prisma.InputJsonValue,
-        hash,
-        previousHash,
-      },
+    const { hash } = await appendAuditEntry(tx, {
+      entityId: assignment.entityId,
+      recordId: payload.recordId,
+      eventType,
+      payload,
     })
 
     const updated = await tx.verificationAssignment.update({
@@ -108,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     })
     return { updated, signatureHash }
-  }, { isolationLevel: 'Serializable' })
+  })
 
   // Notify the entity (post-commit; non-fatal).
   if (action === 'verify') {

@@ -1,6 +1,5 @@
 import { getSessionUser } from '@/lib/session'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { spacing, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
@@ -9,8 +8,7 @@ import { RequestsList } from '@/components/RequestsList'
 // The data-request depth (respond, generate share link, pagination) lives here.
 // The unified /requests landing routes into it; this keeps the interaction intact.
 export default async function DataRequestsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string
 

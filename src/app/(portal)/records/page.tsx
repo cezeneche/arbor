@@ -2,8 +2,7 @@ import Link from 'next/link'
 import { fieldLabel, fieldMeaning } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { getSessionUser } from '@/lib/session'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
@@ -30,8 +29,7 @@ export default async function RecordsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>
 }) {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string
   const sp = await searchParams

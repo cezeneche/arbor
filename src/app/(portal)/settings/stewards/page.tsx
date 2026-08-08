@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/session'
 import { colours, spacing, textStyles, borders, typography } from '@/lib/design-system'
@@ -16,8 +15,7 @@ import type { DataDomain } from '@/lib/constants'
 // because "nobody's job" is the failure this screen exists to prevent.
 
 export default async function StewardsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const user = getSessionUser(session)
   const entityId = user.entityId as string

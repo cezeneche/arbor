@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import Link from 'next/link'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { ProfileEditor } from './ProfileEditor'
@@ -10,8 +10,7 @@ import { BenchmarkConsentToggle } from './api-keys/BenchmarkConsentToggle'
 import { TwoFactorSetup } from './TwoFactorSetup'
 
 export default async function SettingsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const userId = getSessionUser(session).id
   const entityId = getSessionUser(session).entityId as string

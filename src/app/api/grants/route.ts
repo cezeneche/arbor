@@ -4,9 +4,11 @@ import { z } from 'zod'
 import { requireAuth, requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
-import { computeRecordHash, type AuditPayload } from '@/lib/layer2/audit-chain'
+import { type AuditPayload } from '@/lib/layer2/audit-chain'
+import { appendAuditEntry } from '@/lib/layer2/audit-append'
+import { runSerializable } from '@/lib/layer2/serializable'
 import { dispatchWebhook } from '@/lib/webhooks/dispatch'
-import type { Prisma } from '@prisma/client'
+import type { DataDomain } from '@prisma/client'
 
 const createSchema = z.object({
   granteeEntityId: z.string().min(1),
@@ -51,28 +53,26 @@ export async function POST(req: NextRequest) {
   const grantee = await prisma.entity.findUnique({ where: { id: granteeEntityId }, select: { legalName: true } })
   if (!grantee) return NextResponse.json({ error: 'Grantee entity not found.' }, { status: 404 })
 
-  const grant = await prisma.dataAccessGrant.create({
-    data: {
-      grantorEntityId: entityId,
-      granteeEntityId,
-      domain: domain as never ?? null,
-      periodStart: periodStart ? new Date(periodStart) : null,
-      periodEnd: periodEnd ? new Date(periodEnd) : null,
-    },
-  })
-
-  // record the consent acknowledgement in the audit chain. recordId is
-  // namespaced 'consent_' so the chain-verify route treats it as a synthetic entry.
-  try {
-    const nowIso = new Date().toISOString()
-    const lastEntry = await prisma.auditEntry.findFirst({
-      where: { entityId },
-      orderBy: { createdAt: 'desc' },
-      select: { hash: true },
+  // The grant and its consent entry are written together. Previously the grant was
+  // created first and the audit entry appended afterwards with its failure merely
+  // logged — which could leave a live grant with no record of the consent that
+  // authorised it, in the one structure that is supposed to prove such things.
+  const nowIso = new Date().toISOString()
+  const grant = await runSerializable(async tx => {
+    const created = await tx.dataAccessGrant.create({
+      data: {
+        grantorEntityId: entityId,
+        granteeEntityId,
+        domain: (domain as DataDomain | undefined) ?? null,
+        periodStart: periodStart ? new Date(periodStart) : null,
+        periodEnd: periodEnd ? new Date(periodEnd) : null,
+      },
     })
-    const previousHash = lastEntry?.hash ?? null
+
+    // recordId is namespaced 'consent_' so the chain-verify route treats it as a
+    // synthetic entry rather than looking for a DataRecord behind it.
     const payload: AuditPayload = {
-      recordId: `consent_${grant.id}`,
+      recordId: `consent_${created.id}`,
       entityId,
       domain: (domain as string) ?? 'COMPLIANCE',
       fieldName: 'access_granted_with_consent',
@@ -90,20 +90,16 @@ export async function POST(req: NextRequest) {
       submittedAt: nowIso,
       submittedById: getSessionUser(session).id,
     }
-    const hash = computeRecordHash(payload, previousHash)
-    await prisma.auditEntry.create({
-      data: {
-        entityId,
-        recordId: payload.recordId,
-        eventType: 'ACCESS_GRANTED_WITH_CONSENT',
-        payload: payload as unknown as Prisma.InputJsonValue,
-        hash,
-        previousHash,
-      },
+
+    await appendAuditEntry(tx, {
+      entityId,
+      recordId: payload.recordId,
+      eventType: 'ACCESS_GRANTED_WITH_CONSENT',
+      payload,
     })
-  } catch (e) {
-    console.error('[grants] consent audit entry failed:', e)
-  }
+
+    return created
+  })
 
   await sendNotification({
     entityId: granteeEntityId,

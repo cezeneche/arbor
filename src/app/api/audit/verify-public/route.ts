@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   // Re-verify the entity's audit chain at request time.
   const auditEntries = await prisma.auditEntry.findMany({
     where: { entityId },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { sequence: 'asc' },
     select: { hash: true, previousHash: true, payload: true },
   })
   const chainValid = verifyChain(

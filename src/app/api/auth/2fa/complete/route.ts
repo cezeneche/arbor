@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { decryptTotpSecret, verifyTotpCode, verifyRecoveryCode, hashRecoveryCode } from '@/lib/auth/totp'
+import { decryptTotpSecret, verifyTotpCode, verifyRecoveryCode } from '@/lib/auth/totp'
 import { generateVerificationNonce } from '@/lib/auth/two-factor-nonce'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
@@ -43,10 +43,24 @@ export async function POST(req: NextRequest) {
   const userId = user.id as string
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { twoFactorSecret: true, twoFactorEnabled: true },
+    select: { twoFactorSecret: true, twoFactorEnabled: true, isActive: true, tokenVersion: true },
   })
 
-  if (!dbUser?.twoFactorEnabled || !dbUser.twoFactorSecret) {
+  // The half-session is still a session: re-check the live account state before
+  // letting the challenge complete. A deprovision or a password reset (which bumps
+  // tokenVersion) that lands while the challenge is open must kill it, not be
+  // adopted by the upgraded token.
+  if (!dbUser || !dbUser.isActive) {
+    return NextResponse.json({ error: 'This account has been deactivated.' }, { status: 403 })
+  }
+  if (dbUser.tokenVersion !== (user.tokenVersion as number | undefined ?? 0)) {
+    return NextResponse.json(
+      { error: 'Session has been revoked. Please sign in again.', code: 'SESSION_REVOKED' },
+      { status: 401 },
+    )
+  }
+
+  if (!dbUser.twoFactorEnabled || !dbUser.twoFactorSecret) {
     return NextResponse.json({ error: '2FA is not configured for this account.' }, { status: 400 })
   }
 

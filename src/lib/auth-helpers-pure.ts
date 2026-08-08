@@ -4,6 +4,7 @@
 export type SessionSecurityCode =
   | 'TWO_FACTOR_REQUIRED'
   | 'ACCOUNT_GONE'
+  | 'ACCOUNT_DISABLED'
   | 'SESSION_REVOKED'
   | 'ADMIN_TWO_FACTOR_SETUP_REQUIRED'
 
@@ -19,17 +20,29 @@ export interface SessionSecurityOptions {
 
 export function evaluateSessionSecurity(
   sessionUser: { pending2fa?: boolean; tokenVersion?: number },
-  dbUser: { tokenVersion: number; role?: string; twoFactorEnabled?: boolean } | null,
+  dbUser: {
+    tokenVersion: number
+    isActive?: boolean
+    role?: string
+    twoFactorEnabled?: boolean
+  } | null,
   opts: SessionSecurityOptions = {},
 ): SessionSecurityResult {
-  // 2FA gate first: a half-authenticated session should be sent to verify 2FA,
+  // Existence and deprovisioning outrank everything, including the 2FA gate: a
+  // half-authenticated session on a deactivated account must not be completable.
+  // Deactivation does not bump tokenVersion, so the version gate would miss it.
+  if (!dbUser) {
+    return { ok: false, code: 'ACCOUNT_GONE' }
+  }
+
+  if (dbUser.isActive === false) {
+    return { ok: false, code: 'ACCOUNT_DISABLED' }
+  }
+
+  // Then the 2FA gate: a half-authenticated session should be sent to verify 2FA,
   // not bounced to a full re-login, even if its version is also stale.
   if (sessionUser.pending2fa === true) {
     return { ok: false, code: 'TWO_FACTOR_REQUIRED' }
-  }
-
-  if (!dbUser) {
-    return { ok: false, code: 'ACCOUNT_GONE' }
   }
 
   if (dbUser.tokenVersion !== (sessionUser.tokenVersion ?? 0)) {

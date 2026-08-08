@@ -1,13 +1,12 @@
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { ExportBuilder } from './ExportBuilder'
 
 export default async function ExportPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string
   const entity = await prisma.entity.findUnique({

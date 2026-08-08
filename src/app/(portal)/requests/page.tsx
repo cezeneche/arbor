@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/session'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { shareState } from '@/lib/shares/share-status'
@@ -13,8 +12,7 @@ import { RequestSectionList } from '@/components/RequestSectionList'
 // into the focused screens (/requests/data, /inbound-requests, /shares) where the
 // actual respond / manage actions live.
 export default async function RequestsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string
 

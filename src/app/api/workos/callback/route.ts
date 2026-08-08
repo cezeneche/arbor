@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { authenticateWithCode } from '@/lib/sso/workos'
 import { mintSsoToken } from '@/lib/sso/sso-token'
+import { decideSsoProvisioning } from '@/lib/sso/provisioning'
 
 // WorkOS callback. Exchanges the code, auto-provisions the user against
 // the entity bound to the WorkOS organisation, then hands a one-time token to the
@@ -42,14 +43,24 @@ export async function GET(req: NextRequest) {
   const email = profile.email.toLowerCase()
   const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || email
 
-  // Auto-provision on first sign-in; reactivate if previously deprovisioned.
-  const existing = await prisma.user.findUnique({ where: { email } })
+  // Auto-provision on first sign-in only. An email already held by another tenant
+  // is not adopted, and a deprovisioned account is not silently reactivated —
+  // see decideSsoProvisioning for why each of those is a rejection.
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, entityId: true, isActive: true },
+  })
+  const decision = decideSsoProvisioning(existing, entity.id)
+
+  if (decision.action === 'REJECT') {
+    const res = NextResponse.redirect(new URL(`/login?error=sso_${decision.reason}`, appUrl))
+    res.cookies.set('sso_state', '', { maxAge: 0, path: '/' })
+    return res
+  }
+
   let userId: string
-  if (existing) {
-    userId = existing.id
-    if (!existing.isActive) {
-      await prisma.user.update({ where: { id: existing.id }, data: { isActive: true } })
-    }
+  if (decision.action === 'SIGN_IN') {
+    userId = decision.userId
   } else {
     const created = await prisma.user.create({
       data: { email, name, entityId: entity.id, role: 'CONTRIBUTOR', isActive: true },

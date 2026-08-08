@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { getSessionUser } from '@/lib/session'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
@@ -20,8 +19,7 @@ interface ParsedShape {
 }
 
 export default async function InboundRequestsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
 
   const [entity, pending] = await Promise.all([

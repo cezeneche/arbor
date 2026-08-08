@@ -54,7 +54,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
       include: { document: { select: { id: true, fileName: true, documentType: true, submittedAt: true } } },
       orderBy: { submittedAt: 'asc' },
     }),
-    prisma.auditEntry.findMany({ where: { entityId }, orderBy: { createdAt: 'asc' } }),
+    prisma.auditEntry.findMany({ where: { entityId }, orderBy: { sequence: 'asc' } }),
     prisma.crossValidationResult.findMany({ where: { entityId }, orderBy: { createdAt: 'asc' } }),
     // the most recent verified sign-off covering this period, if any.
     prisma.verificationAssignment.findFirst({

@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { shareState } from '@/lib/shares/share-status'
@@ -9,8 +8,7 @@ import { BackLink } from '@/components/BackLink'
 import { SharesManager } from '@/components/SharesManager'
 
 export default async function SharesPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/login')
+  const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
 
   const [shares, hdrs] = await Promise.all([

@@ -6,15 +6,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
-import { computeRecordHash } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
+import { appendAuditEntry } from '@/lib/layer2/audit-append'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { domainSchema } from '@/lib/constants'
 import { assertRecordCapacity } from '@/lib/plan-guard'
 import { TrustTier, ExtractionMethod } from '@prisma/client'
-import type { Prisma } from '@prisma/client'
 
 const recordSchema = z.object({
   domain: domainSchema,
@@ -125,11 +124,6 @@ export async function POST(req: NextRequest) {
   // Batch audit tombstone for idempotency lookups.
   // Must be awaited — if it fails we return 500 rather than silently breaking the audit chain.
   if (idempotencyKey && created > 0) {
-    const lastEntry = await prisma.auditEntry.findFirst({
-      where: { entityId },
-      orderBy: { createdAt: 'desc' },
-      select: { hash: true },
-    })
     const batchNow = new Date().toISOString()
     const batchPayload: AuditPayload = {
       recordId: `batch_${idempotencyKey}`,
@@ -150,17 +144,14 @@ export async function POST(req: NextRequest) {
       submittedAt: batchNow,
       submittedById: systemUser.id,
     }
-    const batchHash = computeRecordHash(batchPayload, lastEntry?.hash ?? null)
-    await prisma.auditEntry.create({
-      data: {
+    await runSerializable(tx =>
+      appendAuditEntry(tx, {
         entityId,
         recordId: batchPayload.recordId,
         eventType: 'INGEST_BATCH',
-        payload: batchPayload as unknown as Prisma.InputJsonValue,
-        hash: batchHash,
-        previousHash: lastEntry?.hash ?? null,
-      },
-    })
+        payload: batchPayload,
+      }),
+    )
   }
 
   return NextResponse.json({
