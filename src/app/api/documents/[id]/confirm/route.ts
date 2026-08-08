@@ -8,6 +8,7 @@ import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { findDuplicates } from '@/lib/layer2/duplicate-check'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
+import { assertRecordCapacity } from '@/lib/plan-guard'
 import { runConstraintValidation } from '@/lib/constraints/run-constraint-validation'
 import { buildReviewLabels } from '@/lib/confidence/review-capture'
 import { validateConfirmFields, deriveTrustTier } from '@/lib/layer2/confirm-validation'
@@ -180,11 +181,20 @@ export async function POST(
   // transaction instead of half-writing. runSerializable rethrows anything that
   // is not a write conflict, so it reaches the handler below untouched.
   class AlreadyConfirmed extends Error {}
+  class OverCapacity extends Error {
+    constructor(readonly detail: string) { super(detail) }
+  }
 
   let createdRecords: string[]
   try {
     createdRecords = await runSerializable(async (tx) => {
     const recordIds: string[] = []
+
+    // The interactive confirm path wrote records without ever consulting the
+    // plan cap. Counted inside the transaction that writes, so concurrent
+    // confirmations cannot both take the last of the allowance.
+    const capacity = await assertRecordCapacity(entityId, preparedFields.length, tx)
+    if (!capacity.allowed) throw new OverCapacity(capacity.reason!)
 
     // Claim the document inside the transaction. The check above is a fast path
     // for the common case; on its own it left a window in which two confirmations
@@ -251,6 +261,9 @@ export async function POST(
   } catch (e) {
     if (e instanceof AlreadyConfirmed) {
       return err('Document already confirmed', 'ALREADY_CONFIRMED', 409)
+    }
+    if (e instanceof OverCapacity) {
+      return err(e.detail, 'PLAN_LIMIT', 402)
     }
     throw e
   }

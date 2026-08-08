@@ -95,8 +95,12 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const { recordId } = await runSerializable((tx) =>
-        writeRecordWithAuditEntry(tx, {
+      const { recordId } = await runSerializable(async (tx) => {
+        // Bound inside the transaction that writes, not just once for the batch:
+        // otherwise two batches in flight can both fit against the same count.
+        const room = await assertRecordCapacity(entityId, 1, tx)
+        if (!room.allowed) throw new Error(room.reason)
+        return writeRecordWithAuditEntry(tx, {
           entityId,
           domain: r.domain,
           fieldName: r.fieldName,
@@ -110,11 +114,16 @@ export async function POST(req: NextRequest) {
           trustTier: TrustTier.B,
           extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
           submittedById: systemUser.id,
-        }),
-      )
+        })
+      })
       results.push({ index: i, status: 'created', recordId, domain: r.domain, fieldName: r.fieldName })
-    } catch {
-      results.push({ index: i, status: 'rejected', reason: 'Internal error writing record', domain: r.domain, fieldName: r.fieldName })
+    } catch (e) {
+      // Report the plan limit as the plan limit rather than as an internal error:
+      // the caller can act on the first and can do nothing about the second.
+      const reason = (e as Error)?.message?.includes('plan')
+        ? (e as Error).message
+        : 'Internal error writing record'
+      results.push({ index: i, status: 'rejected', reason, domain: r.domain, fieldName: r.fieldName })
     }
   }
 

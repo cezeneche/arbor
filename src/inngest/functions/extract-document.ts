@@ -20,6 +20,22 @@ export const extractDocumentFunction = inngest.createFunction(
     retries: 2,
     concurrency: { limit: 5 },
     triggers: [{ event: 'document/uploaded' }],
+    // Every retry exhausted means nothing else will move this job. Without this
+    // the job stays RUNNING and the document stays EXTRACTING for ever — the user
+    // watches "Reading your document…" on something that stopped hours ago.
+    onFailure: async ({ event, error }) => {
+      const { documentId } = (event.data?.event?.data ?? {}) as { documentId?: string }
+      if (!documentId) return
+      const message = `Reading this document did not finish. ${error?.message ?? ''}`.trim()
+      await prisma.extractionJob.updateMany({
+        where: { documentId, status: 'RUNNING' },
+        data: { status: 'FAILED', completedAt: new Date(), errorMessage: message },
+      })
+      await prisma.document.updateMany({
+        where: { id: documentId, status: 'EXTRACTING' },
+        data: { status: 'REVIEW_REQUIRED' },
+      })
+    },
   },
   async ({ event, step }) => {
     const { documentId, entityId, entityName, documentType, reportingPeriodEnd } = event.data as {

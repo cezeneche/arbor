@@ -12,8 +12,21 @@ import {
   type PlanTier,
 } from '@/lib/plan-limits'
 
-async function tierOf(entityId: string): Promise<PlanTier | null> {
-  const entity = await prisma.entity.findUnique({
+/** The subset of the client these checks need, so a caller inside a serializable
+ *  transaction can pass its `tx` and have the count and the write settled
+ *  together. Counting on the shared client and then writing in a transaction is a
+ *  check-then-act: two requests both count 499 against a cap of 500 and both
+ *  write. Counting inside the transaction makes Postgres treat that as the
+ *  conflict it is, and runSerializable retries the loser. */
+export type PlanGuardClient = {
+  entity: { findUnique: typeof prisma.entity.findUnique }
+  dataRecord: { count: typeof prisma.dataRecord.count }
+  document: { count: typeof prisma.document.count }
+  dataRequest: { findMany: typeof prisma.dataRequest.findMany }
+}
+
+async function tierOf(entityId: string, client: PlanGuardClient): Promise<PlanTier | null> {
+  const entity = await client.entity.findUnique({
     where: { id: entityId },
     select: { planTier: true },
   })
@@ -25,20 +38,28 @@ function startOfMonthUtc(now = new Date()): Date {
 }
 
 /** Gate a document upload against the entity's tier + monthly upload count. */
-export async function assertUploadAllowed(entityId: string): Promise<LimitCheck> {
-  const tier = await tierOf(entityId)
+export async function assertUploadAllowed(
+  entityId: string,
+  client: PlanGuardClient = prisma,
+): Promise<LimitCheck> {
+  const tier = await tierOf(entityId, client)
   if (!tier) return { allowed: true }
-  const uploadsThisMonth = await prisma.document.count({
+  const uploadsThisMonth = await client.document.count({
     where: { entityId, submittedAt: { gte: startOfMonthUtc() } },
   })
   return checkUploadAllowed(tier, uploadsThisMonth)
 }
 
-/** Gate writing `adding` new records against the entity's active-record cap. */
-export async function assertRecordCapacity(entityId: string, adding: number): Promise<LimitCheck> {
-  const tier = await tierOf(entityId)
+/** Gate writing `adding` new records against the entity's active-record cap.
+ *  Pass the transaction client when calling from inside one — see PlanGuardClient. */
+export async function assertRecordCapacity(
+  entityId: string,
+  adding: number,
+  client: PlanGuardClient = prisma,
+): Promise<LimitCheck> {
+  const tier = await tierOf(entityId, client)
   if (!tier) return { allowed: true }
-  const active = await prisma.dataRecord.count({ where: { entityId, isActive: true } })
+  const active = await client.dataRecord.count({ where: { entityId, isActive: true } })
   return checkRecordCapacity(tier, active, adding)
 }
 
@@ -47,10 +68,11 @@ export async function assertRecordCapacity(entityId: string, adding: number): Pr
 export async function assertSupplierConnection(
   buyerEntityId: string,
   supplierEntityId: string,
+  client: PlanGuardClient = prisma,
 ): Promise<LimitCheck> {
-  const tier = await tierOf(buyerEntityId)
+  const tier = await tierOf(buyerEntityId, client)
   if (!tier) return { allowed: true }
-  const connected = await prisma.dataRequest.findMany({
+  const connected = await client.dataRequest.findMany({
     where: { buyerEntityId },
     select: { supplierEntityId: true },
     distinct: ['supplierEntityId'],
@@ -60,8 +82,11 @@ export async function assertSupplierConnection(
 }
 
 /** Gate audit package generation against the entity's plan (PRD §22.4). */
-export async function assertAuditPackageAllowed(entityId: string): Promise<LimitCheck> {
-  const tier = await tierOf(entityId)
+export async function assertAuditPackageAllowed(
+  entityId: string,
+  client: PlanGuardClient = prisma,
+): Promise<LimitCheck> {
+  const tier = await tierOf(entityId, client)
   if (!tier) return { allowed: true }
   return checkAuditPackageAllowed(tier)
 }
