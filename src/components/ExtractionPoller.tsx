@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { colours, spacing, textStyles } from '@/lib/design-system'
 
 const POLL_INTERVAL_MS = 3000
 const MAX_ATTEMPTS = 40 // ~2 minutes at 3s intervals

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { getSessionUser } from '@/lib/session'
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'

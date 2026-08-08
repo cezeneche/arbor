@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { parseDataRequestEmail } from '@/lib/requests/parse-request'
 import { matchRequestToRecords, type MatchRecord } from '@/lib/requests/inbound-parse'
 import type { Prisma } from '@prisma/client'
+import type { DataDomain } from '@prisma/client'
 
 export const parseInboundRequestFunction = inngest.createFunction(
   { id: 'parse-inbound-request', retries: 2, concurrency: { limit: 5 }, triggers: [{ event: 'request/inbound' }] },
@@ -47,7 +48,7 @@ export const parseInboundRequestFunction = inngest.createFunction(
         where: {
           entityId: entity.id,
           isActive: true,
-          ...(parsed.domain ? { domain: parsed.domain as never } : {}),
+          ...(parsed.domain ? { domain: parsed.domain as DataDomain } : {}),
         },
         select: { id: true, domain: true, fieldName: true, value: true, unit: true, trustTier: true, periodStart: true, periodEnd: true },
       })

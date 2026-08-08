@@ -4,6 +4,7 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { inferSchema } from '@/lib/brain/schema-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
+import { DocumentType } from '@prisma/client'
 
 // schema-inference analysis surface (ADMIN). Reads the corpus's
 // completed extractions as one field-name list per document and asks the brain
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   const jobs = await prisma.extractionJob.findMany({
     where: {
       status: 'COMPLETE',
-      ...(documentType ? { document: { documentType: documentType as never } } : {}),
+      ...(documentType ? { document: { documentType: documentType as DocumentType } } : {}),
     },
     select: { extractedFields: { select: { fieldName: true } } },
     take: JOB_CAP,

@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       submittedAt: nowIso,
       submittedById: verifierId,
     }
-    const { hash } = await appendAuditEntry(tx, {
+    await appendAuditEntry(tx, {
       entityId: assignment.entityId,
       recordId: payload.recordId,
       eventType,

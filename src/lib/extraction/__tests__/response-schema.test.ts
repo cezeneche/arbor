@@ -62,7 +62,7 @@ describe('normaliseExtractionResponse', () => {
   })
 
   it('flags a field whose confidence was omitted entirely', () => {
-    const { confidenceScore: _omitted, ...noConfidence } = goodField
+    const noConfidence = { ...goodField, confidenceScore: undefined }
     const result = normaliseExtractionResponse({ fields: [noConfidence] })
     expect(result!.fields[0].confidenceScore).toBe(0)
     expect(result!.fields[0].flagged).toBe(true)
@@ -90,7 +90,7 @@ describe('normaliseExtractionResponse', () => {
   })
 
   it('defaults a missing source text to empty rather than undefined', () => {
-    const { sourceText: _omitted, ...noSource } = goodField
+    const noSource = { ...goodField, sourceText: undefined }
     expect(normaliseExtractionResponse({ fields: [noSource] })!.fields[0].sourceText).toBe('')
   })
 })

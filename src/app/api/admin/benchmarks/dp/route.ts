@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { buildCanonicalMap } from '@/lib/aggregation/entity-canonical'
 import { buildDpGroups, type BenchmarkRow } from '@/lib/aggregation/dp-benchmark-input'
 import { BENCHMARK_MIN_ENTITIES } from '@/lib/aggregation/sector-benchmark'
+import { planDpRelease, mergeReleases } from '@/lib/aggregation/dp-release-ledger'
 import { releaseDpBenchmarks } from '@/lib/brain/privacy-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 
@@ -35,6 +36,10 @@ export async function GET(req: NextRequest) {
         domain: true,
         entity: { select: { sector: true } },
       },
+      // The cap needs an order, or "the first 50,000" is whatever the planner
+      // felt like returning: two runs over unchanged data could see different
+      // populations and publish different figures for the same group.
+      orderBy: [{ entityId: 'asc' }, { fieldName: 'asc' }, { periodStart: 'asc' }, { id: 'asc' }],
       take: RECORD_CAP,
     }),
     prisma.entityLink.findMany({
@@ -58,14 +63,46 @@ export async function GET(req: NextRequest) {
     return ok({ status: 'noop', reason: 'no benchmarkable, consented, bounded records', epsilon })
   }
 
+  // Identical data is released exactly once. Without this, looping the endpoint
+  // and averaging the answers cancels the noise and recovers the true figure —
+  // the guarantee is per-release, not per-request. See dp-release-ledger.ts.
+  const ledgerRows = await prisma.dpBenchmarkRelease.findMany({
+    where: { groupKey: { in: groups.map(g => g.key) }, epsilon },
+  })
+  const plan = planDpRelease(groups, epsilon, ledgerRows)
+
   try {
-    const releases = await releaseDpBenchmarks(groups, { epsilon, minN: BENCHMARK_MIN_ENTITIES })
+    const fresh =
+      plan.toRelease.length > 0
+        ? await releaseDpBenchmarks(plan.toRelease, { epsilon, minN: BENCHMARK_MIN_ENTITIES })
+        : []
+
+    if (fresh.length > 0) {
+      await prisma.dpBenchmarkRelease.createMany({
+        data: fresh.map(r => ({
+          groupKey: r.key,
+          epsilon,
+          inputFingerprint: plan.fingerprints.get(r.key)!,
+          suppressed: r.suppressed,
+          n: r.n,
+          dpMean: r.dp_mean ?? null,
+          dpCount: r.dp_count ?? null,
+        })),
+        // A concurrent run may have recorded the same release first; that one
+        // stands, and this response replays it on the next call.
+        skipDuplicates: true,
+      })
+    }
+
+    const releases = mergeReleases(groups, plan.replayed, fresh)
     const published = releases.filter(r => !r.suppressed)
     return ok({
       status: 'ok',
       epsilon,
       minEntities: BENCHMARK_MIN_ENTITIES,
       groupsConsidered: groups.length,
+      newlyReleasedCount: fresh.length,
+      replayedCount: plan.replayed.length,
       publishedCount: published.length,
       suppressedCount: releases.length - published.length,
       published,

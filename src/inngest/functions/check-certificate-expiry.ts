@@ -1,6 +1,7 @@
 import { inngest } from '@/inngest/client'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
+import type { DocumentType } from '@prisma/client'
 import {
   classifyCertificateExpiry,
   certificateFlagReason,
@@ -9,7 +10,7 @@ import {
   daysUntil,
 } from '@/lib/validation/certificate-expiry'
 
-const CERTIFICATE_DOCUMENT_TYPES = [
+const CERTIFICATE_DOCUMENT_TYPES: DocumentType[] = [
   'PRODUCT_CERTIFICATE',
   'ENVIRONMENTAL_CERTIFICATE',
   'RENEWABLE_CERTIFICATE',
@@ -66,7 +67,7 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
           rawValue: { not: null },
           extractionJob: {
             document: {
-              documentType: { in: CERTIFICATE_DOCUMENT_TYPES as never[] },
+              documentType: { in: CERTIFICATE_DOCUMENT_TYPES },
               status: 'ACCEPTED',
             },
           },

@@ -50,7 +50,7 @@ export async function POST() {
   let upsertCount = 0
   for (const b of benchmarks) {
     await prisma.sectorBenchmark.upsert({
-      where: { sector_domain_fieldName_year: { sector: b.sector, domain: b.domain as never, fieldName: b.fieldName, year: b.year } },
+      where: { sector_domain_fieldName_unit_year: { sector: b.sector, domain: b.domain as never, fieldName: b.fieldName, unit: b.unit, year: b.year } },
       create: { ...b, domain: b.domain as never },
       update: { ...b, domain: b.domain as never },
     })

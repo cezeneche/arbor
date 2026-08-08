@@ -924,6 +924,29 @@ enum NotificationType {
 
 // ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────
 
+// A differentially-private release that has already been made.
+//
+// DP protects one release, not a series of them: drawing fresh noise over the
+// same values on every request lets a caller average the answers back to the
+// truth. A release is therefore keyed by the group, the epsilon, and a
+// fingerprint of the exact values behind it — an identical request replays the
+// release already made rather than drawing again. See dp-release-ledger.ts.
+model DpBenchmarkRelease {
+  id               String   @id @default(cuid())
+  groupKey         String
+  epsilon          Float
+  /** SHA-256 of the group's sorted values and bounds. */
+  inputFingerprint String
+  suppressed       Boolean
+  n                Int
+  dpMean           Float?
+  dpCount          Float?
+  releasedAt       DateTime @default(now())
+
+  @@unique([groupKey, epsilon, inputFingerprint], map: "DpBenchmarkRelease_group_epsilon_fingerprint_key")
+  @@index([releasedAt])
+}
+
 model SectorBenchmark {
   id           String     @id @default(cuid())
   sector       String
@@ -940,7 +963,11 @@ model SectorBenchmark {
   tierAPercent Float
   computedAt   DateTime   @default(now())
 
-  @@unique([sector, domain, fieldName, year])
+  // Unit is part of the identity. Benchmarks are computed per unit — a field
+  // recorded in MJ by some entities and kWh by others is two distributions, not
+  // one — but the key omitted it, so the second upsert silently overwrote the
+  // first and whichever unit happened to be processed last became "the" benchmark.
+  @@unique([sector, domain, fieldName, unit, year], map: "SectorBenchmark_sector_domain_field_unit_year_key")
 }
 
 // ── CROSS-VALIDATION RESULT ───────────────────────────────────────────────────

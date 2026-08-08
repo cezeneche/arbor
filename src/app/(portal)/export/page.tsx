@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
-import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { spacing, textStyles } from '@/lib/design-system'
 import { ExportBuilder } from './ExportBuilder'
 
 export default async function ExportPage() {

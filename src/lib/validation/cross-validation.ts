@@ -3,6 +3,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { stampFlagOwnership } from '@/lib/stewardship/route-flags'
+import type { DocumentType } from '@prisma/client'
 
 /** How two figures are meant to relate.
  *
@@ -200,7 +201,7 @@ export async function runCrossValidation(
       rule.docTypeA === newDocumentType ? rule.fieldA : rule.fieldB
 
     const counterpartDocs = await prisma.document.findMany({
-      where: { entityId, documentType: counterpartType as never, status: 'ACCEPTED' },
+      where: { entityId, documentType: counterpartType as DocumentType, status: 'ACCEPTED' },
       include: {
         dataRecords: { where: { fieldName: counterpartField, isActive: true } },
       },

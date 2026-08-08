@@ -11,6 +11,7 @@ import { requireAuth } from '@/lib/auth-helpers'
 import { getSessionUser } from '@/lib/session'
 import { resolveBenchmarkAccess } from '@/lib/layer3/benchmark-access'
 import { prisma } from '@/lib/prisma'
+import { DataDomain } from '@prisma/client'
 
 export interface BenchmarkPoint {
   sector: string
@@ -101,7 +102,7 @@ export async function GET(req: NextRequest) {
       entityId: { in: entityIds },
       trustTier: 'A',
       isActive: true,
-      ...(filterDomain ? { domain: filterDomain as never } : {}),
+      ...(filterDomain ? { domain: filterDomain as DataDomain } : {}),
     },
     select: {
       entityId: true,
