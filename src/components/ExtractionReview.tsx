@@ -68,6 +68,8 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
+  // Already written to the store, either just now or on an earlier visit.
+  const isSaved = confirmed || document.status === 'ACCEPTED'
 
   const criticalFlags = fields.filter(
     f => f.admissibility === 'COMPULSORY' && (f.rawValue === null || f.rawValue === '')
@@ -623,136 +625,157 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing[2], marginTop: spacing[3] }}>
-        <button
-          onClick={() => router.push('/records')}
+      {/* A saved document has no primary action left: the records exist and the
+          audit chain is append-only, so confirming again is not a thing that can
+          happen. It used to render a live Confirm button that answered 409. */}
+      {isSaved ? (
+        <div
           style={{
-            padding: '12px 20px',
-            backgroundColor: 'transparent',
-            color: colours.textSecondary,
-            fontSize: typography.sizes.base,
-            fontWeight: typography.weights.light,
-            border: `1px solid ${colours.border}`,
-            borderRadius: '4px',
-            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: spacing[2],
+            marginTop: spacing[3],
           }}
         >
-          Save for later
-        </button>
-        <button
-          onClick={() => handleConfirm()}
-          disabled={submitting}
+          <span
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+            }}
+          >
+            Saved. These figures are in your records.
+          </span>
+          <button
+            onClick={() => router.push('/records')}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: colours.navy,
+              color: colours.surface,
+              fontSize: typography.sizes.base,
+              fontWeight: typography.weights.medium,
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              letterSpacing: typography.tracking.wide,
+            }}
+          >
+            View records
+          </button>
+        </div>
+      ) : (
+        <div
           style={{
-            padding: '12px 24px',
-            backgroundColor: submitting ? colours.navyHover : colours.navy,
-            color: colours.surface,
-            fontSize: typography.sizes.base,
-            fontWeight: typography.weights.medium,
-            border: 'none',
-            borderRadius: '4px',
-            cursor: submitting ? 'not-allowed' : 'pointer',
-            letterSpacing: typography.tracking.wide,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: spacing[2],
+            marginTop: spacing[3],
           }}
         >
-          {submitting ? 'Confirming…' : 'Confirm and save records'}
-        </button>
-      </div>
-
-      {/* Danger zone. Separated from the actions above by whitespace and its own
-          rule, so it can never be hit while reaching for Confirm. Confirmation is
-          inline — the product has no modals. */}
-      <div
-        style={{
-          marginTop: spacing[6],
-          paddingTop: spacing[3],
-          borderTop: `1px solid ${colours.border}`,
-        }}
-      >
-        <p
-          style={{
-            fontSize: typography.sizes.xs,
-            fontWeight: typography.weights.medium,
-            color: colours.red,
-            letterSpacing: typography.tracking.wider,
-            textTransform: 'uppercase',
-            margin: `0 0 ${spacing[1]}`,
-          }}
-        >
-          Danger zone
-        </p>
-        {confirmDelete ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' }}>
-            <span
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textPrimary,
-              }}
-            >
-              Delete {document.fileName} and everything read from it? This cannot be undone.
-            </span>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: colours.red,
-                color: colours.surface,
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.medium,
-                border: 'none',
-                borderRadius: '4px',
-                cursor: deleting ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {deleting ? 'Deleting…' : 'Yes, delete it'}
-            </button>
-            <button
-              onClick={() => setConfirmDelete(false)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: 'transparent',
-                color: colours.textSecondary,
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                border: `1px solid ${colours.border}`,
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              Keep it
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' }}>
-            <span
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-              }}
-            >
-              Nothing here has been saved yet. Deleting discards the document and everything read
-              from it.
-            </span>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: 'transparent',
-                color: colours.red,
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.medium,
-                border: `1px solid ${colours.red}`,
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              Delete document
-            </button>
-          </div>
-        )}
-      </div>
+          {/* Destructive action sits with the others rather than in its own
+              section, but stays visually separate: outlined red, never filled,
+              and behind an inline confirmation so it cannot be hit in passing. */}
+          {confirmDelete ? (
+            <>
+              <span
+                style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.light,
+                  color: colours.textPrimary,
+                  marginRight: 'auto',
+                }}
+              >
+                Delete {document.fileName} and everything read from it? Nothing has been saved yet,
+                so nothing is recoverable.
+              </span>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: colours.red,
+                  color: colours.surface,
+                  fontSize: typography.sizes.base,
+                  fontWeight: typography.weights.medium,
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {deleting ? 'Deleting…' : 'Yes, delete it'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: 'transparent',
+                  color: colours.textSecondary,
+                  fontSize: typography.sizes.base,
+                  fontWeight: typography.weights.light,
+                  border: `1px solid ${colours.border}`,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Keep it
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setConfirmDelete(true)}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: 'transparent',
+                  color: colours.red,
+                  fontSize: typography.sizes.base,
+                  fontWeight: typography.weights.light,
+                  border: `1px solid ${colours.red}`,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  marginRight: 'auto',
+                }}
+              >
+                Delete document
+              </button>
+              <button
+                onClick={() => router.push('/records')}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: 'transparent',
+                  color: colours.textSecondary,
+                  fontSize: typography.sizes.base,
+                  fontWeight: typography.weights.light,
+                  border: `1px solid ${colours.border}`,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Save for later
+              </button>
+              <button
+                onClick={() => handleConfirm()}
+                disabled={submitting}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: submitting ? colours.navyHover : colours.navy,
+                  color: colours.surface,
+                  fontSize: typography.sizes.base,
+                  fontWeight: typography.weights.medium,
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  letterSpacing: typography.tracking.wide,
+                }}
+              >
+                {submitting ? 'Confirming…' : 'Confirm and save records'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
