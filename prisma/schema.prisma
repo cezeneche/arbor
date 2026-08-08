@@ -950,6 +950,12 @@ model CrossValidationResult {
   entityId           String
   documentAId        String
   documentBId        String
+  // The specific records compared. Two documents can hold several records for the
+  // same field, so the document pair alone does not identify a comparison — which
+  // is why re-running cross-validation used to add a new row (and a new pair of
+  // flags) every time instead of updating the one it had already produced.
+  recordAId          String?
+  recordBId          String?
   fieldName          String
   valueA             Float
   valueB             Float
@@ -959,6 +965,11 @@ model CrossValidationResult {
   resolvedAt         DateTime?
   resolvedNote       String?
   createdAt          DateTime  @default(now())
+
+  // Mapped explicitly: the default name from five columns exceeds Postgres's
+  // 63-character identifier limit and would be silently truncated.
+  @@unique([documentAId, documentBId, fieldName, recordAId, recordBId], map: "CrossValidationResult_pair_key")
+  @@index([entityId, createdAt])
 }
 
 // ── API KEY ───────────────────────────────────────────────────────────────────

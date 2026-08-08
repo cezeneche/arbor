@@ -75,6 +75,8 @@ export async function loadDefinitionsOverview(
         note: true,
         supplierEntity: { select: { legalName: true } },
         buyerEntity: { select: { legalName: true } },
+        // The lineage the version number belongs to — see StoredAgreement.
+        fieldDefinition: { select: { fieldName: true, domain: true } },
       },
     }),
     prisma.dataAccessGrant.findMany({
@@ -105,6 +107,8 @@ export async function loadDefinitionsOverview(
     definitionVersion: a.definitionVersion,
     supplierEntityId: a.supplierEntityId,
     buyerEntityId: a.buyerEntityId,
+    fieldName: a.fieldDefinition.fieldName,
+    domain: a.fieldDefinition.domain as string,
     status: a.status as StoredAgreement['status'],
     proposedByEntityId: a.proposedByEntityId,
     respondedAt: a.respondedAt,
@@ -121,6 +125,8 @@ export async function loadDefinitionsOverview(
           const resolved = resolveAgreementFor(agreements, {
             fieldDefinitionId: def.id,
             definitionVersion: def.version,
+            fieldName: def.fieldName,
+            domain: def.domain,
             supplierEntityId: a.supplierEntityId,
             buyerEntityId: a.buyerEntityId,
           })

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
-import { requireWriteAccess } from '@/lib/auth-helpers'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { setBenchmarkConsent } from '@/lib/layer2/benchmark-consent'
 
 const schema = z.object({ allow: z.boolean() })
@@ -13,7 +13,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ entityId: string }> },
 ) {
-  const { session, response } = await requireWriteAccess()
+  // ADMIN-only for the same reason as the settings route: consent to aggregation
+// binds the whole entity.
+  const { session, response } = await requireAdmin()
   if (!session) return response!
   const sessionUser = getSessionUser(session)
   const sessionEntityId = sessionUser.entityId as string

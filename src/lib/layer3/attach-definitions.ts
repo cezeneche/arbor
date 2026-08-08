@@ -120,6 +120,8 @@ export function attachDefinitions<T extends DecorableRecord>(
     const resolved = resolveAgreementFor(agreements, {
       fieldDefinitionId: def.id,
       definitionVersion: def.version,
+      fieldName: def.fieldName,
+      domain: def.domain,
       supplierEntityId: record.entityId,
       buyerEntityId,
     })

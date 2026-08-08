@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSessionUser } from '@/lib/session'
-import { requireWriteAccess } from '@/lib/auth-helpers'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { canRespondToProposal, type StoredAgreement } from '@/lib/definitions/agreement'
 import { sendNotification } from '@/lib/notifications'
@@ -15,7 +15,9 @@ const respondSchema = z.object({
 })
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const { session, response } = await requireWriteAccess()
+  // Answering a proposal is ADMIN-only for the same reason as making one — accepting
+// commits the organisation to that wording.
+  const { session, response } = await requireAdmin()
   if (!session) return response!
   const user = getSessionUser(session)
   const entityId = user.entityId as string
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       status: true,
       proposedByEntityId: true,
       respondedAt: true,
-      fieldDefinition: { select: { label: true, domain: true } },
+      fieldDefinition: { select: { label: true, domain: true, fieldName: true } },
     },
   })
   if (!row) {
@@ -50,6 +52,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     id: row.id,
     fieldDefinitionId: row.fieldDefinitionId,
     definitionVersion: row.definitionVersion,
+    fieldName: row.fieldDefinition.fieldName,
+    domain: row.fieldDefinition.domain as string,
     supplierEntityId: row.supplierEntityId,
     buyerEntityId: row.buyerEntityId,
     status: row.status as StoredAgreement['status'],
@@ -68,8 +72,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     )
   }
 
-  await prisma.definitionAgreement.update({
-    where: { id },
+  // Conditional on the proposal still being PROPOSED. Read-then-write meant two
+  // responses in flight could both pass canRespondToProposal and the later one
+  // silently overwrote the earlier — "agreed" is a fact about two organisations,
+  // so it must not be decided by whichever request happened to finish last.
+  const answered = await prisma.definitionAgreement.updateMany({
+    where: { id, status: 'PROPOSED' },
     data: {
       status: decision === 'accept' ? 'ACCEPTED' : 'REJECTED',
       respondedById: user.id as string,
@@ -77,6 +85,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       ...(note ? { note } : {}),
     },
   })
+  if (answered.count === 0) {
+    return NextResponse.json({ error: 'This wording has already been answered.' }, { status: 409 })
+  }
 
   if (decision === 'accept') {
     const responder = await prisma.entity.findUnique({

@@ -4,11 +4,14 @@
 // route and /api/entities/[entityId]/benchmark-consent stay identical.
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/session'
-import { requireWriteAccess } from '@/lib/auth-helpers'
+import { requireAdmin } from '@/lib/auth-helpers'
 import { setBenchmarkConsent } from '@/lib/layer2/benchmark-consent'
 
 export async function POST(req: NextRequest) {
-  const { session, response } = await requireWriteAccess()
+  // Opting the organisation's data into aggregation is a governance decision about
+// the whole entity (PRD 19.3), not a data-entry action, so it is ADMIN-only —
+// the same bar as granting a buyer access to that data.
+  const { session, response } = await requireAdmin()
   if (!session) return response!
 
   const entityId = getSessionUser(session).entityId as string
