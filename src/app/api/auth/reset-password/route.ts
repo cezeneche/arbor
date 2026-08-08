@@ -41,21 +41,31 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hash(password, 12)
 
-  // Update the password and consume the token atomically — the token can never be
-  // reused, even on a retry, because the update is conditional on usedAt still null.
-  const consumed = await prisma.passwordResetToken.updateMany({
-    where: { id: record.id, usedAt: null },
-    data: { usedAt: new Date() },
-  })
-  if (consumed.count === 0) return INVALID()
+  // One transaction, so the token is consumed if and only if the password is
+  // actually replaced. Consuming first and updating separately meant a failure
+  // between the two burned the reset link without changing anything — the user
+  // locked out of the account and out of the link that was meant to fix it.
+  //
+  // Consumption stays conditional on usedAt being null, so a concurrent second
+  // attempt still loses the race rather than resetting the password twice.
+  //
+  // The tokenVersion bump invalidates every existing JWT for this user: the next
+  // server-side check reads the live version, finds a mismatch, and refuses.
+  const changed = await prisma.$transaction(async tx => {
+    const consumed = await tx.passwordResetToken.updateMany({
+      where: { id: record.id, usedAt: null },
+      data: { usedAt: new Date() },
+    })
+    if (consumed.count === 0) return false
 
-  // Bump tokenVersion to invalidate any existing JWT sessions for this user.
-  // The next time those sessions hit a server-side auth() check, the DB version
-  // won't match and callers can treat the mismatch as unauthorised.
-  await prisma.user.update({
-    where: { id: record.userId },
-    data: { passwordHash, tokenVersion: { increment: 1 } },
+    await tx.user.update({
+      where: { id: record.userId },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
+    })
+    return true
   })
+
+  if (!changed) return INVALID()
 
   return NextResponse.json({ ok: true })
 }

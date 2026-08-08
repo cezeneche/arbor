@@ -1,6 +1,13 @@
 import { inngest } from '@/inngest/client'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
+import {
+  classifyCertificateExpiry,
+  certificateFlagReason,
+  certificateCoversPeriod,
+  expiredCertificateFlagMessage,
+  daysUntil,
+} from '@/lib/validation/certificate-expiry'
 
 const CERTIFICATE_DOCUMENT_TYPES = [
   'PRODUCT_CERTIFICATE',
@@ -16,9 +23,6 @@ function readableType(documentType: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function daysUntil(date: Date, from: Date): number {
-  return Math.ceil((date.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
-}
 
 // per-entity tallies so each entity receives at most one expiring email
 // and one expired email per run, in plain English.
@@ -37,8 +41,6 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
   },
   async ({ step }) => {
     const today = new Date()
-    const warningThreshold = new Date(today)
-    warningThreshold.setDate(warningThreshold.getDate() + 30)
 
     const tallies = new Map<string, EntityTally>()
     function tally(entityId: string): EntityTally {
@@ -50,13 +52,18 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
       return t
     }
 
-    // ── Certificate expiry — only newly-detected (flagged=false) fields ──────────
+    // ── Certificate expiry ──────────────────────────────────────────────────────
+    // Every expiry field on an accepted certificate is re-examined on every run,
+    // not only the ones still unflagged. Filtering on flagged=false meant the
+    // 30-day warning set the flag and thereby excluded the field for ever: a
+    // certificate warned about in March was never re-read in April and never
+    // became expired. State is recomputed from the date; the stored flagReason
+    // only decides whether anything needs writing.
     const expiryFields = await step.run('find-expiry-fields', async () => {
       return prisma.extractedField.findMany({
         where: {
           fieldName: 'expiry_date',
           rawValue: { not: null },
-          flagged: false,
           extractionJob: {
             document: {
               documentType: { in: CERTIFICATE_DOCUMENT_TYPES as never[] },
@@ -67,7 +74,17 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
         include: {
           extractionJob: {
             select: {
-              document: { select: { entityId: true, documentType: true } },
+              document: {
+                select: {
+                  id: true,
+                  entityId: true,
+                  documentType: true,
+                  dataRecords: {
+                    where: { isActive: true },
+                    select: { id: true, periodEnd: true },
+                  },
+                },
+              },
             },
           },
         },
@@ -76,43 +93,72 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
 
     let expiredCount = 0
     let expiringCount = 0
+    let recordsFlagged = 0
 
     for (const field of expiryFields) {
-      const expiryDate = new Date(field.rawValue as string)
-      if (isNaN(expiryDate.getTime())) continue
-      const entityId = field.extractionJob.document.entityId
-      const label = readableType(field.extractionJob.document.documentType)
+      const raw = field.rawValue as string
+      const { state, expiryDate } = classifyCertificateExpiry(raw, today)
+      if (state === 'UNREADABLE' || state === 'VALID' || !expiryDate) continue
 
-      if (expiryDate < today) {
-        await step.run(`flag-expired-${field.id}`, async () => {
+      const document = field.extractionJob.document
+      const entityId = document.entityId
+      const label = readableType(document.documentType)
+      const remaining = daysUntil(expiryDate, today)
+      const reason = certificateFlagReason(state, raw, remaining)!
+
+      // Only write when the state has actually moved on, so a daily cron does not
+      // rewrite the same row and re-notify for the same fact.
+      const alreadyRecorded = field.flagged && field.flagReason === reason
+      if (!alreadyRecorded) {
+        await step.run(`flag-${state.toLowerCase()}-${field.id}`, async () => {
           await prisma.extractedField.update({
             where: { id: field.id },
-            data: {
-              flagged: true,
-              flagReason: `Certificate expired ${field.rawValue}. Document is no longer valid for the current reporting period.`,
-            },
+            data: { flagged: true, flagReason: reason },
           })
         })
-        const t = tally(entityId)
-        t.expiredCount++
-        if (!t.expiredDetail) t.expiredDetail = `Your ${label} expired on ${field.rawValue}.`
-        expiredCount++
-      } else if (expiryDate < warningThreshold) {
-        await step.run(`flag-expiring-${field.id}`, async () => {
-          await prisma.extractedField.update({
-            where: { id: field.id },
-            data: {
-              flagged: true,
-              flagReason: `Certificate expires ${field.rawValue}. Within 30 days. Renew before reporting period end.`,
-            },
+      }
+
+      if (state === 'EXPIRED') {
+        // Records are never rewritten (PRD §20.3), so an expired certificate does
+        // not silently restate a tier that was correct when it was assigned. What
+        // it does is put a visible flag on the records whose period the
+        // certificate no longer covers, so the weakness travels with the figure.
+        // step.run returns JSON, so dates come back as strings.
+        const uncovered = document.dataRecords
+          .map(r => ({ id: r.id, periodEnd: new Date(r.periodEnd) }))
+          .filter(r => !certificateCoversPeriod(expiryDate, r.periodEnd))
+        for (const record of uncovered) {
+          const created = await step.run(`flag-record-${record.id}`, async () => {
+            const existing = await prisma.validationFlag.findFirst({
+              where: { dataRecordId: record.id, flagType: 'EXPIRED_CERTIFICATE', resolvedAt: null },
+              select: { id: true },
+            })
+            if (existing) return false
+            await prisma.validationFlag.create({
+              data: {
+                dataRecordId: record.id,
+                flagType: 'EXPIRED_CERTIFICATE',
+                severity: 'CRITICAL',
+                message: expiredCertificateFlagMessage(raw, record.periodEnd),
+              },
+            })
+            return true
           })
-        })
+          if (created) recordsFlagged++
+        }
+
+        if (!alreadyRecorded) {
+          const t = tally(entityId)
+          t.expiredCount++
+          if (!t.expiredDetail) t.expiredDetail = `Your ${label} expired on ${raw}.`
+          expiredCount++
+        }
+      } else if (!alreadyRecorded) {
         const t = tally(entityId)
         t.expiringCount++
-        const d = daysUntil(expiryDate, today)
-        if (d < t.soonestDays) {
-          t.soonestDays = d
-          t.soonestLabel = `Your ${label} expires in ${d} day${d === 1 ? '' : 's'}`
+        if (remaining < t.soonestDays) {
+          t.soonestDays = remaining
+          t.soonestLabel = `Your ${label} expires in ${remaining} day${remaining === 1 ? '' : 's'}`
         }
         expiringCount++
       }
@@ -174,6 +220,7 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
       expiredCount,
       expiringCount,
       staleCount,
+      recordsFlagged,
       checkedCount: expiryFields.length,
       entitiesNotified: tallies.size,
     }

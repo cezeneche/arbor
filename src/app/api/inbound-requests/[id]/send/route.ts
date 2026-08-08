@@ -53,21 +53,13 @@ export async function POST(
     return err('Email sending is not configured on this environment', 'EMAIL_UNCONFIGURED', 503)
   }
 
-  const resend = new Resend(apiKey)
-  const { error } = await resend.emails.send({
-    from: EMAIL_FROM,
-    to: request.fromEmail,
-    subject: `Re: your data request to ${request.entity.legalName}`,
-    html: buildAnswerHtml(request.entity.legalName, pf.answers),
-  })
-  if (error) {
-    console.error(`[inbound-requests] send for ${id} failed:`, error)
-    return err('The email could not be delivered. Please try again.', 'SEND_FAILED', 502)
-  }
-
-  // Mark answered only after a successful send, recording who approved it.
-  await prisma.inboundRequest.update({
-    where: { id },
+  // Claim the request BEFORE sending. Checking the status and then sending left a
+  // window in which two clicks — or a double-submitted form — both passed the
+  // check and both emailed the buyer. An email cannot be recalled, so the claim
+  // has to come first: an unclaimable request is a request somebody else is
+  // already answering.
+  const claimed = await prisma.inboundRequest.updateMany({
+    where: { id, entityId, status: { not: 'ANSWERED' } },
     data: {
       status: 'ANSWERED',
       answeredAt: new Date(),
@@ -79,6 +71,29 @@ export async function POST(
       } as unknown as Prisma.InputJsonValue,
     },
   })
+  if (claimed.count === 0) {
+    return err('This request has already been answered', 'ALREADY_ANSWERED', 409)
+  }
+
+  const resend = new Resend(apiKey)
+  const { error } = await resend.emails.send({
+    from: EMAIL_FROM,
+    to: request.fromEmail,
+    subject: `Re: your data request to ${request.entity.legalName}`,
+    html: buildAnswerHtml(request.entity.legalName, pf.answers),
+  })
+
+  if (error) {
+    // Delivery failed, so release the claim and let the supplier try again. The
+    // trade is deliberate: a released claim can be re-sent, whereas a claim held
+    // through a failure would leave the buyer with no answer and no way to get one.
+    console.error(`[inbound-requests] send for ${id} failed:`, error)
+    await prisma.inboundRequest.updateMany({
+      where: { id, status: 'ANSWERED' },
+      data: { status: request.status, answeredAt: null, parsedFields: pf as unknown as Prisma.InputJsonValue },
+    })
+    return err('The email could not be delivered. Please try again.', 'SEND_FAILED', 502)
+  }
 
   return ok({ id, status: 'ANSWERED' })
 }

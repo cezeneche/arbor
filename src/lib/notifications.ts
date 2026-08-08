@@ -127,8 +127,12 @@ export async function sendNotification<T extends NotificationType>(
     },
   })
 
+  // Deactivated accounts are deprovisioned people. Their sessions are refused
+  // everywhere else, so continuing to email them the organisation's data requests,
+  // flags and certificate warnings sends live operational detail to someone who
+  // has been removed.
   const users = await prisma.user.findMany({
-    where: { entityId: input.entityId, role: { not: 'SYSTEM' } },
+    where: { entityId: input.entityId, role: { not: 'SYSTEM' }, isActive: true },
     select: { email: true, name: true },
   })
 
