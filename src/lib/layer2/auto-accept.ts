@@ -5,6 +5,7 @@
 // digest later invites the user to review and upgrade these to Verified.
 import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from './record-writer'
+import { findDuplicates } from './duplicate-check'
 import { computeStaleAfterDate } from './staleness'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
 import { DOMAIN_BY_DOCUMENT_TYPE, DataDomain } from '@/lib/constants'
@@ -56,6 +57,33 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
     })
 
   if (prepared.length === 0) return []
+
+  // Never auto-accept over something already stored. Auto-accept runs with no
+  // user present, so there is nobody to ask — and writing anyway is how two
+  // active records for one document end up double-counting on every total. The
+  // document is already REVIEW_REQUIRED at this point, so declining to write
+  // leaves it exactly where the duplicate prompt lives, and the decision waits
+  // for the person who can make it.
+  const priors = await prisma.dataRecord.findMany({
+    where: {
+      entityId: document.entityId,
+      isActive: true,
+      fieldName: { in: [...new Set(prepared.map((p) => p.f.fieldName))] },
+      documentId: { not: documentId },
+    },
+    select: { id: true, fieldName: true, domain: true, value: true, unit: true, periodStart: true, periodEnd: true },
+  })
+  const duplicates = findDuplicates(
+    prepared.map(({ f }) => ({ fieldName: f.fieldName, domain, periodStart, periodEnd })),
+    priors,
+  )
+  if (duplicates.length > 0) {
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { status: 'REVIEW_REQUIRED' },
+    })
+    return []
+  }
 
   const staleAfterDate = computeStaleAfterDate(document.documentType, periodEnd)
 
