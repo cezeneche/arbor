@@ -873,6 +873,14 @@ model DataAccessGrant {
   domain          DataDomain?
   periodStart     DateTime?
   periodEnd       DateTime?
+  // The field names this grant covers, as a JSON array. Null means every field in
+  // the domain — a deliberate, whole-domain share.
+  //
+  // A grant created by answering a data request is NOT that: the buyer asked for
+  // named fields, so the grant it produces covers those and nothing else. Without
+  // this, answering a request for "total_consumption_kwh" handed the buyer every
+  // energy record in the period, including ones they never asked for.
+  fieldNames      Json?
   grantedAt       DateTime    @default(now())
   revokedAt       DateTime?
   isActive        Boolean     @default(true)

@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { enforceBuyerApiLimit } from '@/lib/rate-limit-guard'
-import { anyGrantCoversRecord } from '@/lib/layer3/grant-scope'
+import { GRANT_SCOPE_SELECT, anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { domainSchema, tierSchema, ALL_DOMAINS } from '@/lib/constants'
@@ -142,9 +142,7 @@ async function handleSupplyChainQuery(params: {
     },
     select: {
       grantorEntityId: true,
-      domain: true,
-      periodStart: true,
-      periodEnd: true,
+      ...GRANT_SCOPE_SELECT,
       grantorEntity: { select: { legalName: true } },
     },
   })
@@ -186,7 +184,10 @@ async function handleSupplyChainQuery(params: {
   })
 
   const filteredRecords = records.filter(record =>
-    anyGrantCoversRecord(grants.filter(g => g.grantorEntityId === record.entityId), record),
+    anyGrantCoversRecord(
+      grants.filter(g => g.grantorEntityId === record.entityId).map(toGrantScope),
+      record,
+    ),
   )
 
   const supplierCount = new Set(filteredRecords.map(r => r.entityId)).size

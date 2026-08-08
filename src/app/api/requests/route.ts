@@ -7,15 +7,23 @@ import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
 import { assertSupplierConnection } from '@/lib/plan-guard'
 
-const createSchema = z.object({
-  supplierEntityId: z.string().cuid(),
-  domain: z.enum(['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']),
-  periodStart: z.string().datetime(),
-  periodEnd: z.string().datetime(),
-  requiredFields: z.array(z.string()).min(1),
-  deadline: z.string().datetime().optional(),
-  notes: z.string().optional(),
-})
+const createSchema = z
+  .object({
+    supplierEntityId: z.string().cuid(),
+    domain: z.enum(['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']),
+    periodStart: z.string().datetime(),
+    periodEnd: z.string().datetime(),
+    requiredFields: z.array(z.string().min(1)).min(1),
+    deadline: z.string().datetime().optional(),
+    notes: z.string().optional(),
+  })
+  // A backwards period produces a request nothing can satisfy and a grant that
+  // covers nothing, so it is refused at the point of asking rather than becoming
+  // a supplier's problem later.
+  .refine(v => Date.parse(v.periodEnd) > Date.parse(v.periodStart), {
+    message: 'The end of the period must come after the start.',
+    path: ['periodEnd'],
+  })
 
 export async function GET() {
   const { session, response } = await requireAuth()
@@ -45,7 +53,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null)
   const parsed = createSchema.safeParse(body)
-  if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
+  if (!parsed.success) {
+    return err(parsed.error.issues[0]?.message ?? 'Invalid request body', 'VALIDATION_ERROR', 400)
+  }
 
   const supplier = await prisma.entity.findUnique({
     where: { id: parsed.data.supplierEntityId },

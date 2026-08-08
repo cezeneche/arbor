@@ -4,7 +4,7 @@ import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { logRecordAccess } from '@/lib/layer3/grant-access'
-import { anyGrantCoversRecord } from '@/lib/layer3/grant-scope'
+import { GRANT_SCOPE_SELECT, anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
 import { buildBuyerLabel } from '@/lib/confidence/buyer-signal'
 import { sendNotification } from '@/lib/notifications'
 import { stampFlagOwnership } from '@/lib/stewardship/route-flags'
@@ -73,12 +73,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rec
   // Authorise: an active grant from the supplier to this buyer must cover the record.
   const grants = await prisma.dataAccessGrant.findMany({
     where: { grantorEntityId: record.entityId, granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },
-    select: { domain: true, periodStart: true, periodEnd: true },
+    select: GRANT_SCOPE_SELECT,
   })
-  const covered = anyGrantCoversRecord(grants, {
+  const covered = anyGrantCoversRecord(grants.map(toGrantScope), {
     domain: record.domain,
     periodStart: record.periodStart,
     periodEnd: record.periodEnd,
+    fieldName: record.fieldName,
   })
   if (!covered) {
     return NextResponse.json({ error: 'No active grant covers this record', code: 'FORBIDDEN' }, { status: 403 })

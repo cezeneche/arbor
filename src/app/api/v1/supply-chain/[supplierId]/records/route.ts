@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { logRecordAccess } from '@/lib/layer3/grant-access'
 import { domainSchema } from '@/lib/constants'
+import { GRANT_SCOPE_SELECT, anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
 
 const querySchema = z.object({
   domain: domainSchema.optional(),
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ supp
 
   const grants = await prisma.dataAccessGrant.findMany({
     where: { grantorEntityId: supplierId, granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },
-    select: { domain: true, periodStart: true, periodEnd: true },
+    select: GRANT_SCOPE_SELECT,
   })
   if (grants.length === 0) {
     return NextResponse.json({ error: 'No active data access grant for this supplier', code: 'FORBIDDEN' }, { status: 403 })
@@ -55,14 +56,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ supp
     orderBy: [{ domain: 'asc' }, { periodStart: 'desc' }],
   })
 
-  const scoped = candidates.filter((record) =>
-    grants.some((grant) => {
-      const domainMatch = !grant.domain || grant.domain === record.domain
-      const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
-      const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
-      return domainMatch && startMatch && endMatch
-    }),
-  )
+  // Scoping goes through grant-scope, not a local copy of the rule. This route
+  // used to restate it inline, which is how it kept working on the old, wider
+  // rules when the field dimension was added.
+  const scopes = grants.map(toGrantScope)
+  const scoped = candidates.filter((record) => anyGrantCoversRecord(scopes, record))
 
   const total = scoped.length
   const start = (page - 1) * pageSize
