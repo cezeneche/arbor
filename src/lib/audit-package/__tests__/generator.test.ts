@@ -160,12 +160,21 @@ describe('generateAuditPackage', () => {
   })
 
   // integrity hash + verification instructions
-  it('produces a 64-char integrity hash and matching instructions', () => {
+  it('produces a 64-char integrity hash', () => {
     const pkg = generateAuditPackage(BASE_INPUT)
     expect(pkg.packageIntegrityHash).toMatch(/^[a-f0-9]{64}$/)
-    expect(pkg.verificationInstructions.params.packageHash).toBe(pkg.packageIntegrityHash)
-    expect(pkg.verificationInstructions.params.entityId).toBe('entity-1')
-    expect(pkg.verificationInstructions.expectedResponse).toEqual({ verified: true })
+  })
+
+  // The instructions must send the package, not just its hash: quoting a hash
+  // proves a package with that hash existed, not that this file is it.
+  it('instructs the auditor to post the package itself', () => {
+    const pkg = generateAuditPackage(BASE_INPUT)
+    expect(pkg.verificationInstructions.method).toBe('POST')
+    expect(pkg.verificationInstructions.endpoint).toBe('/api/audit/verify-public')
+    expect(pkg.verificationInstructions.expectedResponse).toEqual({
+      contentsMatchHash: true,
+      hashIssuedByArbor: true,
+    })
   })
 
   it('integrity hash changes when records change', () => {

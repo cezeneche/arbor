@@ -71,11 +71,18 @@ export interface AuditPackageInput {
 
 // instructions an external auditor can follow to verify the package
 // without an Arbor account.
+//
+// Verification means recomputing the integrity hash from the package they are
+// holding and asking Arbor whether that hash was ever issued. Sending the hash
+// alone proves only that some package with that hash existed — it says nothing
+// about the file in the auditor's hands, which is the thing under suspicion.
 export interface VerificationInstructions {
   description: string
   endpoint: string
-  params: { packageHash: string; entityId: string }
-  expectedResponse: { verified: true }
+  method: 'POST'
+  /** Post the package itself; the endpoint recomputes its hash from the contents. */
+  body: { package: 'the full package JSON, unmodified' }
+  expectedResponse: { contentsMatchHash: true; hashIssuedByArbor: true }
 }
 
 export interface AuditPackageSummary {
@@ -143,6 +150,54 @@ function buildMerkleCommitment(records: AuditDataRecord[]): AuditMerkleCommitmen
   }
 }
 
+/** The exact content the integrity hash covers: everything that matters for
+ *  provenance, excluding the hash and the instructions themselves.
+ *
+ *  Both generation and verification build it here, from the same code, so a
+ *  recomputation over a submitted package is comparing like with like. Dates are
+ *  normalised to ISO strings because a package that has been through JSON no
+ *  longer carries Date objects. computePackageHash sorts keys recursively, so key
+ *  order is not part of the commitment. */
+export function buildPackageCore(input: {
+  entityId: string
+  entityName: string
+  periodStart: Date | string
+  periodEnd: Date | string
+  summary: AuditPackageSummary
+  dataRecords: Array<Omit<AuditDataRecord, 'periodStart' | 'periodEnd'> & {
+    periodStart: Date | string
+    periodEnd: Date | string
+  }>
+  sourceDocuments: Array<Omit<AuditSourceDocument, 'submittedAt'> & { submittedAt: Date | string }>
+  crossValidationResults: AuditCrossValidationResult[]
+  verification: AuditVerification | null
+}): unknown {
+  const iso = (d: Date | string) => (typeof d === 'string' ? new Date(d).toISOString() : d.toISOString())
+
+  return {
+    entityId: input.entityId,
+    entityName: input.entityName,
+    periodStart: iso(input.periodStart),
+    periodEnd: iso(input.periodEnd),
+    summary: input.summary,
+    dataRecords: input.dataRecords.map(r => ({
+      ...r,
+      periodStart: iso(r.periodStart),
+      periodEnd: iso(r.periodEnd),
+    })),
+    sourceDocuments: input.sourceDocuments.map(d => ({
+      ...d,
+      submittedAt: iso(d.submittedAt),
+    })),
+    crossValidationResults: input.crossValidationResults,
+    verification: input.verification,
+  }
+}
+
+export function computePackageIntegrityHash(input: Parameters<typeof buildPackageCore>[0]): string {
+  return computePackageHash(buildPackageCore(input))
+}
+
 export function generateAuditPackage(input: AuditPackageInput): AuditPackage {
   const tierACount = input.dataRecords.filter((r) => r.trustTier === 'A').length
   const tierBCount = input.dataRecords.filter((r) => r.trustTier === 'B').length
@@ -162,27 +217,17 @@ export function generateAuditPackage(input: AuditPackageInput): AuditPackage {
 
   const verification = input.verification ?? null
 
-  // integrity hash over the package's core content (everything that
-  // matters for provenance), excluding the hash and instructions themselves.
-  const core = {
+  const packageIntegrityHash = computePackageIntegrityHash({
     entityId: input.entityId,
     entityName: input.entityName,
-    periodStart: input.periodStart.toISOString(),
-    periodEnd: input.periodEnd.toISOString(),
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
     summary,
-    dataRecords: input.dataRecords.map((r) => ({
-      ...r,
-      periodStart: r.periodStart.toISOString(),
-      periodEnd: r.periodEnd.toISOString(),
-    })),
-    sourceDocuments: input.sourceDocuments.map((d) => ({
-      ...d,
-      submittedAt: d.submittedAt.toISOString(),
-    })),
+    dataRecords: input.dataRecords,
+    sourceDocuments: input.sourceDocuments,
     crossValidationResults: input.crossValidationResults,
     verification,
-  }
-  const packageIntegrityHash = computePackageHash(core)
+  })
 
   const endpoint = input.publicVerifyEndpoint ?? '/api/audit/verify-public'
 
@@ -201,10 +246,11 @@ export function generateAuditPackage(input: AuditPackageInput): AuditPackage {
     merkle: buildMerkleCommitment(input.dataRecords),
     verificationInstructions: {
       description:
-        'To independently verify this package, send a GET request to the endpoint below with the packageIntegrityHash.',
+        'To independently verify this package, POST the whole file to the endpoint below as {"package": <this JSON>}. Arbor recomputes the integrity hash from the contents you send and reports whether that hash was one it issued. Sending the hash on its own would only confirm that some package had it — not that this file is that package.',
       endpoint,
-      params: { packageHash: packageIntegrityHash, entityId: input.entityId },
-      expectedResponse: { verified: true },
+      method: 'POST',
+      body: { package: 'the full package JSON, unmodified' },
+      expectedResponse: { contentsMatchHash: true, hashIssuedByArbor: true },
     },
   }
 }

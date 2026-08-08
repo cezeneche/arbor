@@ -3,9 +3,17 @@
 import { useState } from 'react'
 import { colours, typography, spacing } from '@/lib/design-system'
 
-type Result =
-  | { verified: true; entryCount: number; verifiedAt: string }
-  | { verified: false; reason?: string }
+// The share page holds a hash, not the package file, so this button can only ask
+// the hash question: did Arbor issue this, and is the entity's chain intact today.
+// It deliberately does not claim the package itself has been verified — that needs
+// the contents, and an auditor holding the file POSTs them instead.
+interface Result {
+  hashIssuedByArbor?: boolean
+  entityChainIntact?: boolean
+  entryCount?: number
+  verifiedAt?: string
+  reason?: string
+}
 
 export function ShareVerifyButton({ entityId, packageHash }: { entityId: string; packageHash: string }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done'>('idle')
@@ -19,11 +27,13 @@ export function ShareVerifyButton({ entityId, packageHash }: { entityId: string;
       const data = (await res.json()) as Result
       setResult(data)
     } catch {
-      setResult({ verified: false, reason: 'Verification request failed' })
+      setResult({ hashIssuedByArbor: false, reason: 'Verification request failed' })
     } finally {
       setState('done')
     }
   }
+
+  const confirmed = result?.hashIssuedByArbor === true && result?.entityChainIntact === true
 
   return (
     <div>
@@ -52,17 +62,21 @@ export function ShareVerifyButton({ entityId, packageHash }: { entityId: string;
             marginTop: spacing[2],
             padding: spacing[2],
             borderRadius: '6px',
-            backgroundColor: result.verified ? colours.greenBg : colours.redBg,
-            border: `1px solid ${result.verified ? colours.green : colours.red}`,
+            backgroundColor: confirmed ? colours.greenBg : colours.redBg,
+            border: `1px solid ${confirmed ? colours.green : colours.red}`,
           }}
         >
-          <p style={{ margin: 0, fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: result.verified ? colours.green : colours.red }}>
-            {result.verified ? 'Audit chain verified' : 'Could not verify'}
+          <p style={{ margin: 0, fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: confirmed ? colours.green : colours.red }}>
+            {confirmed
+              ? 'Issued by Arbor · audit chain intact'
+              : result.hashIssuedByArbor
+                ? 'Issued by Arbor · audit chain does not verify'
+                : 'Could not confirm'}
           </p>
           <p style={{ margin: '4px 0 0', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary }}>
-            {result.verified
-              ? `${result.entryCount} audit entries checked · ${new Date(result.verifiedAt).toLocaleString('en-GB')}`
-              : (result as { reason?: string }).reason ?? 'This package could not be confirmed.'}
+            {result.hashIssuedByArbor
+              ? `${result.entryCount ?? 0} audit entries checked · ${result.verifiedAt ? new Date(result.verifiedAt).toLocaleString('en-GB') : ''}`
+              : result.reason ?? 'This package could not be confirmed.'}
           </p>
         </div>
       )}

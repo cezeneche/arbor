@@ -93,10 +93,11 @@ const pkg: AuditPackage = {
     consistent: true,
   },
   verificationInstructions: {
-    description: 'To independently verify this package, send a GET request…',
+    description: 'To independently verify this package, POST the whole file…',
     endpoint: '/api/audit/verify-public',
-    params: { packageHash: 'deadbeefcafe', entityId: 'ent-1' },
-    expectedResponse: { verified: true },
+    method: 'POST' as const,
+    body: { package: 'the full package JSON, unmodified' as const },
+    expectedResponse: { contentsMatchHash: true as const, hashIssuedByArbor: true as const },
   },
 }
 

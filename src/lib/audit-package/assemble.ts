@@ -47,7 +47,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
     ...(periodEnd ? { periodEnd: { lte: periodEnd } } : {}),
   }
 
-  const [entity, records, auditEntries, crossValidations, verifiedAssignment] = await Promise.all([
+  const [entity, records, auditEntries, allCrossValidations, verifiedAssignment] = await Promise.all([
     prisma.entity.findUniqueOrThrow({ where: { id: entityId }, select: { legalName: true } }),
     prisma.dataRecord.findMany({
       where: { entityId, isActive: true, ...periodFilter },
@@ -69,6 +69,22 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
     }),
   ])
 
+  // A package scoped to a period must not carry cross-validation results about
+  // documents outside it. CrossValidationResult has no period of its own, so the
+  // scope is inherited from the documents it compares: a result belongs in the
+  // package only when at least one side is a document the package already
+  // includes. Without this, a Q1 package handed to one auditor disclosed
+  // discrepancies found in every other quarter.
+  const inScopeDocumentIds = new Set(
+    records.map(r => r.documentId).filter((id): id is string => id !== null),
+  )
+  const crossValidations =
+    periodStart || periodEnd
+      ? allCrossValidations.filter(
+          c => inScopeDocumentIds.has(c.documentAId) || inScopeDocumentIds.has(c.documentBId),
+        )
+      : allCrossValidations
+
   const chainEntries = auditEntries.map((e) => ({
     hash: e.hash,
     previousHash: e.previousHash,
@@ -76,9 +92,28 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
   }))
   const chainIntegrityVerified = verifyChain(chainEntries)
 
-  const sourceDocMap = new Map<string, { id: string; documentType: string; fileName: string; submittedAt: Date }>()
+  // A source document's tier is the tier of the records that came out of it, not
+  // a constant. A document whose extraction was downgraded to Declared was still
+  // being listed as Verified in the package, which is precisely the claim the tier
+  // system exists to stop anyone making. Where one document backs records at more
+  // than one tier, the package reports the weakest — a package should never
+  // overstate what it can support.
+  const TIER_STRENGTH = { A: 3, B: 2, C: 1 } as const
+  type Tier = keyof typeof TIER_STRENGTH
+
+  const sourceDocMap = new Map<
+    string,
+    { id: string; documentType: string; fileName: string; submittedAt: Date; trustTier: Tier }
+  >()
   for (const r of records) {
-    if (r.document && !sourceDocMap.has(r.document.id)) sourceDocMap.set(r.document.id, r.document)
+    if (!r.document) continue
+    const tier = r.trustTier as Tier
+    const existing = sourceDocMap.get(r.document.id)
+    if (!existing) {
+      sourceDocMap.set(r.document.id, { ...r.document, trustTier: tier })
+    } else if (TIER_STRENGTH[tier] < TIER_STRENGTH[existing.trustTier]) {
+      existing.trustTier = tier
+    }
   }
 
   const verification: AuditVerification | null =
@@ -91,11 +126,23 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
         }
       : null
 
+  // With no explicit period the package covers everything it contains, so the
+  // header has to be the true extent of the records — the earliest start and the
+  // latest end. The records are ordered by submittedAt, so taking the first and
+  // last rows described the order they were uploaded in, not the period they
+  // cover: a backdated document made the package claim a period it did not span.
+  const derivedPeriodStart = records.length
+    ? new Date(Math.min(...records.map(r => r.periodStart.getTime())))
+    : new Date(0)
+  const derivedPeriodEnd = records.length
+    ? new Date(Math.max(...records.map(r => r.periodEnd.getTime())))
+    : new Date()
+
   const pkg = generateAuditPackage({
     entityId,
     entityName: entity.legalName,
-    periodStart: periodStart ?? (records[0]?.periodStart ?? new Date(0)),
-    periodEnd: periodEnd ?? (records[records.length - 1]?.periodEnd ?? new Date()),
+    periodStart: periodStart ?? derivedPeriodStart,
+    periodEnd: periodEnd ?? derivedPeriodEnd,
     generatedAt: new Date(),
     dataRecords: records.map((r) => ({
       id: r.id,
@@ -118,7 +165,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
       documentType: d.documentType,
       fileName: d.fileName,
       submittedAt: d.submittedAt,
-      trustTier: 'A' as const,
+      trustTier: d.trustTier,
     })),
     crossValidationResults: crossValidations.map((c) => ({
       id: c.id,

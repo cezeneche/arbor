@@ -109,10 +109,17 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   lines.push(`${pkg.verificationInstructions.description}`)
   lines.push('')
   lines.push('```')
-  lines.push(`GET ${pkg.verificationInstructions.endpoint}?packageHash=${pkg.verificationInstructions.params.packageHash}&entityId=${pkg.verificationInstructions.params.entityId}`)
+  lines.push(`POST ${pkg.verificationInstructions.endpoint}`)
+  lines.push('Content-Type: application/json')
+  lines.push('')
+  lines.push('{ "package": <the contents of package.json, unmodified> }')
   lines.push('')
   lines.push(`expected response: ${JSON.stringify(pkg.verificationInstructions.expectedResponse)}`)
   lines.push('```')
+  lines.push('')
+  lines.push(
+    `The integrity hash of this package is \`${pkg.packageIntegrityHash}\`. Arbor recomputes that hash from whatever you send: if a single figure, tier or date has been changed since the package was produced, \`contentsMatchHash\` comes back false.`,
+  )
   lines.push('')
 
   // ── Independent verification ───────────────────────────────────────────────
