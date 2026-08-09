@@ -8,7 +8,6 @@ from fastapi import APIRouter
 from . import _shared
 from .cases import router as cases_router
 from .classify import router as classify_router
-from .documents import router as documents_router
 from .drafts import router as drafts_router
 from .emissions import router as emissions_router
 from .report import router as report_router, get_cbam_report_package
@@ -19,7 +18,6 @@ from .insights import router as insights_router
 router = APIRouter(prefix="/cbam", tags=["cbam"])
 router.include_router(cases_router)
 router.include_router(classify_router)
-router.include_router(documents_router)
 router.include_router(drafts_router)
 router.include_router(emissions_router)
 router.include_router(report_router)
@@ -42,9 +40,6 @@ _PATCHABLE = {
     "engine",
     "CBAM_STORAGE_ROOT",
     "extract_cbam_document",
-    "extract_document_from_upload",
-    "LlamaOrchestrator",
-    "ingest_orchestrator",
     "arbitrate_parsed_invoice",
     "repair_parsed_invoice",
     "compare_extractions",
@@ -56,9 +51,6 @@ _PATCHABLE = {
 engine = _shared.engine
 CBAM_STORAGE_ROOT = _shared.CBAM_STORAGE_ROOT
 extract_cbam_document = _shared.extract_cbam_document
-extract_document_from_upload = _shared.extract_document_from_upload
-LlamaOrchestrator = _shared.LlamaOrchestrator
-ingest_orchestrator = _shared.ingest_orchestrator
 arbitrate_parsed_invoice = _shared.arbitrate_parsed_invoice
 repair_parsed_invoice = _shared.repair_parsed_invoice
 compare_extractions = _shared.compare_extractions

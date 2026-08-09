@@ -47,7 +47,6 @@ def _register_ledger(app: FastAPI) -> None:
     from ledger_app.api.cbam_extraction import router as cbam_extraction_router
     from ledger_app.api.cbam import router as cbam_router
     from ledger_app.api.db_check import router as db_check_router
-    from ledger_app.api.documents import router as documents_router
     from ledger_app.api.extract import router as extract_router
     from ledger_app.api.gaps import router as gaps_router
     from ledger_app.api.report_package import router as report_package_router
@@ -68,7 +67,6 @@ def _register_ledger(app: FastAPI) -> None:
     # Case lifecycle
     app.include_router(cases_router, prefix="/api", dependencies=_auth)
     app.include_router(cbam_extraction_router, prefix="/api", dependencies=_auth)
-    app.include_router(documents_router, prefix="/api", dependencies=_auth)
     app.include_router(extract_router, prefix="/api", dependencies=_auth)
     app.include_router(calculate_router, prefix="/api", dependencies=_auth)
     app.include_router(bundle_router, prefix="/api", dependencies=_auth)

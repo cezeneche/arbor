@@ -71,9 +71,12 @@ extraction path, all four previously untested parsers, emissions method
 selection, the mark-up table, the Article 10a(1a) schedule and the HMRC return.
 Verified to detect injected regressions rather than merely passing.
 
-### #8 — The four dormant parsers
+### #8 — The four dormant parsers — RESOLVED
 
-Still open as a decision. Customs, mill certificate, spreadsheet and XML
+**All four wired in** on the owner's instruction, behind the single text-in
+entry point. Format parsers (XML, CSV) are authoritative and stand alone; the
+customs parser competes through the arbiter against the regex layer.
+Previously: Customs, mill certificate, spreadsheet and XML
 declaration parsers had **zero tests and zero call sites**. Their current
 behaviour is now frozen in the golden set, so wiring them in or deleting them
 are both safe to do deliberately.
@@ -93,10 +96,11 @@ Unchanged. Nucleos's three-field submission contract is not Arbor's
 
 Unchanged. Phase 3.
 
-### #10 — `BackgroundTasks` / `threading.Timer` pipeline in `drafts.py`
+### #10 — `BackgroundTasks` / `threading.Timer` pipeline in `drafts.py` — RESOLVED
 
-Unchanged. Phase 2 removes it rather than wrapping it, by moving the queue to
-Arbor's Inngest.
+**Removed, not wrapped.** The upload endpoint, the stub-processing-case dance,
+the background pipeline and its watchdog timer are all deleted. Arbor's Inngest
+queue does this work now, so the anti-pattern had nothing left to guard.
 
 ---
 

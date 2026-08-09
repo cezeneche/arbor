@@ -117,14 +117,14 @@ api/  (port 8000)
 Key layers:
 - `api/app/api/` — consolidated API routers (narrative_pipeline, cbam_compliance, cpr, verification, registration, public_tools, supplier_outreach)
 - `api/app/services/` — business logic: `narrative`, `compliance_pack`, `hmrc_return_builder`, `cpr_calculator`, `report_validator`, `cbam_free_allocation`, `cbam_uk_rates`, `eu_xml_builder`, `registration_manager`, `notifications`
-- `api/ledger_app/api/` — 17 FastAPI routers (cases, documents, extract, calculate, bundle, resolve, report_package, cbam, auth, health, etc.)
-- `api/ledger_app/services/` — business logic: `cbam_extractor`, `cbam_arbiter`, `cbam_repair`, `cbam_explain`, `snapshot_store`, `storage`, and the text-chunking orchestration layer
+- `api/ledger_app/api/` — FastAPI routers (cases, cbam_extraction, extract, calculate, bundle, resolve, report_package, cbam, auth, health, etc.). Document upload lives in Arbor from Phase 2; Nucleos receives text.
+- `api/ledger_app/services/` — business logic: `cbam_extractor`, `cbam_arbiter`, `cbam_repair`, `cbam_explain`, `snapshot_store`, `storage`, and `text_ingest` (the text-in entry point)
 - `api/ledger_app/db/` — SQLAlchemy models and migrations
 - `api/ledger_app/models/` — Pydantic schemas
 - `api/ledger_app/testing.py` — shared `TestClient` factory used by conftest
 - `api/shared_auth/` — HS256 JWT library (create/decode tokens, FastAPI deps, scope enforcement)
 
-Primary workflow: upload invoice → text extraction and chunking → structured extraction → arbiter resolves conflicts → repair fills gaps → bundle into report package.
+Primary workflow: Arbor extracts document text → POST /api/internal/cbam/extract → structured extraction → arbiter resolves conflicts → repair fills gaps → Arbor writes the fields. Nucleos holds no documents and exposes no upload endpoint.
 
 ### Narrative pipeline — single Claude call
 The narrative pipeline runs entirely in-process (no inter-service HTTP):

@@ -28,7 +28,7 @@ api/ (port 8000)
   └─ Single Claude call (narrative pipeline)
 ```
 
-Primary workflow: upload invoice → text extraction and chunking → structured extraction → arbiter resolves conflicts → repair fills gaps → bundle into report package → Claude generates narrative → deterministic validator → compliance pack.
+Primary workflow: Arbor extracts document text → POST /api/internal/cbam/extract → structured extraction → arbiter resolves conflicts → repair fills gaps → bundle into report package → Claude generates narrative → deterministic validator → compliance pack.
 
 ## Setup
 

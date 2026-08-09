@@ -74,23 +74,59 @@ def test_explain_metric_recomputes_total_and_matches_summary(monkeypatch, tmp_pa
 
 
 def test_explain_field_returns_evidence_even_when_bbox_missing(monkeypatch, tmp_path):
+    """Explain-by-field still works now that Arbor owns document ingestion.
+
+    This used to build its case by uploading a file to /drafts/from-document.
+    That endpoint is gone — Arbor extracts the text and Nucleos receives it — so
+    the case is built through the JSON draft path, which is the surviving way in.
+    The evidence atoms travel in the payload rather than being produced here,
+    which is exactly the Phase 2 boundary: text and structure in, no bytes.
+    """
     monkeypatch.setenv("SNAPSHOT_STORE_DIR", str(tmp_path / "snapshots"))
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     client, _ = _client_with_fake_engine()
-    fixture_path = (
-        Path(__file__).resolve().parents[3]
-        / "fixtures"
-        / "documents"
-        / "sample_invoice_TEST.txt"
-    )
 
     draft = client.post(
-        "/api/cbam/drafts/from-document",
-        files={"file": (fixture_path.name, fixture_path.read_bytes(), "text/plain")},
+        "/api/cbam/drafts/from-parsed-invoice",
+        json={
+            "importer": {"name": "Acme Imports Ltd", "eori": "GB123456789"},
+            "invoice": {
+                "invoice_number": "INV-2025-001",
+                "invoice_date": "2025-01-15",
+                "origin_country": "CN",
+                "incoterm": "FOB",
+                "entry_reference": "ER-001",
+            },
+            "lines": [
+                {
+                    "cn_code": "720711",
+                    "description": "Hot rolled steel coil",
+                    "quantity": 10000,
+                    "quantity_unit": "kg",
+                    "net_mass_kg": 10000,
+                }
+            ],
+            "emissions": {
+                "method": "actual",
+                "direct_embedded_kgco2e": 50000,
+                "indirect_embedded_kgco2e": 10000,
+            },
+            "evidence": [
+                {
+                    "field": "invoice.invoice_number",
+                    "value": "INV-2025-001",
+                    "source": "rule_regex",
+                    "confidence": 0.96,
+                    "snippet": "Invoice number: INV-2025-001",
+                }
+            ],
+        },
     )
     assert draft.status_code == 201, draft.text
-    case_id = draft.json()["created"]["case_id"]
+    case_id = draft.json()["case_id"]
+
+    # The explain endpoint reads a snapshot; building the report package writes it.
+    assert client.get(f"/api/cbam/cases/{case_id}/report-package").status_code == 200
 
     explain = client.get(
         f"/api/cbam/cases/{case_id}/explain",
@@ -103,5 +139,5 @@ def test_explain_field_returns_evidence_even_when_bbox_missing(monkeypatch, tmp_
     assert isinstance(body["evidence"], list)
     assert body["evidence"]
     assert any(atom.get("field") == "invoice.invoice_number" for atom in body["evidence"])
-    # For plain text extraction there is no spatial grounding; bbox must remain null.
+    # Text extraction carries no spatial grounding; bbox must remain null.
     assert any(atom.get("bbox") is None for atom in body["evidence"])

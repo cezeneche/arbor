@@ -97,20 +97,6 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         _log.warning("startup_recovery: failed (non-fatal): %s", exc)
 
-    # Warm up PaddleOCR so the first document upload doesn't pay the 30-60s init cost.
-    try:
-        import threading
-        def _warmup_ocr() -> None:
-            try:
-                from ledger_app.services.document_text_extractor import _get_paddle_ocr
-                _get_paddle_ocr()
-                _log.info("paddleocr: model warmed up")
-            except Exception as exc:
-                _log.warning("paddleocr: warmup failed (non-fatal): %s", exc)
-        threading.Thread(target=_warmup_ocr, daemon=True).start()
-    except Exception as exc:
-        _log.warning("paddleocr: warmup thread failed to start: %s", exc)
-
     # Seed Annex VI emission factors (idempotent — skips if tables not ready yet)
     try:
         from ledger_app.api.cbam._shared import engine as _cbam_engine

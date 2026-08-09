@@ -35,10 +35,7 @@ from ledger_app.services.cbam_installation_registry import validate_installation
 from ledger_app.services.cbam_repair import repair_parsed_invoice  # noqa: F401
 from ledger_app.services.cbam_scope import ScopeStatus, determine_cbam_scope  # noqa: F401
 from ledger_app.services.cbam_taric import CBAMCodeNotInScope, lookup_sector  # noqa: F401
-from ledger_app.services.document_text_extractor import extract_document_from_upload  # noqa: F401
-from ledger_app.services.llama_orchestrator import LlamaOrchestrator  # noqa: F401
 from ledger_app.services.llama_structured_extractor import compare_extractions  # noqa: F401
-from ledger_app.services.orchestration import llama_orchestrator as ingest_orchestrator  # noqa: F401
 from ledger_app.services.snapshot_store import (  # noqa: F401
     bytes_sha256_hex,
     canonical_json,

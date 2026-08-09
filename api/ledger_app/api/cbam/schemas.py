@@ -142,3 +142,13 @@ class CBAMDraftFromParsedInvoiceRequest(BaseModel):
     invoice: ParsedInvoiceMetadata
     lines: list[ParsedInvoiceLine] = Field(..., min_length=1)
     emissions: ParsedInvoiceEmissions | None = None
+    # Per-field evidence atoms, so an auditor can locate every value in the
+    # source document.
+    #
+    # These used to be produced inside Nucleos by its own document ingestion.
+    # Arbor owns document→text from Phase 2, so the evidence is produced there
+    # and arrives here instead. Without it the report package's
+    # extraction_evidence block and the explain-by-field endpoint are
+    # permanently empty — the audit trail would quietly stop working rather
+    # than visibly break.
+    evidence: list[dict] | None = None
