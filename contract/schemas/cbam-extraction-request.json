@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbor.example/contract/cbam-extraction-request.json",
+  "title": "CbamExtractionRequest",
+  "description": "Arbor -> Nucleos. Text and metadata in.\n\nNo blob reference and no bytes. From Phase 2 Arbor owns document-to-text and the storage bucket leaves Nucleos entirely, so a document identifier here is a handle for correlation and audit, never something Nucleos can dereference.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["document_id", "document_type", "entity_id", "text", "jurisdiction"],
+  "properties": {
+    "document_id": {
+      "description": "Arbor's Document id. Correlation only — Nucleos cannot fetch it.",
+      "type": "string",
+      "minLength": 1
+    },
+    "document_type": {
+      "description": "Arbor's DocumentType. Nucleos routes on it but does not own the vocabulary.",
+      "type": "string",
+      "minLength": 1
+    },
+    "entity_id": {
+      "description": "Arbor's Entity id. Scopes the request; Nucleos does not resolve it to a tenant of its own.",
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "description": "Full extracted text of the document.",
+      "type": "string"
+    },
+    "pages": {
+      "description": "Per-page text. Optional: some sources have no page structure. When present, the extractor can attribute a value to a page.",
+      "type": "array",
+      "items": { "$ref": "common.json#/$defs/PageText" }
+    },
+    "reporting_period_end": {
+      "description": "ISO 8601 date. Drives certificate expiry and reporting-period checks.",
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "reporting_year": {
+      "description": "Required for the legislated default-value mark-up to be applied. When absent, the default path returns a figure that understates the declarable amount and says so in a warning rather than omitting it silently.",
+      "type": ["integer", "null"]
+    },
+    "jurisdiction": { "$ref": "common.json#/$defs/Jurisdiction" },
+    "ocr_quality": { "$ref": "common.json#/$defs/OcrQuality" }
+  }
+}

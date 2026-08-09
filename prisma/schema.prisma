@@ -281,6 +281,12 @@ model ExtractionJob {
   // these fields, so a later accuracy regression is attributable to the exact
   // model/prompt change that caused it. Null for jobs run before stamping.
   extractorVersion   String?
+  // Set whenever any part of the source was not read — a page cap, a size
+  // limit, a truncated OCR pass. Confirming fields off a partially-read
+  // document sets a provenance tier the reviewer did not knowingly grant, so
+  // truncation is surfaced in Review rather than recorded silently.
+  truncated          Boolean          @default(false)
+  truncationReason   String?
 
   extractedFields ExtractedField[]
 }

@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbor.example/contract/common.json",
+  "title": "Common",
+  "description": "Shared definitions for the Arbor <-> Nucleos boundary.",
+  "$defs": {
+    "EmissionsMethod": {
+      "title": "EmissionsMethod",
+      "description": "Which emissions value entered the calculation.\n\nTHIS IS NOT A TIER. Arbor carries a separate ProvenanceTier saying how much to trust a record's origin. The two axes are orthogonal and neither derives from the other: a mill certificate can legitimately be ACTUAL method and DECLARED provenance, because the figure is a real measurement and the document backing it was never verified. Both travel on every goods line and both display.\n\nDo not collapse these into one field. Every attempt to do so loses one of the two questions a reviewer has to answer.\n\nRegulation: EU 2023/1773 Art. 4 numbers these as tiers 1/2/3. That numbering travels as regulation_tier on a rejection reason, never as the name of this axis.",
+      "type": "string",
+      "enum": ["ACTUAL", "ESTIMATED", "DEFAULT"]
+    },
+    "ProvenanceTier": {
+      "title": "ProvenanceTier",
+      "description": "How much to trust a record's origin. Arbor's axis.\n\nSet only by a human action in Arbor's Review screen. Extraction produces drafts; nothing crossing this boundary may assign a provenance tier. Nucleos never writes this field — it is echoed back so a goods line can carry both axes at once.\n\nSee EmissionsMethod for why these are separate.",
+      "type": "string",
+      "enum": ["VERIFIED", "DECLARED", "ESTIMATED"]
+    },
+    "Jurisdiction": {
+      "title": "Jurisdiction",
+      "type": "string",
+      "enum": ["EU", "UK"]
+    },
+    "PageText": {
+      "title": "PageText",
+      "description": "One page of extracted text. The page map lets a reviewer find a value in the source document without the document itself crossing the boundary.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["page_number", "text"],
+      "properties": {
+        "page_number": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string" }
+      }
+    },
+    "OcrQuality": {
+      "title": "OcrQuality",
+      "description": "What the OCR pass knew about its own output. Arbor owns document-to-text from Phase 2, so this is the only signal Nucleos gets about how trustworthy the text is.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["truncated"],
+      "properties": {
+        "mean_confidence": {
+          "description": "0-1 across the document, when the OCR engine reports it.",
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "truncated": {
+          "description": "True when any part of the source was not read. Never infer this from the reason string: a reason without the flag is metadata, not a truncation.",
+          "type": "boolean"
+        },
+        "truncation_reason": { "type": ["string", "null"] },
+        "engine": {
+          "description": "Which OCR path produced the text, for attributing a later accuracy regression.",
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "EvidenceAtom": {
+      "title": "EvidenceAtom",
+      "description": "Where a value came from, in the source text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "source", "confidence"],
+      "properties": {
+        "field": { "type": "string" },
+        "value": {},
+        "source": {
+          "description": "Nucleos's own fine-grained extractor tag: rule_regex, claude, customs_parser, mill_cert_parser, arbiter, repair, and so on.\n\nDeliberately NOT Arbor's ExtractionMethod enum (DOCUMENT_AI | MANUAL_ENTRY | SYSTEM_INTEGRATION). Arbor's enum records how a record entered the platform; this records which of Nucleos's extractors produced a particular field. Mapping one onto the other loses the distinction that makes a flag actionable.",
+          "type": "string"
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "snippet": { "type": ["string", "null"] },
+        "page": { "type": ["integer", "null"] },
+        "span": {
+          "oneOf": [
+            { "$ref": "common.json#/$defs/TextSpan" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "TextSpan": {
+      "title": "TextSpan",
+      "description": "Character offsets into the submitted text, so a reviewer can highlight the exact source of a value.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "RejectedMethod": {
+      "title": "RejectedMethod",
+      "description": "Why a higher-priority emissions method was not used. Mandatory audit trail: a declaration has to be able to say why it did not use actual data.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "reason", "regulation_ref"],
+      "properties": {
+        "method": { "$ref": "common.json#/$defs/EmissionsMethod" },
+        "regulation_tier": {
+          "description": "The EU 2023/1773 Art. 4 tier number for this method. A citation, never the axis name.",
+          "type": ["integer", "null"]
+        },
+        "reason": { "type": "string" },
+        "regulation_ref": { "type": "string" }
+      }
+    },
+    "DecisionAtom": {
+      "title": "DecisionAtom",
+      "description": "One step of the calculation's decision trace, carried verbatim so an auditor can reconstruct the reasoning without re-running the engine.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step", "outcome", "detail"],
+      "properties": {
+        "step": { "type": "string" },
+        "outcome": { "type": "string" },
+        "detail": { "type": "string" },
+        "value": {},
+        "regulation_ref": { "type": ["string", "null"] }
+      }
+    },
+    "EngineVersions": {
+      "title": "EngineVersions",
+      "description": "Stamped into the response itself rather than inherited transitively, so a figure can be reproduced years later from the response alone.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine_version"],
+      "properties": {
+        "engine_version": { "type": "string" },
+        "annex_vi_factor_version": { "type": ["string", "null"] },
+        "markup_table_version": { "type": ["string", "null"] },
+        "regulation_reference": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
