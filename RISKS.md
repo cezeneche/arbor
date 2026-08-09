@@ -230,13 +230,33 @@ skipped rather than captured, and the value must contain a digit so the pattern
 cannot capture a following word. Frozen in
 `golden/cases/parsers/mill_cert_bf_bof.json`.
 
-### N5 — Production audit schema diverges from the migrations
+### N5 — Production audit schema diverges from the migrations — RESOLVED
 
-Production `cbam.audit_log` columns are `signature` and `chain_hash`. Migration
-`004_audit_chain.sql` adds `prev_hmac` to an unqualified `audit_log`, which
-resolves to `public.audit_log` — a different table that also exists in the
-database. The migration has therefore never applied to the table the application
-uses.
+Two audit tables exist in production, with different schemas and different
+histories. Read-only query, 2026-08-10:
 
-Not yet resolved. It needs a decision about which table is authoritative before
-Phase 4 imports anything.
+| Table | Columns | Rows |
+|---|---|---|
+| `cbam.audit_log` | `signature`, `chain_hash`, `payload`, `actor` | **10** |
+| `public.audit_log` | `hmac_sha256`, `prev_hmac`, `event_json`, `actor_sub` | 1 |
+
+**`cbam.audit_log` is authoritative.** It is the table the application writes to
+and reads from, and it holds every real event.
+
+Migration `004_audit_chain.sql` alters an unqualified `audit_log`, which resolves
+to `public.audit_log` — so it added `prev_hmac` to the table nobody uses. That is
+why production's `cbam.audit_log` appears to have no chain columns: it has
+`chain_hash`, which serves the same purpose under a different name and is
+populated normally.
+
+The chain therefore works; only the migration was pointed at the wrong table. The
+column-name divergence is bridged by the adapter added under N4, so there is one
+verifier and one guarantee.
+
+Actions:
+
+- Migration 004 is dead. Re-point it at `cbam.audit_log` or retire it, but do not
+  leave it looking applied when it is not.
+- `public.audit_log`'s single row predates the CBAM schema. **Phase 4 imports
+  from `cbam.audit_log` only**, and records that row as an out-of-scope legacy
+  artifact rather than silently folding it into the chain or silently dropping it.
