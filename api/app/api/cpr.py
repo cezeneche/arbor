@@ -35,8 +35,10 @@ from sqlalchemy import text
 from app.services.cpr_calculator import (
     CPRValidationError,
     calculate_cpr,
-    get_exchange_rate_db,
     get_qualifying_schemes,
+)
+from app.services.cpr_repository import (
+    get_exchange_rate_db,
     lookup_qualifying_schemes_db,
 )
 from shared_auth.dependencies import require_scopes

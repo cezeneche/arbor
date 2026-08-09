@@ -52,7 +52,7 @@ class PageText(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    page_number: int
+    page_number: int = Field(..., ge=1)
     text: str
 
 
@@ -64,7 +64,7 @@ class OcrQuality(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     # 0-1 across the document, when the OCR engine reports it.
-    mean_confidence: float | None = None
+    mean_confidence: float | None = Field(None, ge=0, le=1)
     # True when any part of the source was not read. Never infer this from the reason string: a reason without the flag is metadata, not a truncation.
     truncated: bool
     truncation_reason: str | None = None
@@ -79,8 +79,8 @@ class TextSpan(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    start: int
-    end: int
+    start: int = Field(..., ge=0)
+    end: int = Field(..., ge=0)
 
 
 class EvidenceAtom(BaseModel):
@@ -96,7 +96,7 @@ class EvidenceAtom(BaseModel):
     #
     # Deliberately NOT Arbor's ExtractionMethod enum (DOCUMENT_AI | MANUAL_ENTRY | SYSTEM_INTEGRATION). Arbor's enum records how a record entered the platform; this records which of Nucleos's extractors produced a particular field. Mapping one onto the other loses the distinction that makes a flag actionable.
     source: str
-    confidence: float
+    confidence: float = Field(..., ge=0, le=1)
     snippet: str | None = None
     page: int | None = None
     span: TextSpan | None = None
@@ -177,7 +177,7 @@ class CalculationResult(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    case_reference: str
+    case_reference: str = Field(..., min_length=1)
     jurisdiction: Jurisdiction
     reporting_year: int
     reporting_quarter: int | None = None
@@ -198,11 +198,11 @@ class CbamExtractionRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     # Arbor's Document id. Correlation only — Nucleos cannot fetch it.
-    document_id: str
+    document_id: str = Field(..., min_length=1)
     # Arbor's DocumentType. Nucleos routes on it but does not own the vocabulary.
-    document_type: str
+    document_type: str = Field(..., min_length=1)
     # Arbor's Entity id. Scopes the request; Nucleos does not resolve it to a tenant of its own.
-    entity_id: str
+    entity_id: str = Field(..., min_length=1)
     # Full extracted text of the document.
     text: str
     # Per-page text. Optional: some sources have no page structure. When present, the extractor can attribute a value to a page.
@@ -224,7 +224,7 @@ class ExtractedFieldDraft(BaseModel):
     raw_unit: str | None = None
     # The exact verbatim text the value came from. Required for a reviewer to confirm anything; a field without it can only ever be Declared.
     source_text: str | None = None
-    confidence: float
+    confidence: float = Field(..., ge=0, le=1)
     # Nucleos's fine-grained extractor tag. Kept separate from Arbor's ExtractionMethod enum — see common.json EvidenceAtom.source.
     extractor: str | None = None
     # Per-field flags, verbatim. Same rule as the top-level flags array.
@@ -236,7 +236,7 @@ class GoodsLineDraft(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    line_index: int
+    line_index: int = Field(..., ge=0)
     cn_code: str | None = None
     description: str | None = None
     net_mass_kg: float | None = None
@@ -260,7 +260,7 @@ class CbamExtractionResult(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    document_id: str
+    document_id: str = Field(..., min_length=1)
     # What Nucleos decided the document actually is, which may differ from the document_type Arbor sent.
     document_class: str | None = None
     fields: list[ExtractedFieldDraft]
@@ -277,19 +277,19 @@ class CprConsignment(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    consignment_reference: str
-    origin_country: str
-    embedded_tco2e: float
+    consignment_reference: str = Field(..., min_length=1)
+    origin_country: str = Field(..., min_length=2)
+    embedded_tco2e: float = Field(..., ge=0)
     # As paid, in the local currency. Never pre-converted by the caller: the conversion and its rate date belong in the result so both are auditable.
-    carbon_price_paid: float | None = None
+    carbon_price_paid: float | None = Field(None, ge=0)
     # ISO 4217 of carbon_price_paid.
     carbon_price_currency: str | None = None
     # The origin-country carbon pricing scheme claimed against.
     scheme: str | None = None
     # Allowances the installation received free. Reduces the relief, because nothing was actually paid on them.
-    free_allocations_tco2e: float | None = None
+    free_allocations_tco2e: float | None = Field(None, ge=0)
     # Rebates or refunds against the carbon price, in the same currency. Reduces the relief for the same reason.
-    rebates_received: float | None = None
+    rebates_received: float | None = Field(None, ge=0)
     # ISO 8601. Selects the exchange rate.
     payment_date: str | None = None
 
@@ -301,10 +301,10 @@ class CprQuery(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    case_reference: str
+    case_reference: str = Field(..., min_length=1)
     jurisdiction: Jurisdiction
     reporting_year: int
-    consignments: list[CprConsignment]
+    consignments: list[CprConsignment] = Field(..., min_length=1)
 
 
 class CprVerificationStatus(str, Enum):
@@ -324,7 +324,7 @@ class CprConsignmentResult(BaseModel):
 
     consignment_reference: str
     # The relief after conversion, free allocations, rebates and the cap.
-    relief_amount: float
+    relief_amount: float = Field(..., ge=0)
     relief_currency: str
     carbon_price_local: float | None = None
     carbon_price_currency: str | None = None
@@ -350,7 +350,7 @@ class CprResult(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    case_reference: str
+    case_reference: str = Field(..., min_length=1)
     consignments: list[CprConsignmentResult]
     engine: EngineVersions
 
@@ -359,17 +359,17 @@ class DeclarationLine(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    line_id: str
-    cn_code: str
+    line_id: str = Field(..., min_length=1)
+    cn_code: str = Field(..., min_length=6)
     description: str | None = None
-    net_mass_kg: float
+    net_mass_kg: float = Field(..., gt=0)
     origin_country: str | None = None
     production_route: str | None = None
     installation_id: str | None = None
     direct_embedded_kgco2e: float | None = None
     indirect_embedded_kgco2e: float | None = None
-    supplier_direct_confidence: float | None = None
-    supplier_indirect_confidence: float | None = None
+    supplier_direct_confidence: float | None = Field(None, ge=0, le=1)
+    supplier_indirect_confidence: float | None = Field(None, ge=0, le=1)
     # Set by a human in Arbor's Review screen. Travels with the line so the calculation result can display both axes together. Nucleos reads this and never writes it.
     provenance_tier: ProvenanceTier
     # The method the source document declared, if any. The selector may reject it — an implausible actual figure is downgraded — and the rejection is recorded in the result.
@@ -385,12 +385,12 @@ class DeclarationPayload(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    case_reference: str
-    entity_id: str
+    case_reference: str = Field(..., min_length=1)
+    entity_id: str = Field(..., min_length=1)
     jurisdiction: Jurisdiction
     reporting_year: int
-    reporting_quarter: int | None = None
-    lines: list[DeclarationLine]
+    reporting_quarter: int | None = Field(None, ge=1, le=4)
+    lines: list[DeclarationLine] = Field(..., min_length=1)
 
 
 class SupplierDisplayContext(BaseModel):
@@ -413,9 +413,9 @@ class SupplierSubmission(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     # Direct specific embedded emissions, tCO2e per tonne. An intensity, not a total: it is multiplied by the goods line's net mass. Sending a total here would silently overstate every line by a factor of the mass in tonnes.
-    see_tco2e_per_t: float
+    see_tco2e_per_t: float = Field(..., gt=0)
     # Annex VI defaults are differentiated by production route, so this is what makes the submitted figure checkable against the right default.
-    production_route: str
+    production_route: str = Field(..., min_length=1)
     installation_name: str | None = None
 
 
@@ -430,8 +430,8 @@ class SupplierRequest(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    case_reference: str
-    goods_line_id: str
+    case_reference: str = Field(..., min_length=1)
+    goods_line_id: str = Field(..., min_length=1)
     supplier_email: str | None = None
     expires_at: str | None = None
     # What the supplier sees. They are not an Arbor user and have no account, so everything needed to make the form comprehensible has to travel with the request.

@@ -124,6 +124,7 @@ from ledger_app.api.db_check import router as db_check_router
 from ledger_app.api.storage_check import router as storage_check_router
 from ledger_app.api.cases import router as cases_router
 from ledger_app.api.cbam_extraction import router as cbam_extraction_router
+from ledger_app.api.cbam_calculate import router as cbam_calculate_router
 from ledger_app.api.extract import router as extract_router
 from ledger_app.api.calculate import router as calculate_router
 from ledger_app.api.bundle import router as bundle_router
@@ -143,6 +144,7 @@ app.include_router(db_check_router, prefix="/api", dependencies=[Depends(get_aut
 app.include_router(storage_check_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(cases_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(cbam_extraction_router, prefix="/api", dependencies=[Depends(get_auth_context)])
+app.include_router(cbam_calculate_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(extract_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(calculate_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(bundle_router, prefix="/api", dependencies=[Depends(get_auth_context)])

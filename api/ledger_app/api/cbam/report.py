@@ -514,7 +514,7 @@ def build_case_hmrc_return(
         UKCBAMRatePlaceholder,
         get_uk_cbam_rate_or_raise,
     )
-    from app.services.cpr_calculator import get_cpr_by_consignment_db  # noqa: PLC0415
+    from app.services.cpr_repository import get_cpr_by_consignment_db  # noqa: PLC0415
     from app.services.hmrc_return_builder import (  # noqa: PLC0415
         HMRCReturnInput,
         HMRCReturnValidationError,

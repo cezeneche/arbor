@@ -70,6 +70,13 @@ yet.
 
 ## The generator
 
+Constraints — `minItems`, `minLength`, `minimum`, `exclusiveMinimum` and their
+maxima — become Pydantic `Field` arguments. TypeScript cannot express them in the
+type system, so they are enforced on the Python side only. That asymmetry is
+deliberate rather than an omission: Python is the side that receives, so it is
+the side where the boundary is actually validated. A schema that states a rule
+nothing enforces is worse than one that stays quiet, because a reader trusts it.
+
 It handles the subset of JSON Schema the contract uses — objects with fixed
 properties, arrays, named enums, primitives, nullable unions, local `$defs` and
 cross-file `$ref` into `common.json` — and raises on anything else.

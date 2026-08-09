@@ -130,6 +130,35 @@ def _doc(node: dict[str, Any]) -> str | None:
     return node.get("description")
 
 
+# JSON Schema keyword -> Pydantic Field argument.
+#
+# Without these the generated models accept values the schema forbids: a
+# declaration with zero goods lines, a negative mass. A contract that states a
+# rule it does not enforce is worse than one that stays quiet, because a reader
+# trusts it. TypeScript cannot express these in the type system, so the
+# asymmetry is deliberate and documented in contract/README.md — the Python side
+# is where the boundary is actually validated, and it is the side that receives.
+_CONSTRAINTS: dict[str, str] = {
+    "minLength": "min_length",
+    "maxLength": "max_length",
+    "minItems": "min_length",
+    "maxItems": "max_length",
+    "minimum": "ge",
+    "maximum": "le",
+    "exclusiveMinimum": "gt",
+    "exclusiveMaximum": "lt",
+}
+
+
+def _field_constraints(node: dict[str, Any]) -> list[str]:
+    """Pydantic Field arguments for the constraints this node declares."""
+    args: list[str] = []
+    for keyword, argument in _CONSTRAINTS.items():
+        if keyword in node:
+            args.append(f"{argument}={node[keyword]!r}")
+    return args
+
+
 def _collect_models(schemas: dict[str, dict[str, Any]]) -> list[tuple[str, dict[str, Any]]]:
     """Return (name, node) for every named model, deepest dependency first.
 
@@ -232,14 +261,20 @@ def render_python(schemas: dict[str, dict[str, Any]]) -> str:
         for prop, prop_node in props.items():
             type_expr = _render(prop_node, "py")
             prop_doc = _doc(prop_node)
+            constraints = _field_constraints(prop_node)
             if prop in required:
-                default = ""
+                default = f" = Field(..., {', '.join(constraints)})" if constraints else ""
             elif _is_nullable(prop_node) or "null" in str(prop_node.get("type", "")):
-                default = " = None"
+                default = (
+                    f" = Field(None, {', '.join(constraints)})" if constraints else " = None"
+                )
             elif _non_null_type(prop_node) == "array":
-                default = " = Field(default_factory=list)"
+                args = ", ".join(["default_factory=list", *constraints])
+                default = f" = Field({args})"
             else:
-                default = " = None"
+                default = (
+                    f" = Field(None, {', '.join(constraints)})" if constraints else " = None"
+                )
                 if "| None" not in type_expr:
                     type_expr = f"{type_expr} | None"
             if prop_doc:
