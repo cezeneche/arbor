@@ -92,9 +92,15 @@ only as a `regulation_tier` citation field. UI copy says "Emissions method".
 Unchanged. Nucleos's three-field submission contract is not Arbor's
 `DataRequest` shape and must not reuse its answer-assembly logic.
 
-### #3 — `cpr_calculator.py` mixes pure functions with `Connection`-taking ones
+### #3 — `cpr_calculator.py` mixed pure functions with `Connection`-taking ones — RESOLVED
 
-Unchanged. Phase 3.
+The three `_db` functions moved to `cpr_repository.py`. Nothing changed but the
+file they live in, and the golden set passed unchanged. That split is what lets
+the calculation run as a pure service behind `POST /internal/calculate`.
+
+Exchange rates and qualifying schemes are now versioned reference data in
+`cpr_reference.py`, insert-never-update like the Annex VI table. They are facts
+about the world every tenant shares, not tenant data.
 
 ### #10 — `BackgroundTasks` / `threading.Timer` pipeline in `drafts.py` — RESOLVED
 
