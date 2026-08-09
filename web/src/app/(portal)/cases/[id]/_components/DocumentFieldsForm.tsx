@@ -60,7 +60,7 @@ const FIELD_DEFS: FieldDef[] = [
   { key: "installation_id",      label: "Supplier installation ID",   placeholder: "EU CBAM installation ID",         required: false, mono: true  },
   { key: "verified_emissions",   label: "Supplier-verified (tCO₂e)", placeholder: "e.g. 12.450",                     required: false, mono: false },
   { key: "invoice_number",       label: "Invoice / reference",        placeholder: "e.g. INV-2027-001",               required: false, mono: false },
-  { key: "emissions_data",       label: "Emissions tier",             placeholder: "",                                required: true,  mono: false, options: ["Annex VI default", "Estimated (unverified)", "Supplier-verified"] },
+  { key: "emissions_data",       label: "Emissions method",           placeholder: "",                                required: true,  mono: false, options: ["Annex VI default", "Estimated (unverified)", "Supplier-verified"] },
 ];
 
 type FieldState = Record<string, string>;

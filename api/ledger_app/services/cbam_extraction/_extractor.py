@@ -269,21 +269,35 @@ class ClaudeCBAMExtractor:
         flags: list[dict[str, Any]],
         pages: list[dict[str, Any]] | None,
     ) -> None:
-        """Merge Claude line items only when deterministic extraction found none.
+        """Add validated Claude line items the deterministic layer did not find.
 
         Each candidate line must pass CN-code validation, positive-mass
         validation, and have both values evidenced in ``raw_text``.  Rejected
-        lines are recorded in ``flags``; the payload is only updated when at
-        least one line passes all checks.
-        """
-        if payload.get("lines"):
-            return  # deterministic lines take precedence
+        lines are recorded in ``flags``.
 
+        Deterministic lines are never modified — that invariant is what makes
+        the hybrid trustworthy — but they no longer suppress the rest of the
+        document.  This used to return early whenever the deterministic layer
+        found any line at all, so a two-line invoice where regex caught only the
+        first silently declared half the goods.  A short declaration looks
+        exactly like a complete one, so nothing downstream could catch it.
+
+        Every addition and every disagreement about line count is flagged: two
+        extractors reading a different number of goods lines out of the same
+        document is something a reviewer needs told, whichever one is right.
+        """
         claude_lines = claude_json.get("lines")
         if not isinstance(claude_lines, list):
             return
 
-        lines: list[dict[str, Any]] = []
+        existing: list[dict[str, Any]] = list(payload.get("lines") or [])
+        existing_pairs = {
+            (str(line.get("cn_code") or ""), _parse_number(str(line.get("net_mass_kg"))))
+            for line in existing
+        }
+        existing_codes = {str(line.get("cn_code") or "") for line in existing}
+
+        lines: list[dict[str, Any]] = list(existing)
         for i, cl in enumerate(claude_lines):
             if not isinstance(cl, dict):
                 continue
@@ -326,6 +340,22 @@ class ClaudeCBAMExtractor:
                 )
                 continue
 
+            if (cn_code, mass) in existing_pairs:
+                continue  # the deterministic layer already has this line
+
+            if cn_code in existing_codes:
+                # Either a second consignment of the same product or the two
+                # extractors disagreeing about its mass. Both need a human.
+                flags.append(
+                    {"issue": "claude_line_same_cn_different_mass", "line_index": i,
+                     "value": cn_code, "mass": mass, "source": "claude"}
+                )
+            else:
+                flags.append(
+                    {"issue": "claude_line_added_beyond_deterministic", "line_index": i,
+                     "value": cn_code, "mass": mass, "source": "claude"}
+                )
+
             line: dict[str, Any] = {
                 "cn_code": cn_code,
                 "description": cl.get("description"),
@@ -357,11 +387,22 @@ class ClaudeCBAMExtractor:
             lines.append(line)
             _ensure_value_evidence(
                 evidence,
-                field=f"lines[{i}].cn_code",
+                # Index into the merged list, not Claude's — the two diverge as
+                # soon as a deterministic line is kept ahead of an added one.
+                field=f"lines[{len(lines) - 1}].cn_code",
                 value=cn_code,
                 text=raw_text,
                 source="claude_validated",
                 pages=pages,
+            )
+
+        claude_line_count = sum(1 for cl in claude_lines if isinstance(cl, dict))
+        if existing and claude_line_count != len(existing):
+            flags.append(
+                {"issue": "line_count_disagreement",
+                 "deterministic_lines": len(existing),
+                 "claude_lines": claude_line_count,
+                 "source": "claude"}
             )
 
         if lines:

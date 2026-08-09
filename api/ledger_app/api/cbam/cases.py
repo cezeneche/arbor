@@ -51,6 +51,73 @@ _ROUGH_SEE_TCO2_PER_T: dict[str, Decimal] = {
     "electricity": Decimal("0.4"),
 }
 
+def _case_liability(
+    sector_rows: list[tuple[str, Decimal, Decimal]],
+    year: int,
+    quarter: int | None,
+) -> tuple[Decimal | None, dict[str, Any] | None]:
+    """Compute a case's estimated CBAM liability, or explain why it is withheld.
+
+    Returns ``(total, None)`` when every contributing sector resolved to an
+    HMRC-published rate, and ``(None, unavailable)`` when it did not.  A total
+    is never returned alongside an explanation: a figure derived even partly
+    from an engineering placeholder must not render as a number, because a
+    wrong exposure figure is invisible where a missing one is not.
+    """
+    from app.services.cbam_uk_rates import get_uk_cbam_rate_entry  # noqa: PLC0415
+
+    total = Decimal("0")
+    placeholder_sectors: list[str] = []
+    unpriced_sectors: list[str] = []
+
+    for sector, kgco2e, mass_kg in sector_rows:
+        effective_kgco2e = kgco2e
+        if effective_kgco2e == 0 and mass_kg > 0 and sector in _ROUGH_SEE_TCO2_PER_T:
+            # No actual emissions recorded — use rough Annex VI default × mass
+            see = _ROUGH_SEE_TCO2_PER_T[sector]
+            effective_kgco2e = (mass_kg / Decimal("1000")) * see * Decimal("1000")
+
+        if effective_kgco2e <= 0:
+            continue
+
+        entry = get_uk_cbam_rate_entry(sector, year, quarter)
+        if entry is None:
+            entry = get_uk_cbam_rate_entry(sector, 2027, None)
+        if entry is None:
+            unpriced_sectors.append(sector)
+            continue
+        if entry.is_placeholder:
+            placeholder_sectors.append(sector)
+            continue
+
+        total += (effective_kgco2e / Decimal("1000") * entry.rate_gbp_per_tco2e).quantize(
+            Decimal("0.01")
+        )
+
+    if placeholder_sectors:
+        return None, {
+            "reason": "placeholder_rate",
+            "sectors": sorted(set(placeholder_sectors)),
+            "detail": (
+                "HMRC has not published a CBAM rate for "
+                f"{', '.join(sorted(set(placeholder_sectors)))} "
+                f"({'annual ' + str(year) if quarter is None else f'Q{quarter} {year}'}). "
+                "No exposure figure can be shown until the Government Gateway rate notice is entered."
+            ),
+        }
+    if unpriced_sectors:
+        return None, {
+            "reason": "no_published_rate",
+            "sectors": sorted(set(unpriced_sectors)),
+            "detail": (
+                "No UK CBAM rate of any kind is held for "
+                f"{', '.join(sorted(set(unpriced_sectors)))} "
+                f"({'annual ' + str(year) if quarter is None else f'Q{quarter} {year}'})."
+            ),
+        }
+    return (total if total > 0 else None), None
+
+
 def _enrich_cases_with_liability(
     conn: Any,
     items: list[dict],
@@ -58,10 +125,9 @@ def _enrich_cases_with_liability(
     """Augment case dicts in-place with origin_country, sector, estimated_liability_gbp, total_net_mass_kg.
 
     Runs two batch queries (not N per case). Safe to call with an empty list.
-    When actual emissions exist in cbam_emissions, uses the CBAM-adjusted rate from
-    cbam_uk_rates. When no emissions record exists but goods lines with mass are present,
-    falls back to rough SEE × UK ETS rate so the home page always shows a non-null
-    planning estimate consistent with the case detail page.
+    Liability is only populated when every contributing sector has an
+    HMRC-published rate; otherwise it is null and
+    ``estimated_liability_unavailable`` carries the reason (see _case_liability).
     """
     if not items:
         return
@@ -145,9 +211,6 @@ def _enrich_cases_with_liability(
         str(r["case_id"]): str(r["origin_country"]) for r in origin_rows
     }
 
-    # Lazy import — cbam_uk_rates lives in app.services (consolidated service)
-    from app.services.cbam_uk_rates import get_uk_cbam_rate  # noqa: PLC0415
-
     for item in items:
         cid = str(item["id"])
         item["origin_country"] = origin_by_case.get(cid)
@@ -157,6 +220,7 @@ def _enrich_cases_with_liability(
         if not sector_rows:
             item["sector"] = None
             item["estimated_liability_gbp"] = None
+            item["estimated_liability_unavailable"] = None
             continue
 
         # Primary sector: the one with the most kgco2e (or most mass if all zero)
@@ -166,28 +230,11 @@ def _enrich_cases_with_liability(
         year = int(item.get("reporting_year") or 0)
         quarter = int(item.get("reporting_quarter") or 1) if year > 2027 else None
 
-        total_liability = Decimal("0")
-        for sector, kgco2e, mass_kg in sector_rows:
-            effective_kgco2e = kgco2e
-            if effective_kgco2e == 0 and mass_kg > 0 and sector in _ROUGH_SEE_TCO2_PER_T:
-                # No actual emissions recorded — use rough Annex VI default × mass
-                see = _ROUGH_SEE_TCO2_PER_T[sector]
-                effective_kgco2e = (mass_kg / Decimal("1000")) * see * Decimal("1000")
-
-            if effective_kgco2e <= 0:
-                continue
-
-            rate = get_uk_cbam_rate(sector, year, quarter)
-            if rate is None:
-                rate = get_uk_cbam_rate(sector, 2027, None)
-            if rate is None:
-                continue
-
-            total_liability += (effective_kgco2e / Decimal("1000") * rate).quantize(
-                Decimal("0.01")
-            )
-
-        item["estimated_liability_gbp"] = float(total_liability) if total_liability > 0 else None
+        total_liability, unavailable = _case_liability(sector_rows, year, quarter)
+        item["estimated_liability_gbp"] = (
+            float(total_liability) if total_liability is not None else None
+        )
+        item["estimated_liability_unavailable"] = unavailable
 
 router = APIRouter()
 
@@ -522,11 +569,13 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
 
 @router.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_scopes(["cbam:write"]))])
 def delete_cbam_case(request: Request, case_id: str):
-    """Permanently delete a CBAM case and all associated data.
+    """Withdraw a CBAM case.
 
-    The cbam_shipments → cbam_goods_lines → cbam_emissions chain is covered by
-    ON DELETE CASCADE in migration 001. Snapshots have no FK constraint so are
-    deleted explicitly first.
+    The case transitions to status 'deleted' and stops appearing in listings.
+    Nothing is removed: the snapshots and audit rows for this case are the
+    evidence that the case existed and what it contained, and destroying them
+    would leave an unexplained hole in the chain that is indistinguishable from
+    interference.
     """
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
     with _shared.engine.begin() as conn:
@@ -543,18 +592,20 @@ def delete_cbam_case(request: Request, case_id: str):
         if not rows:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
-        # Delete snapshots (no FK cascade on this table)
-        try:
-            conn.execute(
-                text("DELETE FROM cbam.cbam_snapshots WHERE case_id = :cid"),
-                {"cid": str(case_id)},
+        if "status" not in columns:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=(
+                    "cbam_cases has no status column; case withdrawal requires "
+                    "migration 006_soft_delete_cases.sql"
+                ),
             )
-        except Exception:
-            pass  # table may not exist in all environments
 
-        # Delete the case — cascade removes shipments → goods_lines → emissions
         conn.execute(
-            text(f"DELETE FROM cbam.cbam_cases WHERE id = :id {tenant_filter}"),
+            text(
+                f"UPDATE cbam.cbam_cases SET status = 'deleted' "
+                f"WHERE id = :id {tenant_filter}"
+            ),
             {"id": str(case_id), "tenant_id": tenant_id},
         )
 
@@ -585,6 +636,9 @@ def list_cbam_cases(
         if "tenant_id" in columns:
             filters.append("tenant_id = :tenant_id")
             params["tenant_id"] = tenant_id
+        if "status" in columns:
+            # Withdrawn cases are retained for the audit chain, not listed.
+            filters.append("status <> 'deleted'")
         if reporting_year is not None:
             filters.append("reporting_year = :reporting_year")
             params["reporting_year"] = reporting_year

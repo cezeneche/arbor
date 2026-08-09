@@ -54,7 +54,7 @@ def _extract_lines_from_text(
 
         net_mass_kg = None
         net_mass_match = re.search(
-            r"net\s*mass(?:\s*kg)?\s*([0-9][0-9,]*(?:\.[0-9]+)?)",
+            r"net\s*mass(?:\s*kg)?\s*([0-9][0-9.,\s ]*[0-9]|[0-9])",
             payload,
             flags=re.IGNORECASE,
         )
@@ -221,18 +221,27 @@ def _parse_structured_response(
                                    value=structured["cn_code"],
                                    source_text=full_text, match=match, group_index=0, pages=pages)
     if structured.get("net_mass_kg") is None:
+        # The character class must admit separators. Stopping at the first comma
+        # read "24,500.00 kg" as 24 — a thousand-fold under-declaration that no
+        # downstream check catches, because 24 kg is a plausible quantity.
         match = re.search(
-            r"(?:net\s*mass(?:\s*kg)?|quantity)\D*([0-9]+(?:\.[0-9]+)?)",
+            r"(?:net\s*mass(?:\s*kg)?|quantity)\D*([0-9][0-9.,\s ]*[0-9]|[0-9])",
             full_text, flags=re.IGNORECASE,
         )
         if match:
-            structured["net_mass_kg"] = float(match.group(1))
+            structured["net_mass_kg"] = _parse_number(match.group(1))
             _append_regex_evidence(evidence, field="lines[0].net_mass_kg",
                                    value=structured["net_mass_kg"],
                                    source_text=full_text, match=match, pages=pages)
     if not structured.get("origin_country"):
+        # "country of origin" is the phrasing on commercial invoices and on
+        # customs Box 34; matching only "origin country" missed both. The code
+        # must stand alone — a word boundary after it stops "Turkey" being read
+        # as the ISO code "TU".
         match = re.search(
-            r"origin\s*country\s*[:\-]\s*([A-Z]{2})", full_text, flags=re.IGNORECASE
+            r"(?:country\s+of\s+origin|origin\s*country)\s*[:\-]?\s*([A-Z]{2})\b(?![A-Za-z])",
+            full_text,
+            flags=re.IGNORECASE,
         )
         if match:
             structured["origin_country"] = match.group(1)

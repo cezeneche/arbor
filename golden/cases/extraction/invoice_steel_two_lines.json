@@ -1,0 +1,229 @@
+{
+  "name": "Live extraction — two-line invoice, deterministic layer only",
+  "why": "The one extraction path with real traffic, frozen at its deterministic layer.\n\nRISKS.md N2 is fixed and pinned here: this invoice says 'Country of origin: TR' and origin_country used to come back null, because the regex matched only the phrase 'origin country'. Origin country decides CBAM scope and the electricity factor, so a null there is not cosmetic.\n\nOne goods line is extracted from a two-line invoice, and that is correct for THIS case rather than a defect: the golden adapter runs with no API key, so the deterministic layer runs alone and the second line is what the Claude pass would supply. The RISKS.md N1 defect — Claude's lines being discarded whenever the deterministic layer found any line at all — is fixed, and covered by api/tests/ledger/test_line_merge_and_origin.py, which can exercise the merge with a fixed Claude payload. It cannot be frozen here, because a live model call is not reproducible.",
+  "adapter": "live_extraction",
+  "input": {
+    "text": "COMMERCIAL INVOICE\n\nSeller:  Borusan Mannesmann Boru Sanayi ve Ticaret A.S.\n         Gemlik, Bursa, Turkiye\n\nBuyer:   Northern Steel Stockholders Ltd\n         EORI: GB123456789000\n         Immingham, United Kingdom\n\nInvoice number: INV-2027-0042\nInvoice date: 2027-02-14\nCountry of origin: TR\nIncoterm: CIF Immingham\nCustoms entry reference: 24GB12345678901234\n\nLine 1\n  CN code: 72071111\n  Description: Semi-finished products of iron, rectangular cross-section\n  Net mass: 24500 kg\n  Direct embedded emissions: 44100 kgCO2e\n  Indirect embedded emissions: 3200 kgCO2e\n  Method: actual\n\nLine 2\n  CN code: 72085100\n  Description: Flat-rolled products of iron, hot-rolled, thickness > 10mm\n  Net mass: 18000 kg\n  Direct embedded emissions: 32400 kgCO2e\n  Method: actual\n\nCarbon price paid in country of origin: 12.50 EUR per tonne CO2e\n\nTotal net mass: 42500 kg\nTotal invoice value: EUR 38,420.00\n"
+  },
+  "expected": {
+    "cbam": {
+      "carbon_price_paid_currency": null,
+      "carbon_price_paid_eur": null,
+      "production_route": null
+    },
+    "emissions": {
+      "direct_embedded_kgco2e": 44100.0,
+      "indirect_embedded_kgco2e": 3200.0,
+      "method": "actual"
+    },
+    "evidence": [
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "importer.eori",
+        "page": null,
+        "snippet": "n Steel Stockholders Ltd\n         EORI: GB123456789000\n         Immingham, United Kingdom\n\nInv",
+        "source": "rule_regex",
+        "span": {
+          "end": 179,
+          "start": 165
+        },
+        "value": "GB123456789000"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "lines[0].cn_code",
+        "page": null,
+        "snippet": ": 24GB12345678901234\n\nLine 1\n  CN code: 72071111\n  Description: Semi-finished products o",
+        "source": "rule_regex",
+        "span": {
+          "end": 388,
+          "start": 380
+        },
+        "value": "72071111"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "lines[0].net_mass_kg",
+        "page": null,
+        "snippet": ", rectangular cross-section\n  Net mass: 24500 kg\n  Direct embedded emissions: 44100 k",
+        "source": "rule_regex",
+        "span": {
+          "end": 479,
+          "start": 474
+        },
+        "value": 24500.0
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.origin_country",
+        "page": null,
+        "snippet": "ice date: 2027-02-14\nCountry of origin: TR\nIncoterm: CIF Immingham\nCustoms entry r",
+        "source": "rule_regex",
+        "span": {
+          "end": 292,
+          "start": 290
+        },
+        "value": "TR"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.invoice_number",
+        "page": null,
+        "snippet": "ingham, United Kingdom\n\nInvoice number: INV-2027-0042\nInvoice date: 2027-02-14\nCountry of ori",
+        "source": "rule_regex",
+        "span": {
+          "end": 245,
+          "start": 232
+        },
+        "value": "INV-2027-0042"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.entry_reference",
+        "page": null,
+        "snippet": "CIF Immingham\nCustoms entry reference: 24GB12345678901234\n\nLine 1\n  CN code: 72071111\n  Descripti",
+        "source": "rule_regex",
+        "span": {
+          "end": 360,
+          "start": 342
+        },
+        "value": "24GB12345678901234"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.incoterm",
+        "page": null,
+        "snippet": "7-02-14\nCountry of origin: TR\nIncoterm: CIF Immingham\nCustoms entry reference: 24GB",
+        "source": "rule_regex",
+        "span": {
+          "end": 306,
+          "start": 303
+        },
+        "value": "CIF"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "emissions.direct_embedded_kgco2e",
+        "page": null,
+        "snippet": ": 24500 kg\n  Direct embedded emissions: 44100 kgCO2e\n  Indirect embedded emissions: 3",
+        "source": "rule_regex",
+        "span": {
+          "end": 517,
+          "start": 512
+        },
+        "value": 44100.0
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "emissions.indirect_embedded_kgco2e",
+        "page": null,
+        "snippet": "0 kgCO2e\n  Indirect embedded emissions: 3200 kgCO2e\n  Method: actual\n\nLine 2\n  CN co",
+        "source": "rule_regex",
+        "span": {
+          "end": 560,
+          "start": 556
+        },
+        "value": 3200.0
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.invoice_date",
+        "page": null,
+        "snippet": "ice number: INV-2027-0042\nInvoice date: 2027-02-14\nCountry of origin: TR\nIncoterm: CIF Imm",
+        "source": "rule_regex",
+        "span": {
+          "end": 270,
+          "start": 260
+        },
+        "value": "2027-02-14"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "cbam.operator_name",
+        "page": null,
+        "snippet": "COMMERCIAL INVOICE\n\nSeller:  Borusan Mannesmann Boru Sanayi ve Ticaret A.S.\n         Gemlik, Bursa, Turkiye\n\nBuyer:",
+        "source": "rule_regex",
+        "span": {
+          "end": 75,
+          "start": 29
+        },
+        "value": "Borusan Mannesmann Boru Sanayi ve Ticaret A.S."
+      }
+    ],
+    "extractor": "regex",
+    "fallback": "regex_only",
+    "flags": [],
+    "importer": {
+      "eori": "GB123456789000",
+      "name": null
+    },
+    "invoice": {
+      "entry_reference": "24GB12345678901234",
+      "import_date": null,
+      "incoterm": "CIF",
+      "invoice_date": "2027-02-14",
+      "invoice_number": "INV-2027-0042",
+      "origin_country": "TR"
+    },
+    "lines": [
+      {
+        "cn_code": "72071111",
+        "description": null,
+        "direct_embedded_kgco2e": null,
+        "indirect_embedded_kgco2e": null,
+        "installation_id": null,
+        "installation_name": null,
+        "method": null,
+        "net_mass_kg": 24500.0,
+        "production_route": null,
+        "quantity": 24500.0,
+        "quantity_unit": "kg"
+      }
+    ],
+    "operator": {
+      "installation_id": null,
+      "installation_name": null,
+      "operator_name": "Borusan Mannesmann Boru Sanayi ve Ticaret A.S."
+    },
+    "raw_text_preview": "COMMERCIAL INVOICE\n\nSeller:  Borusan Mannesmann Boru Sanayi ve Ticaret A.S.\n         Gemlik, Bursa, Turkiye\n\nBuyer:   Northern Steel Stockholders Ltd\n         EORI: GB123456789000\n         Immingham, United Kingdom\n\nInvoice number: INV-2027-0042\nInvoice date: 2027-02-14\nCountry of origin: TR\nIncoterm: CIF Immingham\nCustoms entry reference: 24GB12345678901234\n\nLine 1\n  CN code: 72071111\n  Description: Semi-finished products of iron, rectangular cross-section\n  Net mass: 24500 kg\n  Direct embedded",
+    "status": "parsed",
+    "structured": {
+      "carbon_price_paid_currency": null,
+      "carbon_price_paid_eur": null,
+      "cn_code": "72071111",
+      "direct_embedded_kgco2e": 44100.0,
+      "entry_reference": "24GB12345678901234",
+      "import_date": null,
+      "importer_eori": "GB123456789000",
+      "importer_name": null,
+      "incoterm": "CIF",
+      "indirect_embedded_kgco2e": 3200.0,
+      "installation_id": null,
+      "installation_name": null,
+      "invoice_date": "2027-02-14",
+      "invoice_number": "INV-2027-0042",
+      "method": "actual",
+      "net_mass_kg": 24500.0,
+      "operator_name": "Borusan Mannesmann Boru Sanayi ve Ticaret A.S.",
+      "origin_country": "TR",
+      "production_route": null
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

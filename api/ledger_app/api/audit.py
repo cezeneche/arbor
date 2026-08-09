@@ -8,8 +8,11 @@ GET /api/cases/{case_id}/audit-log
     - verified: true  — HMAC present and matches
     - verified: false — HMAC present but tampered
     - verified: null  — unsigned row (no signature stored)
-    - chain_valid: true  — every signed row's chain_hash links to its predecessor
-    - chain_valid: false — at least one row is missing, reordered, or tampered
+    - chain_valid: true  — no tampering, and every gap is documented
+    - chain_tampered: true — a row was altered, or rows are out of order
+    - chain_gaps: rows missing from the sequence; an auditor needs these
+      distinguished from tampering, because a gap can be a recorded
+      administrative act and tampering never is
 
 GET /api/cases/{case_id}/audit-log?export=true
     Additionally exports the audit log to S3 with GOVERNANCE Object Lock.
@@ -23,9 +26,6 @@ chain_hash of the prior row) to make deletion or reordering detectable.
 """
 from __future__ import annotations
 
-import hashlib
-import hmac as _hmac
-import json
 import logging
 import os
 
@@ -33,114 +33,68 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import text
 
 from ledger_app.api.cbam._shared import engine as _cbam_engine
+from ledger_app.services.audit_signer import verify_chain, verify_event
 
 log = logging.getLogger("nucleos.audit")
 
 router = APIRouter(tags=["audit"])
 
 
+def _to_signer_row(row: dict) -> dict:
+    """Rename a cbam.audit_log row into the column names audit_signer reads.
+
+        signature  → hmac_sha256
+        chain_hash → prev_hmac
+        actor      → actor_sub
+        payload    → event_json
+
+    The two schemas exist because the CBAM tables were built separately from the
+    original audit_log. Renaming here keeps one implementation of the chain
+    guarantee instead of two that can drift apart — and they had already drifted:
+    only one of them could tell a documented gap from tampering.
+    """
+    return {
+        "id":          row.get("id"),
+        "case_id":     row.get("case_id"),
+        "event_type":  row.get("event_type"),
+        "actor_sub":   row.get("actor"),
+        "event_json":  row.get("payload") or {},
+        "hmac_sha256": row.get("signature"),
+        "prev_hmac":   row.get("chain_hash"),
+    }
+
+
 def _verify_cbam_event(row: dict) -> bool | None:
     """
     Verify the HMAC signature of a cbam.audit_log row.
 
-    cbam.audit_log uses column names that differ from the legacy audit_log:
-        signature  ↔  hmac_sha256
-        chain_hash ↔  prev_hmac
-        actor      ↔  actor_sub
-        payload    ↔  event_json
-
     Returns:
         True  — signature present and matches
         False — signature present but does NOT match (tampered)
-        None  — no signature (unsigned row)
+        None  — no signature, or no signing key available to check it
     """
-    stored_sig = row.get("signature") or ""
-    if not stored_sig:
-        return None
-
-    payload = row.get("payload") or {}
-    try:
-        payload_str = json.dumps(payload, sort_keys=True, default=str)
-    except Exception:
-        return False
-
-    case_id    = str(row.get("case_id") or "")
-    event_type = str(row.get("event_type") or "")
-    actor      = str(row.get("actor") or "")
-    chain_hash = row.get("chain_hash")  # None for first row, str for chained
-
-    key = os.getenv("AUDIT_SIGNING_KEY", "").strip().encode("utf-8")
-    if not key:
+    if not os.getenv("AUDIT_SIGNING_KEY", "").strip():
         return None  # cannot verify without the signing key
-
-    chain_link = chain_hash or ""
-    msg = f"{case_id}|{event_type}|{actor}|{payload_str}|{chain_link}".encode("utf-8")
-    expected = _hmac.new(key, msg, hashlib.sha256).hexdigest()
-
-    if _hmac.compare_digest(expected, stored_sig):
-        return True
-
-    # Fallback: legacy format without chain suffix (rows before chain was added)
-    old_msg = f"{case_id}|{event_type}|{actor}|{payload_str}".encode("utf-8")
-    expected_legacy = _hmac.new(key, old_msg, hashlib.sha256).hexdigest()
-    return _hmac.compare_digest(expected_legacy, stored_sig)
+    return verify_event(_to_signer_row(row))
 
 
-def _verify_cbam_chain(rows: list[dict]) -> dict:
+def _verify_cbam_chain(rows: list[dict], documented_gaps: list[str] | None = None) -> dict:
     """
     Verify the hash chain across an ordered sequence of cbam.audit_log rows.
 
-    Returns a dict with chain_valid, signed_count, chained_count, issues.
+    Reports tampering and gaps separately: a chain with rows missing and a chain
+    whose rows were altered are both invalid, but they mean different things to
+    an auditor and only one of them is evidence of interference.
     """
-    signed_count = 0
-    chained_count = 0
-    issues: list[str] = []
-    broken_at: int | None = None
-    last_sig: str | None = None
-
-    for i, row in enumerate(rows):
-        sig = row.get("signature") or ""
-        if not sig:
-            continue
-
-        signed_count += 1
-        chain_hash = row.get("chain_hash")
-
-        if chain_hash:
-            chained_count += 1
-            if last_sig is None:
-                issues.append(
-                    f"row[{i}] id={str(row.get('id'))!r}: "
-                    "chain_hash set but no prior signed row in sequence"
-                )
-                if broken_at is None:
-                    broken_at = i
-            elif chain_hash != last_sig:
-                issues.append(
-                    f"row[{i}] id={str(row.get('id'))!r}: "
-                    f"chain_hash mismatch — expected {last_sig[:16]!r}... "
-                    f"got {chain_hash[:16]!r}..."
-                )
-                if broken_at is None:
-                    broken_at = i
-
-        ok = _verify_cbam_event(row)
-        if ok is False:
-            issues.append(
-                f"row[{i}] id={str(row.get('id'))!r}: "
-                "HMAC verification failed (tampered or key mismatch)"
-            )
-            if broken_at is None:
-                broken_at = i
-
-        last_sig = sig
-
+    result = verify_chain([_to_signer_row(r) for r in rows], documented_gaps=documented_gaps)
     return {
-        "chain_valid":     broken_at is None,
-        "signed_count":    signed_count,
-        "chained_count":   chained_count,
-        "broken_at_index": broken_at,
-        "issues":          issues,
+        "chain_valid":     result.chain_valid,
+        "tampered":        result.tampered,
+        "gaps":            result.gaps,
+        "signed_count":    result.signed_count,
+        "chained_count":   result.chained_count,
+        "broken_at_index": result.broken_at_index,
+        "issues":          result.issues,
     }
 
 
@@ -189,6 +143,8 @@ def get_audit_log(
         "case_id":            case_id,
         "count":              len(result_rows),
         "chain_valid":        chain["chain_valid"],
+        "chain_tampered":     chain["tampered"],
+        "chain_gaps":         chain["gaps"],
         "chain_signed_count": chain["signed_count"],
         "chain_chained_count":chain["chained_count"],
         "chain_issues":       chain["issues"],

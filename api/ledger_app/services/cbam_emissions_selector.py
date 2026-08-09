@@ -47,6 +47,10 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from app.services.cbam_default_markup import (
+    apply_default_value_markup,
+    get_default_value_markup,
+)
 from ledger_app.services.cbam_emission_factors import (
     FACTOR_METADATA,
     get_default_see,
@@ -128,11 +132,20 @@ class MethodSelectionResult:
     factor_table_version : str | None
         The specific Annex VI table version used (required per CLAUDE.md Rule 3).
         None when Annex VI defaults were not used (actual method).
-    tier_rejection_reasons : list[dict]
-        Mandatory audit trail per CLAUDE.md Rule 3: records why each higher-priority
-        tier was rejected before the selected method was reached.
-        Each entry: {"tier": int, "reason": str, "regulation_ref": str}.
-        Example: if method="default", both Tier 1 and Tier 2 entries are present.
+    markup_fraction : Decimal
+        Default-value mark-up applied to the Annex VI figures (0 unless the
+        default method was selected for a year with a legislated mark-up).
+    markup_table_version : str | None
+        Version of the mark-up table applied. None when no mark-up was applied.
+    rejected_method_reasons : list[dict]
+        Mandatory audit trail per CLAUDE.md Rule 3: records why each
+        higher-priority method was rejected before the selected one was reached.
+        Each entry: {"method": str, "regulation_tier": int, "reason": str,
+        "regulation_ref": str}.
+        Example: if method="default", both the actual and estimated entries are
+        present.  ``regulation_tier`` is the EU 2023/1773 Art. 4 numbering, kept
+        as a citation only — this axis is the emissions method and must never be
+        called a tier, which is Arbor's provenance axis.
     regulation_refs : list[str]
         Regulatory citations for this calculation.
     """
@@ -151,7 +164,9 @@ class MethodSelectionResult:
     annex_vi_factor_used: bool = False
     factor_metadata: dict = field(default_factory=lambda: dict(FACTOR_METADATA))
     factor_table_version: str | None = None
-    tier_rejection_reasons: list[dict] = field(default_factory=list)
+    markup_fraction: Decimal = field(default_factory=lambda: Decimal("0"))
+    markup_table_version: str | None = None
+    rejected_method_reasons: list[dict] = field(default_factory=list)
     regulation_refs: list[str] = field(default_factory=lambda: [
         "Commission Implementing Regulation 2023/1773, Article 4(1) — actual embedded emissions",
         "Commission Implementing Regulation 2023/1773, Article 4(2) — estimated embedded emissions",
@@ -228,6 +243,73 @@ def _plausibility_check(
     return within_normal, within_extreme, warnings
 
 
+def _markup_defaults(
+    direct_kgco2e: Decimal,
+    indirect_kgco2e: Decimal,
+    annex_vi_used: bool,
+    reporting_year: int | None,
+    jurisdiction: str,
+    trace: list[SelectionEvidenceAtom],
+    warnings: list[str],
+) -> tuple[Decimal, Decimal, Decimal, str | None]:
+    """Apply the legislated default-value mark-up to Annex VI figures.
+
+    Returns ``(direct, indirect, fraction_applied, table_version)``.  When the
+    mark-up cannot be applied the figures are returned untouched and a warning
+    is recorded — an unapplied mark-up understates the declarable amount, so it
+    must never pass silently.
+    """
+    if not annex_vi_used:
+        return direct_kgco2e, indirect_kgco2e, _ZERO, None
+
+    markup = get_default_value_markup(reporting_year, jurisdiction)
+
+    if reporting_year is None:
+        warnings.append(
+            "cbam_selector:markup_not_applied:no_reporting_year — "
+            "default values carry a legislated mark-up that could not be applied "
+            "because no reporting year was supplied; the figure understates the "
+            f"declarable amount ({markup.regulation_ref})"
+        )
+        return direct_kgco2e, indirect_kgco2e, _ZERO, None
+
+    if not markup.confirmed:
+        warnings.append(
+            f"cbam_selector:markup_not_applied:{markup.jurisdiction} — "
+            f"no default-value mark-up schedule is confirmed for "
+            f"{markup.jurisdiction} ({markup.regulation_ref})"
+        )
+        return direct_kgco2e, indirect_kgco2e, _ZERO, None
+
+    if markup.fraction == _ZERO:
+        return direct_kgco2e, indirect_kgco2e, _ZERO, None
+
+    direct_kgco2e = apply_default_value_markup(
+        direct_kgco2e, reporting_year, METHOD_DEFAULT, jurisdiction
+    )
+    indirect_kgco2e = apply_default_value_markup(
+        indirect_kgco2e, reporting_year, METHOD_DEFAULT, jurisdiction
+    )
+    trace.append(SelectionEvidenceAtom(
+        step="default_value_markup",
+        outcome="applied",
+        detail=(
+            f"Default-value mark-up of {markup.fraction:.0%} applied to the "
+            f"Annex VI figures for reporting year {reporting_year}: "
+            f"direct={float(direct_kgco2e):.3f} kgCO2e, "
+            f"indirect={float(indirect_kgco2e):.3f} kgCO2e "
+            f"(table {markup.table_version})"
+        ),
+        value={
+            "markup_fraction": float(markup.fraction),
+            "direct_kgco2e": float(direct_kgco2e),
+            "indirect_kgco2e": float(indirect_kgco2e),
+        },
+        regulation_ref=markup.regulation_ref,
+    ))
+    return direct_kgco2e, indirect_kgco2e, markup.fraction, markup.table_version
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def select_and_calculate(
@@ -241,6 +323,8 @@ def select_and_calculate(
     production_route: str | None = None,
     evidence: list[dict] | None = None,
     force_method: str | None = None,
+    reporting_year: int | None = None,
+    jurisdiction: str = "EU",
 ) -> MethodSelectionResult:
     """Automatically select an emissions calculation method and compute SEE.
 
@@ -281,6 +365,12 @@ def select_and_calculate(
     force_method:
         When set to "actual", "estimated", or "default", bypasses the
         automatic selection logic.  The supplied values are used as-is.
+    reporting_year:
+        Reporting calendar year.  Required for the legislated default-value
+        mark-up to be applied; when absent the default path warns rather than
+        silently omitting it.
+    jurisdiction:
+        "EU" (default) or "UK".  Only the EU has a confirmed mark-up schedule.
     """
     trace: list[SelectionEvidenceAtom] = []
     warnings: list[str] = []
@@ -308,13 +398,21 @@ def select_and_calculate(
         direct_kgco2e = direct_sup or _ZERO
         indirect_kgco2e = indirect_sup or _ZERO
 
+        forced_annex_vi = False
         if method == METHOD_DEFAULT and mass_kg > _ZERO and cn:
             # Compute kgCO2e directly: SEE_tco2e_per_t × mass_kg = kgCO2e
             default_see = get_default_see(cn, production_route)
             if default_see is not None:
                 direct_kgco2e = (default_see.direct_tco2e_per_t * mass_kg).quantize(_D("0.001"))
                 indirect_kgco2e = (default_see.indirect_tco2e_per_t * mass_kg).quantize(_D("0.001"))
+                forced_annex_vi = True
                 warnings.append("annex_vi_factor_used:forced_default")
+
+        # A forced default is still a default: it carries the same mark-up.
+        direct_kgco2e, indirect_kgco2e, forced_markup, forced_markup_ver = _markup_defaults(
+            direct_kgco2e, indirect_kgco2e, forced_annex_vi,
+            reporting_year, jurisdiction, trace, warnings,
+        )
 
         return _build_result(
             method=method,
@@ -326,6 +424,8 @@ def select_and_calculate(
             trace=trace,
             warnings=warnings,
             annex_vi_used=(method == METHOD_DEFAULT),
+            markup_fraction=forced_markup,
+            markup_table_version=forced_markup_ver,
         )
 
     # ── Step 1: check supplier direct emissions
@@ -354,14 +454,16 @@ def select_and_calculate(
             )
             t2_reason = "Tier 2 requires confidence ≥ 0 on direct value; confidence too low."
 
-        tier_rejection_reasons: list[dict] = [
+        rejected_method_reasons: list[dict] = [
             {
-                "tier": 1,
+                "method": METHOD_ACTUAL,
+                "regulation_tier": 1,
                 "reason": t1_reason,
                 "regulation_ref": "EU 2023/1773 Art. 4(1)",
             },
             {
-                "tier": 2,
+                "method": METHOD_ESTIMATED,
+                "regulation_tier": 2,
                 "reason": t2_reason,
                 "regulation_ref": "EU 2023/1773 Art. 4(2)",
             },
@@ -379,7 +481,8 @@ def select_and_calculate(
             regulation_ref="EU 2023/1773 Art. 4(3)",
         ))
         return _apply_default(cn, mass_kg, production_route, trace, warnings,
-                              tier_rejection_reasons=tier_rejection_reasons)
+                              rejected_method_reasons=rejected_method_reasons,
+                              reporting_year=reporting_year, jurisdiction=jurisdiction)
 
     # ── Step 2: plausibility check on actual value
     within_normal, within_extreme, plaus_warnings = _plausibility_check(
@@ -402,9 +505,10 @@ def select_and_calculate(
 
     if not within_extreme:
         # Downgrade: treat direct as unusable, use default
-        extreme_rejection_reasons: list[dict] = [
+        extreme_rejected_method_reasons: list[dict] = [
             {
-                "tier": 1,
+                "method": METHOD_ACTUAL,
+                "regulation_tier": 1,
                 "reason": (
                     f"Direct emissions {float(direct_sup):.3f} kgCO2e exceeds "
                     f"{PLAUSIBILITY_EXTREME_MULTIPLE}× the Annex VI default — "
@@ -413,7 +517,8 @@ def select_and_calculate(
                 "regulation_ref": "EU 2023/1773 Annex VI (plausibility check)",
             },
             {
-                "tier": 2,
+                "method": METHOD_ESTIMATED,
+                "regulation_tier": 2,
                 "reason": (
                     "Tier 2 not applicable when direct value fails extreme outlier "
                     "check — both tiers require a plausible direct emissions figure."
@@ -428,7 +533,8 @@ def select_and_calculate(
             regulation_ref="EU 2023/1773 Art. 4(3)",
         ))
         return _apply_default(cn, mass_kg, production_route, trace, warnings,
-                              tier_rejection_reasons=extreme_rejection_reasons)
+                              rejected_method_reasons=extreme_rejected_method_reasons,
+                              reporting_year=reporting_year, jurisdiction=jurisdiction)
 
     # ── Step 3: check supplier indirect emissions
     trace.append(SelectionEvidenceAtom(
@@ -451,7 +557,7 @@ def select_and_calculate(
     ):
         method = METHOD_ACTUAL
         indirect_kgco2e = indirect_sup
-        final_tier_rejection_reasons: list[dict] = []  # no rejections — Tier 1 accepted
+        final_rejected_method_reasons: list[dict] = []  # no rejections — Tier 1 accepted
         trace.append(SelectionEvidenceAtom(
             step="select_method",
             outcome="actual",
@@ -468,9 +574,10 @@ def select_and_calculate(
                 f"Supplier indirect confidence {supplier_indirect_confidence:.2f} < "
                 f"threshold {ACTUAL_QUALITY_THRESHOLD}; indirect value treated as absent."
             )
-        final_tier_rejection_reasons = [
+        final_rejected_method_reasons = [
             {
-                "tier": 1,
+                "method": METHOD_ACTUAL,
+                "regulation_tier": 1,
                 "reason": (
                     f"Tier 1 (actual) rejected for indirect component: {t1_indirect_reason} "
                     "Direct value accepted; indirect gap-filled from Annex VI (→ estimated)."
@@ -511,7 +618,7 @@ def select_and_calculate(
         trace=trace,
         warnings=warnings,
         annex_vi_used=(method == METHOD_ESTIMATED),
-        tier_rejection_reasons=final_tier_rejection_reasons,
+        rejected_method_reasons=final_rejected_method_reasons,
     )
 
 
@@ -521,12 +628,18 @@ def _apply_default(
     production_route: str | None,
     trace: list[SelectionEvidenceAtom],
     warnings: list[str],
-    tier_rejection_reasons: list[dict] | None = None,
+    rejected_method_reasons: list[dict] | None = None,
+    reporting_year: int | None = None,
+    jurisdiction: str = "EU",
 ) -> MethodSelectionResult:
-    """Compute emission values from Annex VI defaults.
+    """Compute emission values from Annex VI defaults, with the mark-up applied.
 
     kgCO2e = SEE_tco2e_per_t × mass_kg
     (numerically correct: tCO2e/t × kg = kgCO2e, since 1 tCO2e/t = 1 kgCO2e/kg)
+
+    Default values carry a legislated mark-up (see cbam_default_markup), which
+    applies here and nowhere else — the actual and estimated paths must not
+    reach this function.
     """
     direct_kgco2e = _ZERO
     indirect_kgco2e = _ZERO
@@ -565,6 +678,11 @@ def _apply_default(
                 f"Manual entry required (EU 2023/1773 Annex VI)"
             )
 
+    direct_kgco2e, indirect_kgco2e, markup_applied, markup_version = _markup_defaults(
+        direct_kgco2e, indirect_kgco2e, annex_vi_used,
+        reporting_year, jurisdiction, trace, warnings,
+    )
+
     return _build_result(
         method=METHOD_DEFAULT,
         direct_kgco2e=direct_kgco2e,
@@ -575,7 +693,9 @@ def _apply_default(
         trace=trace,
         warnings=warnings,
         annex_vi_used=annex_vi_used,
-        tier_rejection_reasons=tier_rejection_reasons,
+        rejected_method_reasons=rejected_method_reasons,
+        markup_fraction=markup_applied,
+        markup_table_version=markup_version,
     )
 
 
@@ -590,7 +710,9 @@ def _build_result(
     trace: list[SelectionEvidenceAtom],
     warnings: list[str],
     annex_vi_used: bool,
-    tier_rejection_reasons: list[dict] | None = None,
+    rejected_method_reasons: list[dict] | None = None,
+    markup_fraction: Decimal = _ZERO,
+    markup_table_version: str | None = None,
 ) -> MethodSelectionResult:
     """Compute SEE and embedded tCO2e then assemble the final result."""
     if mass_kg > _ZERO:
@@ -620,7 +742,9 @@ def _build_result(
         warnings=warnings,
         annex_vi_factor_used=annex_vi_used,
         factor_table_version=factor_ver,
-        tier_rejection_reasons=tier_rejection_reasons or [],
+        markup_fraction=markup_fraction,
+        markup_table_version=markup_table_version,
+        rejected_method_reasons=rejected_method_reasons or [],
     )
 
 

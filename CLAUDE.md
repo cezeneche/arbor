@@ -18,6 +18,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Arbor integration — non-negotiable rules
+
+Nucleos is being brought into Arbor as one product: one login, one database of record, one UI, one domain, one bill. Not one codebase — Arbor stays TypeScript, Nucleos stays Python, two repos, two deployments. Arbor owns the browser, auth, documents, document→text extraction, provenance and the audit chain. Nucleos owns text→CBAM structure, emissions method selection, CPR, free allocation, and the report builders. The boundary carries text and metadata in, structured fields out.
+
+These seven rules govern every change made here. They are not preferences.
+
+1. **Do not port CBAM domain logic to TypeScript.** The regex extractor, arbiter, repair layer, emissions selector, CPR calculator, free allocation, and report builders stay Python. These encode accumulated domain knowledge a rebuild loses silently.
+2. **Do not rewrite Arbor in Python.**
+3. **Nucleos never writes to Arbor's database.** Results return over the boundary; Arbor writes them.
+4. **Nucleos keeps a database, but loses ownership of anything Arbor also models** — documents and blobs, extracted field records, provenance tiers, the audit chain. It retains CBAM cases, goods lines, emissions selections, and processing snapshots, because those are domain state Arbor has no model for. If you find Nucleos writing to a concept Arbor also models, surface it and stop.
+5. **Do not change calculation logic during integration.** Interface changes only; behavioural changes get flagged, not implemented. The default-value mark-up schedule (fix F6) is the single sanctioned exception and is explicitly versioned.
+6. **Extraction produces drafts. Only a human action in Arbor's Review screen sets a provenance tier.**
+7. **Arbor has been forked for a separate product.** Keep diffs surgical. Every broad refactor of shared Arbor code widens that divergence.
+
+**Two orthogonal axes, never conflated.** Arbor's `provenanceTier` (`VERIFIED | DECLARED | ESTIMATED`) says how much to trust a record's origin. Nucleos's `emissionsMethod` (`ACTUAL | ESTIMATED | DEFAULT`) says which emissions value entered the calculation. Never use the word "tier" for the Nucleos axis, in code, schema, or UI copy. Both travel on every goods line; neither derives from the other.
+
+**Working practice.** Announce the repo before editing. Work on a branch; never commit to main. Run the golden set after every phase and report the result before continuing. Stop at phase boundaries and wait. If anything in the integration plan conflicts with what you find in the code, raise it rather than resolving it.
+
+**The golden set** (`golden/`, run with `pytest api/tests/golden`) freezes what the CBAM engine computes. It must pass unchanged after every phase. When it fails, assume the change is wrong before assuming the golden file is. Regenerating is deliberate and reviewed — `GOLDEN_UPDATE=1` — never a way to clear a red suite. See `golden/README.md`.
+
+---
+
 ## Code quality — required at all times
 
 These are not preferences. Apply them to every file touched, without being asked.
@@ -96,13 +118,13 @@ Key layers:
 - `api/app/api/` — consolidated API routers (narrative_pipeline, cbam_compliance, cpr, verification, registration, public_tools, supplier_outreach)
 - `api/app/services/` — business logic: `narrative`, `compliance_pack`, `hmrc_return_builder`, `cpr_calculator`, `report_validator`, `cbam_free_allocation`, `cbam_uk_rates`, `eu_xml_builder`, `registration_manager`, `notifications`
 - `api/ledger_app/api/` — 17 FastAPI routers (cases, documents, extract, calculate, bundle, resolve, report_package, cbam, auth, health, etc.)
-- `api/ledger_app/services/` — business logic: `cbam_extractor`, `cbam_arbiter`, `cbam_repair`, `cbam_explain`, `snapshot_store`, `storage`, and the LlamaIndex orchestration layer
+- `api/ledger_app/services/` — business logic: `cbam_extractor`, `cbam_arbiter`, `cbam_repair`, `cbam_explain`, `snapshot_store`, `storage`, and the text-chunking orchestration layer
 - `api/ledger_app/db/` — SQLAlchemy models and migrations
 - `api/ledger_app/models/` — Pydantic schemas
 - `api/ledger_app/testing.py` — shared `TestClient` factory used by conftest
 - `api/shared_auth/` — HS256 JWT library (create/decode tokens, FastAPI deps, scope enforcement)
 
-Primary workflow: upload invoice → LlamaIndex routing → structured extraction → arbiter resolves conflicts → repair fills gaps → bundle into report package.
+Primary workflow: upload invoice → text extraction and chunking → structured extraction → arbiter resolves conflicts → repair fills gaps → bundle into report package.
 
 ### Narrative pipeline — single Claude call
 The narrative pipeline runs entirely in-process (no inter-service HTTP):

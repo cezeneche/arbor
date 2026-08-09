@@ -91,8 +91,16 @@ def _detect_cert_type(text: str) -> str:
 
 # ── Heat / batch number ────────────────────────────────────────────────────────
 
+# The keyword is optionally followed by "number" / "no." / "#", which is then
+# skipped rather than captured. The previous alternation listed "heat" before
+# "heat\s+no\.?", and Python takes the first branch that matches, so the longer
+# branches were unreachable and "Heat number: A4471928" captured "number".
+#
+# The value must contain a digit: heat numbers always do, and requiring one stops
+# the pattern capturing whatever word follows the keyword.
 _HEAT_RE = re.compile(
-    r"(?:heat|charge|cast|melt|heat\s+no\.?|charge\s+no\.?)[:\s#\-]+([A-Z0-9\-/]{3,20})",
+    r"(?:heat|charge|cast|melt)\s*(?:number|no\.?|#)?[:\s#\-]+"
+    r"((?=[A-Z0-9\-/]*[0-9])[A-Z0-9][A-Z0-9\-/]{2,19})",
     re.I,
 )
 
@@ -193,14 +201,22 @@ def _extract_mechanical_properties(text: str) -> dict[str, float]:
 #   These are engineering estimates only; the actual route must be confirmed by the producer.
 
 def _infer_production_route(composition: dict[str, float]) -> str | None:
+    """Infer the production route from residual elements.
+
+    Keys are upper-cased by _extract_chemical_composition, so lookups must be
+    too. Reading "Cr" and "Ni" against a dict holding "CR" and "NI" returned 0.0
+    every time, which made the EAF branch unreachable for every document —
+    scrap-based steel was never identified as such, and Annex VI defaults are
+    differentiated by production route.
+    """
     if not composition:
         return None
 
     p = composition.get("P", 0.0)
     s = composition.get("S", 0.0)
     c = composition.get("C", 0.0)
-    cr = composition.get("Cr", 0.0)
-    ni = composition.get("Ni", 0.0)
+    cr = composition.get("CR", 0.0)
+    ni = composition.get("NI", 0.0)
 
     # High residuals → EAF (scrap-based)
     if cr + ni > 0.5 and p < 0.020:

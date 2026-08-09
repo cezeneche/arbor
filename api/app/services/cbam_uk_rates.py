@@ -28,7 +28,13 @@ get_uk_cbam_rate(sector, year, quarter) → Decimal | None
     sector must match the canonical DB name: "iron_steel", "aluminium", etc.
 
 get_uk_cbam_rate_or_raise(sector, year, quarter) → Decimal
-    Raises UKCBAMRateMissing if no rate is found.
+    Raises UKCBAMRateMissing if no rate is found, and UKCBAMRatePlaceholder if
+    the rate found is an engineering estimate.  Placeholder rejection is the
+    default; a caller wanting a planning estimate must opt in explicitly.
+
+get_uk_cbam_rate_entry(sector, year, quarter) → UKCBAMRateEntry | None
+    Return the full rate record including its provenance, so a caller can
+    decide how to present a figure derived from it.
 
 get_sector_for_cn8(cn8_code) → str | None
     Map an 8-digit CN code to its UK CBAM sector code.
@@ -49,6 +55,7 @@ __all__ = [
     "UKCBAMRatePlaceholder",
     "UKCBAMRateEntry",
     "get_uk_cbam_rate",
+    "get_uk_cbam_rate_entry",
     "get_uk_cbam_rate_or_raise",
     "get_sector_for_cn8",
     "UK_CBAM_SECTORS",
@@ -94,6 +101,10 @@ class UKCBAMRateEntry:
     rate_gbp_per_tco2e: Decimal
     source:         str          # "hmrc_published" | "placeholder"
     notes:          str = ""
+
+    @property
+    def is_placeholder(self) -> bool:
+        return self.source == "placeholder"
 
 
 # ── Sector → CN8 prefix mapping ────────────────────────────────────────────────
@@ -167,7 +178,7 @@ def _placeholder_rate(sector: str) -> Decimal:
 #
 # Until HMRC publishes official rates, entries are marked source="placeholder".
 # These MUST be replaced with HMRC-published figures before use in a real return.
-# Use get_uk_cbam_rate_or_raise(..., reject_placeholder=True) to enforce this.
+# get_uk_cbam_rate_or_raise enforces this by default.
 
 _RATES: list[UKCBAMRateEntry] = [
     # 2027 Annual return (Finance No.2 Bill 2025-26 transitional first year)
@@ -230,22 +241,37 @@ def get_uk_cbam_rate(
     return entry.rate_gbp_per_tco2e if entry else None
 
 
+def get_uk_cbam_rate_entry(
+    sector: str,
+    year: int,
+    quarter: int | None = None,
+) -> UKCBAMRateEntry | None:
+    """Return the full rate record for the period, or None if none is entered.
+
+    Callers that display a derived figure use this rather than
+    ``get_uk_cbam_rate`` so they can check ``entry.is_placeholder`` and withhold
+    a number that has no published rate behind it.
+    """
+    return _RATE_INDEX.get((sector.lower(), year, quarter))
+
+
 def get_uk_cbam_rate_or_raise(
     sector: str,
     year: int,
     quarter: int | None = None,
     *,
-    reject_placeholder: bool = False,
+    reject_placeholder: bool = True,
 ) -> Decimal:
     """Return the UK CBAM rate or raise.
 
     Parameters
     ----------
     reject_placeholder:
-        When True, raises ``UKCBAMRatePlaceholder`` if the rate is an engineering
-        estimate rather than an HMRC-published figure.  Set this to True whenever
-        building a real HMRC return to prevent placeholder values reaching customers.
-        Default is False for planning / estimation use cases.
+        Raises ``UKCBAMRatePlaceholder`` when the rate is an engineering estimate
+        rather than an HMRC-published figure.  Defaults to True so the unsafe
+        path is the one that has to be asked for: a placeholder reaching a
+        customer-visible figure is the worst failure this service can produce.
+        Pass False only for internal planning estimates that are labelled as such.
 
     Raises
     ------

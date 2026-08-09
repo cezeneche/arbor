@@ -136,8 +136,8 @@ def _run_async(coro):
     """Run an async coroutine from a synchronous context.
 
     Used by the backward-compatible sync wrappers (download_bytes, upload_text)
-    so that callers in sync FastAPI routes (extract.py, case_index.py) keep
-    working without modification.
+    so that callers in sync FastAPI routes (extract.py) keep working
+    without modification.
     """
     try:
         loop = asyncio.get_running_loop()
@@ -420,7 +420,7 @@ async def storage_healthcheck_async() -> dict:
 
 # ---------------------------------------------------------------------------
 # Backward-compatible SYNC wrappers
-# These keep existing callers (extract.py, case_index.py, storage_check.py)
+# These keep existing callers (extract.py, storage_check.py)
 # working without modification.
 # ---------------------------------------------------------------------------
 

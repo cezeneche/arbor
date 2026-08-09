@@ -165,12 +165,21 @@ class ChainVerificationResult:
     Attributes
     ----------
     chain_valid :
-        True when every signed row's HMAC is correct AND every chained row's
-        prev_hmac equals the HMAC of the preceding signed row.
+        True when the chain carries no tampering and every gap in it has been
+        documented.  An undocumented gap is still invalid — but it is a
+        different finding from tampering, and an auditor must be able to tell
+        them apart.
     signed_count :
         Number of rows that carry an hmac_sha256 value.
     chained_count :
         Number of rows that carry a non-null/non-empty prev_hmac (post-chain rows).
+    tampered :
+        True when any row's own HMAC fails to verify, or a prev_hmac points at
+        a row that is present but different.  This is evidence of alteration.
+    gaps :
+        Breaks where every surviving row still verifies but a link is missing —
+        rows absent from the sequence.  Each entry:
+        {"index", "row_id", "expected_prev_hmac", "found_prev_hmac", "documented"}.
     broken_at_index :
         0-based index of the first row where the chain breaks, or None.
     issues :
@@ -180,10 +189,15 @@ class ChainVerificationResult:
     signed_count: int
     chained_count: int
     broken_at_index: int | None
+    tampered: bool = False
+    gaps: list[dict[str, Any]] = field(default_factory=list)
     issues: list[str] = field(default_factory=list)
 
 
-def verify_chain(rows: list[dict[str, Any]]) -> ChainVerificationResult:
+def verify_chain(
+    rows: list[dict[str, Any]],
+    documented_gaps: list[str] | None = None,
+) -> ChainVerificationResult:
     """
     Verify the hash chain across an ordered sequence of audit_log rows.
 
@@ -196,11 +210,30 @@ def verify_chain(rows: list[dict[str, Any]]) -> ChainVerificationResult:
        most recent preceding signed row.  If no prior signed row exists,
        ``prev_hmac`` should be ``None`` or ``""``.
 
+    Two distinct failures are reported separately, because they mean different
+    things to an auditor:
+
+    * **Tampering** — a row's own HMAC does not verify.  Its contents were
+      altered after signing, or the signing key changed.
+    * **A gap** — every surviving row verifies, but a ``prev_hmac`` points at a
+      row that is not in the sequence.  Rows are missing.  Passing their HMACs
+      in *documented_gaps* marks them as a recorded administrative act rather
+      than an unexplained hole, and the chain verifies.
+
+    Tampering is never excused by *documented_gaps*.
+
     Unsigned rows (no ``hmac_sha256``) are skipped for chain purposes.
     """
+    documented = set(documented_gaps or [])
+    # A prev_hmac pointing at a row that IS in this sequence, but not the one
+    # immediately preceding, means the rows were reordered — every row is
+    # present and authentic, so it is interference rather than a hole.
+    present_hmacs = {r.get("hmac_sha256") for r in rows if r.get("hmac_sha256")}
     signed_count = 0
     chained_count = 0
     issues: list[str] = []
+    gaps: list[dict[str, Any]] = []
+    tampered = False
     broken_at_index: int | None = None
     last_signed_hmac: str | None = None  # hmac_sha256 of last signed row seen
 
@@ -213,28 +246,11 @@ def verify_chain(rows: list[dict[str, Any]]) -> ChainVerificationResult:
         signed_count += 1
         row_prev_hmac = row.get("prev_hmac")  # None, "", or hex string
 
-        # Check chain link when this row carries a prev_hmac pointer.
-        if row_prev_hmac:
-            chained_count += 1
-            if last_signed_hmac is None:
-                issues.append(
-                    f"row[{i}] id={str(row.get('id'))!r}: "
-                    f"prev_hmac set but no prior signed row in sequence"
-                )
-                if broken_at_index is None:
-                    broken_at_index = i
-            elif row_prev_hmac != last_signed_hmac:
-                issues.append(
-                    f"row[{i}] id={str(row.get('id'))!r}: "
-                    f"prev_hmac mismatch — expected {last_signed_hmac[:16]!r}... "
-                    f"got {row_prev_hmac[:16]!r}..."
-                )
-                if broken_at_index is None:
-                    broken_at_index = i
-
-        # Verify the row's own HMAC (format-agnostic via verify_event).
-        ok = verify_event(row)
-        if ok is False:
+        # Verify the row's own HMAC first (format-agnostic via verify_event).
+        # A row that fails here is altered; its prev_hmac pointer proves nothing.
+        row_authentic = verify_event(row) is not False
+        if not row_authentic:
+            tampered = True
             issues.append(
                 f"row[{i}] id={str(row.get('id'))!r}: "
                 f"HMAC verification failed (tampered or key mismatch)"
@@ -242,15 +258,49 @@ def verify_chain(rows: list[dict[str, Any]]) -> ChainVerificationResult:
             if broken_at_index is None:
                 broken_at_index = i
 
+        # Check chain link when this row carries a prev_hmac pointer.
+        if row_prev_hmac and row_authentic:
+            chained_count += 1
+            if row_prev_hmac != last_signed_hmac and row_prev_hmac in present_hmacs:
+                tampered = True
+                issues.append(
+                    f"row[{i}] id={str(row.get('id'))!r}: "
+                    f"out of order — prev_hmac {row_prev_hmac[:16]!r}... is present "
+                    f"in the sequence but does not precede this row"
+                )
+                if broken_at_index is None:
+                    broken_at_index = i
+            elif row_prev_hmac != last_signed_hmac:
+                is_documented = row_prev_hmac in documented
+                gaps.append({
+                    "index": i,
+                    "row_id": str(row.get("id")),
+                    "expected_prev_hmac": last_signed_hmac,
+                    "found_prev_hmac": row_prev_hmac,
+                    "documented": is_documented,
+                })
+                issues.append(
+                    f"row[{i}] id={str(row.get('id'))!r}: "
+                    f"chain gap — prev_hmac {row_prev_hmac[:16]!r}... is not the "
+                    f"preceding row in this sequence"
+                    + ("" if is_documented else " (undocumented)")
+                )
+                if not is_documented and broken_at_index is None:
+                    broken_at_index = i
+        elif row_prev_hmac:
+            chained_count += 1
+
         # Advance chain pointer to the actual stored HMAC of this row.
         last_signed_hmac = row_hmac
 
-    chain_valid = broken_at_index is None
+    chain_valid = not tampered and all(g["documented"] for g in gaps)
     return ChainVerificationResult(
         chain_valid=chain_valid,
         signed_count=signed_count,
         chained_count=chained_count,
         broken_at_index=broken_at_index,
+        tampered=tampered,
+        gaps=gaps,
         issues=issues,
     )
 

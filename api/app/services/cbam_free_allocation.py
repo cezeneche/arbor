@@ -11,8 +11,9 @@ The free-allocation factor (FAF) is the fraction of emissions that remain FREE
 
 The application factor (1 − FAF) is the CBAM-chargeable fraction.
 
-Schedule source: EU Regulation 2023/956 Annex VII, as amended by EU 2025/2083.
-The schedule is uniform across all CBAM sectors.
+Schedule source: Directive 2003/87/EC Article 10a(1a), as amended by Directive
+(EU) 2023/959, applied by Regulation (EU) 2023/956 Article 31.  The schedule is
+uniform across all CBAM sectors.
 
 Public API
 ----------
@@ -25,7 +26,8 @@ get_cbam_application_factor(year: int) → Decimal
 
 Regulation reference
 --------------------
-EU Regulation 2023/956, Article 31 and Annex VII
+Directive 2003/87/EC Article 10a(1a) (as amended by Directive (EU) 2023/959)
+EU Regulation 2023/956, Article 31
 EU Regulation 2025/2083 (amendment confirming financial-phase schedule)
 """
 
@@ -49,15 +51,20 @@ REGULATION_REF = (
 # 2026 = financial phase begins; 2034 = zero free allocations (CBAM fully applies).
 # Values are the fraction of ETS allocations still given FREE, expressed as Decimal.
 #
+# The Directive calls this series the "CBAM factor", which means the proportion
+# of free allocation still granted — the opposite of the chargeable share.  Do
+# not rename these values to match the Directive's term without also inverting
+# them; get_cbam_application_factor is the chargeable side.
+#
 # Year : free_allocation_fraction
 #   2026 : 97.5%  → CBAM applies to 2.5%
 #   2027 : 95.0%  → CBAM applies to 5.0%
 #   2028 : 90.0%  → CBAM applies to 10.0%
 #   2029 : 77.5%  → CBAM applies to 22.5%
 #   2030 : 51.5%  → CBAM applies to 48.5%
-#   2031 : 38.5%  → CBAM applies to 61.5%
-#   2032 : 25.5%  → CBAM applies to 74.5%
-#   2033 : 12.5%  → CBAM applies to 87.5%
+#   2031 : 39.0%  → CBAM applies to 61.0%
+#   2032 : 26.5%  → CBAM applies to 73.5%
+#   2033 : 14.0%  → CBAM applies to 86.0%
 #   2034+ : 0.0%  → CBAM applies to 100.0%
 EU_FREE_ALLOCATION_SCHEDULE: dict[int, Decimal] = {
     2026: Decimal("0.975"),
@@ -65,9 +72,9 @@ EU_FREE_ALLOCATION_SCHEDULE: dict[int, Decimal] = {
     2028: Decimal("0.900"),
     2029: Decimal("0.775"),
     2030: Decimal("0.515"),
-    2031: Decimal("0.385"),
-    2032: Decimal("0.255"),
-    2033: Decimal("0.125"),
+    2031: Decimal("0.390"),
+    2032: Decimal("0.265"),
+    2033: Decimal("0.140"),
     2034: Decimal("0.000"),
 }
 

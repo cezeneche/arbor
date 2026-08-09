@@ -11,16 +11,79 @@ import re
 from typing import Any, Callable
 
 
-def _parse_number(text: str | None) -> float | None:
+import re
+
+# Separators that group thousands but never mark a decimal.
+_GROUPING_WHITESPACE = re.compile(r"[\s  ]")
+
+
+def parse_quantity(text: str | None) -> tuple[float | None, bool]:
+    """Parse a quantity written in either separator convention.
+
+    Returns ``(value, ambiguous)``.
+
+    Trade documents use both conventions, frequently in the same corpus, so
+    neither can simply be preferred. The rule is that the rightmost separator
+    which could be a decimal point is the decimal point:
+
+        24,500.00  ->  24500.0    dot is rightmost, comma groups thousands
+        24.500,00  ->  24500.0    comma is rightmost, dot groups thousands
+        24,5       ->  24.5       lone comma, not a thousands group
+        1,234,567  ->  1234567.0  a decimal point cannot repeat
+
+    One case is genuinely undecidable: a lone separator followed by exactly
+    three digits. "24,500" is 24500 in the UK and 24.5 in Germany, and nothing
+    in the number itself resolves it. It is read as a thousands separator —
+    the dominant convention on commercial invoices and customs declarations —
+    and returned with ``ambiguous=True`` so the caller can say so rather than
+    present a guess as a reading.
+    """
     if text is None:
-        return None
-    cleaned = text.replace(",", "").strip()
+        return None, False
+
+    cleaned = _GROUPING_WHITESPACE.sub("", str(text)).strip()
     if not cleaned:
-        return None
+        return None, False
+
+    # A leading sign is kept; everything else must be digits or separators.
+    if not re.fullmatch(r"[+-]?[0-9][0-9.,]*", cleaned):
+        return None, False
+
+    has_comma = "," in cleaned
+    has_dot = "." in cleaned
+    ambiguous = False
+
+    if has_comma and has_dot:
+        # The rightmost separator is the decimal point; the other groups.
+        if cleaned.rfind(",") > cleaned.rfind("."):
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif has_comma or has_dot:
+        sep = "," if has_comma else "."
+        parts = cleaned.split(sep)
+        if len(parts) > 2:
+            # Repeated separator can only be grouping.
+            cleaned = cleaned.replace(sep, "")
+        elif len(parts[1]) == 3 and parts[0]:
+            # Undecidable. Read as grouping, and say that it was undecidable.
+            cleaned = cleaned.replace(sep, "")
+            ambiguous = True
+        else:
+            cleaned = cleaned.replace(sep, ".")
+
     try:
-        return float(cleaned)
+        return float(cleaned), ambiguous
     except ValueError:
-        return None
+        return None, False
+
+
+def _parse_number(text: str | None) -> float | None:
+    """Backwards-compatible wrapper: the value only.
+
+    Callers that need to know a reading was undecidable use parse_quantity.
+    """
+    return parse_quantity(text)[0]
 
 
 def _normalize_method(value: str | None) -> str | None:

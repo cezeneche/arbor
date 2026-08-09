@@ -106,31 +106,43 @@ def _extract_origin_country(text: str) -> str | None:
 
 
 # Box 35 / net mass (kg)
+# The capture must begin and end with a digit. Allowing the class to match
+# whitespace alone let "Box 35 Net mass: 24,500.00 kg" satisfy the pattern on
+# the Box-35 keyword with a single space as the value, so the mass was never read.
 _MASS_RE = re.compile(
     r"(?:box\s*35|net\s+mass|net\s+weight|nett\s+weight|nett\s+mass)"
-    r"[:\s]*([\d\s,\.]+)\s*(?:kg|kgs|kilogram)?",
+    r"[:\s]*([0-9][0-9.,\s ]*[0-9]|[0-9])\s*(?:kg|kgs|kilogram)?",
     re.I,
 )
 
 
 def _extract_net_mass_kg(text: str) -> float | None:
+    """Net mass in kilograms, in whichever separator convention the form uses.
+
+    Stripping every comma unconditionally turned the European "24,5" into 245.
+    parse_quantity decides which separator is the decimal point.
+    """
+    from ledger_app.services.cbam_extraction._validators import (  # noqa: PLC0415
+        parse_quantity,
+    )
+
     m = _MASS_RE.search(text)
     if not m:
         return None
-    raw = m.group(1).strip().replace(",", "").replace(" ", "")
-    try:
-        return float(raw)
-    except ValueError:
-        return None
+    return parse_quantity(m.group(1))[0]
 
 
-# Box 7 / MRN (Movement Reference Number) — 18-character alphanumeric
+# Box 7 / MRN (Movement Reference Number) — 18 characters:
+#   2 digits (year) + 2 letters (country) + 14 alphanumeric.
+# The pattern previously required a trailing [A-Z][0-9], making it 20 characters,
+# so no genuine MRN could ever match and entry_reference was always None.
+_MRN_BODY = r"[0-9]{2}[A-Z]{2}[0-9A-Z]{14}"
 _MRN_RE = re.compile(
     r"(?:MRN|movement\s+reference|entry\s+reference|box\s*7)[:\s]*"
-    r"([0-9]{2}[A-Z]{2}[0-9A-Z]{14}[A-Z][0-9])",  # standard 18-char MRN
+    rf"({_MRN_BODY})",
     re.I,
 )
-_MRN_BARE_RE = re.compile(r"\b([0-9]{2}[A-Z]{2}[0-9A-Z]{14}[A-Z][0-9])\b")
+_MRN_BARE_RE = re.compile(rf"\b({_MRN_BODY})\b", re.I)
 
 
 def _extract_mrn(text: str) -> str | None:

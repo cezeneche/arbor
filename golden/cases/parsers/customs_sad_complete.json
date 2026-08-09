@@ -1,0 +1,95 @@
+{
+  "name": "Customs declaration \u2014 complete SAD, every CBAM field present",
+  "why": "The customs declaration is the most authoritative source for CN code, net mass, origin and MRN. Two RISKS.md N7 defects are fixed here and pinned so they cannot return: _MRN_RE required 20 characters where a real Movement Reference Number is 18, so entry_reference was always None; and the mass capture class admitted whitespace alone, so 'Box 35 Net mass: 24,500.00 kg' matched a single space as the value and the mass was never read.",
+  "adapter": "customs_declaration",
+  "input": {
+    "text": "SINGLE ADMINISTRATIVE DOCUMENT (C88)\nHM Revenue & Customs \u2014 Customs Declaration Service\n\nBox 1  Declaration type: IM A\nBox 7  MRN: 24GB12345678901234\nBox 8  Consignee: NORTHERN STEEL STOCKHOLDERS LTD\n       Consignee EORI: GB123456789000\nBox 14 Declarant EORI: GB987654321000\nBox 15 Country of dispatch: TR\nBox 33 Commodity code: 72071111\nBox 34 Country of origin: TR\nBox 35 Net mass: 24,500.00 kg\nBox 37 Procedure: 4000\nBox 38 Gross mass: 25,100.00 kg\nBox 44 Additional information\n       Commercial invoice: INV-2027-0042\n       Incoterm: CIF Immingham\n\nCustoms procedure code CPC 4000 000\nTotal packages: 42\n"
+  },
+  "expected": {
+    "detected": true,
+    "parsed": {
+      "customs_procedure": "4000",
+      "document_type": "customs_declaration",
+      "emissions": {
+        "direct_embedded_kgco2e": 0.0,
+        "indirect_embedded_kgco2e": 0.0,
+        "method": null
+      },
+      "evidence": [
+        {
+          "confidence": 0.88,
+          "field": "importer.eori",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": "GB123456789000"
+        },
+        {
+          "confidence": 0.9,
+          "field": "invoice.origin_country",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": "TR"
+        },
+        {
+          "confidence": 0.95,
+          "field": "invoice.entry_reference",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": "24GB12345678901234"
+        },
+        {
+          "confidence": 0.8,
+          "field": "invoice.invoice_number",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": "INV-2027-0042"
+        },
+        {
+          "confidence": 0.92,
+          "field": "lines[0].cn_code",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": "72071111"
+        },
+        {
+          "confidence": 0.88,
+          "field": "lines[0].net_mass_kg",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": 24500.0
+        }
+      ],
+      "importer": {
+        "eori": "GB123456789000",
+        "name": null
+      },
+      "invoice": {
+        "entry_reference": "24GB12345678901234",
+        "incoterm": null,
+        "invoice_date": null,
+        "invoice_number": "INV-2027-0042",
+        "origin_country": "TR"
+      },
+      "lines": [
+        {
+          "cn_code": "72071111",
+          "description": null,
+          "direct_embedded_kgco2e": null,
+          "indirect_embedded_kgco2e": 0.0,
+          "method": "default",
+          "net_mass_kg": 24500.0,
+          "quantity": 24.5,
+          "quantity_unit": "t"
+        }
+      ],
+      "reporting_quarter": null,
+      "reporting_year": null
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

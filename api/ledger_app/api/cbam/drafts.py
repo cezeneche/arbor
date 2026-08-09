@@ -475,6 +475,7 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                     direct_kgco2e_supplier=line_direct_source,
                     indirect_kgco2e_supplier=line_indirect_source,
                     force_method=line_method_declared.value if line_method_declared else None,
+                    reporting_year=reporting_year,
                 )
 
                 warnings.extend(sel.warnings)

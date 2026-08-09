@@ -1,0 +1,134 @@
+{
+  "name": "Live extraction \u2014 thousand-separated net mass",
+  "why": "RISKS.md N6, FIXED. This read 'Net mass: 24,500.00 kg' as 24.0 \u2014 one regex stopped at the thousand separator, and the shared parser stripped every comma, so the European '24,5' became 245. A thousand-fold error one way and a ten-fold error the other, both silent, because 24 kg of steel is a plausible quantity and no downstream check fires.\n\nparse_quantity now decides which separator is the decimal point: the rightmost one that could be. Kept as a golden case because this is the single most consequential number the engine reads \u2014 mass drives the mark-up, the embedded emissions and the CBAM charge.",
+  "adapter": "live_extraction",
+  "input": {
+    "text": "COMMERCIAL INVOICE\n\nInvoice number: INV-2027-0099\nInvoice date: 2027-02-14\n\nCN code: 72071111\nNet mass: 24,500.00 kg\n"
+  },
+  "expected": {
+    "cbam": {
+      "carbon_price_paid_currency": null,
+      "carbon_price_paid_eur": null,
+      "production_route": null
+    },
+    "emissions": null,
+    "evidence": [
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "lines[0].cn_code",
+        "page": null,
+        "snippet": "0099\nInvoice date: 2027-02-14\n\nCN code: 72071111\nNet mass: 24,500.00 kg",
+        "source": "rule_regex",
+        "span": {
+          "end": 93,
+          "start": 85
+        },
+        "value": "72071111"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "lines[0].net_mass_kg",
+        "page": null,
+        "snippet": "2027-02-14\n\nCN code: 72071111\nNet mass: 24,500.00 kg",
+        "source": "rule_regex",
+        "span": {
+          "end": 113,
+          "start": 104
+        },
+        "value": 24500.0
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.invoice_number",
+        "page": null,
+        "snippet": "COMMERCIAL INVOICE\n\nInvoice number: INV-2027-0099\nInvoice date: 2027-02-14\n\nCN code: 7207",
+        "source": "rule_regex",
+        "span": {
+          "end": 49,
+          "start": 36
+        },
+        "value": "INV-2027-0099"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.invoice_date",
+        "page": null,
+        "snippet": "ice number: INV-2027-0099\nInvoice date: 2027-02-14\n\nCN code: 72071111\nNet mass: 24,500.00",
+        "source": "rule_regex",
+        "span": {
+          "end": 74,
+          "start": 64
+        },
+        "value": "2027-02-14"
+      }
+    ],
+    "extractor": "regex",
+    "fallback": "regex_only",
+    "flags": [],
+    "importer": {
+      "eori": null,
+      "name": null
+    },
+    "invoice": {
+      "entry_reference": null,
+      "import_date": null,
+      "incoterm": null,
+      "invoice_date": "2027-02-14",
+      "invoice_number": "INV-2027-0099",
+      "origin_country": null
+    },
+    "lines": [
+      {
+        "cn_code": "72071111",
+        "description": null,
+        "direct_embedded_kgco2e": null,
+        "indirect_embedded_kgco2e": null,
+        "installation_id": null,
+        "installation_name": null,
+        "method": null,
+        "net_mass_kg": 24500.0,
+        "production_route": null,
+        "quantity": 24500.0,
+        "quantity_unit": "kg"
+      }
+    ],
+    "operator": {
+      "installation_id": null,
+      "installation_name": null,
+      "operator_name": null
+    },
+    "raw_text_preview": "COMMERCIAL INVOICE\n\nInvoice number: INV-2027-0099\nInvoice date: 2027-02-14\n\nCN code: 72071111\nNet mass: 24,500.00 kg",
+    "status": "parsed",
+    "structured": {
+      "carbon_price_paid_currency": null,
+      "carbon_price_paid_eur": null,
+      "cn_code": "72071111",
+      "direct_embedded_kgco2e": null,
+      "entry_reference": null,
+      "import_date": null,
+      "importer_eori": null,
+      "importer_name": null,
+      "incoterm": null,
+      "indirect_embedded_kgco2e": null,
+      "installation_id": null,
+      "installation_name": null,
+      "invoice_date": "2027-02-14",
+      "invoice_number": "INV-2027-0099",
+      "method": null,
+      "net_mass_kg": 24500.0,
+      "operator_name": null,
+      "origin_country": null,
+      "production_route": null
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}
