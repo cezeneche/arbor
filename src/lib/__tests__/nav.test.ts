@@ -11,8 +11,8 @@ describe('getNavLinks — supplier spine', () => {
   const labels = links.map(l => l.label)
   const hrefs = links.map(l => l.href)
 
-  it('is the four-verb spine plus Overview and Settings, in order', () => {
-    expect(labels).toEqual(['Overview', 'Upload', 'Review', 'Records', 'Requests', 'Settings'])
+  it('is the four-verb spine plus Overview, CBAM and Settings, in order', () => {
+    expect(labels).toEqual(['Overview', 'Upload', 'Review', 'Records', 'Requests', 'CBAM', 'Settings'])
   })
 
   it('does not surface reads-not-fills tools in primary nav', () => {
@@ -32,7 +32,7 @@ describe('getNavLinks — buyer spine', () => {
   const hrefs = links.map(l => l.href)
 
   it('relabels upload as Ingest and keeps the buyer-only surfaces', () => {
-    expect(labels).toEqual(['Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'Export', 'Settings'])
+    expect(labels).toEqual(['Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'CBAM', 'Export', 'Settings'])
   })
 
   it('moves reads-not-fills tools (Benchmarks, Activity, Access) under Settings', () => {
@@ -74,5 +74,48 @@ describe('isLinkActive', () => {
     // so it gets the same treatment Query and Data quality already have and the
     // spine stays six items wide.
     expect(isLinkActive(records, '/definitions')).toBe(true)
+  })
+})
+
+// ── CBAM (Phase 5) ───────────────────────────────────────────────────────────
+//
+// CBAM is its own section. Its screens are views of that one section, reached by
+// the same quiet ?view= toggle Records uses for Trends and Benchmarks — so the
+// nav link stays active across them and no sub-navigation is introduced.
+
+describe('CBAM section', () => {
+  it('appears for both entity types', () => {
+    for (const type of ['SUPPLIER', 'BUYER'] as const) {
+      expect(getNavLinks(type).map(l => l.label)).toContain('CBAM')
+    }
+  })
+
+  it('sits between Requests and Settings, not at the end', () => {
+    const labels = getNavLinks('SUPPLIER').map(l => l.label)
+    expect(labels.indexOf('CBAM')).toBeGreaterThan(labels.indexOf('Requests'))
+    expect(labels.indexOf('CBAM')).toBeLessThan(labels.indexOf('Settings'))
+  })
+
+  it('is a top-level section, not nested under another', () => {
+    const cbam = getNavLinks('SUPPLIER').find(l => l.label === 'CBAM')
+    expect(cbam?.href).toBe('/cbam')
+  })
+
+  it('stays active across its views and its case pages', () => {
+    const cbam = getNavLinks('SUPPLIER').find(l => l.label === 'CBAM')!
+    expect(isLinkActive(cbam, '/cbam')).toBe(true)
+    expect(isLinkActive(cbam, '/cbam/case-123')).toBe(true)
+  })
+
+  it('is not activated by an unrelated route that shares a prefix', () => {
+    const cbam = getNavLinks('SUPPLIER').find(l => l.label === 'CBAM')!
+    expect(isLinkActive(cbam, '/cbam-guide')).toBe(false)
+  })
+
+  it('does not claim Records', () => {
+    // CBAM cases, consignments and goods lines are not records and must not be
+    // pushed into Arbor's record model.
+    const records = getNavLinks('SUPPLIER').find(l => l.label === 'Records')!
+    expect(isLinkActive(records, '/cbam')).toBe(false)
   })
 })

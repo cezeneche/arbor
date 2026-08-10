@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { useRouter } from 'next/navigation'
+import { explainFlagReason } from '@/lib/nucleos/flag-vocabulary'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
 import { layoutReviewFields } from '@/lib/review/review-layout'
@@ -338,18 +339,24 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
             level, whatever it happens to carry. */}
         <div style={{ flex: 1 }} />
 
-        {field.flagReason && !/confidence/i.test(field.flagReason) && (
+        {explainFlagReason(field.flagReason).map(flag => (
           <p
+            key={flag.raw}
             style={{
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.light,
-              color: colours.textTertiary,
+              color: flag.serious ? colours.amber : colours.textTertiary,
               margin: '6px 0 0',
             }}
           >
-            {field.flagReason}
+            {/* Plain English first, then the flag itself. The sentence is what a
+                reviewer acts on; the token is what they quote when they ask why. */}
+            {flag.explanation ?? flag.raw}
+            {flag.explanation && (
+              <span style={{ color: colours.textTertiary }}> ({flag.raw})</span>
+            )}
           </p>
-        )}
+        ))}
 
       </div>
     )
