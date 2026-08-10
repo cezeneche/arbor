@@ -7,6 +7,7 @@ import { BackLink } from '@/components/BackLink'
 import { ExtractionReview } from '@/components/ExtractionReview'
 import { ExtractionPoller } from '@/components/ExtractionPoller'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
+import { truncationNotice } from '@/lib/review/truncation-notice'
 import type { DataDomain } from '@prisma/client'
 
 export default async function ReviewPage({
@@ -88,6 +89,7 @@ export default async function ReviewPage({
   const qualityIssues = Array.isArray(job?.imageQualityIssues)
     ? (job?.imageQualityIssues as string[]).join(', ').replace(/_/g, ' ')
     : ''
+  const truncation = truncationNotice(job ?? null)
 
   return (
     <div>
@@ -104,6 +106,23 @@ export default async function ReviewPage({
           {document.fileName} · {document.documentType.replace(/_/g, ' ')}
         </p>
       </div>
+
+      {truncation && (
+        <div
+          style={{
+            backgroundColor: colours.amberBg,
+            border: `1px solid ${colours.amber}`,
+            borderRadius: '6px',
+            padding: spacing[2],
+            marginBottom: spacing[3],
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.amber,
+          }}
+        >
+          Part of this document has not been read: <strong style={{ fontWeight: typography.weights.medium }}>{truncation.reason}</strong> Anything you confirm below covers only the part that was read.
+        </div>
+      )}
 
       {showLanguageBanner && (
         <div

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbor.example/contract/declaration-payload.json",
+  "title": "DeclarationPayload",
+  "description": "Arbor -> Nucleos. The confirmed goods lines to calculate on.\n\nEvery line carries BOTH axes: the provenance tier a human set in Review, and the emissions method the document declared. Nucleos reads provenance_tier but never sets it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_reference", "entity_id", "jurisdiction", "reporting_year", "lines"],
+  "properties": {
+    "case_reference": { "type": "string", "minLength": 1 },
+    "entity_id": { "type": "string", "minLength": 1 },
+    "jurisdiction": { "$ref": "common.json#/$defs/Jurisdiction" },
+    "reporting_year": { "type": "integer" },
+    "reporting_quarter": { "type": ["integer", "null"], "minimum": 1, "maximum": 4 },
+    "lines": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/DeclarationLine" }
+    }
+  },
+  "$defs": {
+    "DeclarationLine": {
+      "title": "DeclarationLine",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line_id", "cn_code", "net_mass_kg", "provenance_tier"],
+      "properties": {
+        "line_id": { "type": "string", "minLength": 1 },
+        "cn_code": { "type": "string", "minLength": 6 },
+        "description": { "type": ["string", "null"] },
+        "net_mass_kg": { "type": "number", "exclusiveMinimum": 0 },
+        "origin_country": { "type": ["string", "null"] },
+        "production_route": { "type": ["string", "null"] },
+        "installation_id": { "type": ["string", "null"] },
+        "direct_embedded_kgco2e": { "type": ["number", "null"] },
+        "indirect_embedded_kgco2e": { "type": ["number", "null"] },
+        "supplier_direct_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "supplier_indirect_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "provenance_tier": {
+          "description": "Set by a human in Arbor's Review screen. Travels with the line so the calculation result can display both axes together. Nucleos reads this and never writes it.",
+          "$ref": "common.json#/$defs/ProvenanceTier"
+        },
+        "declared_emissions_method": {
+          "description": "The method the source document declared, if any. The selector may reject it — an implausible actual figure is downgraded — and the rejection is recorded in the result.",
+          "oneOf": [
+            { "$ref": "common.json#/$defs/EmissionsMethod" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

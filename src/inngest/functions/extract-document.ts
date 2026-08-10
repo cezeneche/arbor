@@ -12,6 +12,10 @@ import { autoAcceptDocument } from '@/lib/layer2/auto-accept'
 import { gateAutoAcceptOnConstraints } from '@/lib/constraints/auto-accept-gate'
 import { EXTRACTOR_VERSION } from '@/lib/extraction/extractor-version'
 import { fetchCorrectionExemplars, exemplarsEnabled } from '@/lib/extraction/fetch-exemplars'
+import { extractDocumentText } from '@/lib/extraction/document-text'
+import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
+import { extractCbamFields } from '@/lib/nucleos/extraction-client'
+import { toExtractedFieldRows } from '@/lib/nucleos/field-mapper'
 import type { Prisma } from '@prisma/client'
 
 export const extractDocumentFunction = inngest.createFunction(
@@ -89,6 +93,65 @@ export const extractDocumentFunction = inngest.createFunction(
         await prisma.document.update({ where: { id: documentId }, data: { status: 'REVIEW_REQUIRED' } })
       })
       return { success: false, reason: 'low_quality', quality: quality.quality }
+    }
+
+    // CBAM documents are structured by Nucleos, which owns that domain logic.
+    // Arbor transcribes the document and sends text; no bytes cross the boundary.
+    //
+    // Fails closed. Unlike the brain, Nucleos is not an enhancement — it is the
+    // only thing that turns a CBAM document into CBAM structure. Degrading here
+    // would land the document in Review looking like a clean read of a document
+    // with no CBAM data in it, and the reviewer would confirm that emptiness.
+    if (isCbamRelevant(documentType)) {
+      const documentText = await step.run('transcribe-document', async () => {
+        return extractDocumentText(base64, mediaType)
+      })
+
+      const cbam = await step.run('extract-cbam-fields', async () => {
+        return extractCbamFields({
+          document_id: documentId,
+          document_type: documentType,
+          entity_id: entityId,
+          text: documentText.text,
+          pages: documentText.pages,
+          reporting_period_end: reportingPeriodEnd ?? null,
+          reporting_year: reportingPeriodEnd
+            ? new Date(reportingPeriodEnd).getUTCFullYear()
+            : null,
+          jurisdiction: 'EU',
+          ocr_quality: {
+            truncated: documentText.truncated,
+            truncation_reason: documentText.truncationReason,
+            mean_confidence: documentText.meanConfidence,
+            engine: documentText.engine,
+          },
+        })
+      })
+
+      await step.run('store-cbam-fields', async () => {
+        await prisma.extractionJob.update({
+          where: { id: job.id },
+          data: {
+            status: 'COMPLETE',
+            completedAt: new Date(),
+            detectedLanguage,
+            imageQualityScore: quality.quality,
+            imageQualityIssues: quality.issues as unknown as Prisma.InputJsonValue,
+            documentClass: cbam.document_class ?? null,
+            extractorVersion: `${EXTRACTOR_VERSION}+nucleos:${cbam.engine.engine_version}`,
+            truncated: documentText.truncated,
+            truncationReason: documentText.truncationReason,
+            rawOutput: cbam as unknown as Prisma.InputJsonValue,
+            extractedFields: { create: toExtractedFieldRows(cbam) },
+          },
+        })
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { status: 'REVIEW_REQUIRED' },
+        })
+      })
+
+      return { success: true, route: 'nucleos', truncated: documentText.truncated }
     }
 
     // Relearning (opt-in via EXTRACTION_EXEMPLARS): fold this tenant's own past

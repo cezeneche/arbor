@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbor.example/contract/cpr-result.json",
+  "title": "CprResult",
+  "description": "Nucleos -> Arbor. What relief was computed, and on what basis.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_reference", "consignments", "engine"],
+  "properties": {
+    "case_reference": { "type": "string", "minLength": 1 },
+    "consignments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CprConsignmentResult" }
+    },
+    "engine": { "$ref": "common.json#/$defs/EngineVersions" }
+  },
+  "$defs": {
+    "CprVerificationStatus": {
+      "title": "CprVerificationStatus",
+      "description": "Whether the claimed carbon price was verified.\n\nNON-BLOCKING but it MUST travel. An unverified relief claim is still payable and still reduces the liability, so refusing to return it would be wrong — but presenting it in the UI as though it were verified would be worse. Arbor's trust-display rules forbid confident styling on uncertain data, and this flag is what drives that.",
+      "type": "string",
+      "enum": ["VERIFIED", "UNVERIFIED", "NOT_APPLICABLE"]
+    },
+    "CprConsignmentResult": {
+      "title": "CprConsignmentResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "consignment_reference",
+        "relief_amount",
+        "relief_currency",
+        "verification_status",
+        "capped"
+      ],
+      "properties": {
+        "consignment_reference": { "type": "string" },
+        "relief_amount": {
+          "description": "The relief after conversion, free allocations, rebates and the cap.",
+          "type": "number",
+          "minimum": 0
+        },
+        "relief_currency": { "type": "string" },
+        "carbon_price_local": { "type": ["number", "null"] },
+        "carbon_price_currency": { "type": ["string", "null"] },
+        "exchange_rate": {
+          "description": "Rate applied. Travels with the result so the figure can be reproduced without knowing which rate table was live at the time.",
+          "type": ["number", "null"]
+        },
+        "exchange_rate_date": { "type": ["string", "null"], "format": "date" },
+        "free_allocations_tco2e": { "type": ["number", "null"] },
+        "rebates_received": { "type": ["number", "null"] },
+        "capped": {
+          "description": "True when the relief was limited to the CBAM liability. Relief never exceeds the charge it offsets.",
+          "type": "boolean"
+        },
+        "uncapped_amount": { "type": ["number", "null"] },
+        "verification_status": { "$ref": "#/$defs/CprVerificationStatus" },
+        "scheme": { "type": ["string", "null"] },
+        "scheme_qualifying": {
+          "description": "Whether the scheme is on the qualifying list for this jurisdiction.",
+          "type": ["boolean", "null"]
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
