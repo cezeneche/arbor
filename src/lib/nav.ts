@@ -23,12 +23,23 @@ const REQUESTS_GROUP = ['/inbound-requests', '/shares', '/questionnaires']
 // already get. Reached from the Records page and from a notification link.
 const RECORDS_GROUP = ['/definitions']
 
+// CBAM is the first module of a parent Emissions section, not a top-level item.
+// The parent exists from day one even though only one child does, so
+// Sustainability (scopes 1-3) slots in later without a URL migration — and so the
+// nav is not rearranged in front of users who have already learned it.
+//
+// CBAM cases, consignments, goods lines, installations and declarations live
+// entirely under here. They are not records and are not pushed into Arbor's
+// record model.
+const EMISSIONS: NavLink = { href: '/emissions', label: 'Emissions' }
+
 const SUPPLIER_LINKS: NavLink[] = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/upload', label: 'Upload' },
   { href: '/review', label: 'Review' },
   { href: '/records', label: 'Records', match: RECORDS_GROUP },
   { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
+  EMISSIONS,
   { href: '/settings', label: 'Settings' },
 ]
 
@@ -39,6 +50,7 @@ const BUYER_LINKS: NavLink[] = [
   { href: '/records', label: 'Records', match: RECORDS_GROUP },
   { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
   { href: '/supply-chain', label: 'Entity network' },
+  EMISSIONS,
   { href: '/export', label: 'Export' },
   { href: '/settings', label: 'Settings' },
 ]

@@ -11,8 +11,8 @@ describe('getNavLinks — supplier spine', () => {
   const labels = links.map(l => l.label)
   const hrefs = links.map(l => l.href)
 
-  it('is the four-verb spine plus Overview and Settings, in order', () => {
-    expect(labels).toEqual(['Overview', 'Upload', 'Review', 'Records', 'Requests', 'Settings'])
+  it('is the four-verb spine plus Overview, Emissions and Settings, in order', () => {
+    expect(labels).toEqual(['Overview', 'Upload', 'Review', 'Records', 'Requests', 'Emissions', 'Settings'])
   })
 
   it('does not surface reads-not-fills tools in primary nav', () => {
@@ -32,7 +32,7 @@ describe('getNavLinks — buyer spine', () => {
   const hrefs = links.map(l => l.href)
 
   it('relabels upload as Ingest and keeps the buyer-only surfaces', () => {
-    expect(labels).toEqual(['Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'Export', 'Settings'])
+    expect(labels).toEqual(['Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'Emissions', 'Export', 'Settings'])
   })
 
   it('moves reads-not-fills tools (Benchmarks, Activity, Access) under Settings', () => {
@@ -74,5 +74,53 @@ describe('isLinkActive', () => {
     // so it gets the same treatment Query and Data quality already have and the
     // spine stays six items wide.
     expect(isLinkActive(records, '/definitions')).toBe(true)
+  })
+})
+
+// ── Emissions (Phase 5) ───────────────────────────────────────────────────────
+//
+// CBAM is the first module of a parent Emissions section, not a top-level item.
+// The parent exists from day one even though only one child does, so
+// Sustainability slots in later without a URL migration — and so the nav does not
+// have to be rearranged in front of users who have already learned it.
+
+describe('Emissions section', () => {
+  it('appears for both entity types', () => {
+    for (const type of ['SUPPLIER', 'BUYER'] as const) {
+      const labels = getNavLinks(type).map(l => l.label)
+      expect(labels).toContain('Emissions')
+    }
+  })
+
+  it('sits between Requests and Settings, not at the end', () => {
+    const labels = getNavLinks('SUPPLIER').map(l => l.label)
+    expect(labels.indexOf('Emissions')).toBeGreaterThan(labels.indexOf('Requests'))
+    expect(labels.indexOf('Emissions')).toBeLessThan(labels.indexOf('Settings'))
+  })
+
+  it('points at the section, not straight at CBAM', () => {
+    // /emissions is the parent. Linking the nav directly to /emissions/cbam would
+    // make CBAM the section, which is the URL migration this exists to avoid.
+    const emissions = getNavLinks('SUPPLIER').find(l => l.label === 'Emissions')
+    expect(emissions?.href).toBe('/emissions')
+  })
+
+  it('stays active anywhere under the section', () => {
+    const emissions = getNavLinks('SUPPLIER').find(l => l.label === 'Emissions')!
+    expect(isLinkActive(emissions, '/emissions')).toBe(true)
+    expect(isLinkActive(emissions, '/emissions/cbam')).toBe(true)
+    expect(isLinkActive(emissions, '/emissions/cbam/case-123')).toBe(true)
+  })
+
+  it('is not activated by an unrelated route that shares a prefix', () => {
+    const emissions = getNavLinks('SUPPLIER').find(l => l.label === 'Emissions')!
+    expect(isLinkActive(emissions, '/emissions-report')).toBe(false)
+  })
+
+  it('does not claim Records', () => {
+    // CBAM cases, consignments and goods lines live under Emissions. They are not
+    // records and must not be pushed into Arbor's record model.
+    const records = getNavLinks('SUPPLIER').find(l => l.label === 'Records')!
+    expect(isLinkActive(records, '/emissions/cbam')).toBe(false)
   })
 })
