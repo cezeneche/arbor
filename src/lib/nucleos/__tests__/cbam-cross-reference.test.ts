@@ -27,9 +27,9 @@ describe('buildCbamCrossReference', () => {
     expect(summary!.caseCount).toBe(3)
   })
 
-  it('links into the Emissions section, not into Records', () => {
+  it('links into the CBAM section, not into Records', () => {
     const summary = buildCbamCrossReference({ entityId: 'e1', inScope: true })!
-    expect(summary.href).toContain('/emissions/cbam')
+    expect(summary.href).toContain('/cbam')
     expect(summary.href).not.toContain('/records')
   })
 

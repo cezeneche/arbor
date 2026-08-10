@@ -1,8 +1,8 @@
 // The one place CBAM reaches into Arbor's record surface.
 //
 // CBAM objects — cases, consignments, goods lines, installations, declarations —
-// live entirely under Emissions. They are not records and are not pushed into
-// Arbor's record model.
+// live entirely under the CBAM section. They are not records and are not pushed
+// into Arbor's record model.
 //
 // This is the single sanctioned exception, and it is required rather than
 // optional: without it a user can look at a supplier and not know that supplier
@@ -49,7 +49,7 @@ export function buildCbamCrossReference(
       ? null
       : input.exposureUnavailableReason ?? 'No published rate — exposure cannot be shown',
     caseCount: input.caseCount ?? 0,
-    href: `/emissions/cbam?entity=${encodeURIComponent(input.entityId)}`,
+    href: `/cbam?entity=${encodeURIComponent(input.entityId)}`,
   }
 }
 
