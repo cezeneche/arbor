@@ -62,11 +62,27 @@ before anything writes, and check the application role still has INSERT.
 007 indexes the chain on `cbam.audit_log` and documents the divergence that made
 004 a no-op. See `nucleos/RISKS.md` N5.
 
-### 5. Deploy Nucleos, and point Arbor at it
+### 5. Deploy Nucleos on Vercel, and point Arbor at it
 
-Nucleos currently deploys from its own repo via `render.yaml`. That file now has
-repo-root-relative paths for the new location, so the Render service needs
-repointing at this repository.
+Two Vercel projects, both on this repository:
+
+| Project | Root directory | What it is |
+|---|---|---|
+| `nucleos-api` | `nucleos` | the FastAPI service |
+| `nucleos-web` | `nucleos/web` | the tokenised supplier form |
+
+`nucleos/vercel.json` names `api/index.py` as the only build target rather than
+letting the runtime discover functions — Nucleos's packages live inside `api/`,
+so the default convention would build several hundred functions out of the
+service's own modules.
+
+`nucleos-web` exists because `render.yaml` deployed two services, not one, and
+the second hosts the public supplier submission page. Dropping Render without it
+would take that page down. It is a stopgap: Arbor now serves the same form at
+`/supplier/[token]`, so once that is confirmed working against real tokens, this
+project can be retired and the emails repointed.
+
+Keep the Render services running until both Vercel projects answer.
 
 Then, in Arbor's environment:
 
