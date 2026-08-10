@@ -1,0 +1,64 @@
+# Environment files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Virtual environments
+venv/
+**/venv/
+
+# Python caches
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Editable install build artifacts
+*.egg-info/
+**/*.egg-info/
+
+# Logs / outputs
+*.log
+narrative_output.json
+**/narrative_output.json
+
+# Tooling / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Test / typecheck caches
+.pytest_cache/
+.mypy_cache/
+
+
+# Runtime storage (uploaded files, processing artifacts)
+storage/
+
+# Generated CBAM demo/run outputs (timestamp-based and DEMO IDs only — golden fixtures are committed)
+fixtures/ledger/cbam_*_TEST-2*.json
+fixtures/ledger/cbam_*_TEST-DEMO*.json
+fixtures/narrative/cbam_*_TEST-2*.json
+fixtures/narrative/cbam_*_TEST-DEMO*.json
+
+# safety: never add outer workspace repo
+/../Agentic_CBAM/
+
+
+*.db
+cbam_test.db
+.env
+.venv
+__pycache__/
+*.db
+
+# Node / Next.js (marketing site and any future JS apps)
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+*.tsbuildinfo
+next-env.d.ts

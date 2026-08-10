@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free UK CBAM Scope Checker &amp; Liability Calculator — núcleo</title>
+  <meta name="description" content="Instantly check if your imports are in scope for UK CBAM and estimate your annual carbon border adjustment liability. Free tool, no registration required." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy:  { DEFAULT: '#0F172A', 50: '#f8fafc' },
+            teal:  { DEFAULT: '#14B8A6', 600: '#0d9488', 700: '#0f766e' },
+          },
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; }
+
+    /* CN code autocomplete dropdown */
+    #cn-dropdown { max-height: 260px; overflow-y: auto; }
+    .cn-item:hover { background: #f0fdfa; }
+    .cn-item:focus { outline: 2px solid #14B8A6; }
+
+    /* Animated result reveal */
+    #results { transition: opacity 0.25s ease, transform 0.25s ease; }
+    #results.hidden { opacity: 0; pointer-events: none; }
+
+    /* Spinner */
+    .spinner { border: 3px solid #e2e8f0; border-top-color: #14B8A6;
+               border-radius: 50%; width: 20px; height: 20px;
+               animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Liability table rows */
+    .liability-row { border-bottom: 1px solid #f1f5f9; }
+    .liability-row:last-child { border-bottom: none; }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     NAVIGATION
+══════════════════════════════════════════════════════════════════ -->
+<header class="bg-[#0F172A] text-white sticky top-0 z-50 shadow-lg">
+  <nav class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2 font-semibold text-lg tracking-tight">
+      <span class="text-[#14B8A6] text-2xl font-mono">⬡</span>
+      <span>núcleo</span>
+      <span class="text-slate-400 font-normal text-sm ml-1">CBAM</span>
+    </a>
+    <div class="flex items-center gap-4 text-sm">
+      <a href="/docs" class="text-slate-300 hover:text-white transition hidden sm:inline">API docs</a>
+      <a href="/login" class="text-slate-300 hover:text-white transition">Log in</a>
+      <a href="/trial"
+         class="bg-[#14B8A6] hover:bg-[#0d9488] text-white font-medium px-4 py-1.5 rounded-lg transition text-sm">
+        Free trial
+      </a>
+    </div>
+  </nav>
+</header>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════════════════════ -->
+<section class="bg-[#0F172A] text-white pt-14 pb-16 px-4">
+  <div class="max-w-3xl mx-auto text-center">
+    <div class="inline-flex items-center gap-2 bg-teal-900/60 text-[#14B8A6] text-xs font-medium px-3 py-1 rounded-full mb-6 border border-teal-700/40">
+      <span class="w-1.5 h-1.5 bg-[#14B8A6] rounded-full animate-pulse"></span>
+      UK CBAM applies from January 2027 · Annual returns due May 2028
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-4 leading-tight">
+      Free UK CBAM Scope Checker<br class="hidden sm:block"/>
+      &amp; Liability Estimator
+    </h1>
+    <p class="text-slate-300 text-lg mb-8 max-w-xl mx-auto">
+      Enter your commodity code and import volumes to instantly check your CBAM
+      exposure and estimate your annual carbon border adjustment liability.
+    </p>
+    <!-- Trust badges -->
+    <div class="flex flex-wrap justify-center gap-4 text-sm text-slate-400">
+      <span class="flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-[#14B8A6]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+        No login required
+      </span>
+      <span class="flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-[#14B8A6]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+        Instant results
+      </span>
+      <span class="flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-[#14B8A6]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+        Based on EU 2023/1773 Annex VI defaults
+      </span>
+      <span class="flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-[#14B8A6]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+        UK ETS Q1 2027 reference rate
+      </span>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TOOL FORM
+══════════════════════════════════════════════════════════════════ -->
+<main class="max-w-3xl mx-auto px-4 sm:px-6 -mt-8 pb-16">
+
+  <!-- Form card -->
+  <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-visible">
+
+    <!-- Card header -->
+    <div class="px-6 pt-6 pb-5 border-b border-slate-100">
+      <h2 class="text-lg font-semibold text-slate-900">Check your CBAM scope</h2>
+      <p class="text-sm text-slate-500 mt-0.5">Fill in the fields below and click Calculate.</p>
+    </div>
+
+    <div class="px-6 pt-6 pb-8 space-y-8">
+
+      <!-- ── Step 1: Commodity code ─────────────────────────────── -->
+      <section>
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
+          Step 1 — Your commodity
+        </h3>
+        <div class="grid sm:grid-cols-2 gap-4">
+
+          <!-- CN code with autocomplete -->
+          <div class="sm:col-span-2">
+            <label for="cn-code" class="block text-sm font-medium text-slate-700 mb-1">
+              CN8 Commodity Code
+              <span class="text-slate-400 font-normal">(8-digit, e.g. 72082700)</span>
+            </label>
+            <div class="relative">
+              <input
+                id="cn-code"
+                type="text"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="Start typing, e.g. 7208…"
+                autocomplete="off"
+                class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono
+                       focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:border-transparent
+                       placeholder:text-slate-300 placeholder:font-sans"
+              />
+              <!-- Autocomplete dropdown -->
+              <div id="cn-dropdown"
+                   class="hidden absolute z-40 w-full mt-1 bg-white border border-slate-200
+                          rounded-xl shadow-lg divide-y divide-slate-50 text-sm">
+              </div>
+            </div>
+            <!-- Selected code hint -->
+            <p id="cn-hint" class="text-xs text-[#0d9488] mt-1.5 min-h-4"></p>
+          </div>
+
+          <!-- Regime -->
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-slate-700 mb-2">Regime</label>
+            <div class="flex gap-2">
+              <label class="regime-pill">
+                <input type="radio" name="regime" value="UK" checked class="sr-only" />
+                <span class="regime-label">🇬🇧 UK CBAM</span>
+              </label>
+              <label class="regime-pill">
+                <input type="radio" name="regime" value="EU" class="sr-only" />
+                <span class="regime-label">🇪🇺 EU CBAM</span>
+              </label>
+              <label class="regime-pill">
+                <input type="radio" name="regime" value="BOTH" class="sr-only" />
+                <span class="regime-label">🌍 Both</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Step 2: Import volumes ────────────────────────────── -->
+      <section>
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
+          Step 2 — Import volumes
+        </h3>
+        <div class="grid sm:grid-cols-2 gap-4">
+
+          <div>
+            <label for="import-value" class="block text-sm font-medium text-slate-700 mb-1">
+              Annual import value (£)
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">£</span>
+              <input
+                id="import-value"
+                type="number"
+                min="0"
+                step="1000"
+                placeholder="75000"
+                class="w-full border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:border-transparent
+                       placeholder:text-slate-300"
+              />
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Registration required above £50,000/year</p>
+          </div>
+
+          <div>
+            <label for="import-tonnes" class="block text-sm font-medium text-slate-700 mb-1">
+              Annual import tonnage
+            </label>
+            <div class="relative">
+              <input
+                id="import-tonnes"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="500"
+                class="w-full border border-slate-200 rounded-xl px-4 pr-14 py-2.5 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:border-transparent
+                       placeholder:text-slate-300"
+              />
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">tonnes</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Used to calculate CO₂e and liability</p>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label for="origin-country" class="block text-sm font-medium text-slate-700 mb-1">
+              Country of origin
+            </label>
+            <select
+              id="origin-country"
+              class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:border-transparent
+                     bg-white"
+            >
+              <option value="CN">🇨🇳 China</option>
+              <option value="IN">🇮🇳 India</option>
+              <option value="TR">🇹🇷 Turkey</option>
+              <option value="UA">🇺🇦 Ukraine</option>
+              <option value="RU">🇷🇺 Russia</option>
+              <option value="KR">🇰🇷 South Korea</option>
+              <option value="JP">🇯🇵 Japan</option>
+              <option value="US">🇺🇸 United States</option>
+              <option value="TW">🇹🇼 Taiwan</option>
+              <option value="BR">🇧🇷 Brazil</option>
+              <option value="DE">🇩🇪 Germany (EU)</option>
+              <option value="FR">🇫🇷 France (EU)</option>
+              <option value="IT">🇮🇹 Italy (EU)</option>
+              <option value="PL">🇵🇱 Poland (EU)</option>
+              <option value="ES">🇪🇸 Spain (EU)</option>
+              <option value="BE">🇧🇪 Belgium (EU)</option>
+              <option value="NL">🇳🇱 Netherlands (EU)</option>
+              <option value="SE">🇸🇪 Sweden (EU)</option>
+              <option value="NO">🇳🇴 Norway (EEA)</option>
+              <option value="CH">🇨🇭 Switzerland</option>
+              <option value="ZA">🇿🇦 South Africa</option>
+              <option value="EG">🇪🇬 Egypt</option>
+              <option value="OTHER">🌍 Other country</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Step 3: Emissions method ──────────────────────────── -->
+      <section>
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
+          Step 3 — Emissions data (optional)
+        </h3>
+        <div class="space-y-3">
+          <div class="flex gap-3">
+            <label class="method-pill">
+              <input type="radio" name="method" value="default" checked class="sr-only" />
+              <span class="method-label">Use Annex VI defaults</span>
+            </label>
+            <label class="method-pill">
+              <input type="radio" name="method" value="actual" class="sr-only" />
+              <span class="method-label">I have actual SEE data</span>
+            </label>
+          </div>
+          <div id="actual-see-row" class="hidden">
+            <label for="actual-see" class="block text-sm font-medium text-slate-700 mb-1">
+              Actual specific embedded emissions (tCO₂e per tonne)
+            </label>
+            <div class="relative max-w-xs">
+              <input
+                id="actual-see"
+                type="number"
+                min="0"
+                step="0.001"
+                placeholder="e.g. 1.42"
+                class="w-full border border-slate-200 rounded-xl px-4 pr-24 py-2.5 text-sm font-mono
+                       focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:border-transparent
+                       placeholder:text-slate-300 placeholder:font-sans"
+              />
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">tCO₂e/t</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Error message -->
+      <div id="form-error"
+           class="hidden bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+      </div>
+
+      <!-- Submit -->
+      <button
+        id="calc-btn"
+        onclick="calculate()"
+        class="w-full bg-[#14B8A6] hover:bg-[#0d9488] active:bg-[#0f766e]
+               text-white font-semibold py-3.5 px-6 rounded-xl transition-colors
+               flex items-center justify-center gap-2 text-sm"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+        <span id="btn-text">Check CBAM scope &amp; estimate liability</span>
+        <span id="btn-spinner" class="hidden spinner"></span>
+      </button>
+    </div><!-- /form body -->
+  </div><!-- /form card -->
+
+
+  <!-- ════════════════════════════════════════════════════════════
+       RESULTS PANEL
+  ═════════════════════════════════════════════════════════════ -->
+  <div id="results" class="hidden mt-8 space-y-5">
+
+    <!-- Scope status card -->
+    <div id="scope-card" class="bg-white rounded-2xl shadow-md border overflow-hidden">
+      <div id="scope-header" class="px-6 py-4 flex items-start gap-4">
+        <div id="scope-icon" class="text-3xl mt-0.5"></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2 mb-1">
+            <span id="scope-badge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full"></span>
+            <span id="sector-badge"
+                  class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono"></span>
+          </div>
+          <p id="scope-description" class="text-sm text-slate-700 font-medium"></p>
+          <p id="scope-reason" class="text-xs text-slate-500 mt-1"></p>
+        </div>
+        <div class="text-right shrink-0 hidden sm:block">
+          <p class="text-xs text-slate-400">First return due</p>
+          <p id="first-return" class="text-sm font-semibold text-slate-700 font-mono"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Liability breakdown card -->
+    <div id="liability-card" class="hidden bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-900 text-sm">Estimated annual CBAM liability</h3>
+        <span id="liability-method-badge"
+              class="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium"></span>
+      </div>
+      <div class="px-6 py-2">
+        <table class="w-full text-sm">
+          <tbody id="liability-table"></tbody>
+        </table>
+      </div>
+
+      <!-- Gross total -->
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <span class="font-semibold text-slate-800">Gross CBAM liability</span>
+        <span id="gross-liability" class="font-bold text-lg text-slate-900 font-mono"></span>
+      </div>
+
+      <!-- Actual data saving -->
+      <div id="saving-row"
+           class="hidden px-6 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center gap-3">
+        <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+        </svg>
+        <p id="saving-text" class="text-sm text-emerald-700"></p>
+      </div>
+    </div>
+
+    <!-- Subscription comparison -->
+    <div id="sub-card" class="hidden bg-gradient-to-br from-[#0F172A] to-slate-800
+                              rounded-2xl shadow-md text-white overflow-hidden">
+      <div class="px-6 py-5">
+        <p class="text-xs text-slate-400 uppercase tracking-widest font-medium mb-1">
+          Put your liability in context
+        </p>
+        <p id="sub-message" class="text-base font-semibold leading-snug mb-4"></p>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-white/5 rounded-xl p-3">
+            <p class="text-xs text-slate-400 mb-1">Starter</p>
+            <p class="font-bold text-white">Free</p>
+            <p class="text-xs text-slate-400 mt-0.5">Up to 5 cases</p>
+          </div>
+          <div class="bg-[#14B8A6]/20 rounded-xl p-3 ring-1 ring-[#14B8A6]/50">
+            <p class="text-xs text-[#14B8A6] mb-1 font-medium">Professional</p>
+            <p class="font-bold text-white">£2,499<span class="text-xs font-normal text-slate-400">/yr</span></p>
+            <p class="text-xs text-slate-400 mt-0.5">Unlimited cases</p>
+          </div>
+          <div class="bg-white/5 rounded-xl p-3">
+            <p class="text-xs text-slate-400 mb-1">Enterprise</p>
+            <p class="font-bold text-white">Custom</p>
+            <p class="text-xs text-slate-400 mt-0.5">Multi-entity</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next steps -->
+    <div id="next-steps-card" class="hidden bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-900 text-sm">Recommended next steps</h3>
+      </div>
+      <ul id="next-steps-list" class="px-6 py-4 space-y-3"></ul>
+    </div>
+
+    <!-- CTA card -->
+    <div class="bg-[#14B8A6] rounded-2xl shadow-md overflow-hidden">
+      <div class="px-6 py-6 sm:flex sm:items-center sm:justify-between gap-6">
+        <div class="mb-4 sm:mb-0">
+          <h3 class="font-bold text-white text-base mb-1">
+            Get a full compliance assessment
+          </h3>
+          <p class="text-teal-100 text-sm">
+            Automate threshold monitoring, supplier data collection, and HMRC return
+            preparation — start free with no credit card required.
+          </p>
+        </div>
+        <a href="/trial"
+           class="shrink-0 bg-white text-[#0d9488] hover:bg-teal-50 font-semibold
+                  px-6 py-3 rounded-xl transition text-sm flex items-center gap-2 justify-center">
+          Start free trial
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <p class="text-xs text-slate-400 text-center leading-relaxed px-2">
+      This tool provides estimates only and does not constitute tax, legal or regulatory advice.
+      Actual CBAM liability depends on verified supplier emissions data and the final rate
+      published by HMRC each quarter.
+      Default SEE values: EU 2023/1773 Annex VI, DG TAXUD Dec 2023.
+      UK ETS rate: HMRC Q1 2027 quarterly average.
+    </p>
+  </div><!-- /results -->
+
+</main>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════════════════ -->
+<footer class="bg-[#0F172A] text-slate-400 text-xs mt-16 py-8 px-4">
+  <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-start gap-6">
+    <div>
+      <p class="text-white font-semibold mb-1">núcleo CBAM</p>
+      <p class="max-w-xs">
+        UK and EU CBAM compliance automation for importers and customs brokers.
+      </p>
+    </div>
+    <div class="space-y-1">
+      <p class="text-slate-300 font-medium mb-2">Resources</p>
+      <a href="/docs" class="block hover:text-white transition">API documentation</a>
+      <a href="/blog/uk-cbam-guide" class="block hover:text-white transition">UK CBAM guide</a>
+      <a href="/pricing" class="block hover:text-white transition">Pricing</a>
+    </div>
+    <div class="space-y-1">
+      <p class="text-slate-300 font-medium mb-2">Legal</p>
+      <a href="/privacy" class="block hover:text-white transition">Privacy policy</a>
+      <a href="/terms" class="block hover:text-white transition">Terms of service</a>
+    </div>
+  </div>
+  <p class="text-center mt-8 text-slate-600">
+    © 2027 núcleo · Free tool · No data stored
+  </p>
+</footer>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STYLES — regime + method pills
+══════════════════════════════════════════════════════════════════ -->
+<style>
+  .regime-pill, .method-pill { cursor: pointer; }
+  .regime-label, .method-label {
+    display: inline-block;
+    padding: 0.375rem 0.875rem;
+    border-radius: 9999px;
+    border: 1.5px solid #e2e8f0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #64748b;
+    background: #f8fafc;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  input[type="radio"]:checked + .regime-label,
+  input[type="radio"]:checked + .method-label {
+    background: #0F172A;
+    border-color: #0F172A;
+    color: #fff;
+  }
+  .regime-label:hover, .method-label:hover {
+    border-color: #14B8A6;
+    color: #0d9488;
+  }
+</style>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── Element refs ──────────────────────────────────────────────────────────────
+const cnInput    = document.getElementById('cn-code');
+const cnDropdown = document.getElementById('cn-dropdown');
+const cnHint     = document.getElementById('cn-hint');
+const formError  = document.getElementById('form-error');
+const calcBtn    = document.getElementById('calc-btn');
+const btnText    = document.getElementById('btn-text');
+const btnSpinner = document.getElementById('btn-spinner');
+
+// ── Autocomplete state ────────────────────────────────────────────────────────
+let debounceTimer = null;
+let dropdownResults = [];
+let selectedEntry = null;
+
+cnInput.addEventListener('input', () => {
+  const digits = cnInput.value.replace(/\D/g, '');
+  clearTimeout(debounceTimer);
+  if (digits.length < 2) { closeDropdown(); return; }
+  debounceTimer = setTimeout(() => fetchLookup(digits), 280);
+});
+
+cnInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeDropdown();
+});
+
+document.addEventListener('click', (e) => {
+  if (!cnInput.contains(e.target) && !cnDropdown.contains(e.target)) {
+    closeDropdown();
+  }
+});
+
+async function fetchLookup(q) {
+  try {
+    const res = await fetch(`/api/public/cbam-cn-lookup?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    renderDropdown(data.results || []);
+  } catch (_) {
+    closeDropdown();
+  }
+}
+
+function renderDropdown(results) {
+  dropdownResults = results;
+  if (!results.length) { closeDropdown(); return; }
+
+  cnDropdown.innerHTML = '';
+  results.forEach((r, i) => {
+    const item = document.createElement('div');
+    item.className = 'cn-item px-4 py-3 cursor-pointer flex items-start gap-3';
+    item.tabIndex = 0;
+    item.innerHTML = `
+      <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded mt-0.5 shrink-0">
+        ${escHtml(r.cn8_code)}
+      </span>
+      <span class="flex-1 min-w-0">
+        <span class="text-sm text-slate-800">${escHtml(r.description)}</span>
+        <span class="block text-xs text-slate-400 mt-0.5">
+          ${sectorLabel(r.sector)} · default SEE ${r.default_see_tco2e_per_t.toFixed(3)} tCO₂e/t
+        </span>
+      </span>`;
+    item.addEventListener('click', () => selectEntry(r));
+    item.addEventListener('keydown', (e) => { if (e.key === 'Enter') selectEntry(r); });
+    cnDropdown.appendChild(item);
+  });
+  cnDropdown.classList.remove('hidden');
+}
+
+function selectEntry(r) {
+  selectedEntry = r;
+  cnInput.value = r.cn8_code;
+  cnHint.textContent =
+    `${r.description} · ${sectorLabel(r.sector)} · default SEE ${r.default_see_tco2e_per_t.toFixed(3)} tCO₂e/t`;
+  closeDropdown();
+}
+
+function closeDropdown() {
+  cnDropdown.classList.add('hidden');
+  cnDropdown.innerHTML = '';
+}
+
+// ── Emissions method toggle ───────────────────────────────────────────────────
+document.querySelectorAll('input[name="method"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    document.getElementById('actual-see-row').classList.toggle(
+      'hidden', radio.value !== 'actual'
+    );
+  });
+});
+
+// ── Form validation ───────────────────────────────────────────────────────────
+function showError(msg) {
+  formError.textContent = msg;
+  formError.classList.remove('hidden');
+  formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function clearError() {
+  formError.textContent = '';
+  formError.classList.add('hidden');
+}
+
+// ── Loading state ─────────────────────────────────────────────────────────────
+function setLoading(on) {
+  calcBtn.disabled = on;
+  btnText.textContent = on ? 'Calculating…' : 'Check CBAM scope & estimate liability';
+  btnSpinner.classList.toggle('hidden', !on);
+}
+
+// ── Main calculation ──────────────────────────────────────────────────────────
+async function calculate() {
+  clearError();
+
+  const cnCode       = cnInput.value.replace(/\D/g, '');
+  const importValue  = parseFloat(document.getElementById('import-value').value);
+  const importTonnes = parseFloat(document.getElementById('import-tonnes').value);
+  const country      = document.getElementById('origin-country').value;
+  const regime       = document.querySelector('input[name="regime"]:checked').value;
+  const method       = document.querySelector('input[name="method"]:checked').value;
+  const actualSee    = parseFloat(document.getElementById('actual-see').value);
+
+  if (!cnCode || cnCode.length < 2) {
+    showError('Please enter a valid CN commodity code (at least 2 digits).');
+    return;
+  }
+  if (isNaN(importValue) || importValue < 0) {
+    showError('Please enter your annual import value in £.');
+    return;
+  }
+  if (method === 'actual' && (isNaN(actualSee) || actualSee < 0)) {
+    showError('Please enter your actual SEE value (tCO₂e per tonne).');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const scopePromise = fetch('/api/public/cbam-scope-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cn8_code: cnCode, annual_import_value_gbp: importValue, regime }),
+    });
+
+    const liabilityPromise = (!isNaN(importTonnes) && importTonnes > 0)
+      ? fetch('/api/public/cbam-liability-estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cn8_code: cnCode,
+            annual_import_tonnes: importTonnes,
+            origin_country: country,
+            emissions_method: method,
+            actual_see_tco2e_per_t: method === 'actual' ? actualSee : null,
+            regime,
+          }),
+        })
+      : Promise.resolve(null);
+
+    const [scopeRes, liabilityRes] = await Promise.all([scopePromise, liabilityPromise]);
+
+    if (!scopeRes.ok) {
+      const err = await scopeRes.json().catch(() => ({}));
+      showError(err.detail || 'Scope check failed. Please try again.');
+      return;
+    }
+
+    const scope     = await scopeRes.json();
+    const liability = liabilityRes ? (liabilityRes.ok ? await liabilityRes.json() : null) : null;
+
+    renderResults(scope, liability);
+
+  } catch (e) {
+    showError('Network error. Please check your connection and try again.');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── Render results ────────────────────────────────────────────────────────────
+function renderResults(scope, liability) {
+  const resultsEl = document.getElementById('results');
+  resultsEl.classList.remove('hidden');
+
+  // ── Scope card ──
+  const scopeCard = document.getElementById('scope-card');
+  const scopeHeader = document.getElementById('scope-header');
+
+  if (scope.in_scope) {
+    const isRegistration = scope.registration_required;
+    const isApproaching  = scope.approaching_threshold;
+
+    scopeHeader.className =
+      'px-6 py-4 flex items-start gap-4 border-l-4 ' +
+      (isRegistration ? 'border-amber-400' : isApproaching ? 'border-yellow-300' : 'border-[#14B8A6]');
+
+    document.getElementById('scope-icon').textContent = isRegistration ? '⚠️' : '✅';
+
+    const badge = document.getElementById('scope-badge');
+    if (isRegistration) {
+      badge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
+      badge.textContent = 'Registration required';
+    } else if (isApproaching) {
+      badge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800';
+      badge.textContent = 'Approaching threshold';
+    } else {
+      badge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+      badge.textContent = 'In scope';
+    }
+
+    document.getElementById('sector-badge').textContent = sectorLabel(scope.sector);
+    document.getElementById('scope-description').textContent = scope.cn_description || '';
+    document.getElementById('scope-reason').textContent = scope.reason || '';
+    document.getElementById('first-return').textContent = scope.first_return_due
+      ? formatDate(scope.first_return_due)
+      : '—';
+
+    // Next steps
+    if (scope.next_steps && scope.next_steps.length) {
+      const card = document.getElementById('next-steps-card');
+      const list = document.getElementById('next-steps-list');
+      list.innerHTML = scope.next_steps.map(s => `
+        <li class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-[#14B8A6] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span class="text-sm text-slate-700">${escHtml(s)}</span>
+        </li>`).join('');
+      card.classList.remove('hidden');
+    }
+
+  } else {
+    // Out of scope
+    scopeHeader.className = 'px-6 py-4 flex items-start gap-4 border-l-4 border-slate-200';
+    document.getElementById('scope-icon').textContent = '⚪';
+    const badge = document.getElementById('scope-badge');
+    badge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600';
+    badge.textContent = 'Not in scope';
+    document.getElementById('sector-badge').textContent = '';
+    document.getElementById('scope-description').textContent = 'This commodity is not subject to CBAM reporting.';
+    document.getElementById('scope-reason').textContent = scope.reason || '';
+    document.getElementById('first-return').textContent = '—';
+  }
+
+  // ── Liability card ──
+  if (liability) {
+    const card = document.getElementById('liability-card');
+    card.classList.remove('hidden');
+
+    document.getElementById('liability-method-badge').textContent =
+      liability.emissions_method === 'actual'
+        ? 'Actual emissions data'
+        : 'Annex VI world-average defaults';
+
+    const tbody = document.getElementById('liability-table');
+    tbody.innerHTML = [
+      ['Import tonnage',     `${fmtNum(liability.annual_import_tonnes)} t`],
+      ['Emissions intensity', `${fmtNum(liability.emissions_intensity_tco2e_per_t, 3)} tCO₂e/t`],
+      ['Total embedded CO₂e', `${fmtNum(liability.total_embedded_tco2e)} tCO₂e`],
+      ['ETS carbon price',   `£${fmtNum(liability.cbam_rate_gbp_per_tco2e, 2)}/tCO₂e`],
+      ['Rate source',        `<span class="text-slate-400 text-xs">${escHtml(liability.cbam_rate_source)}</span>`],
+    ].map(([label, value]) => `
+      <tr class="liability-row">
+        <td class="py-2.5 text-slate-500 text-sm">${escHtml(label)}</td>
+        <td class="py-2.5 text-right font-medium font-mono text-sm text-slate-900">${value}</td>
+      </tr>`).join('');
+
+    document.getElementById('gross-liability').textContent =
+      `£${fmtNum(liability.gross_cbam_liability_gbp, 2)}`;
+
+    // Saving row
+    if (liability.if_actual_data_saving_gbp > 0) {
+      const row = document.getElementById('saving-row');
+      row.classList.remove('hidden');
+      document.getElementById('saving-text').textContent =
+        liability.emissions_method === 'default'
+          ? `Using verified actual emissions data could reduce your liability by £${fmtNum(liability.if_actual_data_saving_gbp, 2)}/year (avoids the 10% default surcharge)`
+          : `Using actual data saves £${fmtNum(liability.if_actual_data_saving_gbp, 2)}/year vs. Annex VI defaults`;
+    }
+
+    // Subscription comparison
+    const sub = liability.annual_subscription_comparison;
+    if (sub) {
+      const subCard = document.getElementById('sub-card');
+      subCard.classList.remove('hidden');
+      document.getElementById('sub-message').textContent = sub.message;
+    }
+  }
+
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function fmtNum(n, dp = 0) {
+  if (n === null || n === undefined) return '—';
+  return Number(n).toLocaleString('en-GB', {
+    minimumFractionDigits: dp,
+    maximumFractionDigits: dp,
+  });
+}
+
+function formatDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function sectorLabel(sector) {
+  const map = {
+    iron_steel:  'Iron & Steel',
+    cement:      'Cement',
+    aluminium:   'Aluminium',
+    fertilisers: 'Fertilisers',
+    electricity: 'Electricity',
+    hydrogen:    'Hydrogen',
+  };
+  return map[sector] || (sector || '').replace(/_/g, ' ');
+}
+</script>
+
+</body>
+</html>

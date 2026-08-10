@@ -1,0 +1,11 @@
+Invoice Number: INV-EM-001
+Entry Reference: ENT-EM-001
+Invoice Date: 2025-01-15
+Importer: Alpha Steel Ltd
+EORI: GB123456789
+Origin Country: CN
+CN Code: 720711
+Net Mass KG: 10000
+Calculation Method: actual
+Direct Embedded Emissions (kgCO2e): 50000
+Indirect Embedded Emissions (kgCO2e): 10000

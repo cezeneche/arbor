@@ -1,0 +1,328 @@
+{
+    "type": "report_package_v1",
+    "case": {
+        "id": "4a63909d-9eab-43b6-850d-5b7d6b8a9780",
+        "supplier_name": "Alpha Steel Ltd",
+        "supplier_country": "GB",
+        "reporting_period_start": "2024-01-01",
+        "reporting_period_end": "2024-12-31",
+        "external_ref": "TEST-004",
+        "status": "created",
+        "created_at": "2026-02-20T23:06:54.868443+00:00"
+    },
+    "artifacts": {
+        "latest_extraction": {
+            "id": "1003a2b2-7a89-42cf-9750-a154a78eb4ed",
+            "version": 7,
+            "created_at": "2026-02-21T12:42:55.538605+00:00",
+            "extraction_confidence": 88.33
+        },
+        "latest_calculation": {
+            "id": "24de56dd-2d49-4461-a169-7078a444efe5",
+            "version": 4,
+            "created_at": "2026-02-21T12:43:09.036009+00:00",
+            "method_version": "calc_v3_gated_on_conflicts"
+        }
+    },
+    "inputs": {
+        "electricity_kwh": 170000.0,
+        "natural_gas_kwh": 75000.0,
+        "production_units": 12000.0
+    },
+    "results": {
+        "total_kgco2e": 47500.0,
+        "kgco2e_per_unit": 3.9583333333333335,
+        "scope_1_natural_gas_kgco2e": 13500.0,
+        "scope_2_electricity_kgco2e": 34000.0
+    },
+    "factors": {
+        "name": "uk_v1_placeholder",
+        "path": "app/data/factors_uk_v1_placeholder.json",
+        "unit": "kgco2e_per_kwh",
+        "sha256": "84af88b9ca14bfae6d8b9606e9662146f1ae5b64109d06174442fbeb20b72e9b"
+    },
+    "data_quality": {
+        "ruleset": "dq_v2_consistency_gated",
+        "overall_confidence": 88.33,
+        "field_confidence": {
+            "electricity_kwh": 0.85,
+            "natural_gas_kwh": 0.95,
+            "production_units": 0.8500000000000001
+        },
+        "doc_types_present": [
+            "energy",
+            "invoice",
+            "utility"
+        ],
+        "support_count": {
+            "electricity_kwh": 2,
+            "natural_gas_kwh": 2,
+            "production_units": 1
+        },
+        "gating": {
+            "requires_human_review": false,
+            "conflict_fields": [],
+            "conflict_count": 0,
+            "resolved_conflict_count": 1,
+            "resolution_policy": "human_selected_value_v1",
+            "latest_resolution": {
+                "field": "electricity_kwh",
+                "chosen_value": 170000.0,
+                "chosen_source_doc_id": "90f4fe1c-e5ab-4123-806c-ba15fc38b312",
+                "resolved_at": "2026-02-21T12:42:55.542113Z",
+                "rationale": "Utility statement is the authoritative record for the full reporting period."
+            }
+        }
+    },
+    "documents": [
+        {
+            "id": "266f3abb-d40e-4bbe-84f8-729324c5d356",
+            "filename": "sample.txt",
+            "doc_type": "invoice",
+            "mime_type": "text/plain",
+            "storage_uri": "s3://scope3-evidence/cases/4a63909d-9eab-43b6-850d-5b7d6b8a9780/raw/sample.txt",
+            "sha256": "b9429df40ca609396aa2826d6bc853538c4473d8dec6ae4ce5eca376f091c343",
+            "uploaded_at": "2026-02-20T23:09:02.479634+00:00"
+        },
+        {
+            "id": "ab123733-ad60-40c9-87c9-8f5413dc3adc",
+            "filename": "sample2.txt",
+            "doc_type": "energy",
+            "mime_type": "text/plain",
+            "storage_uri": "s3://scope3-evidence/cases/4a63909d-9eab-43b6-850d-5b7d6b8a9780/raw/sample2.txt",
+            "sha256": "dc54631d1cb5807219bdb7b13eb831425d06909482cf45c7f87f33f62990936a",
+            "uploaded_at": "2026-02-21T11:54:10.570630+00:00"
+        },
+        {
+            "id": "90f4fe1c-e5ab-4123-806c-ba15fc38b312",
+            "filename": "utility_conflict.txt",
+            "doc_type": "utility",
+            "mime_type": "text/plain",
+            "storage_uri": "s3://scope3-evidence/cases/4a63909d-9eab-43b6-850d-5b7d6b8a9780/raw/utility_conflict.txt",
+            "sha256": "af31694c712ec7b487ded448526ba83941d241ab3bd2e59cdfae9ef841e9b643",
+            "uploaded_at": "2026-02-21T12:29:48.079949+00:00"
+        }
+    ],
+    "audit_tail": [
+        {
+            "id": "123e5aa7-932d-47ca-9a9b-d3b4ad1088b8",
+            "event_type": "calculated",
+            "actor_type": "system",
+            "created_at": "2026-02-21T12:43:09.036009+00:00",
+            "event_json": {
+                "method_version": "calc_v3_gated_on_conflicts",
+                "factor_set_name": "uk_v1_placeholder",
+                "factor_set_sha256": "84af88b9ca14bfae6d8b9606e9662146f1ae5b64109d06174442fbeb20b72e9b",
+                "calculation_version": 4,
+                "extraction_confidence": 88.33,
+                "source_extraction_version": 7
+            }
+        },
+        {
+            "id": "4f9421c4-decb-4c37-ae81-ed22ea69eb11",
+            "event_type": "conflict_resolved",
+            "actor_type": "human",
+            "created_at": "2026-02-21T12:42:55.538605+00:00",
+            "event_json": {
+                "field": "electricity_kwh",
+                "rationale": "Utility statement is the authoritative record for the full reporting period.",
+                "chosen_value": 170000.0,
+                "chosen_source_doc_id": "90f4fe1c-e5ab-4123-806c-ba15fc38b312",
+                "new_extraction_version": 7,
+                "previous_extraction_version": 6
+            }
+        },
+        {
+            "id": "9cc0d7c7-e774-4a88-bdd3-a5ef0bdaaa32",
+            "event_type": "extracted",
+            "actor_type": "system",
+            "created_at": "2026-02-21T12:33:45.101434+00:00",
+            "event_json": {
+                "method": "deterministic_v2_per_doc",
+                "version": 6,
+                "dq_ruleset": "dq_v2_consistency_gated",
+                "conflict_count": 1,
+                "field_confidence": {
+                    "electricity_kwh": 0.3,
+                    "natural_gas_kwh": 0.95,
+                    "production_units": 0.8500000000000001
+                },
+                "extraction_confidence": 70.0
+            }
+        },
+        {
+            "id": "74efa94a-6bf0-4444-8a4a-48cbfec5c8dc",
+            "event_type": "extracted",
+            "actor_type": "system",
+            "created_at": "2026-02-21T12:30:07.706766+00:00",
+            "event_json": {
+                "method": "deterministic_v2_per_doc",
+                "version": 5,
+                "dq_ruleset": "dq_v2_consistency",
+                "conflict_count": 1,
+                "field_confidence": {
+                    "electricity_kwh": 0.3,
+                    "natural_gas_kwh": 0.95,
+                    "production_units": 0.8500000000000001
+                },
+                "extraction_confidence": 70.0
+            }
+        },
+        {
+            "id": "e367a7cd-3f9e-4a1b-9426-c1819f2d04be",
+            "event_type": "doc_uploaded",
+            "actor_type": "human",
+            "created_at": "2026-02-21T12:29:48.079949+00:00",
+            "event_json": {
+                "doc_type": "utility",
+                "filename": "utility_conflict.txt",
+                "storage_uri": "s3://scope3-evidence/cases/4a63909d-9eab-43b6-850d-5b7d6b8a9780/raw/utility_conflict.txt"
+            }
+        },
+        {
+            "id": "1e4419ef-379e-49da-ac68-48cae5de96bb",
+            "event_type": "extracted",
+            "actor_type": "system",
+            "created_at": "2026-02-21T12:29:18.611612+00:00",
+            "event_json": {
+                "method": "deterministic_v2_per_doc",
+                "version": 4,
+                "dq_ruleset": "dq_v2_consistency",
+                "conflict_count": 0,
+                "field_confidence": {
+                    "electricity_kwh": 0.8500000000000001,
+                    "natural_gas_kwh": 0.8500000000000001,
+                    "production_units": 0.8500000000000001
+                },
+                "extraction_confidence": 85.0
+            }
+        },
+        {
+            "id": "6f730b57-3a82-443a-916c-b3efbacc4af5",
+            "event_type": "calculated",
+            "actor_type": "system",
+            "created_at": "2026-02-21T12:17:26.658552+00:00",
+            "event_json": {
+                "method_version": "calc_v2_factor_set_plus_dq",
+                "factor_set_name": "uk_v1_placeholder",
+                "factor_set_sha256": "84af88b9ca14bfae6d8b9606e9662146f1ae5b64109d06174442fbeb20b72e9b",
+                "calculation_version": 3,
+                "extraction_confidence": 90.0,
+                "source_extraction_version": 3
+            }
+        },
+        {
+            "id": "a7d8ce05-814a-4e39-aeb5-223ecf4d1ece",
+            "event_type": "extracted",
+            "actor_type": "system",
+            "created_at": "2026-02-21T12:14:17.192402+00:00",
+            "event_json": {
+                "method": "deterministic_v1",
+                "version": 3,
+                "dq_ruleset": "dq_v1",
+                "field_confidence": {
+                    "electricity_kwh": 0.8999999999999999,
+                    "natural_gas_kwh": 0.8999999999999999,
+                    "production_units": 0.8999999999999999
+                },
+                "extraction_confidence": 90.0
+            }
+        },
+        {
+            "id": "eb5ced97-2b2f-4484-80ad-fd41536927de",
+            "event_type": "calculated",
+            "actor_type": "system",
+            "created_at": "2026-02-21T12:04:53.180103+00:00",
+            "event_json": {
+                "method_version": "calc_v1_factor_set_file",
+                "factor_set_name": "uk_v1_placeholder",
+                "factor_set_sha256": "84af88b9ca14bfae6d8b9606e9662146f1ae5b64109d06174442fbeb20b72e9b",
+                "calculation_version": 2,
+                "source_extraction_version": 2
+            }
+        },
+        {
+            "id": "bc99d05e-f118-4233-8bdd-87e9b4c74325",
+            "event_type": "calculated",
+            "actor_type": "system",
+            "created_at": "2026-02-21T11:59:24.869227+00:00",
+            "event_json": {
+                "method_version": "calc_v1_placeholder_factors",
+                "calculation_version": 1,
+                "source_extraction_version": 2
+            }
+        },
+        {
+            "id": "fa1b10a7-443a-42e3-a08c-505f035d3526",
+            "event_type": "extracted",
+            "actor_type": "system",
+            "created_at": "2026-02-21T11:55:27.392589+00:00",
+            "event_json": {
+                "method": "deterministic_v1",
+                "version": 2
+            }
+        },
+        {
+            "id": "911f9aaf-322d-46d8-9ac2-121f35958bdc",
+            "event_type": "doc_uploaded",
+            "actor_type": "human",
+            "created_at": "2026-02-21T11:54:10.570630+00:00",
+            "event_json": {
+                "doc_type": "energy",
+                "filename": "sample2.txt",
+                "storage_uri": "s3://scope3-evidence/cases/4a63909d-9eab-43b6-850d-5b7d6b8a9780/raw/sample2.txt"
+            }
+        },
+        {
+            "id": "78e4e6bf-f7f6-4259-ab60-6392e3d8b2f7",
+            "event_type": "extracted",
+            "actor_type": "system",
+            "created_at": "2026-02-21T11:53:00.915239+00:00",
+            "event_json": {
+                "method": "deterministic_v1",
+                "version": 1
+            }
+        },
+        {
+            "id": "00b125f1-607a-4b2c-beb4-054a5fc99773",
+            "event_type": "doc_uploaded",
+            "actor_type": "human",
+            "created_at": "2026-02-20T23:09:02.479634+00:00",
+            "event_json": {
+                "doc_type": "invoice",
+                "filename": "sample.txt",
+                "storage_uri": "s3://scope3-evidence/cases/4a63909d-9eab-43b6-850d-5b7d6b8a9780/raw/sample.txt"
+            }
+        },
+        {
+            "id": "a58b1dc1-c808-44fd-8c1d-066ba287e752",
+            "event_type": "case_created",
+            "actor_type": "human",
+            "created_at": "2026-02-20T23:06:54.868443+00:00",
+            "event_json": {
+                "note": "case created via API"
+            }
+        }
+    ],
+    "open_gaps": [
+        {
+            "field": "electricity_kwh",
+            "label": "Electricity consumption (kWh)",
+            "issue": "low_confidence",
+            "current_confidence": 85.0,
+            "target_confidence": 95.0
+        },
+        {
+            "field": "production_units",
+            "label": "Production volume (units)",
+            "issue": "low_confidence",
+            "current_confidence": 85.0,
+            "target_confidence": 95.0
+        }
+    ],
+    "narrative_constraints": {
+        "do_not_invent_numbers": true,
+        "use_only_packet_values": true,
+        "if_missing_or_low_confidence_explain": true
+    }
+}

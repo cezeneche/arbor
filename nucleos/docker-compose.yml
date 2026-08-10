@@ -1,0 +1,111 @@
+# Production notes:
+#   - Set strong secrets via .env (never commit .env):
+#       JWT_SECRET=<random 64-char hex>
+#       POSTGRES_PASSWORD=<strong password>
+#       SUPABASE_SERVICE_ROLE_KEY=<service role key>
+#   - Remove host port mappings below and front with a TLS-terminating
+#     reverse proxy (nginx/Caddy) in production.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-scope3}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-scope3}
+    # Dev only: remove in production
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scope3} -d ${POSTGRES_DB:-scope3}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
+    command: >
+      sh -c "pip install psycopg2-binary -q && python scripts/migrate.py"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # ── api: single consolidated service (replaces ledger + narrative) ───
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+      args:
+        APP_GIT_SHA: ${GIT_SHA:-unknown}
+    restart: unless-stopped
+    environment:
+      # Database
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://scope3:scope3_password@postgres:5432/scope3}
+      # Auth
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER:-scope3-agentic}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-scope3-clients}
+      JWT_EXPIRES_SECONDS: ${JWT_EXPIRES_SECONDS:-3600}
+      AUTH_DEV_TOKEN_ENDPOINT: ${AUTH_DEV_TOKEN_ENDPOINT:-false}
+      # Security
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      AUDIT_SIGNING_KEY: ${AUDIT_SIGNING_KEY}
+      # Storage (Supabase Storage)
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      # LLM (narrative pipeline — single Claude call)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      # Observability
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+      APP_GIT_SHA: ${GIT_SHA:-unknown}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_NOTIFY_EVENTS: ${SLACK_NOTIFY_EVENTS:-human_review_required,cbam_calculation_completed,pipeline_completed}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # Dev only: remove in production
+    ports:
+      - "8000:8000"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        LEDGER_URL: http://api:8000
+    ports:
+      - "3001:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:

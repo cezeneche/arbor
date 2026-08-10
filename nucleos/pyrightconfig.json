@@ -1,0 +1,10 @@
+{
+  "pythonVersion": "3.11",
+  "extraPaths": [
+    ".",
+    "api"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "off"
+}

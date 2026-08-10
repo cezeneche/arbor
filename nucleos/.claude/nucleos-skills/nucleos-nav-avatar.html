@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nucleos · Nav Avatar Component</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1B2F4A;
+  --navy-hover:#243A5C;
+  --bg:#F8F8F6;
+  --surface:#FFFFFF;
+  --tp:#141414;
+  --ts:#636363;
+  --tt:#A0A09A;
+  --border:#E6E6E2;
+  --red:#8F1A1A;
+  --red-bg:#FDF1F1;
+  --green:#2A6048;
+  --green-bg:#EFF9F4;
+  --amber:#8A3C0A;
+}
+body{
+  font-family:'Inter',-apple-system,sans-serif;
+  background:var(--bg);
+  color:var(--tp);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+
+/* ── NAV ─────────────────────────────────────── */
+nav{
+  position:fixed;
+  top:0;left:0;right:0;
+  height:56px;
+  background:var(--surface);
+  border-bottom:0.5px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 40px;
+  z-index:100;
+}
+.nav-wordmark{
+  font-size:15px;
+  font-weight:300;
+  color:var(--tp);
+  letter-spacing:-0.03em;
+  text-decoration:none;
+}
+.nav-right{
+  display:flex;
+  align-items:center;
+  gap:24px;
+}
+.nav-upload{
+  font-size:15px;
+  font-weight:500;
+  color:var(--navy);
+  text-decoration:none;
+  cursor:pointer;
+}
+.nav-upload:hover{color:var(--navy-hover);}
+
+/* ── AVATAR ─────────────────────────────────────── */
+.avatar-wrap{
+  position:relative;
+}
+.avatar{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:var(--navy);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  user-select:none;
+  flex-shrink:0;
+  transition:background 0.15s;
+  border:none;
+  outline:none;
+}
+.avatar:hover{background:var(--navy-hover);}
+.avatar:focus-visible{
+  outline:2px solid var(--navy);
+  outline-offset:2px;
+}
+.avatar-initials{
+  font-size:11px;
+  font-weight:500;
+  color:#FFFFFF;
+  letter-spacing:0.02em;
+  line-height:1;
+}
+
+/* ── DROPDOWN ─────────────────────────────────────── */
+.dropdown{
+  position:absolute;
+  top:calc(100% + 8px);
+  right:0;
+  width:256px;
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:8px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.08);
+  overflow:hidden;
+  opacity:0;
+  transform:translateY(-4px);
+  pointer-events:none;
+  transition:opacity 0.15s, transform 0.15s;
+  z-index:200;
+}
+.dropdown.open{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:all;
+}
+
+/* User identity block */
+.dd-identity{
+  padding:16px 20px;
+  border-bottom:0.5px solid var(--border);
+}
+.dd-name{
+  font-size:13px;
+  font-weight:500;
+  color:var(--tp);
+  display:block;
+  margin-bottom:3px;
+}
+.dd-email{
+  font-size:11px;
+  font-weight:300;
+  color:var(--tt);
+  display:block;
+}
+
+/* Section label */
+.dd-section{
+  padding:12px 20px 6px;
+}
+.dd-section-label{
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--tt);
+}
+
+/* Notification toggle row */
+.dd-toggle-row{
+  padding:8px 20px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:0.5px solid var(--border);
+}
+.dd-toggle-label{
+  font-size:13px;
+  font-weight:300;
+  color:var(--tp);
+}
+.toggle{
+  position:relative;
+  width:36px;
+  height:20px;
+  flex-shrink:0;
+}
+.toggle input{
+  opacity:0;
+  width:0;
+  height:0;
+  position:absolute;
+}
+.toggle-track{
+  position:absolute;
+  inset:0;
+  border-radius:10px;
+  background:var(--border);
+  transition:background 0.2s;
+  cursor:pointer;
+}
+.toggle input:checked + .toggle-track{
+  background:var(--navy);
+}
+.toggle-thumb{
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:#FFFFFF;
+  transition:transform 0.2s;
+  pointer-events:none;
+}
+.toggle input:checked ~ .toggle-thumb{
+  transform:translateX(16px);
+}
+
+/* Action items */
+.dd-item{
+  display:flex;
+  align-items:center;
+  padding:11px 20px;
+  font-size:13px;
+  font-weight:300;
+  color:var(--tp);
+  cursor:pointer;
+  text-decoration:none;
+  border:none;
+  background:none;
+  width:100%;
+  text-align:left;
+  transition:background 0.1s;
+}
+.dd-item:hover{
+  background:var(--bg);
+}
+.dd-item.danger{
+  color:var(--red);
+  border-top:0.5px solid var(--border);
+  margin-top:4px;
+}
+.dd-item.danger:hover{
+  background:var(--red-bg);
+}
+.dd-item-icon{
+  width:16px;
+  height:16px;
+  margin-right:10px;
+  flex-shrink:0;
+  opacity:0.5;
+}
+.dd-item.danger .dd-item-icon{
+  opacity:0.7;
+}
+
+/* ── DELETE CONFIRM (inline) ─────────────────────── */
+.dd-confirm{
+  padding:16px 20px;
+  border-top:0.5px solid var(--border);
+  display:none;
+}
+.dd-confirm.visible{display:block;}
+.dd-confirm-text{
+  font-size:12px;
+  font-weight:300;
+  color:var(--tp);
+  line-height:1.7;
+  margin-bottom:12px;
+}
+.dd-confirm-text strong{
+  font-weight:500;
+  color:var(--red);
+}
+.dd-confirm-actions{
+  display:flex;
+  gap:8px;
+}
+.btn-cancel{
+  flex:1;
+  height:32px;
+  border:0.5px solid var(--border);
+  border-radius:6px;
+  background:var(--surface);
+  font-family:'Inter',sans-serif;
+  font-size:12px;
+  font-weight:300;
+  color:var(--tp);
+  cursor:pointer;
+  transition:background 0.1s;
+}
+.btn-cancel:hover{background:var(--bg);}
+.btn-delete{
+  flex:1;
+  height:32px;
+  border:none;
+  border-radius:6px;
+  background:var(--red);
+  font-family:'Inter',sans-serif;
+  font-size:12px;
+  font-weight:500;
+  color:#FFFFFF;
+  cursor:pointer;
+  transition:opacity 0.1s;
+}
+.btn-delete:hover{opacity:0.88;}
+
+/* ── SPEC ANNOTATIONS ─────────────────────────────── */
+.page{
+  padding:120px 40px 80px;
+  max-width:960px;
+  margin:0 auto;
+}
+.spec-title{
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--tt);
+  margin-bottom:20px;
+}
+.spec-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:40px;
+}
+.spec-card{
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:8px;
+  padding:24px 28px;
+}
+.spec-card-label{
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--tt);
+  margin-bottom:14px;
+}
+.spec-card p{
+  font-size:13px;
+  font-weight:300;
+  color:var(--ts);
+  line-height:1.9;
+}
+.spec-card code{
+  font-family:'Courier New',monospace;
+  font-size:11px;
+  color:var(--navy);
+  background:var(--bg);
+  padding:1px 5px;
+  border-radius:3px;
+}
+
+/* ── STATES PREVIEW ──────────────────────────────── */
+.states-row{
+  display:flex;
+  gap:48px;
+  align-items:flex-start;
+  margin-top:40px;
+  flex-wrap:wrap;
+}
+.state-item{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  align-items:center;
+}
+.state-label{
+  font-size:10px;
+  font-weight:300;
+  color:var(--tt);
+}
+</style>
+</head>
+<body>
+
+<!-- ── LIVE NAV ─────────────────────────────────────── -->
+<nav>
+  <a href="#" class="nav-wordmark">nucleos</a>
+  <div class="nav-right">
+    <a href="#" class="nav-upload">Upload documents</a>
+    <div class="avatar-wrap">
+      <button class="avatar" id="avatar-btn" aria-label="Account settings" aria-expanded="false" aria-haspopup="true">
+        <span class="avatar-initials">SC</span>
+      </button>
+
+      <div class="dropdown" id="dropdown" role="menu">
+
+        <!-- Identity -->
+        <div class="dd-identity">
+          <span class="dd-name">Sarah Chisom</span>
+          <span class="dd-email">sarah.chisom@importco.com</span>
+        </div>
+
+        <!-- Notifications -->
+        <div class="dd-section">
+          <span class="dd-section-label">Preferences</span>
+        </div>
+        <div class="dd-toggle-row">
+          <span class="dd-toggle-label">Email notifications</span>
+          <label class="toggle">
+            <input type="checkbox" id="notif-toggle" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+
+        <!-- Actions -->
+        <button class="dd-item" onclick="handleSignOut()">
+          <svg class="dd-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square">
+            <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10 11l3-3-3-3M13 8H6"/>
+          </svg>
+          Sign out
+        </button>
+
+        <button class="dd-item danger" id="delete-btn" onclick="showDeleteConfirm()">
+          <svg class="dd-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square">
+            <path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/>
+          </svg>
+          Delete account
+        </button>
+
+        <!-- Inline delete confirmation -->
+        <div class="dd-confirm" id="delete-confirm">
+          <p class="dd-confirm-text">This will permanently delete your account and all associated data. <strong>This cannot be undone.</strong></p>
+          <div class="dd-confirm-actions">
+            <button class="btn-cancel" onclick="hideDeleteConfirm()">Cancel</button>
+            <button class="btn-delete" onclick="handleDelete()">Delete account</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── PAGE CONTENT ─────────────────────────────────── -->
+<div class="page">
+  <div class="spec-title">Avatar · Dropdown — Component Specification</div>
+
+  <p style="font-size:13px;font-weight:300;color:var(--ts);line-height:1.9;max-width:560px;">
+    Click the avatar in the nav bar above to see the live component. The dropdown opens on click, closes on click-outside or Escape. Delete account triggers an inline confirmation — no modal, no page transition.
+  </p>
+
+  <!-- Avatar states -->
+  <div style="margin-top:40px;margin-bottom:8px;font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--tt);">Avatar states</div>
+  <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:32px 40px;">
+    <div class="states-row">
+      <div class="state-item">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:11px;font-weight:500;color:#fff;letter-spacing:0.02em;">SC</span>
+        </div>
+        <span class="state-label">Default</span>
+      </div>
+      <div class="state-item">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--navy-hover);display:flex;align-items:center;justify-content:center;outline:2px solid var(--navy);outline-offset:2px;">
+          <span style="font-size:11px;font-weight:500;color:#fff;letter-spacing:0.02em;">SC</span>
+        </div>
+        <span class="state-label">Focus / hover</span>
+      </div>
+      <div class="state-item">
+        <div style="width:32px;height:32px;border-radius:50%;background:#3D5166;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:11px;font-weight:500;color:#fff;letter-spacing:0.02em;">JD</span>
+        </div>
+        <span class="state-label">Different user</span>
+      </div>
+      <div class="state-item">
+        <div style="width:32px;height:32px;border-radius:50%;background:#5A6F84;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:11px;font-weight:500;color:#fff;letter-spacing:0.02em;">MK</span>
+        </div>
+        <span class="state-label">Viewer role</span>
+      </div>
+    </div>
+    <p style="font-size:11px;font-weight:300;color:var(--tt);margin-top:24px;padding-top:20px;border-top:0.5px solid var(--border);line-height:1.9;">
+      All avatars use navy or a navy-adjacent tone. Initials are always the first letter of first name + first letter of last name, uppercase, Inter 500. Size: 32×32px, border-radius 50%.
+    </p>
+  </div>
+
+  <!-- Spec cards -->
+  <div class="spec-grid">
+
+    <div class="spec-card">
+      <div class="spec-card-label">Avatar</div>
+      <p>
+        Size: <code>32×32px</code> · border-radius <code>50%</code><br>
+        Background: <code>--navy #1B2F4A</code><br>
+        Initials: Inter 500, <code>11px</code>, white, letter-spacing <code>0.02em</code><br>
+        Hover: background transitions to <code>--navy-hover</code> over <code>150ms</code><br>
+        Focus-visible: <code>2px outline</code> in navy, <code>2px offset</code><br>
+        Trigger: click to open · click-outside to close · Escape to close
+      </p>
+    </div>
+
+    <div class="spec-card">
+      <div class="spec-card-label">Dropdown</div>
+      <p>
+        Width: <code>256px</code><br>
+        Position: <code>right: 0</code>, <code>top: calc(100% + 8px)</code><br>
+        Background: <code>--surface</code> · border: <code>0.5px --border</code><br>
+        Border-radius: <code>8px</code><br>
+        Shadow: <code>0 4px 16px rgba(0,0,0,0.08)</code><br>
+        Open animation: opacity + translateY, <code>150ms</code>
+      </p>
+    </div>
+
+    <div class="spec-card">
+      <div class="spec-card-label">Identity block</div>
+      <p>
+        Name: Inter 500, <code>13px</code>, <code>--text-primary</code><br>
+        Email: Inter 300, <code>11px</code>, <code>--text-tertiary</code><br>
+        Padding: <code>16px 20px</code><br>
+        Border-bottom: <code>0.5px --border</code><br>
+        Read-only — not a link, not editable from here
+      </p>
+    </div>
+
+    <div class="spec-card">
+      <div class="spec-card-label">Notification toggle</div>
+      <p>
+        Label: Inter 300, <code>13px</code>, <code>--text-primary</code><br>
+        Toggle: <code>36×20px</code> pill, navy when on, <code>--border</code> when off<br>
+        Thumb: <code>14×14px</code>, white, transitions <code>200ms</code><br>
+        State persists to user preferences on change
+      </p>
+    </div>
+
+    <div class="spec-card">
+      <div class="spec-card-label">Sign out</div>
+      <p>
+        Inter 300, <code>13px</code>, <code>--text-primary</code><br>
+        Hover background: <code>--bg</code><br>
+        Padding: <code>11px 20px</code><br>
+        Clears session and redirects to <code>/login</code>.<br>
+        No confirmation required.
+      </p>
+    </div>
+
+    <div class="spec-card">
+      <div class="spec-card-label">Delete account</div>
+      <p>
+        Inter 300, <code>13px</code>, <code>--red #8F1A1A</code><br>
+        Hover background: <code>--red-bg</code><br>
+        Border-top: <code>0.5px --border</code><br>
+        Clicking reveals inline confirmation — no modal.<br>
+        Confirmation requires a second deliberate click on "Delete account" in red. Cancel returns to normal dropdown state.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- Behaviour notes -->
+  <div style="margin-top:40px;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:28px 32px;">
+    <div style="font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--tt);margin-bottom:16px;">Behaviour rules</div>
+    <div style="font-size:13px;font-weight:300;color:var(--ts);line-height:2.1;">
+      Only one dropdown open at a time — opening another closes this one.<br>
+      Click anywhere outside the dropdown closes it immediately.<br>
+      Escape key closes the dropdown from any state.<br>
+      Delete confirmation state resets when the dropdown closes — user must re-click Delete to see it again.<br>
+      The dropdown does not close when the notification toggle is clicked.<br>
+      On mobile below 768px: the dropdown anchors to the right edge of the viewport with 16px inset.
+    </div>
+  </div>
+
+</div>
+
+<script>
+const btn = document.getElementById('avatar-btn');
+const dropdown = document.getElementById('dropdown');
+const deleteBtn = document.getElementById('delete-btn');
+const deleteConfirm = document.getElementById('delete-confirm');
+
+btn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isOpen = dropdown.classList.contains('open');
+  if (!isOpen) {
+    dropdown.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+    hideDeleteConfirm();
+  } else {
+    close();
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if (!btn.contains(e.target) && !dropdown.contains(e.target)) close();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') close();
+});
+
+function close() {
+  dropdown.classList.remove('open');
+  btn.setAttribute('aria-expanded', 'false');
+  hideDeleteConfirm();
+}
+
+function showDeleteConfirm() {
+  deleteConfirm.classList.add('visible');
+  deleteBtn.style.display = 'none';
+}
+
+function hideDeleteConfirm() {
+  deleteConfirm.classList.remove('visible');
+  if (deleteBtn) deleteBtn.style.display = '';
+}
+
+function handleSignOut() {
+  close();
+  alert('Signed out. In production: clears session → /login');
+}
+
+function handleDelete() {
+  close();
+  alert('Account deleted. In production: DELETE /api/account → /');
+}
+</script>
+</body>
+</html>

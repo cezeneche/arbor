@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbor.example/contract/cbam-extraction-result.json",
+  "title": "CbamExtractionResult",
+  "description": "Nucleos -> Arbor. Structured fields out.\n\nEvery field is a DRAFT. Nothing here assigns a provenance tier: only a human action in Arbor's Review screen does that. Arbor writes these as ExtractedField rows and the reviewer decides.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["document_id", "fields", "flags", "engine"],
+  "properties": {
+    "document_id": { "type": "string", "minLength": 1 },
+    "document_class": {
+      "description": "What Nucleos decided the document actually is, which may differ from the document_type Arbor sent.",
+      "type": ["string", "null"]
+    },
+    "fields": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ExtractedFieldDraft" }
+    },
+    "lines": {
+      "description": "Goods lines, when the document has them.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/GoodsLineDraft" }
+    },
+    "flags": {
+      "description": "Nucleos's flag vocabulary, carried VERBATIM.\n\nThese strings — flagReason, repair_failed:*, arbiter_conflict:*, claude_value_not_evidenced_in_text and the rest — are the anti-hallucination signals a reviewer needs. Never summarise, translate, group or prettify them in transit. A reviewer deciding whether to accept a value needs to know that the arbiter had a conflict and which extractors disagreed, not that 'there was an issue'.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "engine": { "$ref": "common.json#/$defs/EngineVersions" }
+  },
+  "$defs": {
+    "ExtractedFieldDraft": {
+      "title": "ExtractedFieldDraft",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field_name", "confidence"],
+      "properties": {
+        "field_name": { "type": "string" },
+        "raw_value": { "type": ["string", "null"] },
+        "raw_unit": { "type": ["string", "null"] },
+        "source_text": {
+          "description": "The exact verbatim text the value came from. Required for a reviewer to confirm anything; a field without it can only ever be Declared.",
+          "type": ["string", "null"]
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "extractor": {
+          "description": "Nucleos's fine-grained extractor tag. Kept separate from Arbor's ExtractionMethod enum — see common.json EvidenceAtom.source.",
+          "type": ["string", "null"]
+        },
+        "flags": {
+          "description": "Per-field flags, verbatim. Same rule as the top-level flags array.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "common.json#/$defs/EvidenceAtom" }
+        }
+      }
+    },
+    "GoodsLineDraft": {
+      "title": "GoodsLineDraft",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line_index"],
+      "properties": {
+        "line_index": { "type": "integer", "minimum": 0 },
+        "cn_code": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "net_mass_kg": { "type": ["number", "null"] },
+        "origin_country": { "type": ["string", "null"] },
+        "production_route": { "type": ["string", "null"] },
+        "installation_id": { "type": ["string", "null"] },
+        "installation_name": { "type": ["string", "null"] },
+        "direct_embedded_kgco2e": { "type": ["number", "null"] },
+        "indirect_embedded_kgco2e": { "type": ["number", "null"] },
+        "emissions_method": {
+          "description": "What the document declared, when it declared one. A draft like every other field — the selector decides the operative method at calculation time.",
+          "oneOf": [
+            { "$ref": "common.json#/$defs/EmissionsMethod" },
+            { "type": "null" }
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

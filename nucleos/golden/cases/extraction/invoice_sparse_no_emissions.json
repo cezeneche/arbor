@@ -1,0 +1,147 @@
+{
+  "name": "Live extraction \u2014 invoice with no emissions data at all",
+  "why": "The common real case: the supplier sent an ordinary commercial invoice and nothing about emissions. The engine returns the goods line it found and leaves emissions null rather than inventing a zero, which is what makes the default path downstream correct \u2014 a fabricated zero would read as a measured zero and select the wrong method. This case also carries the origin-country defect pinned in invoice_steel_two_lines: the text says 'Origin: IN' and origin_country is null.",
+  "adapter": "live_extraction",
+  "input": {
+    "text": "COMMERCIAL INVOICE\n\nHindalco Industries Limited\nMumbai, India\n\nSold to: Midlands Extrusions Ltd\nEORI: GB555666777000\n\nInvoice no: HIL/2027/8841\nDate: 2027-03-03\nOrigin: IN\n\nDescription of goods:\n  Unwrought aluminium, not alloyed\n  CN code 76011000\n  Quantity: 12000 kg\n  Unit price: USD 2.41 per kg\n\nTerms: FOB Mumbai\nTotal: USD 28,920.00\n"
+  },
+  "expected": {
+    "cbam": {
+      "carbon_price_paid_currency": null,
+      "carbon_price_paid_eur": null,
+      "production_route": null
+    },
+    "emissions": null,
+    "evidence": [
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "importer.eori",
+        "page": null,
+        "snippet": "Sold to: Midlands Extrusions Ltd\nEORI: GB555666777000\n\nInvoice no: HIL/2027/8841\nDate: 2027-0",
+        "source": "rule_regex",
+        "span": {
+          "end": 116,
+          "start": 102
+        },
+        "value": "GB555666777000"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "lines[0].cn_code",
+        "page": null,
+        "snippet": "rought aluminium, not alloyed\n  CN code 76011000\n  Quantity: 12000 kg\n  Unit price: USD",
+        "source": "rule_regex",
+        "span": {
+          "end": 248,
+          "start": 240
+        },
+        "value": "76011000"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "lines[0].net_mass_kg",
+        "page": null,
+        "snippet": "alloyed\n  CN code 76011000\n  Quantity: 12000 kg\n  Unit price: USD 2.41 per kg\n\nTerms",
+        "source": "rule_regex",
+        "span": {
+          "end": 266,
+          "start": 261
+        },
+        "value": 12000.0
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.invoice_number",
+        "page": null,
+        "snippet": "s Ltd\nEORI: GB555666777000\n\nInvoice no: HIL/2027/8841\nDate: 2027-03-03\nOrigin: IN\n\nDescriptio",
+        "source": "rule_regex",
+        "span": {
+          "end": 143,
+          "start": 130
+        },
+        "value": "HIL/2027/8841"
+      },
+      {
+        "bbox": null,
+        "confidence": 0.96,
+        "field": "invoice.invoice_date",
+        "page": null,
+        "snippet": "777000\n\nInvoice no: HIL/2027/8841\nDate: 2027-03-03\nOrigin: IN\n\nDescription of goods:\n  Unw",
+        "source": "rule_regex",
+        "span": {
+          "end": 160,
+          "start": 150
+        },
+        "value": "2027-03-03"
+      }
+    ],
+    "extractor": "regex",
+    "fallback": "regex_only",
+    "flags": [],
+    "importer": {
+      "eori": "GB555666777000",
+      "name": null
+    },
+    "invoice": {
+      "entry_reference": null,
+      "import_date": null,
+      "incoterm": null,
+      "invoice_date": "2027-03-03",
+      "invoice_number": "HIL/2027/8841",
+      "origin_country": null
+    },
+    "lines": [
+      {
+        "cn_code": "76011000",
+        "description": null,
+        "direct_embedded_kgco2e": null,
+        "indirect_embedded_kgco2e": null,
+        "installation_id": null,
+        "installation_name": null,
+        "method": null,
+        "net_mass_kg": 12000.0,
+        "production_route": null,
+        "quantity": 12000.0,
+        "quantity_unit": "kg"
+      }
+    ],
+    "operator": {
+      "installation_id": null,
+      "installation_name": null,
+      "operator_name": null
+    },
+    "raw_text_preview": "COMMERCIAL INVOICE\n\nHindalco Industries Limited\nMumbai, India\n\nSold to: Midlands Extrusions Ltd\nEORI: GB555666777000\n\nInvoice no: HIL/2027/8841\nDate: 2027-03-03\nOrigin: IN\n\nDescription of goods:\n  Unwrought aluminium, not alloyed\n  CN code 76011000\n  Quantity: 12000 kg\n  Unit price: USD 2.41 per kg\n\nTerms: FOB Mumbai\nTotal: USD 28,920.00",
+    "status": "parsed",
+    "structured": {
+      "carbon_price_paid_currency": null,
+      "carbon_price_paid_eur": null,
+      "cn_code": "76011000",
+      "direct_embedded_kgco2e": null,
+      "entry_reference": null,
+      "import_date": null,
+      "importer_eori": "GB555666777000",
+      "importer_name": null,
+      "incoterm": null,
+      "indirect_embedded_kgco2e": null,
+      "installation_id": null,
+      "installation_name": null,
+      "invoice_date": "2027-03-03",
+      "invoice_number": "HIL/2027/8841",
+      "method": null,
+      "net_mass_kg": 12000.0,
+      "operator_name": null,
+      "origin_country": null,
+      "production_route": null
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

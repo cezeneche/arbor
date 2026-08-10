@@ -1,0 +1,94 @@
+{
+  "name": "Emissions selection \u2014 UK default, mark-up unconfirmed and recorded as such",
+  "why": "HMRC has not confirmed a UK equivalent of the EU mark-up, so the UK figure is unmarked. The distinction this pins is between a mark-up that is legislated at zero and one that is simply unknown: the warning says the schedule is unconfirmed rather than letting a bare zero read as settled. When HMRC publishes, this case is what shows the UK figure moving.",
+  "adapter": "emissions_selection",
+  "input": {
+    "cn_code": "72071111",
+    "net_mass_kg": "24500",
+    "reporting_year": 2027,
+    "jurisdiction": "UK"
+  },
+  "expected": {
+    "annex_vi_factor_used": true,
+    "cn_code": "72071111",
+    "decision_trace": [
+      {
+        "detail": "No supplier direct emissions found in extraction output.",
+        "outcome": "absent",
+        "regulation_ref": "EU 2023/1773 Art. 4(1)",
+        "step": "check_supplier_direct",
+        "value": null
+      },
+      {
+        "detail": "No supplier direct emissions at required confidence. Falling back to Annex VI default values.",
+        "outcome": "default",
+        "regulation_ref": "EU 2023/1773 Art. 4(3)",
+        "step": "select_method",
+        "value": null
+      },
+      {
+        "detail": "Annex VI default applied: direct=46305.000 kgCO2e, indirect=7840.000 kgCO2e (SEE=2.210 tCO2e/t, source: EU 2023/1773 Art.4(3) Default Values, DG TAXUD Dec 2023)",
+        "outcome": "found",
+        "regulation_ref": "EU 2023/1773 Art. 4(3) + Annex VI",
+        "step": "annex_vi_lookup",
+        "value": {
+          "direct_kgco2e": 46305.0,
+          "indirect_kgco2e": 7840.0
+        }
+      }
+    ],
+    "direct_kgco2e": "46305.000",
+    "embedded_tco2e": "54.145000",
+    "factor_metadata": {
+      "annex": "Annex VI \u2014 Default values for specific embedded emissions",
+      "effective_date": "2023-10-01",
+      "note_route_entries": "Entries with a production_route tag other than None are engineering estimates for actual-measurement reporting and are NOT official defaults.",
+      "oj_reference": "OJ L 228, 15.9.2023",
+      "operative_document": "Default Values for the Transitional Period of the CBAM (1 Oct 2023 \u2013 31 Dec 2025), EC DG TAXUD, 22 Dec 2023, Art. 4(3)",
+      "regulation": "Commission Implementing Regulation (EU) 2023/1773",
+      "review_cadence": "annual",
+      "table_sha256": "328874065fab30ce01e0357f9c39676956d4c311e4aaf7dc50060b9a8e5ee344",
+      "table_version": "2023",
+      "unit_see": "tCO2e per tonne of goods (except electricity: tCO2e/MWh)"
+    },
+    "factor_table_version": "2023",
+    "indirect_kgco2e": "7840.000",
+    "markup_fraction": "0",
+    "markup_table_version": null,
+    "method": "default",
+    "net_mass_kg": "24500",
+    "production_route": null,
+    "regulation_refs": [
+      "Commission Implementing Regulation 2023/1773, Article 4(1) \u2014 actual embedded emissions",
+      "Commission Implementing Regulation 2023/1773, Article 4(2) \u2014 estimated embedded emissions",
+      "Commission Implementing Regulation 2023/1773, Article 4(3) \u2014 default values",
+      "Commission Implementing Regulation 2023/1773, Annex VI \u2014 default SEE table"
+    ],
+    "rejected_method_reasons": [
+      {
+        "method": "actual",
+        "reason": "No supplier direct emissions found in extraction output.",
+        "regulation_ref": "EU 2023/1773 Art. 4(1)",
+        "regulation_tier": 1
+      },
+      {
+        "method": "estimated",
+        "reason": "Tier 2 requires at least partial supplier direct data; absent here.",
+        "regulation_ref": "EU 2023/1773 Art. 4(2)",
+        "regulation_tier": 2
+      }
+    ],
+    "see_direct_tco2e_per_t": "1.890000",
+    "see_indirect_tco2e_per_t": "0.320000",
+    "see_total_tco2e_per_t": "2.210000",
+    "warnings": [
+      "cbam_selector:markup_not_applied:UK \u2014 no default-value mark-up schedule is confirmed for UK (Finance (No.2) Bill 2025-26 \u2014 no default-value mark-up provision confirmed)"
+    ]
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

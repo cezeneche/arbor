@@ -1,0 +1,29 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Supabase
+    runs-on: ubuntu-latest
+
+    steps:
+      # Supabase free-tier inactivity detection counts API-gateway traffic,
+      # not raw pooler connections — the API ping is what prevents pausing.
+      # This project's Data API rejects non-secret keys, so ping Auth health
+      # with the publishable key instead of /rest/v1/.
+      - name: Ping API gateway
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_API_KEY: ${{ secrets.SUPABASE_KEEPALIVE_API_KEY }}
+        run: |
+          curl --fail -sS -o /dev/null "$SUPABASE_URL/auth/v1/health" \
+            -H "apikey: $SUPABASE_API_KEY"
+
+      - name: Ping database
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_KEEPALIVE_DATABASE_URL }}
+        run: psql "$DATABASE_URL" -c "SELECT 1;"

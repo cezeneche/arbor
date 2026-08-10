@@ -1,0 +1,111 @@
+{
+  "name": "Default-value mark-up \u2014 full EU schedule and the unconfirmed UK position",
+  "why": "The mark-up table is insert-never-update, so a calculation stamped with a table version can be reproduced years later. This case is the table's own regression test: it pins the EU bands either side of each boundary, the pre-2026 legislated zero, and the UK entry that is unconfirmed rather than zero. A new band means a new table version, and this file is where that shows up in the diff.",
+  "adapter": "default_value_markup",
+  "input": {
+    "jurisdictions": [
+      "EU",
+      "UK"
+    ],
+    "years": [
+      2025,
+      2026,
+      2027,
+      2028,
+      2029,
+      2033
+    ]
+  },
+  "expected": {
+    "EU:2025": {
+      "confirmed": true,
+      "fraction": "0",
+      "jurisdiction": "EU",
+      "regulation_ref": "Regulation (EU) 2023/956 Art. 7(2) + Annex IV",
+      "table_version": "2026-eu-v1"
+    },
+    "EU:2026": {
+      "confirmed": true,
+      "fraction": "0.10",
+      "jurisdiction": "EU",
+      "regulation_ref": "Regulation (EU) 2023/956 Art. 7(2) + Annex IV",
+      "table_version": "2026-eu-v1"
+    },
+    "EU:2027": {
+      "confirmed": true,
+      "fraction": "0.20",
+      "jurisdiction": "EU",
+      "regulation_ref": "Regulation (EU) 2023/956 Art. 7(2) + Annex IV",
+      "table_version": "2026-eu-v1"
+    },
+    "EU:2028": {
+      "confirmed": true,
+      "fraction": "0.30",
+      "jurisdiction": "EU",
+      "regulation_ref": "Regulation (EU) 2023/956 Art. 7(2) + Annex IV",
+      "table_version": "2026-eu-v1"
+    },
+    "EU:2029": {
+      "confirmed": true,
+      "fraction": "0.30",
+      "jurisdiction": "EU",
+      "regulation_ref": "Regulation (EU) 2023/956 Art. 7(2) + Annex IV",
+      "table_version": "2026-eu-v1"
+    },
+    "EU:2033": {
+      "confirmed": true,
+      "fraction": "0.30",
+      "jurisdiction": "EU",
+      "regulation_ref": "Regulation (EU) 2023/956 Art. 7(2) + Annex IV",
+      "table_version": "2026-eu-v1"
+    },
+    "UK:2025": {
+      "confirmed": false,
+      "fraction": "0",
+      "jurisdiction": "UK",
+      "regulation_ref": "Finance (No.2) Bill 2025-26 \u2014 no default-value mark-up provision confirmed",
+      "table_version": "2026-eu-v1"
+    },
+    "UK:2026": {
+      "confirmed": false,
+      "fraction": "0",
+      "jurisdiction": "UK",
+      "regulation_ref": "Finance (No.2) Bill 2025-26 \u2014 no default-value mark-up provision confirmed",
+      "table_version": "2026-eu-v1"
+    },
+    "UK:2027": {
+      "confirmed": false,
+      "fraction": "0",
+      "jurisdiction": "UK",
+      "regulation_ref": "Finance (No.2) Bill 2025-26 \u2014 no default-value mark-up provision confirmed",
+      "table_version": "2026-eu-v1"
+    },
+    "UK:2028": {
+      "confirmed": false,
+      "fraction": "0",
+      "jurisdiction": "UK",
+      "regulation_ref": "Finance (No.2) Bill 2025-26 \u2014 no default-value mark-up provision confirmed",
+      "table_version": "2026-eu-v1"
+    },
+    "UK:2029": {
+      "confirmed": false,
+      "fraction": "0",
+      "jurisdiction": "UK",
+      "regulation_ref": "Finance (No.2) Bill 2025-26 \u2014 no default-value mark-up provision confirmed",
+      "table_version": "2026-eu-v1"
+    },
+    "UK:2033": {
+      "confirmed": false,
+      "fraction": "0",
+      "jurisdiction": "UK",
+      "regulation_ref": "Finance (No.2) Bill 2025-26 \u2014 no default-value mark-up provision confirmed",
+      "table_version": "2026-eu-v1"
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "name": "Mill certificate \u2014 scrap residuals, route reported as unknown rather than wrong",
+  "why": "RISKS.md N3, FIXED, and the fix mattered more than it first appeared. _extract_chemical_composition upper-cases every element symbol while _infer_production_route read composition.get('Cr') and ('Ni'), so both lookups returned 0.0 for every document. The EAF branch was unreachable \u2014 but worse, a chromium reading of 0.0 satisfied the BF_BOF branch's 'cr < 0.2' test, so this stainless certificate was confidently classified as BF_BOF. An actively wrong production route, on a factor table that is differentiated by route.\n\nIt now returns None: honest uncertainty rather than a wrong answer. It is not EAF because this certificate's phosphorus (0.031) exceeds the branch's p < 0.020 guard. Whether that threshold is right is a metallurgical question, deliberately left alone \u2014 retuning a classification heuristic is a different decision from fixing a lookup that never worked.",
+  "adapter": "mill_certificate",
+  "input": {
+    "text": "MATERIAL TEST CERTIFICATE \u2014 EN 10204 3.2\nAcciaierie Bertoli Safau \u2014 Pozzuolo del Friuli\nElectric arc furnace, scrap charge\n\nMelt no: EAF-77120\nGrade: 1.4301 / AISI 304\nProduct form: hot-rolled plate, 12 mm\n\nCHEMICAL COMPOSITION (%)\nC : 0.045\nSi : 0.41\nMn : 1.32\nP : 0.031\nS : 0.024\nCr : 18.20\nNi : 8.10\nMo : 0.35\n\nMECHANICAL PROPERTIES\nYield strength Rp0.2 : 245 MPa\nTensile strength Rm : 588 MPa\nElongation A5 : 51 %\n"
+  },
+  "expected": {
+    "detected": true,
+    "parsed": {
+      "certificate_type": "3.2",
+      "chemical_composition": {
+        "C": 0.045,
+        "CR": 18.2,
+        "MN": 1.32,
+        "MO": 0.35,
+        "NI": 8.1,
+        "P": 0.031,
+        "S": 0.024,
+        "SI": 0.41
+      },
+      "document_type": "mill_certificate",
+      "evidence": [
+        {
+          "confidence": 0.9,
+          "field": "heat_number",
+          "snippet": null,
+          "source": "mill_cert_parser",
+          "value": "EAF-77120"
+        },
+        {
+          "confidence": 0.85,
+          "field": "chemical_composition",
+          "snippet": null,
+          "source": "mill_cert_parser",
+          "value": {
+            "C": 0.045,
+            "CR": 18.2,
+            "MN": 1.32,
+            "MO": 0.35,
+            "NI": 8.1,
+            "P": 0.031,
+            "S": 0.024,
+            "SI": 0.41
+          }
+        }
+      ],
+      "grade": null,
+      "heat_number": "EAF-77120",
+      "mechanical_properties": {
+        "elongation_pct": 51.0,
+        "tensile_strength_mpa": 588.0,
+        "yield_strength_mpa": 245.0
+      },
+      "product_form": "plate",
+      "production_route_hint": null
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

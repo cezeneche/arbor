@@ -1,0 +1,70 @@
+{
+  "name": "Customs declaration \u2014 CDS entry with no CN code",
+  "why": "A declaration that carries shipment identity but no commodity code must produce zero goods lines rather than a line with a null CN. The parser's docstring says the caller merges these shipment-level fields into an existing case, so an empty lines[] is the contract that behaviour depends on.",
+  "adapter": "customs_declaration",
+  "input": {
+    "text": "CDS Import Entry \u2014 Customs Declaration Service\nMovement reference number: 24GB9876543210987B2\nConsignee EORI: GB555666777000\nCountry of origin: IN\nNet mass: 8100 kg\nProcedure: 4071\nGoods description: flat-rolled products, further processing required\nCommodity code pending classification \u2014 see amendment\n"
+  },
+  "expected": {
+    "detected": true,
+    "parsed": {
+      "customs_procedure": "4071",
+      "document_type": "customs_declaration",
+      "emissions": {
+        "direct_embedded_kgco2e": 0.0,
+        "indirect_embedded_kgco2e": 0.0,
+        "method": null
+      },
+      "evidence": [
+        {
+          "confidence": 0.88,
+          "field": "importer.eori",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": "GB555666777000"
+        },
+        {
+          "confidence": 0.9,
+          "field": "invoice.origin_country",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": "IN"
+        },
+        {
+          "confidence": 0.8,
+          "field": "invoice.invoice_number",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": "number"
+        },
+        {
+          "confidence": 0.88,
+          "field": "lines[0].net_mass_kg",
+          "snippet": null,
+          "source": "customs_parser",
+          "value": 8100.0
+        }
+      ],
+      "importer": {
+        "eori": "GB555666777000",
+        "name": null
+      },
+      "invoice": {
+        "entry_reference": null,
+        "incoterm": null,
+        "invoice_date": null,
+        "invoice_number": "number",
+        "origin_country": "IN"
+      },
+      "lines": [],
+      "reporting_quarter": null,
+      "reporting_year": null
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

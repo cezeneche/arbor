@@ -1,0 +1,16 @@
+-- 004_audit_chain.sql  (RETIRED — see 007_audit_chain_correction.sql)
+--
+-- This migration added prev_hmac to an unqualified `audit_log`, which resolves
+-- to public.audit_log. The application reads and writes cbam.audit_log, so the
+-- column landed on a table nothing uses and the intended change never reached
+-- production.
+--
+-- Retained as a no-op rather than deleted: it has already run in every
+-- environment, and removing it from the sequence would make previously-applied
+-- history disagree with the files on disk.
+--
+-- cbam.audit_log carries chain_hash, which serves the same purpose under a
+-- different name and is populated normally, so the chain works. See
+-- 007_audit_chain_correction.sql and RISKS.md N5.
+
+-- Intentionally empty.

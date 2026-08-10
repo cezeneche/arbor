@@ -1,0 +1,15 @@
+Importer: Alpha Steel Ltd
+EORI: GB123456789
+Origin country: TR
+
+Invoice Number: INV-RAW-999
+Invoice Date: 2025-09-30
+Line 1: 999999 | Wrong fallback line | 1 kg | net mass kg 1
+
+HEADER:
+Invoice Number: INV-HDR-100
+Invoice Date: 2025-02-20
+
+BODY:
+Line 1: 720711 | Hot rolled steel coil | 10000 kg | net mass kg 10000
+Line 2: 730890 | Structural steel section | 5000 kg | net mass kg 5000
