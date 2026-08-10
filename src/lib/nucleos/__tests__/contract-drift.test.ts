@@ -1,16 +1,15 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-// The JSON Schema files under contract/schemas are the neutral source, vendored
-// from Nucleos. Nothing stops someone editing the generated TypeScript by hand,
-// or editing a schema and forgetting to regenerate — except this.
+// The JSON Schema files under contract/schemas are the neutral source. Nothing
+// stops someone editing the generated TypeScript by hand, or editing a schema and
+// forgetting to regenerate — except this.
 //
-// It proves this repo's generated types match this repo's schemas, and that the
-// schemas hash to the committed digest. It cannot reach into Nucleos. The digest
-// is what makes divergence visible: changing a schema changes the digest, and a
-// digest that differs between the repos surfaces in review rather than as a
-// runtime shape mismatch months later.
+// Nucleos now lives in this repo under nucleos/, so both vendored copies can be
+// compared directly rather than each against a digest. The digest checks stay:
+// they catch a schema edited without regenerating, which comparing the copies
+// would not, since both could be edited together.
 
 const REPO_ROOT = resolve(__dirname, '../../../..')
 const GENERATOR = resolve(REPO_ROOT, 'contract/generate.py')
@@ -51,7 +50,7 @@ describe('nucleos contract', () => {
         ? ''
         : 'The contract schemas changed but contract/DIGEST was not updated.\n' +
           `  committed: ${committed}\n  current:   ${current}\n` +
-          'Update the digest in BOTH repos and re-vendor the schemas.',
+          'Regenerate: npm run contract:generate, then sync nucleos/contract/.',
     ).toBe('')
   })
 
@@ -63,6 +62,32 @@ describe('nucleos contract', () => {
     expect(source).toContain("export type ProvenanceTier = 'VERIFIED' | 'DECLARED' | 'ESTIMATED'")
     expect(source).toMatch(/emissions_method: EmissionsMethod/)
     expect(source).toMatch(/provenance_tier: ProvenanceTier/)
+  })
+
+  it('both vendored copies of the schemas are byte-identical', () => {
+    // Only possible now that Nucleos lives in this repo. The two-repo version of
+    // this check could compare each side against a committed digest but never
+    // against each other, so a matching digest was the strongest evidence
+    // available. Here the schemas themselves are compared, which is the thing
+    // the digest was standing in for.
+    const arborDir = resolve(REPO_ROOT, 'contract/schemas')
+    const nucleosDir = resolve(REPO_ROOT, 'nucleos/contract/schemas')
+
+    const arborFiles = readdirSync(arborDir).sort()
+    const nucleosFiles = readdirSync(nucleosDir).sort()
+    expect(nucleosFiles).toEqual(arborFiles)
+
+    for (const name of arborFiles) {
+      expect(readFileSync(resolve(nucleosDir, name), 'utf8')).toBe(
+        readFileSync(resolve(arborDir, name), 'utf8'),
+      )
+    }
+  })
+
+  it('both repos pin the same digest', () => {
+    expect(readFileSync(resolve(REPO_ROOT, 'nucleos/contract/DIGEST'), 'utf8').trim()).toBe(
+      readFileSync(DIGEST_FILE, 'utf8').trim(),
+    )
   })
 
   it('no payload carries a document blob', () => {

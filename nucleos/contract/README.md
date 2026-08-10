@@ -1,8 +1,9 @@
 # The Arbor ↔ Nucleos contract
 
-JSON Schema is the neutral source. Both repos vendor the same schema files and
-generate their own language's types from them, so neither side can change the
-boundary without the other's drift check failing.
+JSON Schema is the neutral source. Nucleos lives in this repo under `nucleos/`,
+alongside `brain/`, and both sides vendor the same schema files and generate
+their own language's types from them — so neither can change the boundary
+without the other's drift check failing.
 
 ```
 contract/schemas/*.json   the source
@@ -62,11 +63,9 @@ regenerate the TypeScript. Both repos' tests then pass again.
 Each repo verifies its own generated types against its own vendored schemas, and
 that those schemas hash to the committed digest.
 
-Neither repo can see the other. The digest is what makes divergence visible: a
-schema change alters it, so a mismatch between the two repos shows up as a
-conflict in review rather than as a runtime shape error months later. Genuine
-cross-repo verification would need CI with access to both, which does not exist
-yet.
+Both copies live in one repo, so a test compares the schema files byte for byte —
+the check the two-repo layout could not do. The digests remain, because comparing
+the copies would not catch a schema edited on both sides without regenerating.
 
 ## The generator
 
