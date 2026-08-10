@@ -1,20 +1,16 @@
--- 004_audit_chain.sql
--- Cryptographic hash chain for the audit log.
+-- 004_audit_chain.sql  (RETIRED — see 007_audit_chain_correction.sql)
 --
--- Each signed row's HMAC now incorporates the hmac_sha256 of the preceding
--- signed row for the same case (prev_hmac).  This means deletion or reordering
--- of rows breaks the chain and is detectable by verify_chain().
+-- This migration added prev_hmac to an unqualified `audit_log`, which resolves
+-- to public.audit_log. The application reads and writes cbam.audit_log, so the
+-- column landed on a table nothing uses and the intended change never reached
+-- production.
 --
--- prev_hmac is NULL for:
---   - the first signed row of a case (no predecessor)
---   - rows written before this migration (legacy rows)
+-- Retained as a no-op rather than deleted: it has already run in every
+-- environment, and removing it from the sequence would make previously-applied
+-- history disagree with the files on disk.
 --
--- Rows written after this migration include prev_hmac in their HMAC computation:
---   HMAC = SHA256(key, f"{case_id}|{event_type}|{actor_sub}|{event_json}|{prev_hmac}")
--- Legacy rows (written before this migration) used the old format without the suffix.
--- verify_event() handles both formats transparently.
+-- cbam.audit_log carries chain_hash, which serves the same purpose under a
+-- different name and is populated normally, so the chain works. See
+-- 007_audit_chain_correction.sql and RISKS.md N5.
 
-ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS prev_hmac TEXT;
-
--- Composite index to speed up get_prev_chain_hmac() queries (ORDER BY created_at DESC LIMIT 1)
-CREATE INDEX IF NOT EXISTS idx_audit_chain ON audit_log(case_id, created_at DESC);
+-- Intentionally empty.
