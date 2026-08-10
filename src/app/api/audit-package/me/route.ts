@@ -7,6 +7,7 @@ import { renderAuditReportMarkdown } from '@/lib/audit-package/report-md'
 import { buildZip, type ZipEntry } from '@/lib/audit-package/zip'
 import { assertAuditPackageAllowed } from '@/lib/plan-guard'
 import { fetchDocumentAsBase64 } from '@/lib/storage-retrieval'
+import { listForeignChainSeals } from '@/lib/audit/foreign-chain-seal'
 
 // Layer 3 — generate the caller's own audit package, including any third-party
 // verification block and the integrity hash + public verification instructions.
@@ -112,7 +113,15 @@ export async function GET(req: NextRequest) {
     records: pkg.dataRecords,
     sourceDocuments: pkg.sourceDocuments,
     crossValidations: pkg.crossValidationResults,
-    auditChain: { entryCount: auditEntryCount, chainIntegrityVerified },
+    auditChain: {
+      entryCount: auditEntryCount,
+      chainIntegrityVerified,
+      // Chains that stopped accepting writes before this one began. Without
+      // these the package presents Arbor's chain as though it started from
+      // nothing, and a reader has no way to tell a deliberate handover from
+      // entries that went missing.
+      precedingSealedChains: await listForeignChainSeals(),
+    },
     // Merkle commitment + per-record inclusion proofs, plus the shadow-compare
     // confirming it agrees with the linear HMAC chain.
     merkle: pkg.merkle,

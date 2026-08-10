@@ -718,6 +718,37 @@ model AuditEntry {
   @@index([recordId])
 }
 
+// ── FOREIGN CHAIN SEAL (Phase 4 — the Nucleos chain's final state) ───────────
+// A chain that stopped accepting writes, recorded so that it stopping is itself
+// auditable.
+//
+// The Nucleos CBAM chain was not imported: none of its entries backed a filed
+// declaration or was shown to a supplier or auditor, and its cases were sample
+// data, so attaching them to real entities would have meant guessing which
+// company each belonged to. But a chain that simply stops, with no record of
+// where it stopped, is indistinguishable from one that was truncated — so its
+// final state is committed here as the origin marker of Arbor's own chain.
+//
+// Not entity-scoped, because it is not a fact about any one entity.
+model ForeignChainSeal {
+  id             String   @id @default(cuid())
+  origin         String   @unique
+  algorithm      String
+  entryCount     Int
+  firstEventAt   DateTime?
+  lastEventAt    DateTime?
+  finalSignature String?
+  sealHash       String
+  sealedAt       DateTime
+  // False when the sealed chain's entries were deliberately left behind. Stored
+  // rather than implied, so a reader can tell "nothing was imported" from
+  // "nobody recorded whether anything was imported".
+  importedIntoArbor Boolean @default(false)
+  // Why this chain was sealed rather than imported, in plain English.
+  reason         String   @db.Text
+  recordedAt     DateTime @default(now())
+}
+
 // ── MERKLE ROOT (Upgrade 7 — Merkle-DAG audit structure) ──────────────────────
 // A committed RFC 6962 root over the ordered per-record auditHash leaves for an
 // entity+period, persisted when an audit package is generated. Lets an external
