@@ -1,0 +1,20 @@
+{
+  "executive_summary": "For importer EORI GB1709050000 (2025 Q1), the CBAM package reports total embedded emissions of 60000 kgCO2e across 2 goods lines and 15000 kg net mass. Direct embedded emissions are 50000 kgCO2e and indirect embedded emissions are 10000 kgCO2e. One goods line does not yet have an emissions record and is flagged in data quality warnings.",
+  "methodology": "This narrative uses the provided cbam_report_package_v1 structure. Totals are taken directly from summary totals, and goods line detail is based on shipments[].goods_lines[].goods_line with latest_emissions selected by highest available version. Calculations are not recomputed outside the packet.",
+  "results": {
+    "total_direct_embedded_kgco2e": 50000,
+    "total_indirect_embedded_kgco2e": 10000,
+    "total_embedded_kgco2e": 60000,
+    "total_net_mass_kg": 15000,
+    "goods_lines_count": 2
+  },
+  "limitations": "This output is limited to the packet content and available emissions records. One goods line is missing emissions, so totals reflect currently available records only. No assumptions are made for missing electricity, natural gas, or other data not present in the CBAM packet.",
+  "open_gaps": [
+    {
+      "field": "goods_lines.latest_emissions",
+      "issue": "missing_emissions_record",
+      "current_confidence": 0.0,
+      "target_confidence": 1.0
+    }
+  ]
+}

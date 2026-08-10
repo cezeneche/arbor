@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbor.example/contract/supplier-request.json",
+  "title": "SupplierRequest",
+  "description": "Arbor -> Nucleos. Ask a supplier for the emissions data a goods line is missing.\n\nIts OWN shape, deliberately not Arbor's DataRequest. Arbor's request flow assembles answers by summarising certified Arbor records; this one asks for a specific intensity figure against a specific goods line and needs it multiplied into a mass-weighted total. Reusing DataRequest's answer-assembly would break the moment see_tco2e_per_t has to be combined with net mass.\n\nA DataRequest row may still be used to TRACK the outreach. Only the answer-assembly logic is off limits.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_reference", "goods_line_id", "display_context"],
+  "properties": {
+    "case_reference": { "type": "string", "minLength": 1 },
+    "goods_line_id": { "type": "string", "minLength": 1 },
+    "supplier_email": { "type": ["string", "null"], "format": "email" },
+    "expires_at": { "type": ["string", "null"], "format": "date-time" },
+    "display_context": {
+      "description": "What the supplier sees. They are not an Arbor user and have no account, so everything needed to make the form comprehensible has to travel with the request.",
+      "$ref": "#/$defs/SupplierDisplayContext"
+    }
+  },
+  "$defs": {
+    "SupplierDisplayContext": {
+      "title": "SupplierDisplayContext",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["importer_name", "cn_code"],
+      "properties": {
+        "importer_name": { "type": "string" },
+        "cn_code": { "type": "string" },
+        "goods_description": { "type": ["string", "null"] },
+        "net_mass_kg": { "type": ["number", "null"] },
+        "origin_country": { "type": ["string", "null"] },
+        "reporting_period": { "type": ["string", "null"] }
+      }
+    },
+    "SupplierSubmission": {
+      "title": "SupplierSubmission",
+      "description": "What the supplier returns. Three fields, and no more: every additional question measurably reduces the response rate, and these three are the minimum that produces a usable actual figure.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["see_tco2e_per_t", "production_route"],
+      "properties": {
+        "see_tco2e_per_t": {
+          "description": "Direct specific embedded emissions, tCO2e per tonne. An intensity, not a total: it is multiplied by the goods line's net mass. Sending a total here would silently overstate every line by a factor of the mass in tonnes.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "production_route": {
+          "description": "Annex VI defaults are differentiated by production route, so this is what makes the submitted figure checkable against the right default.",
+          "type": "string",
+          "minLength": 1
+        },
+        "installation_name": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

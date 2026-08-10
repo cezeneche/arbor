@@ -1,0 +1,9 @@
+Importer: Alpha Steel Ltd
+EORI: GB9991112222
+Invoice date: 2026-02-27
+Origin country: TR
+Incoterm: FOB
+Invoice number: INV-TEST-MULTI-001
+
+Line 1: CN 720711 | Steel billets | 10000 kg | Net mass 10000 kg | Direct 50000 | Indirect 10000 | Method actual
+Line 2: CN 730890 | Steel structures | 5000 kg | Net mass 5000 kg | Direct 20000 | Indirect 4000 | Method actual

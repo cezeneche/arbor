@@ -1,0 +1,172 @@
+{
+  "name": "HMRC return \u2014 two goods lines, actual and default, with carbon price relief",
+  "why": "This is the end of the pipeline: the document a UK importer actually files. It pins the return builder's assembly, the per-line CBAM charge at a fixed rate, and the Carbon Price Relief deduction applied per consignment. The rate is supplied explicitly rather than looked up, so this case tests the builder rather than the rate table, and stays stable when HMRC publishes real rates and the placeholder entries are replaced.",
+  "adapter": "hmrc_return",
+  "input": {
+    "report_package": {
+      "type": "cbam_report_package_v1",
+      "generated_at": "2027-04-01T09:00:00+00:00",
+      "case": {
+        "id": "GOLDEN-UK-001",
+        "importer_name": "Northern Steel Stockholders Ltd",
+        "importer_eori": "GB123456789000",
+        "reporting_year": 2027,
+        "reporting_quarter": 1,
+        "status": "draft",
+        "created_at": "2027-03-30T10:00:00+00:00",
+        "updated_at": "2027-03-30T10:00:00+00:00"
+      },
+      "shipments": [
+        {
+          "shipment": {
+            "id": "SHIP-GOLDEN-1",
+            "case_id": "GOLDEN-UK-001",
+            "import_date": "2027-02-14",
+            "entry_reference": "24GB12345678901234",
+            "incoterm": "CIF",
+            "origin_country": "TR",
+            "created_at": "2027-03-30T10:01:00+00:00"
+          },
+          "goods_lines": [
+            {
+              "goods_line": {
+                "id": "GL-GOLDEN-1",
+                "shipment_id": "SHIP-GOLDEN-1",
+                "cn_code": "72071111",
+                "sector": "iron_steel",
+                "description": "Semi-finished products of iron, rectangular cross-section",
+                "quantity": 24500,
+                "quantity_unit": "kg",
+                "net_mass_kg": 24500,
+                "installation_name": "Gemlik Works",
+                "installation_id": "TR_00012345",
+                "created_at": "2027-03-30T10:02:00+00:00"
+              },
+              "latest_emissions": {
+                "id": "EM-GOLDEN-1",
+                "goods_line_id": "GL-GOLDEN-1",
+                "method": "actual",
+                "direct_embedded_kgco2e": 44100,
+                "indirect_embedded_kgco2e": 3200,
+                "version": 1,
+                "created_at": "2027-03-30T10:03:00+00:00"
+              }
+            },
+            {
+              "goods_line": {
+                "id": "GL-GOLDEN-2",
+                "shipment_id": "SHIP-GOLDEN-1",
+                "cn_code": "72085100",
+                "sector": "iron_steel",
+                "description": "Flat-rolled products of iron, hot-rolled, thickness exceeding 10mm",
+                "quantity": 18000,
+                "quantity_unit": "kg",
+                "net_mass_kg": 18000,
+                "installation_name": null,
+                "installation_id": null,
+                "created_at": "2027-03-30T10:04:00+00:00"
+              },
+              "latest_emissions": {
+                "id": "EM-GOLDEN-2",
+                "goods_line_id": "GL-GOLDEN-2",
+                "method": "default",
+                "direct_embedded_kgco2e": 32400,
+                "indirect_embedded_kgco2e": 0,
+                "version": 1,
+                "created_at": "2027-03-30T10:05:00+00:00"
+              }
+            }
+          ]
+        }
+      ],
+      "summary": {},
+      "data_quality": {},
+      "audit": {}
+    },
+    "return_input": {
+      "importer_vat_number": "GB123456789",
+      "importer_address": {
+        "line1": "Queens Road",
+        "city": "Immingham",
+        "postcode": "DN40 1AA",
+        "country": "GB"
+      },
+      "cbam_rate_gbp_per_tco2e": "45.00",
+      "accuracy_declaration": true,
+      "cpr_by_consignment": {
+        "24GB12345678901234": "180.00"
+      }
+    }
+  },
+  "expected": {
+    "accuracy_declaration": true,
+    "audit_chain_hash": "2d989b0980b57e2a9ffc5f80540268bb662ce9b9cb2d6431b8253dfde72ce814",
+    "consignments": [
+      {
+        "consignment_reference": "24GB12345678901234",
+        "consignment_reference_source": "entry_reference",
+        "goods_lines": [
+          {
+            "cbam_charge_gbp": "1984.50",
+            "cbam_liability_gbp": "1880.74",
+            "cbam_rate_gbp_per_tco2e": "45.00",
+            "cn8_code": "72071111",
+            "cn8_disambiguated": false,
+            "cn_description": "Semi-finished products of iron, rectangular cross-section",
+            "cpr_gbp": "103.76",
+            "default_value_used": false,
+            "direct_embedded_tco2e": "44.100000",
+            "emissions_method": "actual_unverified",
+            "net_weight_kg": "24500",
+            "verification_reference": null
+          },
+          {
+            "cbam_charge_gbp": "1458.00",
+            "cbam_liability_gbp": "1381.76",
+            "cbam_rate_gbp_per_tco2e": "45.00",
+            "cn8_code": "72085100",
+            "cn8_disambiguated": false,
+            "cn_description": "Flat-rolled products of iron, hot-rolled, thickness exceeding 10mm",
+            "cpr_gbp": "76.24",
+            "default_value_used": true,
+            "direct_embedded_tco2e": "32.400000",
+            "emissions_method": "default",
+            "net_weight_kg": "18000",
+            "verification_reference": null
+          }
+        ],
+        "import_date": "2027-02-14",
+        "origin_country": "TR"
+      }
+    ],
+    "generated_at": "<volatile>",
+    "importer_address": {
+      "city": "Immingham",
+      "country": "GB",
+      "line1": "Queens Road",
+      "postcode": "DN40 1AA"
+    },
+    "importer_eori": "GB123456789000",
+    "importer_name": "Northern Steel Stockholders Ltd",
+    "importer_vat_number": "GB123456789",
+    "narrative_limitations": null,
+    "quarter": null,
+    "return_period_end": "2027-12-31",
+    "return_period_start": "2027-01-01",
+    "return_type": "annual",
+    "source_package_snapshot_hash": null,
+    "total_cbam_charge_gbp": "3442.50",
+    "total_cbam_liability_gbp": "3262.50",
+    "total_cpr_gbp": "180.00",
+    "warnings": [
+      "actual_unverified:goods_line_id=GL-GOLDEN-1:method=actual but no verification_reference supplied \u2014 goods line will be reported as actual_unverified; obtain GACI-accredited verification before HMRC submission (Finance No.2 Bill 2025-26, CLAUDE.md Rule 7)",
+      "uk_indirect_excluded:goods_line_id=GL-GOLDEN-1:indirect_embedded=3.200000tCO2e present but excluded from UK CBAM charge \u2014 indirect emissions not in scope until 2029 (Finance No.2 Bill 2025-26)"
+    ]
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

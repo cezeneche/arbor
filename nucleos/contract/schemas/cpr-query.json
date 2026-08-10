@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbor.example/contract/cpr-query.json",
+  "title": "CprQuery",
+  "description": "Arbor -> Nucleos. Ask what carbon price relief a consignment qualifies for.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_reference", "jurisdiction", "reporting_year", "consignments"],
+  "properties": {
+    "case_reference": { "type": "string", "minLength": 1 },
+    "jurisdiction": { "$ref": "common.json#/$defs/Jurisdiction" },
+    "reporting_year": { "type": "integer" },
+    "consignments": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/CprConsignment" }
+    }
+  },
+  "$defs": {
+    "CprConsignment": {
+      "title": "CprConsignment",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["consignment_reference", "origin_country", "embedded_tco2e"],
+      "properties": {
+        "consignment_reference": { "type": "string", "minLength": 1 },
+        "origin_country": { "type": "string", "minLength": 2 },
+        "embedded_tco2e": { "type": "number", "minimum": 0 },
+        "carbon_price_paid": {
+          "description": "As paid, in the local currency. Never pre-converted by the caller: the conversion and its rate date belong in the result so both are auditable.",
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "carbon_price_currency": {
+          "description": "ISO 4217 of carbon_price_paid.",
+          "type": ["string", "null"]
+        },
+        "scheme": {
+          "description": "The origin-country carbon pricing scheme claimed against.",
+          "type": ["string", "null"]
+        },
+        "free_allocations_tco2e": {
+          "description": "Allowances the installation received free. Reduces the relief, because nothing was actually paid on them.",
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "rebates_received": {
+          "description": "Rebates or refunds against the carbon price, in the same currency. Reduces the relief for the same reason.",
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "payment_date": {
+          "description": "ISO 8601. Selects the exchange rate.",
+          "type": ["string", "null"],
+          "format": "date"
+        }
+      }
+    }
+  }
+}

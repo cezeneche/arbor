@@ -1,0 +1,72 @@
+{
+  "name": "Free allocation \u2014 the complete Article 10a(1a) phase-out, every year",
+  "why": "Three of these years were wrong in the code until fix F6: 2031, 2032 and 2033 were 38.5%, 25.5% and 12.5% against the legislated 39%, 26.5% and 14%. Nothing caught it, because no test asserted the schedule year by year. Every year is pinned here rather than a sample, since a single wrong year mis-charges every consignment in it and is invisible in any year but its own.",
+  "adapter": "free_allocation",
+  "input": {
+    "years": [
+      2025,
+      2026,
+      2027,
+      2028,
+      2029,
+      2030,
+      2031,
+      2032,
+      2033,
+      2034,
+      2035
+    ]
+  },
+  "expected": {
+    "2025": {
+      "cbam_application_factor": "0.000",
+      "free_allocation_factor": "1"
+    },
+    "2026": {
+      "cbam_application_factor": "0.025",
+      "free_allocation_factor": "0.975"
+    },
+    "2027": {
+      "cbam_application_factor": "0.050",
+      "free_allocation_factor": "0.950"
+    },
+    "2028": {
+      "cbam_application_factor": "0.100",
+      "free_allocation_factor": "0.900"
+    },
+    "2029": {
+      "cbam_application_factor": "0.225",
+      "free_allocation_factor": "0.775"
+    },
+    "2030": {
+      "cbam_application_factor": "0.485",
+      "free_allocation_factor": "0.515"
+    },
+    "2031": {
+      "cbam_application_factor": "0.610",
+      "free_allocation_factor": "0.390"
+    },
+    "2032": {
+      "cbam_application_factor": "0.735",
+      "free_allocation_factor": "0.265"
+    },
+    "2033": {
+      "cbam_application_factor": "0.860",
+      "free_allocation_factor": "0.140"
+    },
+    "2034": {
+      "cbam_application_factor": "1.000",
+      "free_allocation_factor": "0"
+    },
+    "2035": {
+      "cbam_application_factor": "1.000",
+      "free_allocation_factor": "0"
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

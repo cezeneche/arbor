@@ -1,0 +1,84 @@
+{
+  "name": "XML declaration \u2014 operator report with the namespace omitted",
+  "why": "The parser deliberately falls back to namespace-free lookups because third-country operators export XML that omits the schema namespace. That fallback is invisible when it works and total when it breaks: a namespaced-only parse returns an empty declaration rather than an error, so the failure would look like an operator who sent no goods lines.",
+  "adapter": "xml_declaration",
+  "input": {
+    "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<operatorDeclaration>\n  <declarant>\n    <eori>PL987654321098765</eori>\n    <name>Huta Katowice Operator</name>\n  </declarant>\n  <reportingPeriod>\n    <periodCode>2027Q2</periodCode>\n    <year>2027</year>\n    <quarter>2</quarter>\n  </reportingPeriod>\n  <goodsImported>\n    <goodsLine>\n      <cnCode>72085100</cnCode>\n      <countryOfOrigin>UA</countryOfOrigin>\n      <netMassTonnes>150.000</netMassTonnes>\n      <embeddedEmissions>\n        <directEmissions>285.000</directEmissions>\n        <indirectEmissions>18.500</indirectEmissions>\n        <calculationMethod>estimated</calculationMethod>\n      </embeddedEmissions>\n    </goodsLine>\n  </goodsImported>\n</operatorDeclaration>\n"
+  },
+  "expected": {
+    "document_type": "cbam_xml_declaration",
+    "emissions": {
+      "direct_embedded_kgco2e": 285000.0,
+      "indirect_embedded_kgco2e": 18500.0,
+      "method": "estimated"
+    },
+    "evidence": [
+      {
+        "confidence": 0.95,
+        "field": "importer.eori",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": "PL987654321098765"
+      },
+      {
+        "confidence": 0.95,
+        "field": "importer.name",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": "Huta Katowice Operator"
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[0].cn_code",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": "72085100"
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[0].net_mass_kg",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": 150000.0
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[0].direct_embedded_kgco2e",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": 285000.0
+      }
+    ],
+    "importer": {
+      "eori": "PL987654321098765",
+      "name": "Huta Katowice Operator"
+    },
+    "invoice": {
+      "entry_reference": "2027Q2",
+      "incoterm": null,
+      "invoice_date": null,
+      "invoice_number": null,
+      "origin_country": null
+    },
+    "lines": [
+      {
+        "cn_code": "72085100",
+        "description": null,
+        "direct_embedded_kgco2e": 285000.0,
+        "indirect_embedded_kgco2e": 18500.0,
+        "method": "estimated",
+        "net_mass_kg": 150000.0,
+        "quantity": 150.0,
+        "quantity_unit": "t"
+      }
+    ],
+    "reporting_quarter": 2,
+    "reporting_year": 2027
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

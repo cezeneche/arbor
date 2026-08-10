@@ -1,0 +1,115 @@
+{
+  "name": "XML declaration \u2014 EC transitional registry quarterly submission, two goods lines",
+  "why": "This is the official EC declaration format, so its parse is the one case where a third party defines the input and we cannot change it. The unit conversions are the risk: netMassTonnes becomes kilograms and directEmissions becomes kgCO2e, both by a factor of 1000. A silent inversion or dropped multiplier there is a thousand-fold error in a filed figure, and nothing downstream would flag it as implausible.",
+  "adapter": "xml_declaration",
+  "input": {
+    "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<cbam:quarterlyDeclaration xmlns:cbam=\"urn:ec.europa.eu:taxud:cbam:declaration:v1\">\n  <cbam:declarant>\n    <cbam:eori>DE123456789012345</cbam:eori>\n    <cbam:name>Rheinmetall Handel GmbH</cbam:name>\n  </cbam:declarant>\n  <cbam:reportingPeriod>\n    <cbam:periodCode>2027Q1</cbam:periodCode>\n    <cbam:year>2027</cbam:year>\n    <cbam:quarter>1</cbam:quarter>\n  </cbam:reportingPeriod>\n  <cbam:goodsImported>\n    <cbam:goodsLine>\n      <cbam:cnCode>72071111</cbam:cnCode>\n      <cbam:countryOfOrigin>TR</cbam:countryOfOrigin>\n      <cbam:netMassTonnes>24.500</cbam:netMassTonnes>\n      <cbam:embeddedEmissions>\n        <cbam:directEmissions>44.100</cbam:directEmissions>\n        <cbam:indirectEmissions>3.200</cbam:indirectEmissions>\n        <cbam:specificEmbeddedEmissions>1.800</cbam:specificEmbeddedEmissions>\n        <cbam:calculationMethod>ACTUAL</cbam:calculationMethod>\n      </cbam:embeddedEmissions>\n    </cbam:goodsLine>\n    <cbam:goodsLine>\n      <cbam:cnCode>76011000</cbam:cnCode>\n      <cbam:countryOfOrigin>IN</cbam:countryOfOrigin>\n      <cbam:netMassTonnes>12.000</cbam:netMassTonnes>\n      <cbam:embeddedEmissions>\n        <cbam:directEmissions>24.000</cbam:directEmissions>\n        <cbam:calculationMethod>DEFAULT</cbam:calculationMethod>\n      </cbam:embeddedEmissions>\n    </cbam:goodsLine>\n  </cbam:goodsImported>\n</cbam:quarterlyDeclaration>\n"
+  },
+  "expected": {
+    "document_type": "cbam_xml_declaration",
+    "emissions": {
+      "direct_embedded_kgco2e": 68100.0,
+      "indirect_embedded_kgco2e": 3200.0,
+      "method": "actual"
+    },
+    "evidence": [
+      {
+        "confidence": 0.95,
+        "field": "importer.eori",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": "DE123456789012345"
+      },
+      {
+        "confidence": 0.95,
+        "field": "importer.name",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": "Rheinmetall Handel GmbH"
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[0].cn_code",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": "72071111"
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[0].net_mass_kg",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": 24500.0
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[0].direct_embedded_kgco2e",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": 44100.0
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[1].cn_code",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": "76011000"
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[1].net_mass_kg",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": 12000.0
+      },
+      {
+        "confidence": 0.95,
+        "field": "lines[1].direct_embedded_kgco2e",
+        "snippet": null,
+        "source": "xml_parser",
+        "value": 24000.0
+      }
+    ],
+    "importer": {
+      "eori": "DE123456789012345",
+      "name": "Rheinmetall Handel GmbH"
+    },
+    "invoice": {
+      "entry_reference": "2027Q1",
+      "incoterm": null,
+      "invoice_date": null,
+      "invoice_number": null,
+      "origin_country": null
+    },
+    "lines": [
+      {
+        "cn_code": "72071111",
+        "description": null,
+        "direct_embedded_kgco2e": 44100.0,
+        "indirect_embedded_kgco2e": 3200.0,
+        "method": "actual",
+        "net_mass_kg": 24500.0,
+        "quantity": 24.5,
+        "quantity_unit": "t"
+      },
+      {
+        "cn_code": "76011000",
+        "description": null,
+        "direct_embedded_kgco2e": 24000.0,
+        "indirect_embedded_kgco2e": 0.0,
+        "method": "default",
+        "net_mass_kg": 12000.0,
+        "quantity": 12.0,
+        "quantity_unit": "t"
+      }
+    ],
+    "reporting_quarter": 1,
+    "reporting_year": 2027
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

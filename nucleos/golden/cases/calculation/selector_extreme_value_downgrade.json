@@ -1,0 +1,115 @@
+{
+  "name": "Emissions selection \u2014 implausible supplier figure downgraded to the default",
+  "why": "A supplier value more than ten times the Annex VI default is treated as a data error rather than a measurement, and the engine falls back to the default. This is the guard that stops a misplaced decimal point in a supplier return becoming a declared emissions figure, and it is exactly the kind of threshold a refactor can move without anyone noticing.",
+  "adapter": "emissions_selection",
+  "input": {
+    "cn_code": "72071111",
+    "net_mass_kg": "24500",
+    "direct_kgco2e_supplier": "4410000",
+    "supplier_direct_confidence": 0.95,
+    "reporting_year": 2027,
+    "jurisdiction": "EU"
+  },
+  "expected": {
+    "annex_vi_factor_used": true,
+    "cn_code": "72071111",
+    "decision_trace": [
+      {
+        "detail": "Supplier direct emissions: 4410000 kgCO2e (confidence=0.95)",
+        "outcome": "found",
+        "regulation_ref": "EU 2023/1773 Art. 4(1)",
+        "step": "check_supplier_direct",
+        "value": 4410000.0
+      },
+      {
+        "detail": "Actual direct value exceeds 10.0\u00d7 the Annex VI default. Downgrading to 'estimated' method.",
+        "outcome": "extreme_value",
+        "regulation_ref": "EU 2023/1773 Annex VI",
+        "step": "plausibility_check",
+        "value": 4410000.0
+      },
+      {
+        "detail": "Extreme actual value detected; using Annex VI default for safety.",
+        "outcome": "default",
+        "regulation_ref": "EU 2023/1773 Art. 4(3)",
+        "step": "select_method",
+        "value": null
+      },
+      {
+        "detail": "Annex VI default applied: direct=46305.000 kgCO2e, indirect=7840.000 kgCO2e (SEE=2.210 tCO2e/t, source: EU 2023/1773 Art.4(3) Default Values, DG TAXUD Dec 2023)",
+        "outcome": "found",
+        "regulation_ref": "EU 2023/1773 Art. 4(3) + Annex VI",
+        "step": "annex_vi_lookup",
+        "value": {
+          "direct_kgco2e": 46305.0,
+          "indirect_kgco2e": 7840.0
+        }
+      },
+      {
+        "detail": "Default-value mark-up of 20% applied to the Annex VI figures for reporting year 2027: direct=55566.000 kgCO2e, indirect=9408.000 kgCO2e (table 2026-eu-v1)",
+        "outcome": "applied",
+        "regulation_ref": "Regulation (EU) 2023/956 Art. 7(2) + Annex IV",
+        "step": "default_value_markup",
+        "value": {
+          "direct_kgco2e": 55566.0,
+          "indirect_kgco2e": 9408.0,
+          "markup_fraction": 0.2
+        }
+      }
+    ],
+    "direct_kgco2e": "55566.000",
+    "embedded_tco2e": "64.974000",
+    "factor_metadata": {
+      "annex": "Annex VI \u2014 Default values for specific embedded emissions",
+      "effective_date": "2023-10-01",
+      "note_route_entries": "Entries with a production_route tag other than None are engineering estimates for actual-measurement reporting and are NOT official defaults.",
+      "oj_reference": "OJ L 228, 15.9.2023",
+      "operative_document": "Default Values for the Transitional Period of the CBAM (1 Oct 2023 \u2013 31 Dec 2025), EC DG TAXUD, 22 Dec 2023, Art. 4(3)",
+      "regulation": "Commission Implementing Regulation (EU) 2023/1773",
+      "review_cadence": "annual",
+      "table_sha256": "328874065fab30ce01e0357f9c39676956d4c311e4aaf7dc50060b9a8e5ee344",
+      "table_version": "2023",
+      "unit_see": "tCO2e per tonne of goods (except electricity: tCO2e/MWh)"
+    },
+    "factor_table_version": "2023",
+    "indirect_kgco2e": "9408.000",
+    "markup_fraction": "0.20",
+    "markup_table_version": "2026-eu-v1",
+    "method": "default",
+    "net_mass_kg": "24500",
+    "production_route": null,
+    "regulation_refs": [
+      "Commission Implementing Regulation 2023/1773, Article 4(1) \u2014 actual embedded emissions",
+      "Commission Implementing Regulation 2023/1773, Article 4(2) \u2014 estimated embedded emissions",
+      "Commission Implementing Regulation 2023/1773, Article 4(3) \u2014 default values",
+      "Commission Implementing Regulation 2023/1773, Annex VI \u2014 default SEE table"
+    ],
+    "rejected_method_reasons": [
+      {
+        "method": "actual",
+        "reason": "Direct emissions 4410000.000 kgCO2e exceeds 10.0\u00d7 the Annex VI default \u2014 extreme outlier; value rejected as unreliable.",
+        "regulation_ref": "EU 2023/1773 Annex VI (plausibility check)",
+        "regulation_tier": 1
+      },
+      {
+        "method": "estimated",
+        "reason": "Tier 2 not applicable when direct value fails extreme outlier check \u2014 both tiers require a plausible direct emissions figure.",
+        "regulation_ref": "EU 2023/1773 Art. 4(2)",
+        "regulation_tier": 2
+      }
+    ],
+    "see_direct_tco2e_per_t": "2.268000",
+    "see_indirect_tco2e_per_t": "0.384000",
+    "see_total_tco2e_per_t": "2.652000",
+    "warnings": [
+      "cbam_selector:plausibility_deviation:72071111 \u2014 actual direct emissions are 9424% above the Annex VI default (EU 2023/1773 Annex VI, EU 2023/1773 Art.4(3) Default Values, DG TAXUD Dec 2023)",
+      "cbam_selector:extreme_value:72071111 \u2014 actual direct emissions are 95.2\u00d7 the Annex VI default; recommend verifying source data before submission"
+    ]
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

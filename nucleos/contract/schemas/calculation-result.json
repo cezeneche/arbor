@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbor.example/contract/calculation-result.json",
+  "title": "CalculationResult",
+  "description": "Nucleos -> Arbor. The computed declaration.\n\nFails closed: a calculation that could not be completed returns an error rather than a partial figure. Arbor writes the result; Nucleos never writes to Arbor's database.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_reference", "jurisdiction", "reporting_year", "lines", "engine"],
+  "properties": {
+    "case_reference": { "type": "string", "minLength": 1 },
+    "jurisdiction": { "$ref": "common.json#/$defs/Jurisdiction" },
+    "reporting_year": { "type": "integer" },
+    "reporting_quarter": { "type": ["integer", "null"] },
+    "lines": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CalculatedLine" }
+    },
+    "total_embedded_tco2e": { "type": ["number", "null"] },
+    "warnings": {
+      "description": "Verbatim, same rule as extraction flags.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "engine": { "$ref": "common.json#/$defs/EngineVersions" }
+  },
+  "$defs": {
+    "CalculatedLine": {
+      "title": "CalculatedLine",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line_id",
+        "emissions_method",
+        "provenance_tier",
+        "direct_kgco2e",
+        "indirect_kgco2e",
+        "embedded_tco2e"
+      ],
+      "properties": {
+        "line_id": { "type": "string" },
+        "emissions_method": {
+          "description": "The method the engine actually used. Separate from provenance_tier and never derived from it.",
+          "$ref": "common.json#/$defs/EmissionsMethod"
+        },
+        "provenance_tier": {
+          "description": "Echoed back from the declaration payload unchanged, so a goods line displays both axes without Arbor re-joining them. Nucleos does not set this.",
+          "$ref": "common.json#/$defs/ProvenanceTier"
+        },
+        "direct_kgco2e": { "type": "number" },
+        "indirect_kgco2e": { "type": "number" },
+        "see_direct_tco2e_per_t": { "type": ["number", "null"] },
+        "see_indirect_tco2e_per_t": { "type": ["number", "null"] },
+        "see_total_tco2e_per_t": { "type": ["number", "null"] },
+        "embedded_tco2e": { "type": "number" },
+        "markup_fraction": {
+          "description": "Default-value mark-up applied. Zero unless the default method was selected for a year with a legislated schedule.",
+          "type": ["number", "null"]
+        },
+        "annex_vi_factor_used": { "type": "boolean" },
+        "rejected_methods": {
+          "description": "One entry per higher-priority method that was not used, with the reason. Required: a declaration must be able to say why it did not use actual data.",
+          "type": "array",
+          "items": { "$ref": "common.json#/$defs/RejectedMethod" }
+        },
+        "decision_trace": {
+          "description": "The full trace, verbatim.",
+          "type": "array",
+          "items": { "$ref": "common.json#/$defs/DecisionAtom" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

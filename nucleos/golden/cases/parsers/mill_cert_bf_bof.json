@@ -1,0 +1,79 @@
+{
+  "name": "Mill certificate \u2014 EN 10204 3.1, carbon steel, BF-BOF residual profile",
+  "why": "Annex VI defaults are differentiated by production route, so a wrong route hint produces a wrong emissions figure. This pins the working branch of the route inference \u2014 high phosphorus and sulphur with low chromium reads as virgin iron (BF_BOF) \u2014 and the RISKS.md N8 fix to heat_number, which used to capture the literal word 'number' because the regex alternation listed 'heat' before 'heat no.' and Python takes the first branch that matches.",
+  "adapter": "mill_certificate",
+  "input": {
+    "text": "INSPECTION CERTIFICATE EN 10204 3.1\nBorusan Mannesmann Boru \u2014 Gemlik Works\n\nHeat number: A4471928\nGrade: S355J2\nProduct form: hot-rolled coil, 6.0 mm\nDelivery condition: as-rolled\n\nCHEMICAL COMPOSITION (%)\nC : 0.18\nSi : 0.22\nMn : 1.45\nP : 0.022\nS : 0.019\nCr : 0.04\nNi : 0.03\nCu : 0.09\n\nMECHANICAL PROPERTIES\nYield strength ReH : 372 MPa\nTensile strength Rm : 545 MPa\nElongation A5 : 24 %\n\nWe certify that the material supplied complies with the above specification.\n"
+  },
+  "expected": {
+    "detected": true,
+    "parsed": {
+      "certificate_type": "3.1",
+      "chemical_composition": {
+        "C": 0.18,
+        "CR": 0.04,
+        "CU": 0.09,
+        "MN": 1.45,
+        "NI": 0.03,
+        "P": 0.022,
+        "S": 0.019,
+        "SI": 0.22
+      },
+      "document_type": "mill_certificate",
+      "evidence": [
+        {
+          "confidence": 0.9,
+          "field": "heat_number",
+          "snippet": null,
+          "source": "mill_cert_parser",
+          "value": "A4471928"
+        },
+        {
+          "confidence": 0.8,
+          "field": "grade",
+          "snippet": null,
+          "source": "mill_cert_parser",
+          "value": "S355J2"
+        },
+        {
+          "confidence": 0.85,
+          "field": "chemical_composition",
+          "snippet": null,
+          "source": "mill_cert_parser",
+          "value": {
+            "C": 0.18,
+            "CR": 0.04,
+            "CU": 0.09,
+            "MN": 1.45,
+            "NI": 0.03,
+            "P": 0.022,
+            "S": 0.019,
+            "SI": 0.22
+          }
+        },
+        {
+          "confidence": 0.55,
+          "field": "production_route_hint",
+          "snippet": null,
+          "source": "mill_cert_parser",
+          "value": "BF_BOF"
+        }
+      ],
+      "grade": "S355J2",
+      "heat_number": "A4471928",
+      "mechanical_properties": {
+        "elongation_pct": 24.0,
+        "tensile_strength_mpa": 545.0,
+        "yield_strength_mpa": 372.0
+      },
+      "product_form": "coil",
+      "production_route_hint": "BF_BOF"
+    }
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

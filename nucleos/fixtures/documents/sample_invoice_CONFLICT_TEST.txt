@@ -1,0 +1,10 @@
+Invoice No: INV-HEADER-001
+Invoice Date: 2026-02-27
+
+Delivery Date: 2026-02-21
+
+Order Reference: INV-BODY-999
+
+Items:
+720711 Steel billets 10000 kg
+730890 Steel structures 5000 kg

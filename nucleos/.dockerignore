@@ -1,0 +1,16 @@
+.venv/
+.git/
+**/__pycache__/
+**/*.pyc
+.env
+cbam_test.db
+storage/
+fixtures/
+docs/
+scripts/
+.claude/
+nucleo-ledger/venv/
+nucleo-narrative/venv/
+*.egg-info/
+.pytest_cache/
+**/.pytest_cache/

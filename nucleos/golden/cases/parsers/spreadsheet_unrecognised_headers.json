@@ -1,0 +1,37 @@
+{
+  "name": "Spreadsheet \u2014 headers the map does not recognise",
+  "why": "A spreadsheet whose columns are not in the header map must fail visibly rather than return confident-looking empty goods lines. This case pins what the parser does with an unrecognised layout, so a future header-map change cannot quietly turn a rejected file into an accepted-but-empty one.",
+  "adapter": "spreadsheet_csv",
+  "input": {
+    "csv": "Item,Material,From,Tonnage,Notes\n1,Steel billets,Turkey,24.5,Q1 shipment\n2,Aluminium ingot,India,12.0,Q1 shipment\n"
+  },
+  "expected": {
+    "document_type": "spreadsheet",
+    "emissions": {
+      "direct_embedded_kgco2e": 0,
+      "indirect_embedded_kgco2e": 0,
+      "method": null
+    },
+    "evidence": [],
+    "importer": {
+      "eori": "",
+      "name": null
+    },
+    "invoice": {
+      "entry_reference": null,
+      "incoterm": null,
+      "invoice_date": null,
+      "invoice_number": null,
+      "origin_country": null
+    },
+    "lines": [],
+    "reporting_quarter": null,
+    "reporting_year": null
+  },
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}
