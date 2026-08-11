@@ -30,8 +30,7 @@
 import 'dotenv/config'
 import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import os from 'node:os'
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import pg from 'pg'
 
@@ -129,7 +128,9 @@ if (DRY_RUN) {
 // The guard refuses to overwrite a differing seal. Compiling the real module is
 // how that refusal stays the one that ships, rather than one written for a script.
 
-const outDir = mkdtempSync(path.join(os.tmpdir(), 'arbor-seal-'))
+// Built inside the repo, not in the system temp dir: tsc resolves @prisma/client
+// by walking up to node_modules, and from /var/folders it never finds it.
+const outDir = mkdtempSync(path.join(REPO, '.seal-build-'))
 mkdirSync(path.join(outDir, 'src', 'lib', 'audit'), { recursive: true })
 
 const sealSrc = readFileSync(path.join(REPO, 'src/lib/audit/foreign-chain-seal.ts'), 'utf8')
@@ -148,6 +149,9 @@ execFileSync(
   [
     path.join(outDir, 'src/lib/audit/foreign-chain-seal.ts'),
     '--outDir', path.join(outDir, 'out'),
+    // Pinned, not inferred. tsc otherwise derives rootDir from the common source
+    // directory, which moves the output path when the set of files changes.
+    '--rootDir', path.join(outDir, 'src'),
     '--module', 'commonjs',
     '--target', 'es2022',
     '--moduleResolution', 'node',
@@ -186,6 +190,8 @@ try {
     )
   }
   fail(`Could not record the seal: ${err.message}`)
+} finally {
+  rmSync(outDir, { recursive: true, force: true })
 }
 
 process.exit(0)
