@@ -5,6 +5,10 @@ import { CBAM_VIEWS, resolveCbamView, type CbamView } from '@/lib/nucleos/cbam-v
 import { listCbamCases } from '@/lib/nucleos/cases-client'
 import { CbamCaseList } from '@/components/CbamCaseList'
 import { CbamScopeChecker } from '@/components/CbamScopeChecker'
+import { CbamStartCase } from '@/components/CbamStartCase'
+import { selectReusableDocuments } from '@/lib/nucleos/reusable-documents'
+import { getSessionUser } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
 
 // CBAM is its own section, and its screens are views of it — the same quiet
 // toggle Records uses for Trends and Benchmarks. Not tabs: the design rules
@@ -15,13 +19,40 @@ export default async function CbamPage({
 }: {
   searchParams: Promise<{ view?: string }>
 }) {
-  await requirePageSession()
+  const session = await requirePageSession()
+  const entityId = getSessionUser(session).entityId as string
   const { view: raw } = await searchParams
   const view: CbamView = resolveCbamView(raw)
 
   // Read through the boundary rather than from a local copy: cases are Nucleos's
   // domain state and Arbor does not mirror them. A failure is shown as a failure
   // — an empty list would tell an importer they have no declarations to make.
+  // Documents already in Arbor that could back a case. Offered alongside upload
+  // so the same real-world document is never held twice.
+  let reusable: ReturnType<typeof selectReusableDocuments> = []
+  if (view === 'cases' && entityId) {
+    const docs = await prisma.document.findMany({
+      where: { entityId },
+      orderBy: { submittedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true, fileName: true, documentType: true, status: true, submittedAt: true,
+        extractionJobs: { select: { extractorVersion: true }, take: 1, orderBy: { startedAt: 'desc' } },
+      },
+    })
+    reusable = selectReusableDocuments(
+      docs.map(d => ({
+        id: d.id,
+        fileName: d.fileName,
+        documentType: d.documentType,
+        status: d.status,
+        submittedAt: d.submittedAt,
+        // The extractor stamp names Nucleos when CBAM extraction ran.
+        hasCbamFields: Boolean(d.extractionJobs[0]?.extractorVersion?.includes('nucleos')),
+      })),
+    )
+  }
+
   let cases = null
   let casesError: string | null = null
   if (view === 'cases') {
@@ -91,7 +122,10 @@ export default async function CbamPage({
             <div style={{ color: colours.textTertiary, marginTop: '4px' }}>{casesError}</div>
           </div>
         ) : view === 'cases' && cases ? (
-          <CbamCaseList cases={cases} />
+          <>
+            <CbamStartCase documents={reusable} />
+            <CbamCaseList cases={cases} />
+          </>
         ) : (
           <div
             style={{
