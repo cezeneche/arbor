@@ -22,9 +22,12 @@ const PUBLIC_PREFIXES = [
   '/reset-password',
   '/2fa-verify',
   '/sso',
-  // Scoped supplier/buyer entry links
+  // Scoped supplier/buyer entry links. The token is the credential — the whole
+  // audience for these has no account, so a session check makes them unreachable
+  // by everyone they were built for.
   '/submit',
   '/share',
+  '/supplier',
   // offline Merkle inclusion verifier (client-only, no data fetched)
   '/verify-merkle',
   // Self-authenticating / public API routes
@@ -44,7 +47,19 @@ const PUBLIC_PREFIXES = [
   '/api/cron',
 ] as const
 
+/**
+ * Whether a path is reachable without a session.
+ *
+ * Matching is on whole segments, not raw string prefixes. A bare `startsWith`
+ * means every entry silently opens its own neighbours — adding `/supplier` for
+ * the token form would also expose `/suppliers`, and `/login` already matched
+ * anything beginning with those six characters. Nothing had gone wrong yet, but
+ * the next entry added is the one that does, and the mistake is invisible until
+ * something private is already public.
+ */
 export function isPublicPath(pathname: string): boolean {
   if (pathname === '/') return true
-  return PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix))
+  return PUBLIC_PREFIXES.some(
+    prefix => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
 }

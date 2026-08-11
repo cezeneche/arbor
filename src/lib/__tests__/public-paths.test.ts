@@ -35,3 +35,34 @@ describe('isPublicPath', () => {
     expect(isPublicPath('/api/records')).toBe(false)
   })
 })
+
+// Added after /supplier/[token] was found redirecting to /login in production.
+//
+// The CBAM supplier form is the one screen in the product whose entire audience
+// has no account. The token IS the credential. Sending that audience to a login
+// page makes the form unreachable by everyone it was built for, and the failure
+// is invisible from inside the product — every signed-in tester sees it work.
+describe('token-authenticated entry links reachable without an account', () => {
+  it('lets a supplier open a CBAM emissions form', () => {
+    expect(isPublicPath('/supplier/abc123')).toBe(true)
+  })
+
+  it('lets a supplier open a records submission link', () => {
+    expect(isPublicPath('/submit/abc123')).toBe(true)
+  })
+
+  it('lets a buyer open a shared export', () => {
+    expect(isPublicPath('/share/abc123')).toBe(true)
+  })
+
+  it('keeps the portal behind a session', () => {
+    // The allowlist is prefix-based, so a careless entry opens more than it means to.
+    expect(isPublicPath('/cbam')).toBe(false)
+    expect(isPublicPath('/records')).toBe(false)
+    expect(isPublicPath('/settings')).toBe(false)
+  })
+
+  it('does not open a portal path that merely starts with a public word', () => {
+    expect(isPublicPath('/suppliers')).toBe(false)
+  })
+})
