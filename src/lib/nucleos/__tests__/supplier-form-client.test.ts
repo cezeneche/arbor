@@ -3,6 +3,7 @@ import {
   submitSupplierForm,
   SupplierTokenInvalidError,
 } from '../supplier-form-client'
+import { NucleosUnavailableError } from '../extraction-client'
 
 // The one surface a non-Arbor user sees. They have no account and no reason to
 // trust an unexplained error, so every failure must say something actionable —
@@ -24,6 +25,11 @@ function res(status: number, body: unknown = {}): Response {
   return { ok: status >= 200 && status < 300, status, json: async () => body } as Response
 }
 
+// FastAPI's answer when no route matches.
+const ROUTE_MISSING = { detail: 'Not Found' }
+// The token check's answer when the token is genuinely rejected.
+const TOKEN_REJECTED = { detail: 'This link is invalid or has expired.' }
+
 describe('getSupplierFormContext', () => {
   const ORIGINAL = { ...process.env }
   beforeEach(() => {
@@ -44,17 +50,42 @@ describe('getSupplierFormContext', () => {
     expect(JSON.stringify(init)).not.toContain('authorization')
   })
 
+  it('calls the public route, not the bare one', async () => {
+    // The route is /api/public/supplier-form/{token}. Calling /api/supplier-form
+    // returns a route-not-found 404, which used to read as an expired link.
+    const f = jest.fn().mockResolvedValue(res(200, CONTEXT))
+    await getSupplierFormContext('tok', f as never)
+    expect(f.mock.calls[0][0]).toContain('/api/public/supplier-form/tok')
+  })
+
   it('explains an expired or used link in plain English', async () => {
-    for (const status of [404, 410, 403]) {
-      const f = jest.fn().mockResolvedValue(res(status))
+    for (const status of [410, 403]) {
+      const f = jest.fn().mockResolvedValue(res(status, TOKEN_REJECTED))
       await expect(getSupplierFormContext('tok', f as never)).rejects.toBeInstanceOf(
         SupplierTokenInvalidError,
       )
     }
   })
 
+  it('treats a rejected-token 404 as a dead link', async () => {
+    const f = jest.fn().mockResolvedValue(res(404, TOKEN_REJECTED))
+    await expect(getSupplierFormContext('tok', f as never)).rejects.toBeInstanceOf(
+      SupplierTokenInvalidError,
+    )
+  })
+
+  it('does NOT treat a missing route as a dead link', async () => {
+    // Telling someone their link expired when the real fault is a wrong base
+    // path sends them to chase a new link that fails identically, while the
+    // actual bug stays invisible. This is how that shipped once already.
+    const f = jest.fn().mockResolvedValue(res(404, ROUTE_MISSING))
+    await expect(getSupplierFormContext('tok', f as never)).rejects.toBeInstanceOf(
+      NucleosUnavailableError,
+    )
+  })
+
   it('tells the supplier what to do about a dead link', async () => {
-    const f = jest.fn().mockResolvedValue(res(410))
+    const f = jest.fn().mockResolvedValue(res(410, TOKEN_REJECTED))
     await expect(getSupplierFormContext('tok', f as never)).rejects.toThrow(
       /ask the company that sent it/i,
     )
@@ -62,7 +93,7 @@ describe('getSupplierFormContext', () => {
 
   it('never puts the token in an error', async () => {
     // These pages are opened from an email that may be forwarded.
-    const f = jest.fn().mockResolvedValue(res(410))
+    const f = jest.fn().mockResolvedValue(res(410, TOKEN_REJECTED))
     await expect(getSupplierFormContext('secret-token-value', f as never)).rejects.not.toThrow(
       /secret-token-value/,
     )
@@ -94,7 +125,7 @@ describe('submitSupplierForm', () => {
   })
 
   it('treats a dead token as a dead token, not a server fault', async () => {
-    const f = jest.fn().mockResolvedValue(res(410))
+    const f = jest.fn().mockResolvedValue(res(410, TOKEN_REJECTED))
     await expect(
       submitSupplierForm('tok', { see_tco2e_per_t: 1.8, production_route: 'BF_BOF' }, f as never),
     ).rejects.toBeInstanceOf(SupplierTokenInvalidError)

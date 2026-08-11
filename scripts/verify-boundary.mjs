@@ -127,6 +127,8 @@ try {
     [
       'src/lib/nucleos/extraction-client.ts',
       'src/lib/nucleos/field-mapper.ts',
+      'src/lib/nucleos/supplier-form-client.ts',
+      'src/lib/nucleos/scope-client.ts',
       '--outDir', outDir, '--rootDir', 'src/lib/nucleos',
       '--module', 'commonjs', '--target', 'es2020',
       '--esModuleInterop', '--skipLibCheck',
@@ -137,6 +139,8 @@ try {
   const compiled = outDir
   const { extractCbamFields } = require(path.join(compiled, 'extraction-client.js'))
   const { toExtractedFieldRows } = require(path.join(compiled, 'field-mapper.js'))
+  const { getSupplierFormContext } = require(path.join(compiled, 'supplier-form-client.js'))
+  const { checkCbamScope } = require(path.join(compiled, 'scope-client.js'))
 
   console.log('── Extraction boundary ──')
   const result = await extractCbamFields({
@@ -185,6 +189,35 @@ try {
     rejected = true
   }
   check('a blob reference is refused by the service', rejected)
+
+  console.log('\n── Scope check ──')
+  const scope = await checkCbamScope({ cn_code: '72071111', origin_country: 'TR' })
+  check('scope check answers', Boolean(scope?.status), JSON.stringify(scope)?.slice(0, 120))
+  // Without an EORI and a consignment value the determination is deliberately
+  // "requires_review" rather than a confident yes — the CN code is covered but
+  // a factor is missing. What matters here is that it is not out_of_scope.
+  check('a covered CN code is not written off as out of scope',
+    scope?.status === 'in_scope' || scope?.status === 'requires_review', scope?.status)
+  check('the answer cites its provisions', (scope?.regulation_refs ?? []).length > 0)
+
+  console.log('\n── Supplier form ──')
+  // A client pointed at a path that does not exist gets a 404, which used to be
+  // reported to the supplier as an expired link. Every path a client calls has
+  // to be exercised against the real router, or a wiring error hides as a
+  // plausible-looking user-facing message.
+  let supplierErr = null
+  try {
+    await getSupplierFormContext('definitely-not-a-real-token')
+  } catch (e) {
+    supplierErr = e
+  }
+  // The harness runs on SQLite, which has no cbam schema, so the handler itself
+  // errors — and that is the point: an error FROM the handler proves the route
+  // exists. A wrong path produces "endpoint not found" instead, which is exactly
+  // the failure that shipped once and reported itself as an expired link.
+  check('supplier form reaches a real route',
+    !/endpoint not found/i.test(supplierErr?.message ?? ''),
+    supplierErr?.message?.slice(0, 100))
 
   console.log('\n── Calculation boundary ──')
   const calcRes = await fetch(`${BASE}/api/internal/calculate`, {
