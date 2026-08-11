@@ -16,7 +16,8 @@
     "audit:roles": "node scripts/audit-roles.mjs",
     "contract:generate": "python3 contract/generate.py --typescript src/lib/nucleos/contract.ts && python3 contract/generate.py --digest > contract/DIGEST",
     "contract:check": "python3 contract/generate.py --check --typescript src/lib/nucleos/contract.ts",
-    "verify:boundary": "node scripts/verify-boundary.mjs"
+    "verify:boundary": "node scripts/verify-boundary.mjs",
+    "seal:nucleos": "node scripts/seal-nucleos-chain.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
