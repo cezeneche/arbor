@@ -6,13 +6,21 @@ import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { shareState } from '@/lib/shares/share-status'
 import { categoriseRequests } from '@/lib/layer3/requests-overview'
 import { RequestSectionList } from '@/components/RequestSectionList'
+import { RequestDataPrompt } from '@/components/RequestDataPrompt'
+import { REQUEST_VIEWS, resolveRequestView, type RequestView } from '@/lib/requests/request-views'
 
 // Unified Requests landing. The supplier sees one idea - "someone wants my data,
 // and here's what I've given" - instead of four separate destinations. Rows route
 // into the focused screens (/requests/data, /inbound-requests, /shares) where the
 // actual respond / manage actions live.
-export default async function RequestsPage() {
+export default async function RequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>
+}) {
   const session = await requirePageSession()
+  const { view: rawView } = await searchParams
+  const view: RequestView = resolveRequestView(rawView)
 
   const entityId = getSessionUser(session).entityId as string
 
@@ -71,28 +79,63 @@ export default async function RequestsPage() {
         </p>
       </div>
 
-      <RequestSectionList
-        title="Waiting on you"
-        items={waiting}
-        emptyText="You're all caught up, nothing to respond to."
-        accent
-      />
+      {/* Views of one section, not tabs — the same quiet toggle Records and CBAM
+          use, so the product has one navigation pattern rather than two. */}
+      <div
+        style={{
+          display: 'flex',
+          gap: spacing[3],
+          marginBottom: spacing[4],
+          paddingBottom: spacing[2],
+          borderBottom: `1px solid ${colours.border}`,
+        }}
+      >
+        {REQUEST_VIEWS.map(v => (
+          <Link
+            key={v.id}
+            href={v.id === 'waiting' ? '/requests' : `/requests?view=${v.id}`}
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: view === v.id ? typography.weights.medium : typography.weights.light,
+              color: view === v.id ? colours.textPrimary : colours.textSecondary,
+              textDecoration: 'none',
+            }}
+          >
+            {v.label}
+          </Link>
+        ))}
+      </div>
 
-      <div style={{ height: '1px', backgroundColor: colours.border, margin: `0 0 ${spacing[5]}` }} />
+      {view === 'waiting' && (
+        <RequestSectionList
+          title="Waiting on you"
+          items={waiting}
+          emptyText="You're all caught up, nothing to respond to."
+          accent
+        />
+      )}
 
-      <RequestSectionList
-        title="What you've shared"
-        items={shared}
-        emptyText="You haven't shared any data yet."
-      />
+      {view === 'shared' && (
+        <RequestSectionList
+          title="What you've shared"
+          items={shared}
+          emptyText="You haven't shared any data yet."
+        />
+      )}
 
-      {sent.length > 0 && (
+      {view === 'sent' && (
         <RequestSectionList
           title="Requests you've sent"
           items={sent}
           emptyText="You haven't asked any suppliers for data."
         />
       )}
+
+      <div style={{ height: spacing[5] }} />
+
+      <RequestDataPrompt />
+
+      <div style={{ height: spacing[4] }} />
 
       {/* Questionnaires have no per-entity "open" state - they're a catalogue you
           complete on demand - so they're an entry point, not a waiting task. */}

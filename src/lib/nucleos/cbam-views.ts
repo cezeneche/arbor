@@ -32,10 +32,10 @@ export const CBAM_VIEWS = [
       'Relief claimed against carbon already paid in the country of origin, with verification status shown on every claim.',
   },
   {
-    id: 'suppliers',
-    label: 'Supplier data',
+    id: 'request',
+    label: 'Request data',
     description:
-      'Requests sent to suppliers for the emissions intensity a goods line is missing, and what came back.',
+      'Ask a supplier for the emissions intensity a goods line is missing — a tokenised form they can fill in without an account — or apply the published default value instead.',
   },
 ] as const
 

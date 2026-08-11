@@ -46,7 +46,7 @@ describe('CBAM views', () => {
       'cases',
       'declarations',
       'relief',
-      'suppliers',
+      'request',
     ])
   })
 })
