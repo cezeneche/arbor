@@ -6,6 +6,8 @@ import { listCbamCases } from '@/lib/nucleos/cases-client'
 import { CbamCaseList } from '@/components/CbamCaseList'
 import { CbamScopeChecker } from '@/components/CbamScopeChecker'
 import { CbamStartCase } from '@/components/CbamStartCase'
+import { CbamRequestData } from '@/components/CbamRequestData'
+import { CbamCarbonRelief } from '@/components/CbamCarbonRelief'
 import { selectReusableDocuments } from '@/lib/nucleos/reusable-documents'
 import { getSessionUser } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
@@ -53,9 +55,10 @@ export default async function CbamPage({
     )
   }
 
+  const NEEDS_CASES: CbamView[] = ['cases', 'request', 'relief']
   let cases = null
   let casesError: string | null = null
-  if (view === 'cases') {
+  if (NEEDS_CASES.includes(view)) {
     try {
       cases = (await listCbamCases()).items
     } catch (err) {
@@ -110,7 +113,7 @@ export default async function CbamPage({
       >
         {view === 'scope' ? (
           <CbamScopeChecker />
-        ) : view === 'cases' && casesError ? (
+        ) : casesError ? (
           <div
             style={{
               fontSize: typography.sizes.sm,
@@ -118,7 +121,7 @@ export default async function CbamPage({
               color: colours.amber,
             }}
           >
-            CBAM cases could not be loaded, so this list is not showing what you have.
+            CBAM cases could not be loaded, so this is not showing what you have.
             <div style={{ color: colours.textTertiary, marginTop: '4px' }}>{casesError}</div>
           </div>
         ) : view === 'cases' && cases ? (
@@ -126,6 +129,10 @@ export default async function CbamPage({
             <CbamStartCase documents={reusable} />
             <CbamCaseList cases={cases} />
           </>
+        ) : view === 'request' && cases ? (
+          <CbamRequestData cases={cases} />
+        ) : view === 'relief' && cases ? (
+          <CbamCarbonRelief cases={cases} />
         ) : (
           <div
             style={{

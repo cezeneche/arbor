@@ -64,74 +64,128 @@ export function CbamScopeChecker() {
     }
   }
 
-  const label = {
-    display: 'block',
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    color: colours.textPrimary,
-    marginBottom: '4px',
-  }
-  const hint = {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.light,
-    color: colours.textSecondary,
-    margin: '0 0 6px',
-  }
-  const input = {
-    width: '100%',
-    padding: spacing[2],
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.light,
-    color: colours.textPrimary,
-    border: `1px solid ${colours.border}`,
-    borderRadius: '4px',
-    backgroundColor: colours.surface,
-  }
-
   const copy = result ? STATUS_COPY[result.status] : null
   const toneColour =
     copy?.tone === 'in' ? colours.navy : copy?.tone === 'review' ? colours.amber : colours.textSecondary
 
-  return (
-    <div style={{ maxWidth: '520px' }}>
-      <form onSubmit={check}>
-        <div style={{ marginBottom: spacing[3] }}>
-          <label htmlFor="cn" style={label}>Commodity code</label>
-          <p style={hint}>The 8-digit code from your customs paperwork. For example, 72071111.</p>
-          <input
-            id="cn"
-            value={cnCode}
-            onChange={e => setCnCode(e.target.value)}
-            inputMode="numeric"
-            required
-            style={input}
-          />
-        </div>
+  const fieldLabel: React.CSSProperties = {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.light,
+    color: colours.textSecondary,
+    margin: `0 0 4px`,
+  }
+  const bareInput: React.CSSProperties = {
+    flex: 1,
+    height: '100%',
+    border: 'none',
+    outline: 'none',
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.light,
+    fontFamily: 'inherit',
+    color: colours.textPrimary,
+    backgroundColor: 'transparent',
+    padding: `0 ${spacing[3]}`,
+    minWidth: 0,
+  }
 
-        <div style={{ marginBottom: spacing[3] }}>
-          <label htmlFor="origin" style={label}>
-            Country of origin{' '}
-            <span style={{ fontWeight: typography.weights.light, color: colours.textSecondary }}>
-              Optional
-            </span>
-          </label>
-          <p style={hint}>Two-letter code, such as TR or IN. Goods made in the EU are excluded.</p>
-          <input
-            id="origin"
-            value={origin}
-            onChange={e => setOrigin(e.target.value.toUpperCase())}
-            maxLength={2}
-            style={{ ...input, textTransform: 'uppercase' }}
-          />
+  return (
+    <div style={{ maxWidth: '620px' }}>
+      {/* One joined row: the two fields and the action read as a single question,
+          which is what it is. Stacks below 768px, where a three-part row cannot
+          hold its proportions. */}
+      <style>{`
+        .sc-row { display: flex; align-items: flex-end; }
+        .sc-f1 { flex: 2; display: flex; flex-direction: column; min-width: 0; }
+        .sc-f2 { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .sc-box { display: flex; align-items: stretch; height: 40px; overflow: hidden; }
+        .sc-btn-stacked { display: none; }
+        @media (max-width: 768px) {
+          .sc-row { flex-direction: column; gap: 8px; align-items: stretch; }
+          .sc-box, .sc-box-r { border-radius: 4px !important; border-right-width: 1px !important; }
+          .sc-btn-inline { display: none; }
+          .sc-btn-stacked { display: block; width: 100%; }
+        }
+      `}</style>
+
+      <form onSubmit={check}>
+        <div className="sc-row">
+          <div className="sc-f1">
+            <p style={fieldLabel}>Commodity code</p>
+            <div
+              className="sc-box"
+              style={{
+                border: `1px solid ${colours.border}`,
+                borderRight: 'none',
+                borderRadius: '4px 0 0 4px',
+                backgroundColor: colours.surface,
+              }}
+            >
+              <input
+                id="cn"
+                value={cnCode}
+                onChange={e => setCnCode(e.target.value)}
+                inputMode="numeric"
+                required
+                placeholder="8 digits, e.g. 72071111"
+                style={bareInput}
+              />
+            </div>
+          </div>
+
+          <div className="sc-f2">
+            <p style={fieldLabel}>
+              Country of origin{' '}
+              <span style={{ color: colours.textTertiary }}>optional</span>
+            </p>
+            <div
+              className="sc-box sc-box-r"
+              style={{
+                border: `1px solid ${colours.border}`,
+                borderRadius: '0 4px 4px 0',
+                backgroundColor: colours.surface,
+              }}
+            >
+              <input
+                id="origin"
+                value={origin}
+                onChange={e => setOrigin(e.target.value.toUpperCase())}
+                maxLength={2}
+                placeholder="TR"
+                style={{ ...bareInput, textTransform: 'uppercase' }}
+              />
+              <button
+                type="submit"
+                className="sc-btn-inline"
+                disabled={busy}
+                style={{
+                  padding: `0 ${spacing[4]}`,
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.medium,
+                  fontFamily: 'inherit',
+                  color: '#FFFFFF',
+                  backgroundColor: colours.navy,
+                  border: 'none',
+                  cursor: busy ? 'default' : 'pointer',
+                  opacity: busy ? 0.6 : 1,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {busy ? 'Checking…' : 'Check'}
+              </button>
+            </div>
+          </div>
         </div>
 
         <button
           type="submit"
+          className="sc-btn-stacked"
           disabled={busy}
           style={{
-            padding: `${spacing[2]} ${spacing[4]}`,
+            marginTop: spacing[2],
+            height: '40px',
             fontSize: typography.sizes.sm,
             fontWeight: typography.weights.medium,
+            fontFamily: 'inherit',
             color: '#FFFFFF',
             backgroundColor: colours.navy,
             border: 'none',
@@ -143,6 +197,19 @@ export function CbamScopeChecker() {
           {busy ? 'Checking…' : 'Check scope'}
         </button>
       </form>
+
+      <p
+        style={{
+          fontSize: typography.sizes.xs,
+          fontWeight: typography.weights.light,
+          color: colours.textTertiary,
+          margin: `${spacing[2]} 0 0`,
+          lineHeight: 1.5,
+        }}
+      >
+        The code is on your customs paperwork. Goods made in the EU are excluded, so the
+        origin changes the answer.
+      </p>
 
       {error && (
         <p
