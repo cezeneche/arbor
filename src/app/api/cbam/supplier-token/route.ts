@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireWriteAccess } from '@/lib/auth-helpers'
-import { createSupplierToken } from '@/lib/nucleos/supplier-request-client'
+import {
+  createSupplierToken,
+  SupplierRequestRejectedError,
+} from '@/lib/nucleos/supplier-request-client'
 
 // Creates a tokenised supplier form link for a goods line.
 //
@@ -25,7 +28,12 @@ export async function POST(request: Request) {
 
   try {
     return NextResponse.json(await createSupplierToken(goodsLineId))
-  } catch {
+  } catch (err) {
+    // A permanent rejection reported as an outage sends the user round a retry
+    // loop that cannot close, and hides the actual fault.
+    if (err instanceof SupplierRequestRejectedError) {
+      return NextResponse.json({ error: err.message }, { status: 422 })
+    }
     return NextResponse.json(
       { error: 'The request could not be created. Please try again shortly.' },
       { status: 502 },
