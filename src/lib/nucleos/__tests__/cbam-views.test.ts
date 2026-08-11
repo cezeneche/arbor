@@ -4,8 +4,14 @@ import { CBAM_VIEWS, resolveCbamView } from '../cbam-views'
 // toggle Records uses for Trends and Benchmarks.
 
 describe('CBAM views', () => {
-  it('opens on Cases', () => {
-    expect(resolveCbamView(undefined)).toBe('cases')
+  it('opens on the scope check', () => {
+    // The question a user arrives with, answerable in seconds with no document.
+    // Opening on Cases shows an empty table to everyone who has not started.
+    expect(resolveCbamView(undefined)).toBe('scope')
+  })
+
+  it('scope check is the first view offered', () => {
+    expect(CBAM_VIEWS[0].id).toBe('scope')
   })
 
   it('resolves each known view', () => {
@@ -17,9 +23,9 @@ describe('CBAM views', () => {
   it('falls back rather than erroring on an unknown view', () => {
     // A stale or mistyped link is a navigation hint, not an instruction — it
     // should land somewhere useful rather than on an error page.
-    expect(resolveCbamView('nonsense')).toBe('cases')
-    expect(resolveCbamView('')).toBe('cases')
-    expect(resolveCbamView(null)).toBe('cases')
+    expect(resolveCbamView('nonsense')).toBe('scope')
+    expect(resolveCbamView('')).toBe('scope')
+    expect(resolveCbamView(null)).toBe('scope')
   })
 
   it('every view has a label and an explanation', () => {
@@ -36,6 +42,7 @@ describe('CBAM views', () => {
 
   it('carries the views the section is for', () => {
     expect(CBAM_VIEWS.map(v => v.id)).toEqual([
+      'scope',
       'cases',
       'declarations',
       'relief',

@@ -9,6 +9,12 @@
 
 export const CBAM_VIEWS = [
   {
+    id: 'scope',
+    label: 'Scope check',
+    description:
+      'Whether a commodity code is covered by CBAM, before any document or commitment.',
+  },
+  {
     id: 'cases',
     label: 'Cases',
     description:
@@ -35,7 +41,11 @@ export const CBAM_VIEWS = [
 
 export type CbamView = (typeof CBAM_VIEWS)[number]['id']
 
-const DEFAULT_VIEW: CbamView = 'cases'
+// The section opens on the scope check. It answers the question a user actually
+// arrives with — does this apply to me? — in seconds, with no document and
+// nothing at stake if the answer is no. Opening on Cases shows an empty table to
+// everyone who has not started yet, which answers nothing.
+const DEFAULT_VIEW: CbamView = 'scope'
 
 /**
  * Resolve a `?view=` parameter to a known view.

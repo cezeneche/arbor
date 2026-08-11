@@ -4,6 +4,7 @@ import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { CBAM_VIEWS, resolveCbamView, type CbamView } from '@/lib/nucleos/cbam-views'
 import { listCbamCases } from '@/lib/nucleos/cases-client'
 import { CbamCaseList } from '@/components/CbamCaseList'
+import { CbamScopeChecker } from '@/components/CbamScopeChecker'
 
 // CBAM is its own section, and its screens are views of it — the same quiet
 // toggle Records uses for Trends and Benchmarks. Not tabs: the design rules
@@ -60,7 +61,7 @@ export default async function CbamPage({
         {CBAM_VIEWS.map(v => (
           <Link
             key={v.id}
-            href={v.id === 'cases' ? '/cbam' : `/cbam?view=${v.id}`}
+            href={v.id === 'scope' ? '/cbam' : `/cbam?view=${v.id}`}
             style={toggleStyle(view === v.id)}
           >
             {v.label}
@@ -76,7 +77,9 @@ export default async function CbamPage({
           backgroundColor: colours.surface,
         }}
       >
-        {view === 'cases' && casesError ? (
+        {view === 'scope' ? (
+          <CbamScopeChecker />
+        ) : view === 'cases' && casesError ? (
           <div
             style={{
               fontSize: typography.sizes.sm,
