@@ -16,38 +16,33 @@ export function RequestSectionList({
   emptyText,
   accent = false,
 }: {
-  title: string
+  /** Omit when the page heading already names the section. */
+  title?: string
   items: RequestItem[]
   emptyText: string
   accent?: boolean
 }) {
   return (
     <section style={{ marginBottom: spacing[5] }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: spacing[1], marginBottom: spacing[2] }}>
-        <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.medium,
-            color: colours.textPrimary,
-            letterSpacing: typography.tracking.normal,
-            margin: 0,
-          }}
-        >
-          {title}
-        </p>
-        {items.length > 0 && (
-          <span
-            style={{
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.medium,
-              color: accent ? colours.amber : colours.textTertiary,
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {items.length}
-          </span>
-        )}
-      </div>
+      {/* The page heading already names the section on every screen that passes
+          no title. Repeating it here put "Waiting on you" on the screen twice. */}
+      {title && (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: spacing[1], marginBottom: spacing[2] }}>
+          <p style={textStyles.rowTitle}>{title}</p>
+          {items.length > 0 && (
+            <span
+              style={{
+                ...textStyles.caption,
+                fontWeight: typography.weights.medium,
+                color: accent ? colours.amber : colours.textTertiary,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {items.length}
+            </span>
+          )}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p style={textStyles.sectionSubtitle}>

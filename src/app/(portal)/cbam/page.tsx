@@ -78,8 +78,7 @@ export default async function CbamPage({
       <div style={{ marginBottom: spacing[5] }}>
         <h1 style={textStyles.pageTitle}>CBAM</h1>
         <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
-          Import declarations, embedded emissions and carbon price relief, built on
-          the records you have already certified.
+          {CBAM_VIEWS.find(v => v.id === view)?.description}
         </p>
       </div>
 
@@ -114,15 +113,11 @@ export default async function CbamPage({
         {view === 'scope' ? (
           <CbamScopeChecker />
         ) : casesError ? (
-          <div
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.amber,
-            }}
-          >
+          <div style={{ ...textStyles.sectionSubtitle, color: colours.amber }}>
             CBAM cases could not be loaded, so this is not showing what you have.
-            <div style={{ color: colours.textTertiary, marginTop: '4px' }}>{casesError}</div>
+            <div style={{ ...textStyles.caption, color: colours.textTertiary, marginTop: '4px' }}>
+              {casesError}
+            </div>
           </div>
         ) : view === 'cases' && cases ? (
           <>
@@ -134,14 +129,8 @@ export default async function CbamPage({
         ) : view === 'relief' && cases ? (
           <CbamCarbonRelief cases={cases} />
         ) : (
-          <div
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-            }}
-          >
-            {CBAM_VIEWS.find(v => v.id === view)?.description}
+          <div style={textStyles.sectionSubtitle}>
+            This view could not be loaded.
           </div>
         )}
       </div>

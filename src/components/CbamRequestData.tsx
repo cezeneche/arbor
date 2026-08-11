@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { CbamCasePicker } from './CbamCasePicker'
 import { DATA_PATHS, type DataPathId } from '@/lib/nucleos/data-path'
 import type { CbamCaseSummary } from '@/lib/nucleos/cases-client'
@@ -57,9 +57,7 @@ function PathCard({
       </p>
       <p
         style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
+          ...textStyles.sectionSubtitle,
           lineHeight: 1.6,
           margin: `0 0 ${spacing[2]}`,
         }}
@@ -210,9 +208,7 @@ function CaseRequest({ caseId }: { caseId: string }) {
         <div style={{ marginBottom: spacing[3], maxWidth: '420px' }}>
           <p
             style={{
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
+              ...textStyles.caption,
               margin: `0 0 4px`,
             }}
           >
@@ -238,9 +234,7 @@ function CaseRequest({ caseId }: { caseId: string }) {
             <>
               <p
                 style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
+                  ...textStyles.sectionSubtitle,
                   margin: `0 0 ${spacing[3]}`,
                   lineHeight: 1.6,
                 }}
@@ -264,9 +258,7 @@ function CaseRequest({ caseId }: { caseId: string }) {
             >
               <p
                 style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.medium,
-                  color: colours.textPrimary,
+                  ...textStyles.rowTitle,
                   margin: `0 0 ${spacing[2]}`,
                 }}
               >
@@ -306,9 +298,8 @@ function CaseRequest({ caseId }: { caseId: string }) {
               {expiresAt && (
                 <p
                   style={{
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.light,
-                    color: colours.textTertiary,
+                    ...textStyles.caption,
+          color: colours.textTertiary,
                     margin: `${spacing[2]} 0 0`,
                   }}
                 >
@@ -339,9 +330,7 @@ function CaseRequest({ caseId }: { caseId: string }) {
           {defaults.length === 0 ? (
             <p
               style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
+                ...textStyles.sectionSubtitle,
                 margin: 0,
               }}
             >
@@ -363,18 +352,14 @@ function CaseRequest({ caseId }: { caseId: string }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <span
                       style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.light,
-                        color: colours.textSecondary,
+                        ...textStyles.sectionSubtitle,
                       }}
                     >
                       {d.cn8_code} · {d.description}
                     </span>
                     <span
                       style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.medium,
-                        color: colours.textPrimary,
+                        ...textStyles.rowTitle,
                         fontVariantNumeric: 'tabular-nums',
                         whiteSpace: 'nowrap',
                         paddingLeft: spacing[3],
@@ -385,9 +370,8 @@ function CaseRequest({ caseId }: { caseId: string }) {
                   </div>
                   <p
                     style={{
-                      fontSize: typography.sizes.xs,
-                      fontWeight: typography.weights.light,
-                      color: colours.textTertiary,
+                      ...textStyles.caption,
+          color: colours.textTertiary,
                       margin: `4px 0 0`,
                     }}
                   >
@@ -413,9 +397,8 @@ function CaseRequest({ caseId }: { caseId: string }) {
               </p>
               <p
                 style={{
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.light,
-                  color: colours.textTertiary,
+                  ...textStyles.caption,
+          color: colours.textTertiary,
                   lineHeight: 1.6,
                   margin: `${spacing[2]} 0 0`,
                 }}
@@ -433,19 +416,6 @@ function CaseRequest({ caseId }: { caseId: string }) {
 export function CbamRequestData({ cases }: { cases: CbamCaseSummary[] }) {
   return (
     <div>
-      <p
-        style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
-          margin: `0 0 ${spacing[4]}`,
-          lineHeight: 1.6,
-          maxWidth: '620px',
-        }}
-      >
-        Open a case to fill the emissions figures its goods lines are missing — either by
-        asking the supplier directly, or by seeing what the published default would cost you.
-      </p>
       <CbamCasePicker
         cases={cases}
         emptyMessage="There are no cases yet. Start one from Cases, and its goods lines will appear here."

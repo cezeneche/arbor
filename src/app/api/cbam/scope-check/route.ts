@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-helpers'
 import { checkCbamScope } from '@/lib/nucleos/scope-client'
+import { lookupDefaultValues } from '@/lib/nucleos/default-value-client'
 
 // Scope-check proxy. The browser posts here; Arbor calls Nucleos server-side.
 //
@@ -37,7 +38,21 @@ export async function POST(request: Request) {
           ? body.consignment_value_eur
           : null,
     })
-    return NextResponse.json(result)
+    // The default SEE comes from a second lookup because the scope endpoint does
+    // not return it. Fetched here rather than in the browser so one user action
+    // stays one request, and so a lookup failure degrades to "no estimate"
+    // instead of failing the scope answer, which is the part that matters.
+    let defaultSee: number | null = null
+    if (result.status === 'in_scope') {
+      try {
+        const entries = await lookupDefaultValues(cnCode)
+        defaultSee = entries[0]?.default_see_tco2e_per_t ?? null
+      } catch {
+        defaultSee = null
+      }
+    }
+
+    return NextResponse.json({ ...result, default_see_tco2e_per_t: defaultSee })
   } catch {
     return NextResponse.json(
       { error: 'The scope check is unavailable right now. Please try again shortly.' },

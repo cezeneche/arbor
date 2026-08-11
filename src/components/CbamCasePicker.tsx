@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import type { CbamCaseSummary } from '@/lib/nucleos/cases-client'
 
 // Pick a case, and the work for it opens beneath the row.
@@ -28,9 +28,7 @@ export function CbamCasePicker({
     return (
       <p
         style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
+          ...textStyles.sectionSubtitle,
           margin: 0,
         }}
       >
@@ -84,9 +82,8 @@ export function CbamCasePicker({
                 <span
                   style={{
                     display: 'block',
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.light,
-                    color: colours.textTertiary,
+                    ...textStyles.caption,
+          color: colours.textTertiary,
                     marginTop: '2px',
                   }}
                 >
@@ -97,9 +94,7 @@ export function CbamCasePicker({
               </span>
               <span
                 style={{
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
+                  ...textStyles.caption,
                   whiteSpace: 'nowrap',
                 }}
               >

@@ -69,13 +69,8 @@ export default async function RequestsPage({
         >
           Requests
         </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
-          {waiting.length > 0
-            ? `${waiting.length} waiting on you`
-            : 'Nothing waiting on you'}
-          {' · '}{shared.length} shared
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
+          {REQUEST_VIEWS.find(v => v.id === view)?.description}
         </p>
       </div>
 
@@ -108,7 +103,6 @@ export default async function RequestsPage({
 
       {view === 'waiting' && (
         <RequestSectionList
-          title="Waiting on you"
           items={waiting}
           emptyText="You're all caught up, nothing to respond to."
           accent
@@ -117,39 +111,49 @@ export default async function RequestsPage({
 
       {view === 'shared' && (
         <RequestSectionList
-          title="What you've shared"
           items={shared}
           emptyText="You haven't shared any data yet."
         />
       )}
 
-      {view === 'sent' && (
-        <RequestSectionList
-          title="Requests you've sent"
-          items={sent}
-          emptyText="You haven't asked any suppliers for data."
-        />
+      {/* Asking, and what has already been asked. The list is context for the
+          action above it rather than a destination of its own. */}
+      {view === 'request' && (
+        <>
+          <RequestDataPrompt />
+          <div style={{ height: spacing[5] }} />
+          <RequestSectionList
+            title="Requests you've sent"
+            items={sent}
+            emptyText="You haven't asked any suppliers for data."
+          />
+        </>
       )}
 
-      <div style={{ height: spacing[5] }} />
+      {view === 'questionnaires' && (
+        <div>
+          <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}` }}>
+            Answer a buyer&apos;s questionnaire from the data you already hold. Nothing is
+            sent until you have reviewed every answer.
+          </p>
+          <Link
+            href="/questionnaires"
+            style={{
+              display: 'inline-block',
+              padding: `${spacing[2]} ${spacing[4]}`,
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.medium,
+              color: '#FFFFFF',
+              backgroundColor: colours.navy,
+              borderRadius: '4px',
+              textDecoration: 'none',
+            }}
+          >
+            Browse questionnaires
+          </Link>
+        </div>
+      )}
 
-      <RequestDataPrompt />
-
-      <div style={{ height: spacing[4] }} />
-
-      {/* Questionnaires have no per-entity "open" state - they're a catalogue you
-          complete on demand - so they're an entry point, not a waiting task. */}
-      <div style={{ borderTop: `1px solid ${colours.border}`, paddingTop: spacing[3] }}>
-        <Link
-          href="/questionnaires"
-          style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.navy, textDecoration: 'none' }}
-        >
-          Complete a questionnaire →
-        </Link>
-        <p style={{ ...textStyles.sectionSubtitle, margin: '4px 0 0' }}>
-          Answer a buyer&apos;s questionnaire from the data you already hold.
-        </p>
-      </div>
     </div>
   )
 }

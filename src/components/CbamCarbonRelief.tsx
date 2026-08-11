@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { CbamCasePicker } from './CbamCasePicker'
 import { qualifyingScheme, netLiability, missingForCalculation } from '@/lib/nucleos/cpr-form'
 import type { CbamCaseSummary } from '@/lib/nucleos/cases-client'
@@ -54,9 +54,7 @@ function Row({ label, value, emphasis }: { label: string; value: string; emphasi
     >
       <span
         style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
+          ...textStyles.sectionSubtitle,
         }}
       >
         {label}
@@ -116,9 +114,7 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
       <div style={{ padding: `${spacing[4]} 0`, borderTop: `1px solid ${colours.border}` }}>
         <p
           style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
+            ...textStyles.sectionSubtitle,
             margin: 0,
             lineHeight: 1.6,
             maxWidth: '520px',
@@ -222,9 +218,7 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
     boxSizing: 'border-box',
   }
   const labelStyle: React.CSSProperties = {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.light,
-    color: colours.textSecondary,
+    ...textStyles.caption,
     margin: `0 0 4px`,
   }
   const primary = (disabled: boolean): React.CSSProperties => ({
@@ -255,9 +249,7 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
         </p>
         <p
           style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.textSecondary,
+            ...textStyles.sectionSubtitle,
             margin: 0,
             lineHeight: 1.6,
             maxWidth: '520px',
@@ -324,9 +316,8 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
           {!verifier && (
             <p
               style={{
-                fontSize: typography.sizes.xs,
-                fontWeight: typography.weights.light,
-                color: colours.textTertiary,
+                ...textStyles.caption,
+          color: colours.textTertiary,
                 lineHeight: 1.6,
                 margin: `${spacing[3]} 0 0`,
               }}
@@ -379,9 +370,7 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
     <div style={section}>
       <p
         style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
+          ...textStyles.sectionSubtitle,
           margin: `0 0 ${spacing[4]}`,
           lineHeight: 1.6,
           maxWidth: '520px',
@@ -494,9 +483,8 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
       {missing.length > 0 && (
         <p
           style={{
-            fontSize: typography.sizes.xs,
-            fontWeight: typography.weights.light,
-            color: colours.textTertiary,
+            ...textStyles.caption,
+          color: colours.textTertiary,
             margin: `${spacing[2]} 0 0`,
           }}
         >
@@ -523,19 +511,6 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
 export function CbamCarbonRelief({ cases }: { cases: CbamCaseSummary[] }) {
   return (
     <div>
-      <p
-        style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
-          margin: `0 0 ${spacing[4]}`,
-          lineHeight: 1.6,
-          maxWidth: '620px',
-        }}
-      >
-        Where carbon has already been paid in the country of origin, it can be set against
-        the CBAM liability. Open a case to work out what it is worth.
-      </p>
       <CbamCasePicker
         cases={cases}
         emptyMessage="There are no cases yet. Relief is claimed against a case, so start one from Cases first."

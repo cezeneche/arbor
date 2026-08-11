@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { presentCase, summariseExposure } from '@/lib/nucleos/case-presenter'
 import type { CbamCaseSummary } from '@/lib/nucleos/cases-client'
 
@@ -15,9 +15,7 @@ export function CbamCaseList({ cases }: { cases: CbamCaseSummary[] }) {
     return (
       <p
         style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
+          ...textStyles.sectionSubtitle,
         }}
       >
         No CBAM cases yet. They appear here when a customs declaration, supplier
@@ -28,9 +26,7 @@ export function CbamCaseList({ cases }: { cases: CbamCaseSummary[] }) {
 
   const cell = {
     padding: `${spacing[2]} ${spacing[2]}`,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.light,
-    color: colours.textPrimary,
+    ...textStyles.value,
     borderBottom: `1px solid ${colours.border}`,
     textAlign: 'left' as const,
   }

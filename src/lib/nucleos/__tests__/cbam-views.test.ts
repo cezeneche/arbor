@@ -40,12 +40,14 @@ describe('CBAM views', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
+  // Declarations was removed: it showed built returns, and nothing in Arbor
+  // builds one yet. A tab that is always empty teaches a user the section is
+  // broken rather than that the feature is not here.
   it('carries the views the section is for', () => {
     expect(CBAM_VIEWS.map(v => v.id)).toEqual([
       'scope',
       'cases',
-      'declarations',
-      'relief',
+            'relief',
       'request',
     ])
   })

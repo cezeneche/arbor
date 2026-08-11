@@ -21,11 +21,6 @@ export const CBAM_VIEWS = [
       'Import cases, their consignments and goods lines, with the emissions method and provenance on every line.',
   },
   {
-    id: 'declarations',
-    label: 'Declarations',
-    description: 'Built returns, their decision trace and the engine versions that produced them.',
-  },
-  {
     id: 'relief',
     label: 'Carbon price relief',
     description:

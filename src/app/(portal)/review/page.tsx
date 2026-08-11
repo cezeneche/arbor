@@ -3,7 +3,8 @@ import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { DOMAIN_BY_DOCUMENT_TYPE, DataDomain } from '@/lib/constants'
-import { NUMERIC_FIELDS, derivePeriod, summariseReviewQueue } from '@/lib/review/review-policy'
+import { derivePeriod, summariseReviewQueue } from '@/lib/review/review-policy'
+import { selectReviewableFields } from '@/lib/review/reviewable-fields'
 import { ReviewQueue, type ReviewDoc } from '@/components/ReviewQueue'
 
 export default async function ReviewPage() {
@@ -33,7 +34,9 @@ export default async function ReviewPage() {
     for (const f of fields) values[f.fieldName] = f.rawValue
     const { periodStart, periodEnd } = derivePeriod(values, { documentType: doc.documentType })
 
-    const numeric = fields.filter((f) => NUMERIC_FIELDS.has(f.fieldName) && f.rawValue !== null && f.rawValue !== '')
+    // Never a silent skip. A document in REVIEW_REQUIRED that the queue drops is
+    // unreachable and un-actionable, while the screen reports nothing to review.
+    const numeric = selectReviewableFields(fields)
     if (numeric.length === 0) continue
 
     flaggedTotal += numeric.filter((f) => f.flagged).length

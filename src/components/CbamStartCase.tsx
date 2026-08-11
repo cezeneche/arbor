@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, spacing, textStyles } from '@/lib/design-system'
 import { describeDocument, type ReusableDocument } from '@/lib/nucleos/reusable-documents'
 
 // Two ways to start a case, because the document may already be here.
@@ -7,138 +7,111 @@ import { describeDocument, type ReusableDocument } from '@/lib/nucleos/reusable-
 // Re-uploading a customs declaration Arbor already holds creates a second copy
 // of one real-world document, each with its own extraction and audit trail.
 // A certified repository should never hold two records of the same evidence.
+//
+// The upload half uses the same dashed box the Upload screen uses. A user who
+// has uploaded once should recognise the target immediately rather than reading
+// a link that happens to lead somewhere that looks different.
 
 export function CbamStartCase({ documents }: { documents: ReusableDocument[] }) {
-  const card = {
-    border: `1px solid ${colours.border}`,
-    borderRadius: '6px',
-    padding: spacing[3],
-    backgroundColor: colours.surface,
-  }
-
   return (
     <div style={{ marginBottom: spacing[5] }}>
-      <div
-        style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.medium,
-          color: colours.textPrimary,
-          marginBottom: '4px',
-        }}
-      >
-        Start a case
-      </div>
-      <p
-        style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
-          margin: `0 0 ${spacing[3]}`,
-        }}
-      >
+      <p style={textStyles.rowTitle}>Start a case</p>
+      <p style={{ ...textStyles.sectionSubtitle, margin: `4px 0 ${spacing[3]}` }}>
         From a customs declaration, supplier invoice or CBAM declaration.
       </p>
 
-      <div style={{ display: 'grid', gap: spacing[2], maxWidth: '640px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: documents.length > 0 ? '1fr 1fr' : '1fr',
+          gap: spacing[3],
+          alignItems: 'stretch',
+          maxWidth: '720px',
+        }}
+      >
+        {/* Same dashed target as the Upload screen. */}
         <Link href="/upload" style={{ textDecoration: 'none' }}>
-          <div style={card}>
-            <div
-              style={{
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.medium,
-                color: colours.textPrimary,
-              }}
-            >
-              Upload a document
+          <div
+            style={{
+              border: `2px dashed ${colours.border}`,
+              borderRadius: '8px',
+              padding: spacing[4],
+              textAlign: 'center',
+              backgroundColor: colours.surface,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing[3],
+            }}
+          >
+            <div>
+              <p style={textStyles.sectionTitle}>Upload a document</p>
+              <p style={{ ...textStyles.caption, margin: '4px 0 0' }}>
+                PDF, JPEG or PNG
+              </p>
             </div>
-            <p
+            <span
               style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                margin: '4px 0 0',
+                display: 'inline-block',
+                padding: `${spacing[2]} ${spacing[4]}`,
+                fontSize: textStyles.rowTitle.fontSize,
+                fontWeight: textStyles.rowTitle.fontWeight,
+                color: '#FFFFFF',
+                backgroundColor: colours.navy,
+                borderRadius: '4px',
               }}
             >
-              Add a new document to Arbor and read it for CBAM at the same time.
-            </p>
+              Choose a file
+            </span>
           </div>
         </Link>
 
-        <div style={card}>
+        {documents.length > 0 && (
           <div
             style={{
-              fontSize: typography.sizes.base,
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '8px',
+              padding: spacing[3],
+              backgroundColor: colours.surface,
             }}
           >
-            Use a document you already have
-          </div>
-
-          {documents.length === 0 ? (
-            <p
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: colours.textSecondary,
-                margin: '4px 0 0',
-              }}
-            >
-              Nothing eligible yet. Customs declarations, supplier invoices and CBAM
-              declarations appear here once they have been read.
+            <p style={textStyles.sectionTitle}>Use a document you already have</p>
+            <p style={{ ...textStyles.caption, margin: `4px 0 ${spacing[3]}` }}>
+              Already certified here — no second copy is made.
             </p>
-          ) : (
-            <>
-              <p
-                style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
-                  margin: '4px 0 10px',
-                }}
-              >
-                These are already in Arbor with their provenance intact.
-              </p>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {documents.map(doc => (
-                  <li
-                    key={doc.id}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+              {documents.slice(0, 4).map(doc => (
+                <Link
+                  key={doc.id}
+                  href={`/upload/${doc.id}/review`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    gap: spacing[3],
+                    textDecoration: 'none',
+                    paddingBottom: spacing[2],
+                    borderBottom: `1px solid ${colours.border}`,
+                  }}
+                >
+                  <span style={{ ...textStyles.value, minWidth: 0 }}>{describeDocument(doc)}</span>
+                  <span
                     style={{
-                      display: 'flex',
-                      alignItems: 'baseline',
-                      justifyContent: 'space-between',
-                      gap: spacing[2],
-                      padding: '6px 0',
-                      borderTop: `1px solid ${colours.border}`,
+                      ...textStyles.caption,
+                      color: colours.navy,
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    <span
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.light,
-                        color: colours.textPrimary,
-                      }}
-                    >
-                      {describeDocument(doc)}
-                    </span>
-                    <Link
-                      href={`/upload/${doc.id}/review`}
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.medium,
-                        color: colours.navy,
-                        textDecoration: 'none',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {doc.alreadyExtracted ? 'Review fields →' : 'Read for CBAM →'}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
+                    {doc.alreadyExtracted ? 'Review fields' : 'Read for CBAM'}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

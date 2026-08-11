@@ -28,6 +28,12 @@ export interface ScopeCheckResult {
   reasons: string[]
   /** The provisions relied on. An answer without these is an opinion. */
   regulation_refs: string[]
+  /**
+   * Annex VI world-average default, tCO2e per tonne. Added by Arbor's route from
+   * a second lookup — the scope endpoint does not return it. Null when the code
+   * is out of scope, or when the lookup failed.
+   */
+  default_see_tco2e_per_t?: number | null
 }
 
 export async function checkCbamScope(

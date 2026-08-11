@@ -3,6 +3,12 @@
 // Same quiet ?view= toggle Records and CBAM use. Arbor's design rules forbid
 // tabs; a toggle reads the same way without introducing a second navigation
 // pattern, and it keeps one primary action per screen.
+//
+// "Requests you sent" is not a view of its own. It used to sit beside "What you
+// shared", and the two read as the same idea — both are outbound history. It now
+// lives inside Request data, next to the thing that creates those requests,
+// where a list of what you have already asked for is context for asking again
+// rather than a separate destination.
 
 export const REQUEST_VIEWS = [
   {
@@ -16,9 +22,14 @@ export const REQUEST_VIEWS = [
     description: 'Data you have already sent, and who has it.',
   },
   {
-    id: 'sent',
-    label: 'Requests you sent',
-    description: 'Data you have asked your own suppliers for.',
+    id: 'request',
+    label: 'Request data',
+    description: 'Ask a supplier for data, and see what you have already asked for.',
+  },
+  {
+    id: 'questionnaires',
+    label: 'Questionnaires',
+    description: "Answer a buyer's questionnaire from the data you already hold.",
   },
 ] as const
 

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, spacing, textStyles } from '@/lib/design-system'
 import { REQUEST_KINDS } from '@/lib/requests/request-kind'
 
 // Asking which kind of data, rather than inferring it.
@@ -17,9 +17,7 @@ export function RequestDataPrompt() {
     <div style={{ borderTop: `1px solid ${colours.border}`, paddingTop: spacing[3] }}>
       <div
         style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.medium,
-          color: colours.textPrimary,
+          ...textStyles.rowTitle,
           marginBottom: '4px',
         }}
       >
@@ -27,9 +25,7 @@ export function RequestDataPrompt() {
       </div>
       <p
         style={{
-          fontSize: typography.sizes.sm,
-          fontWeight: typography.weights.light,
-          color: colours.textSecondary,
+          ...textStyles.sectionSubtitle,
           margin: `0 0 ${spacing[3]}`,
         }}
       >
@@ -50,9 +46,7 @@ export function RequestDataPrompt() {
             >
               <div
                 style={{
-                  fontSize: typography.sizes.base,
-                  fontWeight: typography.weights.medium,
-                  color: colours.textPrimary,
+                  ...textStyles.sectionTitle,
                   marginBottom: '4px',
                 }}
               >
@@ -60,9 +54,7 @@ export function RequestDataPrompt() {
               </div>
               <p
                 style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textPrimary,
+                  ...textStyles.value,
                   margin: 0,
                 }}
               >
@@ -70,9 +62,7 @@ export function RequestDataPrompt() {
               </p>
               <p
                 style={{
-                  fontSize: typography.sizes.xs,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
+                  ...textStyles.caption,
                   margin: '6px 0 0',
                 }}
               >
