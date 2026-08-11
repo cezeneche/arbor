@@ -84,6 +84,15 @@ project can be retired and the emails repointed.
 
 Keep the Render services running until both Vercel projects answer.
 
+**Retiring Render (done last).** Both services are superseded — the API by
+Vercel's `nucleos-api`, the web by Arbor's own `/supplier/[token]`. Delete them
+only after confirming no unexpired supplier token still points at the old host,
+because those links are the one thing Arbor cannot serve in their place. New
+links are unaffected: `WEB_BASE_URL` on `nucleos-api` points at Arbor.
+
+`render.yaml` was removed when Render was retired. The two-service topology it
+described is recorded above.
+
 Then, in Arbor's environment:
 
 ```
