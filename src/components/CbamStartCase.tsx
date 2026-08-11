@@ -26,7 +26,6 @@ export function CbamStartCase({ documents }: { documents: ReusableDocument[] }) 
           gridTemplateColumns: documents.length > 0 ? '1fr 1fr' : '1fr',
           gap: spacing[3],
           alignItems: 'stretch',
-          maxWidth: '720px',
         }}
       >
         {/* Same dashed target as the Upload screen. */}

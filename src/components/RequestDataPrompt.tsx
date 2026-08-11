@@ -14,7 +14,7 @@ import { REQUEST_KINDS } from '@/lib/requests/request-kind'
 
 export function RequestDataPrompt() {
   return (
-    <div style={{ borderTop: `1px solid ${colours.border}`, paddingTop: spacing[3] }}>
+    <div>
       <div
         style={{
           ...textStyles.rowTitle,

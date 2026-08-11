@@ -15,15 +15,40 @@ export function RequestSectionList({
   items,
   emptyText,
   accent = false,
+  matrix = false,
+  divider = false,
 }: {
   /** Omit when the page heading already names the section. */
   title?: string
   items: RequestItem[]
   emptyText: string
   accent?: boolean
+  /**
+   * Render as a table rather than cards.
+   *
+   * Cards are right for a queue you work through one at a time. A history you
+   * scan for a particular counterparty or date reads better in columns, where
+   * the same field sits in the same place on every row.
+   */
+  matrix?: boolean
+  /** A rule above the section, when it follows other content on the page. */
+  divider?: boolean
 }) {
+  const cell: React.CSSProperties = {
+    padding: `${spacing[2]} ${spacing[2]}`,
+    textAlign: 'left',
+    verticalAlign: 'top',
+  }
+
   return (
-    <section style={{ marginBottom: spacing[5] }}>
+    <section
+      style={{
+        marginBottom: spacing[5],
+        ...(divider
+          ? { borderTop: `1px solid ${colours.border}`, paddingTop: spacing[4] }
+          : {}),
+      }}
+    >
       {/* The page heading already names the section on every screen that passes
           no title. Repeating it here put "Waiting on you" on the screen twice. */}
       {title && (
@@ -48,6 +73,43 @@ export function RequestSectionList({
         <p style={textStyles.sectionSubtitle}>
           {emptyText}
         </p>
+      ) : matrix ? (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${colours.border}` }}>
+                {['Request', 'Kind', 'Detail', 'Sent'].map(h => (
+                  <th key={h} style={{ ...cell, ...textStyles.caption }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(item => (
+                <tr
+                  key={`${item.source}-${item.id}`}
+                  style={{ borderBottom: `1px solid ${colours.border}` }}
+                >
+                  <td style={cell}>
+                    <Link href={item.href} style={{ ...textStyles.rowTitle, textDecoration: 'none' }}>
+                      {item.title}
+                    </Link>
+                  </td>
+                  <td style={{ ...cell, ...textStyles.value }}>{SOURCE_LABELS[item.source]}</td>
+                  <td style={{ ...cell, ...textStyles.value }}>{item.detail}</td>
+                  <td style={{ ...cell, ...textStyles.value, whiteSpace: 'nowrap' }}>
+                    {new Date(item.timestamp).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {items.map(item => (

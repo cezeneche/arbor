@@ -126,6 +126,8 @@ export default async function RequestsPage({
             title="Requests you've sent"
             items={sent}
             emptyText="You haven't asked any suppliers for data."
+            matrix
+            divider
           />
         </>
       )}
