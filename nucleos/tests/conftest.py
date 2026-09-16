@@ -5,7 +5,7 @@ All three tests run against a real PostgreSQL / Supabase database.
 Set TEST_DATABASE_URL=postgresql+psycopg2://... to enable them.
 
 External APIs mocked:
-  - Slack webhook  (SLACK_INTERNAL_WEBHOOK_URL) — respx
+  - Slack webhook  (SLACK_WEBHOOK_URL) — respx
   - Resend email   (https://api.resend.com/emails) — respx
   - Claude API     (app.services.narrative._call_claude) — monkeypatch
 
@@ -47,8 +47,13 @@ os.environ.setdefault("CBAM_REGISTRATION_SCHEDULER", "false")
 os.environ.setdefault("ANTHROPIC_API_KEY",    "")          # never call real Claude in E2E
 os.environ.setdefault("SUPABASE_URL",         _TEST_DB_URL and os.environ.get("SUPABASE_URL", "") or "")
 # Slack and Resend are set to predictable test URLs so respx can intercept them
+# SLACK_WEBHOOK_URL is the name the notifier reads, and the one docker-compose,
+# CI, the README and CLAUDE.md all use. These tests set SLACK_INTERNAL_WEBHOOK_URL
+# and mocked that URL, so notify_review_required found no webhook configured,
+# logged a warning and returned — and the assertion that it had POSTed could
+# never pass.
 os.environ.setdefault(
-    "SLACK_INTERNAL_WEBHOOK_URL",
+    "SLACK_WEBHOOK_URL",
     "https://hooks.slack.com/test-e2e/T000/B000/XXXX",
 )
 os.environ.setdefault("RESEND_API_KEY",    "re_test_e2e_key_placeholder")
@@ -140,7 +145,7 @@ def slack_mock():
     import respx
     from httpx import Response as R
 
-    slack_url = os.environ["SLACK_INTERNAL_WEBHOOK_URL"]
+    slack_url = os.environ["SLACK_WEBHOOK_URL"]
     with respx.mock(assert_all_called=False) as mock:
         mock.post(slack_url).mock(return_value=R(200, text="ok"))
         yield mock
@@ -326,3 +331,29 @@ def cleanup_cbam_cases():
                 )
             except Exception:
                 pass
+
+
+@pytest.fixture(autouse=True)
+def _restore_global_test_doubles():
+    """Undo the globals `_client_with_fake_engine()` swaps out.
+
+    Same reason as the copy in api/tests/conftest.py: these modules skip
+    without a Postgres, so nothing ever noticed that a fake engine assigned by
+    an earlier module was still in place when they ran.
+    """
+    import ledger_app.api.cbam as _cbam_api  # noqa: PLC0415
+
+    real_engine = _cbam_api.engine
+    snapshot_env = {
+        key: os.environ.get(key)
+        for key in ("SNAPSHOT_STORE_BACKEND", "SNAPSHOT_STORE_DIR")
+    }
+    try:
+        yield
+    finally:
+        _cbam_api.engine = real_engine
+        for key, value in snapshot_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value

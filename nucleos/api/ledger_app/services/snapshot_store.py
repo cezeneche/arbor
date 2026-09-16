@@ -311,6 +311,64 @@ class SQLSnapshotStore:
         self._engine = engine
         self._table = table
         self._text = _text
+        self._columns: set[str] | None = None
+
+    def _table_columns(self, conn: Any) -> set[str]:
+        """Column names on the snapshot table, probed once and cached.
+
+        The table's shape differs between the SQLite used in tests and the
+        Postgres used everywhere else — Postgres carries a NOT NULL tenant_id
+        that SQLite does not. Probing rather than assuming is the pattern the
+        CBAM routers already use for the same reason.
+        """
+        if self._columns is not None:
+            return self._columns
+        from sqlalchemy import inspect as _inspect  # noqa: PLC0415
+
+        schema, _, name = self._table.rpartition(".")
+        try:
+            cols = _inspect(conn).get_columns(name, schema=schema or None)
+            self._columns = {c["name"] for c in cols}
+        except Exception:
+            self._columns = set()
+        return self._columns
+
+    def _resolve_tenant_id(self, conn: Any, case_id: str) -> str:
+        """The tenant a snapshot belongs to.
+
+        Taken from the case rather than the session, because a snapshot outlives
+        the request that produced it and has to be attributable years later. The
+        session variable is the fallback for a case that no longer exists.
+
+        Without this the INSERT omitted tenant_id entirely, which SQLite allowed
+        and Postgres rejected with a NOT NULL violation — so on a real database
+        every report package failed its snapshot write, and the report route
+        turns that into a 503 rather than emitting an unchained artefact. The
+        report package, the compliance pack and both returns were unreachable.
+        """
+        try:
+            row = conn.execute(
+                self._text(
+                    "SELECT tenant_id FROM cbam.cbam_cases WHERE id = :id LIMIT 1"
+                ),
+                {"id": case_id},
+            ).mappings().one_or_none()
+            if row and row.get("tenant_id"):
+                return str(row["tenant_id"])
+        except Exception:
+            pass
+
+        try:
+            row = conn.execute(
+                self._text("SELECT current_setting('app.current_tenant_id', true) AS t")
+            ).mappings().one_or_none()
+            if row and row.get("t"):
+                return str(row["t"])
+        except Exception:
+            pass
+
+        # The same sentinel _write_audit_event uses when no tenant is in scope.
+        return "shared"
 
     def append_snapshot(
         self,
@@ -381,25 +439,32 @@ class SQLSnapshotStore:
                 model_versions=model_versions or {},
             )
 
+            names = [
+                "id", "case_id", "stage", "created_at", "payload_json",
+                "payload_hash", "parent_hash", "algo_versions", "model_versions",
+            ]
+            params: dict[str, Any] = {
+                "id": record.id,
+                "case_id": record.case_id,
+                "stage": record.stage,
+                "created_at": record.created_at,
+                "payload_json": record.payload_json,
+                "payload_hash": record.payload_hash,
+                "parent_hash": record.parent_hash,
+                "algo_versions": json.dumps(record.algo_versions),
+                "model_versions": json.dumps(record.model_versions),
+            }
+
+            if "tenant_id" in self._table_columns(conn):
+                names.append("tenant_id")
+                params["tenant_id"] = self._resolve_tenant_id(conn, case_id)
+
             conn.execute(
                 self._text(
-                    f"INSERT INTO {self._table}"
-                    f" (id, case_id, stage, created_at, payload_json, payload_hash,"
-                    f"  parent_hash, algo_versions, model_versions)"
-                    f" VALUES (:id, :case_id, :stage, :created_at, :payload_json,"
-                    f"  :payload_hash, :parent_hash, :algo_versions, :model_versions)"
+                    f"INSERT INTO {self._table} ({', '.join(names)})"
+                    f" VALUES ({', '.join(':' + n for n in names)})"
                 ),
-                {
-                    "id": record.id,
-                    "case_id": record.case_id,
-                    "stage": record.stage,
-                    "created_at": record.created_at,
-                    "payload_json": record.payload_json,
-                    "payload_hash": record.payload_hash,
-                    "parent_hash": record.parent_hash,
-                    "algo_versions": json.dumps(record.algo_versions),
-                    "model_versions": json.dumps(record.model_versions),
-                },
+                params,
             )
 
         return record

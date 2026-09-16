@@ -20,6 +20,14 @@ import { computeStaleAfterDate } from '@/lib/layer2/staleness'
 import { findActiveGranteeEntityIds } from '@/lib/layer3/grant-access'
 import { sendNotification } from '@/lib/notifications'
 import { dispatchWebhook } from '@/lib/webhooks/dispatch'
+import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
+import {
+  cbamCompulsoryFieldsPresent,
+  isCbamFieldName,
+  parseGoodsLineFieldName,
+} from '@/lib/nucleos/cbam-fields'
+import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
+import { handOffCbamCase } from '@/lib/layer2/cbam-handoff'
 
 const fieldSchema = z.object({
   fieldName: z.string(),
@@ -32,8 +40,21 @@ const fieldSchema = z.object({
   confidenceScore: z.number().min(0).max(1).optional(),
 })
 
+// Confirmed values that are not measurements: an importer's EORI, a commodity
+// code, a country of origin. They write no DataRecord — a record needs a value,
+// a unit and a period, and none of these has any of the three — but the case a
+// CBAM document produces cannot be assembled without them, and the reviewer's
+// correction to one has to reach it. Reading them off the extraction instead
+// would build the case from what the model read rather than what the human
+// confirmed, which for a corrected EORI means filing under the wrong identity.
+const contextSchema = z.object({
+  fieldName: z.string(),
+  confirmedValue: z.string(),
+})
+
 const bodySchema = z.object({
   fields: z.array(fieldSchema).min(1),
+  context: z.array(contextSchema).optional(),
   // Absent means the client has not been asked yet. When a confirm would
   // duplicate something already stored, the request is refused with the list so
   // the user can decide — the write path never picks for them.
@@ -74,14 +95,35 @@ export async function POST(
     fieldDefs.filter((f) => f.admissibility === 'compulsory').map((f) => f.name)
   )
 
+  // A CBAM document's field names are generated, one set per goods line, so no
+  // fixed definition list can contain them. Checking them against the customs
+  // declaration's list rejected every one as a field Arbor does not read — which
+  // is why no Nucleos-extracted document could be confirmed at all.
+  const cbamDocument = isCbamRelevant(document.documentType)
+  const knownFieldNames = new Set(fieldDefs.map(f => f.name))
+
   // Nothing is written until the whole payload is admissible. A confirmation is
   // the point at which a probabilistic extraction becomes a permanent chained
   // record, so a value that cannot be parsed, a period that runs backwards, a
   // field this document type does not have, or a unit that could never be
   // converted are all refusals — not fields to quietly drop.
   const fieldErrors = validateConfirmFields(parsed.data.fields, {
-    knownFieldNames: new Set(fieldDefs.map(f => f.name)),
+    // Empty means "no definition on file", which the validator reads as "do not
+    // check names". That is the right behaviour for a CBAM document: its names
+    // are checked against the CBAM vocabulary below instead.
+    knownFieldNames: cbamDocument ? new Set<string>() : knownFieldNames,
   })
+  if (cbamDocument) {
+    for (const field of parsed.data.fields) {
+      if (!isCbamFieldName(field.fieldName) && !knownFieldNames.has(field.fieldName)) {
+        fieldErrors.push({
+          fieldName: field.fieldName,
+          problem: 'unknown_field',
+          message: 'This is not a field Arbor reads from this kind of document.',
+        })
+      }
+    }
+  }
   if (fieldErrors.length > 0) {
     return NextResponse.json(
       {
@@ -93,18 +135,36 @@ export async function POST(
     )
   }
 
+  // Everything the reviewer confirmed, measurements and identifiers together.
+  // The tier and the case are both decided from the effective document, so both
+  // need the whole picture rather than the record-producing half of it.
+  const confirmedValues = new Map<string, string>([
+    ...(parsed.data.context ?? []).map(c => [c.fieldName, c.confirmedValue] as const),
+    // Measured values win if a client sends a field in both lists, because
+    // these are the ones that were validated and written.
+    ...parsed.data.fields.map(f => [f.fieldName, f.confirmedValue] as const),
+  ])
+
   // Trust tier is re-derived server-side, and from the effective document — the
   // extraction with the reviewer's corrections applied — so clearing a compulsory
   // field during review downgrades the record instead of leaving it Verified.
-  const trustTier: TrustTier =
-    deriveTrustTier({
-      extracted: new Map((job?.extractedFields ?? []).map(f => [f.fieldName, f.rawValue])),
-      confirmed: new Map(parsed.data.fields.map(f => [f.fieldName, f.confirmedValue])),
-      compulsory: compulsoryFieldNames,
-      hasExtraction: Boolean(job),
-    }) === 'A'
-      ? TrustTier.A
-      : TrustTier.B
+  //
+  // A CBAM document is judged against the CBAM vocabulary. The generic set is
+  // the document type's fixed field list, which for a customs declaration names
+  // `commodity_code` and `declared_weight` while a Nucleos extraction emits
+  // `lines[0].cn_code` and `lines[0].net_mass_kg` — the two never intersect, so
+  // the compulsory set could never be satisfied and every CBAM record came out
+  // Declared no matter how well evidenced it was.
+  const tierIsA = cbamDocument
+    ? Boolean(job) && cbamCompulsoryFieldsPresent(confirmedValues)
+    : deriveTrustTier({
+        extracted: new Map((job?.extractedFields ?? []).map(f => [f.fieldName, f.rawValue])),
+        confirmed: new Map(parsed.data.fields.map(f => [f.fieldName, f.confirmedValue])),
+        compulsory: compulsoryFieldNames,
+        hasExtraction: Boolean(job),
+      }) === 'A'
+
+  const trustTier: TrustTier = tierIsA ? TrustTier.A : TrustTier.B
 
   // Pre-compute normalised values outside the transaction (pure, no DB).
   type PreparedField = {
@@ -141,12 +201,27 @@ export async function POST(
   // domain, field and both period boundaries; this check is looser — same
   // field, overlapping period — because that is what the exact match misses,
   // and a miss leaves two active records that double-count on every total.
-  const candidates = preparedFields.map(({ field, periodStart, periodEnd }) => ({
-    fieldName: field.fieldName,
-    domain: field.domain,
-    periodStart,
-    periodEnd,
-  }))
+  //
+  // Goods-line fields are excluded, because their names are positional.
+  // `lines[0].net_mass_kg` on one customs declaration and `lines[0].net_mass_kg`
+  // on the next are different goods that happen to have been listed first, so
+  // comparing them answers nothing in either direction: it reports a duplicate
+  // between two unrelated shipments, and choosing "replace" would supersede a
+  // real consignment's records and remove it from every total. It would also
+  // miss the case it is meant to catch, since the same goods can arrive at a
+  // different index. A document can only be confirmed once, so within one
+  // document there is nothing to duplicate either.
+  const isPositional = (fieldName: string) =>
+    cbamDocument && parseGoodsLineFieldName(fieldName) !== null
+
+  const candidates = preparedFields
+    .filter(({ field }) => !isPositional(field.fieldName))
+    .map(({ field, periodStart, periodEnd }) => ({
+      fieldName: field.fieldName,
+      domain: field.domain,
+      periodStart,
+      periodEnd,
+    }))
   const priors = await prisma.dataRecord.findMany({
     where: {
       entityId,
@@ -208,7 +283,12 @@ export async function POST(
     for (const { field, rawNum, siValue, siUnit, periodStart, periodEnd } of preparedFields) {
       // Supersede any existing active records for the same entity+domain+fieldName+period.
       // keep_both means exactly that: write alongside, supersede nothing.
-      const prior = parsed.data.onDuplicate === 'keep_both'
+      //
+      // A positional goods-line field supersedes nothing either, for the same
+      // reason it is not a duplicate candidate: matching on `lines[0].*` would
+      // retire another shipment's first goods line because this document also
+      // has one.
+      const prior = parsed.data.onDuplicate === 'keep_both' || isPositional(field.fieldName)
         ? []
         : await tx.dataRecord.findMany({
             where: {
@@ -405,5 +485,50 @@ export async function POST(
     }
   }
 
-  return ok({ recordIds: createdRecords, documentStatus: 'ACCEPTED' })
+  // The CBAM handoff: a confirmed customs declaration, supplier invoice or CBAM
+  // declaration becomes a case in Nucleos. Without this the CBAM screens read a
+  // list nothing could fill — every case in them arrived by hand.
+  //
+  // Post-commit and never fatal. The records above are certified and chained;
+  // a boundary that is down must not undo that. What it must not do either is
+  // stay quiet, so the outcome travels back in the response and the failure is
+  // written to the link row where the CBAM screens can show it.
+  let cbam: Awaited<ReturnType<typeof handOffCbamCase>> | null = null
+  if (cbamDocument) {
+    try {
+      const entity = await prisma.entity.findUnique({
+        where: { id: entityId },
+        select: { cbamJurisdiction: true },
+      })
+      cbam = await handOffCbamCase({
+        documentId,
+        entityId,
+        documentType: document.documentType,
+        jurisdiction: resolveJurisdiction(entity?.cbamJurisdiction),
+        confirmed: confirmedValues,
+        // Every prepared field shares the derived period, so the latest end is
+        // the period the case covers.
+        reportingPeriodEnd: preparedFields.reduce(
+          (latest, f) => (f.periodEnd > latest ? f.periodEnd : latest),
+          preparedFields[0].periodEnd,
+        ),
+      })
+    } catch (e) {
+      console.error('[confirm] CBAM case handoff failed:', e)
+      cbam = {
+        attempted: true,
+        caseId: null,
+        status: 'FAILED',
+        problems: ['The case could not be opened. Your figures are saved.'],
+      }
+    }
+  }
+
+  return ok({
+    recordIds: createdRecords,
+    documentStatus: 'ACCEPTED',
+    ...(cbam?.attempted
+      ? { cbam: { caseId: cbam.caseId, status: cbam.status, problems: cbam.problems } }
+      : {}),
+  })
 }

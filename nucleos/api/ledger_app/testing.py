@@ -140,9 +140,9 @@ class FakeConnection:
             ]
             return _Result(rows=rows)
 
-        # _require_case_tenant: SELECT 1 FROM cbam.cbam_cases WHERE id = :id AND tenant_id = :tid LIMIT 1
+        # _require_case_tenant: SELECT 1 FROM cbam.cbam_cases WHERE id = :id AND tenant_id = :tenant_id LIMIT 1
         # (checked before the generic FK-check block below, since this is a more specific match)
-        if "FROM cbam.cbam_cases" in sql and "tenant_id = :tid" in sql:
+        if "FROM cbam.cbam_cases" in sql and "tenant_id = :tenant_id" in sql:
             row = self.cases.get(params.get("id"))
             exists = 1 if row and row.get("tenant_id") == params.get("tenant_id") else None
             return _Result(scalar=exists)
@@ -366,11 +366,39 @@ class FakeEngine:
         return FakeTx(self.conn)
 
 
+_SNAPSHOT_DIR: str | None = None
+
+
+def _isolate_snapshot_store() -> None:
+    """Send audit-chain snapshots to a temp directory for the process.
+
+    One directory per process rather than per client: the chain is keyed by
+    case id and every fake connection mints fresh ones, so there is nothing to
+    collide.
+    """
+    global _SNAPSHOT_DIR
+    if _SNAPSHOT_DIR is None:
+        import tempfile  # noqa: PLC0415
+
+        _SNAPSHOT_DIR = tempfile.mkdtemp(prefix="nucleos-test-snapshots-")
+    os.environ["SNAPSHOT_STORE_BACKEND"] = "filesystem"
+    os.environ["SNAPSHOT_STORE_DIR"] = _SNAPSHOT_DIR
+
+
 def _client_with_fake_engine() -> tuple[TestClient, FakeConnection]:
     from shared_auth.testing import make_test_token
 
     conn = FakeConnection()
     cbam_api.engine = FakeEngine(conn)
+
+    # The CBAM tables are faked, so the audit-chain snapshots have to be too.
+    # get_snapshot_store() picks the SQL backend whenever DATABASE_URL is not
+    # SQLite, which means that with TEST_DATABASE_URL set — the only way to run
+    # the RLS suite — these tests wrote snapshots for cases that exist only in
+    # the fake connection, and Postgres rejected them on the foreign key. The
+    # report route correctly turns a snapshot failure into a 503, so six tests
+    # failed for a reason that had nothing to do with what they test.
+    _isolate_snapshot_store()
 
     token = make_test_token(scopes=["cbam:read", "cbam:write", "narrative:run"])
 

@@ -650,3 +650,142 @@ def build_case_hmrc_return(
         content=return_to_json(return_doc).encode("utf-8"),
         media_type="application/json",
     )
+
+
+@router.post(
+    "/cases/{case_id}/eu-xml",
+    dependencies=[Depends(require_scopes(["cbam:write"]))],
+)
+def build_case_eu_xml(request: Request, case_id: UUID):
+    """Build the EU quarterly CBAM declaration XML for a case.
+
+    The counterpart of ``/hmrc-return``. The builder has existed since the EU
+    output was written; it had no route, so the one thing the EU half of the
+    product exists to produce could not be produced.
+
+    Returns the XML as a download. A UK-only case returns 422 rather than an
+    empty document: the builder answers ``None`` for those deliberately, and a
+    zero-byte file offered as a declaration is worse than a refusal.
+
+    Structurally validated before it is returned. An XML that the registry will
+    reject on receipt is not an output — it is a failure the importer discovers
+    at the point of filing.
+    """
+    from app.services.eu_xml_builder import (  # noqa: PLC0415
+        build_xml_for_case,
+        validate_xml_structure,
+    )
+
+    tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
+
+    with _shared.engine.begin() as conn:
+        set_tenant_context(conn, tenant_id)
+        columns = _shared._table_columns(conn, "cbam_cases")
+        _shared._enforce_tenant_id(columns, tenant_id)
+        tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in columns else ""
+
+        case_rows = conn.execute(
+            text(
+                f"""
+                SELECT *
+                FROM cbam.cbam_cases
+                WHERE id = :id {tenant_filter}
+                LIMIT 1
+                """
+            ),
+            {"id": str(case_id), "tenant_id": tenant_id},
+        ).mappings().all()
+
+        if not case_rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+        case_row = dict(case_rows[0])
+        if case_row.get("importer_eori"):
+            case_row["importer_eori"] = _shared.decrypt_field(case_row["importer_eori"])
+
+        shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
+        data_quality = _shared.evaluate_cbam_data_quality(case_row, shipments_payload)
+
+    # Same gate as the report package. A declaration missing a required field is
+    # rejected by the registry on receipt, and finding that out at the point of
+    # filing is the worst place to find it out.
+    if data_quality.get("blocking"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "human_review_required",
+                "message": (
+                    "The EU declaration cannot be built: required data is missing. "
+                    "Resolve the open gaps on this case first."
+                ),
+                "blocking_issues": data_quality.get("missing", []),
+            },
+        )
+
+    # Flatten to the goods-line shape the builder reads, merging each line's
+    # latest emissions record onto it.
+    goods_lines: list[dict] = []
+    for ship_entry in shipments_payload:
+        shipment = ship_entry.get("shipment") or {}
+        for gl_entry in ship_entry.get("goods_lines") or []:
+            gl: dict = dict(gl_entry.get("goods_line") or {})
+            em = gl_entry.get("latest_emissions") or {}
+            gl["direct_kgco2e"] = em.get("direct_kgco2e") or em.get("direct_embedded_kgco2e")
+            gl["indirect_kgco2e"] = em.get("indirect_kgco2e") or em.get("indirect_embedded_kgco2e")
+            gl["method"] = em.get("method")
+            gl["origin_country"] = shipment.get("origin_country")
+            goods_lines.append(gl)
+
+    if not goods_lines:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="This case has no goods lines, so there is nothing to declare.",
+        )
+
+    try:
+        xml = build_xml_for_case(case_row, goods_lines)
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"The EU declaration could not be built: {exc}",
+        ) from exc
+
+    if xml is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "This case is filed under the UK regime, which has no EU registry "
+                "declaration. Use the HMRC return instead."
+            ),
+        )
+
+    errors = validate_xml_structure(xml)
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "xml_validation_failed",
+                "message": "The EU declaration was built but is not structurally valid.",
+                "errors": errors,
+            },
+        )
+
+    try:
+        _shared._write_audit_event(
+            str(case_id),
+            "eu_xml_generated",
+            {
+                "reporting_year": case_row.get("reporting_year"),
+                "reporting_quarter": case_row.get("reporting_quarter"),
+                "goods_line_count": len(goods_lines),
+            },
+        )
+    except Exception:  # noqa: BLE001 — audit failure must not withhold the output
+        _log.warning("Audit event write failed for eu_xml_generated case_id=%s", case_id)
+
+    safe_id = str(case_id).replace("/", "_")
+    return Response(
+        content=xml.encode("utf-8"),
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="cbam-eu-declaration-{safe_id}.xml"'},
+    )

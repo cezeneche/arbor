@@ -16,6 +16,7 @@
 // nothing objected to. Each is marked below.
 
 import type { CbamExtractionResult } from './contract'
+import { CBAM_NUMERIC_GOODS_LINE_FIELDS } from './cbam-fields'
 
 /** Below this, Arbor flags a field for human review (PRD §13, Layer 1). */
 const CONFIDENCE_THRESHOLD = 0.85
@@ -156,16 +157,21 @@ export function toExtractedFieldRows(result: CbamExtractionResult): ExtractedFie
     const prefix = `lines[${line.line_index}]`
     const lineFlags = [...(line.flags ?? [])]
 
+    // Units are taken from the shared table rather than spelled inline. They
+    // used to read `kgCO2e`, which the conversion engine does not recognise —
+    // so confirming an embedded-emissions value was refused as an unconvertible
+    // unit, and no CBAM document could complete review.
+    const U = CBAM_NUMERIC_GOODS_LINE_FIELDS
     const scalars: [string, unknown, string | null][] = [
       ['cn_code', line.cn_code, null],
       ['description', line.description, null],
-      ['net_mass_kg', line.net_mass_kg, 'kg'],
+      ['net_mass_kg', line.net_mass_kg, U.net_mass_kg],
       ['origin_country', line.origin_country, null],
       ['production_route', line.production_route, null],
       ['installation_id', line.installation_id, null],
       ['installation_name', line.installation_name, null],
-      ['direct_embedded_kgco2e', line.direct_embedded_kgco2e, 'kgCO2e'],
-      ['indirect_embedded_kgco2e', line.indirect_embedded_kgco2e, 'kgCO2e'],
+      ['direct_embedded_kgco2e', line.direct_embedded_kgco2e, U.direct_embedded_kgco2e],
+      ['indirect_embedded_kgco2e', line.indirect_embedded_kgco2e, U.indirect_embedded_kgco2e],
       ['emissions_method', line.emissions_method, null],
     ]
 

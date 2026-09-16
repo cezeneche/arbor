@@ -86,9 +86,31 @@ pytestmark = pytest.mark.skipif(
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _psycopg2_dsn(url: str) -> str:
+    """Strip SQLAlchemy's driver suffix, which libpq does not understand.
+
+    Every instruction for running these tests — the module docstring, the
+    conftest, the runner — says to set a ``postgresql+psycopg2://`` URL, because
+    that is what the application's SQLAlchemy engine takes. psycopg2.connect
+    rejects it with ``invalid dsn: missing "=" after ...``.
+
+    That mismatch survived because the module was skipped unless the variable
+    was set, so the first person to set it correctly-by-the-docs got 26 errors
+    instead of 26 passes — and the RLS policies these tests exist to prove have
+    therefore never been verified.
+    """
+    for prefix in ("postgresql+psycopg2://", "postgres+psycopg2://"):
+        if url.startswith(prefix):
+            return "postgresql://" + url[len(prefix):]
+    return url
+
+
 def _connect() -> "psycopg2.connection":
-    """Open a fresh psycopg2 connection to the Supabase test database."""
-    return psycopg2.connect(TEST_DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    """Open a fresh psycopg2 connection to the test database."""
+    return psycopg2.connect(
+        _psycopg2_dsn(TEST_DATABASE_URL),
+        cursor_factory=psycopg2.extras.RealDictCursor,
+    )
 
 
 @contextmanager
@@ -134,6 +156,30 @@ def admin_transaction(
         except Exception:
             conn.rollback()
             raise
+
+
+def rows_written_by(conn, tenant_id: str, sql: str, params: tuple) -> int:
+    """Rows a blocked write actually changed.
+
+    Two mechanisms stop a write to the audit log and they surface differently:
+
+      RLS       — the statement runs and matches nothing. rowcount is 0.
+      GRANT     — migration 006 revoked UPDATE and DELETE on cbam.audit_log
+                  outright, so Postgres refuses before RLS is consulted and
+                  raises InsufficientPrivilege.
+
+    Both mean nothing was written, and the second is the stronger of the two.
+    A test that only accepted a zero rowcount would fail on the safer database,
+    which is what happened the first time these tests were run against one.
+    """
+    try:
+        with tenant_transaction(conn, tenant_id) as cur:
+            cur.execute(sql, params)
+            return cur.rowcount
+    except psycopg2.errors.InsufficientPrivilege:
+        # Refused at the grant. Nothing was written, and the connection has
+        # been rolled back by the context manager.
+        return 0
 
 
 def _new_id() -> str:
@@ -476,12 +522,12 @@ class TestAuditLogRLS:
 
     def test_audit_log_has_no_update_policy(self, tenant_a_db):
         """Even the owning tenant cannot UPDATE audit log rows (append-only)."""
-        with tenant_transaction(tenant_a_db, TENANT_A) as cur:
-            cur.execute(
-                "UPDATE cbam.audit_log SET event_type = 'tampered' WHERE id = %s",
-                (_state["audit_id_a"],),
-            )
-            affected = cur.rowcount
+        affected = rows_written_by(
+            tenant_a_db,
+            TENANT_A,
+            "UPDATE cbam.audit_log SET event_type = 'tampered' WHERE id = %s",
+            (_state["audit_id_a"],),
+        )
 
         assert affected == 0, (
             f"APPEND-ONLY VIOLATION: tenant_a updated {affected} audit log row(s). "
@@ -503,12 +549,12 @@ class TestAuditLogRLS:
         )
 
     def test_tenant_b_cannot_delete_audit_event(self, tenant_b_db):
-        with tenant_transaction(tenant_b_db, TENANT_B) as cur:
-            cur.execute(
-                "DELETE FROM cbam.audit_log WHERE id = %s",
-                (_state["audit_id_a"],),
-            )
-            affected = cur.rowcount
+        affected = rows_written_by(
+            tenant_b_db,
+            TENANT_B,
+            "DELETE FROM cbam.audit_log WHERE id = %s",
+            (_state["audit_id_a"],),
+        )
 
         assert affected == 0, (
             f"RLS VIOLATION: tenant_b deleted {affected} audit event(s) belonging to tenant_a"
@@ -516,12 +562,12 @@ class TestAuditLogRLS:
 
     def test_tenant_a_cannot_delete_own_audit_event(self, tenant_a_db):
         """No tenant can delete audit events — no DELETE policy on audit_log."""
-        with tenant_transaction(tenant_a_db, TENANT_A) as cur:
-            cur.execute(
-                "DELETE FROM cbam.audit_log WHERE id = %s",
-                (_state["audit_id_a"],),
-            )
-            affected = cur.rowcount
+        affected = rows_written_by(
+            tenant_a_db,
+            TENANT_A,
+            "DELETE FROM cbam.audit_log WHERE id = %s",
+            (_state["audit_id_a"],),
+        )
 
         assert affected == 0, (
             f"APPEND-ONLY VIOLATION: tenant_a deleted {affected} of its own audit events. "

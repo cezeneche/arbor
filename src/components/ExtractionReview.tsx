@@ -8,7 +8,8 @@ import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
 import { layoutReviewFields } from '@/lib/review/review-layout'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
-import { NUMERIC_FIELDS, derivePeriod } from '@/lib/review/review-policy'
+import { derivePeriod } from '@/lib/review/review-policy'
+import { isRecordProducingField } from '@/lib/review/confirm-split'
 
 // The requirement level used to be a section heading. Three headings meant three
 // grids and three ragged last rows, so it travels on the card instead — in the
@@ -76,6 +77,14 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const [duplicates, setDuplicates] = useState<{ fieldName: string; priorSummary: string }[] | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Set when the figures were saved but the CBAM case they should have produced
+  // came out incomplete. Shown inline rather than swallowed: a case short a
+  // goods line looks exactly like a complete one.
+  const [handoff, setHandoff] = useState<{
+    caseId: string | null
+    status: string
+    problems: string[]
+  } | null>(null)
 
   const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
   // Already written to the store, either just now or on an earlier visit.
@@ -114,8 +123,10 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     const periodStart = derived.periodStart.toISOString()
     const periodEnd = derived.periodEnd.toISOString()
 
-    const numericFieldEntries = fields
-      .filter(f => NUMERIC_FIELDS.has(f.fieldName) && values[f.fieldName])
+    const withValues = fields.filter(f => values[f.fieldName])
+
+    const numericFieldEntries = withValues
+      .filter(f => isRecordProducingField(f.fieldName))
       .map(f => ({
         fieldName: f.fieldName,
         confirmedValue: values[f.fieldName],
@@ -126,6 +137,14 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         sourceText: f.sourceText || undefined,
         confidenceScore: f.confidenceScore,
       }))
+
+    // The identifiers. They write no record — an EORI has no value, unit or
+    // period — but a CBAM case cannot be opened without them, and a correction
+    // the reviewer made to one has to reach it rather than being read back off
+    // the extraction.
+    const contextEntries = withValues
+      .filter(f => !isRecordProducingField(f.fieldName))
+      .map(f => ({ fieldName: f.fieldName, confirmedValue: values[f.fieldName] }))
 
     if (numericFieldEntries.length === 0) {
       setError('No numeric fields with values to confirm. At least one numeric field is required.')
@@ -138,7 +157,11 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
       const res = await fetch(`/api/documents/${document.id}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: numericFieldEntries, ...(onDuplicate ? { onDuplicate } : {}) }),
+        body: JSON.stringify({
+          fields: numericFieldEntries,
+          ...(contextEntries.length > 0 ? { context: contextEntries } : {}),
+          ...(onDuplicate ? { onDuplicate } : {}),
+        }),
       })
 
       const data = await res.json()
@@ -154,11 +177,25 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         return
       }
 
-      // Straight to the records the confirmation just created. The interstitial
-      // it used to sit on for a second and a half told the user nothing the
-      // records page does not show better.
+      // A CBAM document does not only produce records — it opens a case, and
+      // the case is what the user came here to get. When part of it did not
+      // land, that is said and the user is left on this screen to read it,
+      // rather than being sent to a case that is quietly short a goods line.
+      const cbam = data.cbam as
+        | { caseId: string | null; status: string; problems: string[] }
+        | undefined
+
+      if (cbam && cbam.problems.length > 0) {
+        setHandoff(cbam)
+        setSubmitting(false)
+        return
+      }
+
       setConfirmed(true)
-      router.push('/records')
+      // Straight to what the confirmation just produced. The interstitial it
+      // used to sit on for a second and a half told the user nothing the
+      // destination does not show better.
+      router.push(cbam?.caseId ? `/cbam/${encodeURIComponent(cbam.caseId)}` : '/records')
     } catch {
       setError('Confirmation failed. Check your connection.')
       setSubmitting(false)
@@ -510,6 +547,71 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         >
           {error}
         </p>
+      )}
+
+      {handoff && (
+        <div
+          style={{
+            border: `1px solid ${colours.border}`,
+            borderLeft: `3px solid ${colours.amber}`,
+            borderRadius: '6px',
+            padding: spacing[3],
+            marginBottom: spacing[3],
+            backgroundColor: colours.amberBg,
+          }}
+        >
+          <p style={textStyles.rowTitle}>
+            {handoff.caseId
+              ? 'Your figures are saved, but the import case is not complete'
+              : 'Your figures are saved, but no import case was opened'}
+          </p>
+          <ul
+            style={{
+              margin: `${spacing[2]} 0 0`,
+              paddingLeft: '18px',
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textPrimary,
+              lineHeight: '1.6',
+            }}
+          >
+            {handoff.problems.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+          <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
+            {handoff.caseId && (
+              <a
+                href={`/cbam/${encodeURIComponent(handoff.caseId)}`}
+                style={{
+                  padding: '7px 16px',
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.medium,
+                  color: colours.surface,
+                  backgroundColor: colours.navy,
+                  borderRadius: '4px',
+                  textDecoration: 'none',
+                }}
+              >
+                Open the case
+              </a>
+            )}
+            <a
+              href="/records"
+              style={{
+                padding: '7px 16px',
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textSecondary,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '4px',
+                textDecoration: 'none',
+              }}
+            >
+              See the saved figures
+            </a>
+          </div>
+        </div>
       )}
 
       {duplicates && (

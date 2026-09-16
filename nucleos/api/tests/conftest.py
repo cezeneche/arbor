@@ -39,3 +39,36 @@ os.environ.setdefault("JWT_AUDIENCE",          "scope3-clients")
 os.environ.setdefault("JWT_EXPIRES_SECONDS",   "3600")
 os.environ.setdefault("AUTH_DEV_TOKEN_ENDPOINT", "true")
 os.environ.setdefault("CBAM_REGISTRATION_SCHEDULER", "false")   # no APScheduler in tests
+
+
+# ── Restore what the fake-engine client swaps out ─────────────────────────────
+# `_client_with_fake_engine()` assigns a FakeEngine over `cbam_api.engine` and
+# redirects the snapshot store to a temp directory, and restored neither. Both
+# are module-level globals, so every test module that ran afterwards talked to
+# the fake instead of the database.
+#
+# That never showed, because the modules it breaks — the full pipeline and the
+# end-to-end workflows — skip unless TEST_DATABASE_URL is set. Run them and the
+# fake leaks into them: they pass alone and fail in the suite.
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _restore_global_test_doubles():
+    import ledger_app.api.cbam as _cbam_api  # noqa: PLC0415
+
+    real_engine = _cbam_api.engine
+    snapshot_env = {
+        key: os.environ.get(key)
+        for key in ("SNAPSHOT_STORE_BACKEND", "SNAPSHOT_STORE_DIR")
+    }
+    try:
+        yield
+    finally:
+        _cbam_api.engine = real_engine
+        for key, value in snapshot_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value

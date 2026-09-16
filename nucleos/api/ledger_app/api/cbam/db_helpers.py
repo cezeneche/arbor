@@ -102,9 +102,15 @@ def _require_case_tenant(conn: Connection, case_id: UUID | str, tenant_id: str) 
     columns = _table_columns(conn, "cbam_cases")
     if "tenant_id" not in columns:
         return
+    # The bind was named :tid and the parameter passed was "tenant_id", so on a
+    # real database this raised InvalidRequestError — a 500 — instead of
+    # checking anything. The test fake matched on the SQL string and read the
+    # parameter dict directly, so it never bound anything and never saw it.
+    # The check that stops one tenant attaching a shipment to another tenant's
+    # case has therefore never run outside the fake.
     exists = conn.execute(
         text(
-            "SELECT 1 FROM cbam.cbam_cases WHERE id = :id AND tenant_id = :tid LIMIT 1"
+            "SELECT 1 FROM cbam.cbam_cases WHERE id = :id AND tenant_id = :tenant_id LIMIT 1"
         ),
         {"id": str(case_id), "tenant_id": tenant_id},
     ).scalar_one_or_none()

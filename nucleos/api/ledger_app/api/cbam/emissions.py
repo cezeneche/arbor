@@ -48,18 +48,30 @@ def create_cbam_shipment(request: Request, payload: _shared.CBAMShipmentCreate):
             case_fk_column: str(payload.cbam_case_id),
         }
 
+        # NOT NULL on the real schema, and the row is what RLS scopes on. The
+        # case insert has always set it; these three never did, so on Postgres
+        # every shipment, goods line and emissions record failed at the
+        # constraint. Only the SQLite test fake, which has no such column, let
+        # them through.
+        if "tenant_id" in columns:
+            insert_payload["tenant_id"] = tenant_id
+
         if "origin_country" in columns:
             insert_payload["origin_country"] = payload.origin_country
 
-        if "customs_procedure" in columns:
+        # Each value goes to its own column. The fallback chain this replaces
+        # wrote customs_procedure into whichever of the three existed, so an MRN
+        # was stored as a customs procedure code and entry_reference stayed
+        # null — leaving a data-quality gap the caller had no way to close.
+        if "customs_procedure" in columns and payload.customs_procedure:
             insert_payload["customs_procedure"] = payload.customs_procedure
-        elif "incoterm" in columns:
-            insert_payload["incoterm"] = payload.customs_procedure
-        elif "entry_reference" in columns:
-            insert_payload["entry_reference"] = payload.customs_procedure
+        if "entry_reference" in columns and payload.entry_reference:
+            insert_payload["entry_reference"] = payload.entry_reference
+        if "incoterm" in columns and payload.incoterm:
+            insert_payload["incoterm"] = payload.incoterm
 
         if _shared._needs_explicit_value(columns, "import_date"):
-            insert_payload["import_date"] = date.today()
+            insert_payload["import_date"] = payload.import_date or date.today()
 
         created = _shared._insert_returning(conn, "cbam_shipments", insert_payload)
         return created
@@ -85,6 +97,9 @@ def create_cbam_goods_line(request: Request, payload: _shared.CBAMGoodsLineCreat
             "cn_code": payload.cn_code,
         }
 
+        if "tenant_id" in columns:
+            insert_payload["tenant_id"] = tenant_id
+
         if "product_description" in columns:
             insert_payload["product_description"] = payload.product_description
         elif "description" in columns:
@@ -96,6 +111,9 @@ def create_cbam_goods_line(request: Request, payload: _shared.CBAMGoodsLineCreat
             insert_payload["quantity"] = payload.net_mass_kg
             if "quantity_unit" in columns:
                 insert_payload["quantity_unit"] = "kg"
+
+        if "installation_id" in columns and payload.installation_id:
+            insert_payload["installation_id"] = payload.installation_id
 
         if _shared._needs_explicit_value(columns, "sector"):
             try:
@@ -280,6 +298,9 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                 method_col: payload.calculation_method.value,
                 "version": payload.version,
             }
+
+            if "tenant_id" in columns:
+                insert_payload["tenant_id"] = tenant_id
 
             if "factor_table_version" in columns and factor_version_used is not None:
                 insert_payload["factor_table_version"] = factor_version_used
