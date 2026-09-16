@@ -18,23 +18,18 @@
 import { spawn, execFileSync } from 'node:child_process'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { createRequire } from 'node:module'
-import { existsSync, mkdtempSync } from 'node:fs'
+import { mkdtempSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { REPO_ROOT as REPO, requireVenvBin } from './python-env.mjs'
 
-const REPO = path.resolve(import.meta.dirname, '..')
 const PORT = Number(process.env.BOUNDARY_PORT ?? 8931)
 const BASE = `http://127.0.0.1:${PORT}`
 
-const VENV_CANDIDATES = [
-  path.join(REPO, 'nucleos/.venv/bin'),
-  '/Users/chisom/Documents/Chisom/AI & Technology/nucleos/.venv/bin',
-]
-const venv = VENV_CANDIDATES.find(p => existsSync(path.join(p, 'python')))
-if (!venv) {
-  console.error('No Nucleos virtualenv found. Looked in:\n  ' + VENV_CANDIDATES.join('\n  '))
-  process.exit(2)
-}
+// Resolved from the repo or an explicit NUCLEOS_VENV — never from a personal
+// path. The second candidate here used to be a home directory, which made this
+// check unrunnable on any other machine.
+const venv = requireVenvBin()
 
 const ENV = {
   ...process.env,

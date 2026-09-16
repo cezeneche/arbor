@@ -16,6 +16,7 @@ import { extractDocumentText } from '@/lib/extraction/document-text'
 import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
 import { extractCbamFields } from '@/lib/nucleos/extraction-client'
 import { toExtractedFieldRows } from '@/lib/nucleos/field-mapper'
+import { extractionJurisdiction, resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
 import type { Prisma } from '@prisma/client'
 
 export const extractDocumentFunction = inngest.createFunction(
@@ -107,6 +108,18 @@ export const extractDocumentFunction = inngest.createFunction(
         return extractDocumentText(base64, mediaType)
       })
 
+      // The regime the entity actually files under, not a constant. UK and EU
+      // count different emissions and produce different returns, so extracting
+      // every document under EU rules — which is what a hardcoded 'EU' did —
+      // was wrong for every UK importer in a UK-first product.
+      const jurisdiction = await step.run('resolve-jurisdiction', async () => {
+        const entity = await prisma.entity.findUnique({
+          where: { id: entityId },
+          select: { cbamJurisdiction: true },
+        })
+        return extractionJurisdiction(resolveJurisdiction(entity?.cbamJurisdiction))
+      })
+
       const cbam = await step.run('extract-cbam-fields', async () => {
         return extractCbamFields({
           document_id: documentId,
@@ -118,7 +131,7 @@ export const extractDocumentFunction = inngest.createFunction(
           reporting_year: reportingPeriodEnd
             ? new Date(reportingPeriodEnd).getUTCFullYear()
             : null,
-          jurisdiction: 'EU',
+          jurisdiction,
           ocr_quality: {
             truncated: documentText.truncated,
             truncation_reason: documentText.truncationReason,

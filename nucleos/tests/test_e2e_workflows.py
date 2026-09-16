@@ -6,7 +6,7 @@ Set TEST_DATABASE_URL=postgresql+psycopg2://... to enable.
 
 External APIs mocked:
   - Claude API     (app.services.narrative._call_claude) — monkeypatch
-  - Slack webhook  (SLACK_INTERNAL_WEBHOOK_URL)          — respx
+  - Slack webhook  (SLACK_WEBHOOK_URL)                   — respx
   - Resend email   (https://api.resend.com/emails)       — respx
 
 No mocks for the database or Supabase Storage.
@@ -14,6 +14,7 @@ No mocks for the database or Supabase Storage.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from decimal import Decimal
 
@@ -93,7 +94,10 @@ def test_steel_importer_clean_data_email_trigger(
     assert r.status_code == 201, f"Draft creation failed ({r.status_code}): {r.text}"
 
     body = r.json()
-    created = body["created"]
+    # The endpoint returns these at the top level. Reading them from a
+    # "created" wrapper raised KeyError on a 201 — a shape this response has
+    # never had.
+    created = body
     case_id = created["case_id"]
     goods_line_ids = created["goods_line_ids"]
     cleanup_cbam_cases.append(case_id)
@@ -221,7 +225,9 @@ def test_steel_importer_clean_data_email_trigger(
         f"notify_report_ready must POST to Resend once, got {len(resend_mock.calls)} call(s)"
     )
     resend_call = resend_mock.calls[0]
-    request_body = resend_call.request.json()
+    # httpx.Request exposes .content, not .json(); the captured request is an
+    # httpx one, not a Starlette one.
+    request_body = json.loads(resend_call.request.content)
 
     assert request_body.get("to") == ["importer@example.com"], (
         f"Resend 'to' field must be the recipient email: {request_body.get('to')}"
@@ -293,7 +299,10 @@ def test_cement_importer_missing_data_slack_review(
     r = client.post("/api/cbam/drafts/from-parsed-invoice", json=payload)
     assert r.status_code == 201, f"Draft creation failed ({r.status_code}): {r.text}"
     body = r.json()
-    case_id = body["created"]["case_id"]
+    # The endpoint returns these at the top level. Reading them from a
+    # "created" wrapper raised KeyError on a 201 — a shape this response has
+    # never had.
+    case_id = body["case_id"]
     cleanup_cbam_cases.append(case_id)
 
     # ── Step 2: Report package — data quality must surface gaps ───────────────
@@ -379,7 +388,7 @@ def test_cement_importer_missing_data_slack_review(
         f"Got {len(slack_calls)} call(s)."
     )
 
-    slack_payload = slack_calls[-1].request.json()
+    slack_payload = json.loads(slack_calls[-1].request.content)
     # Slack Block Kit: top-level "text" is the notification summary
     assert "Human Review Required" in (slack_payload.get("text") or ""), (
         f"Slack message must contain 'Human Review Required'. "
@@ -468,7 +477,10 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     r = client.post("/api/cbam/drafts/from-parsed-invoice", json=payload)
     assert r.status_code == 201, f"Draft creation failed ({r.status_code}): {r.text}"
     body = r.json()
-    created = body["created"]
+    # The endpoint returns these at the top level. Reading them from a
+    # "created" wrapper raised KeyError on a 201 — a shape this response has
+    # never had.
+    created = body
     case_id = created["case_id"]
     goods_line_ids = created["goods_line_ids"]
     cleanup_cbam_cases.append(case_id)

@@ -7,7 +7,9 @@ import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { ProfileEditor } from './ProfileEditor'
 import { OrganisationEditor } from './OrganisationEditor'
 import { BenchmarkConsentToggle } from './api-keys/BenchmarkConsentToggle'
+import { JurisdictionSelector } from './JurisdictionSelector'
 import { TwoFactorSetup } from './TwoFactorSetup'
+import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
 
 export default async function SettingsPage() {
   const session = await requirePageSession()
@@ -30,6 +32,7 @@ export default async function SettingsPage() {
         sector: true,
         entityType: true,
         allowBenchmarkAggregation: true,
+        cbamJurisdiction: true,
       },
     }),
   ])
@@ -74,6 +77,14 @@ export default async function SettingsPage() {
             country={entity.country}
             sector={entity.sector}
             entityType={entity.entityType}
+            isAdmin={sessionRole === 'ADMIN'}
+          />
+        </div>
+
+        {/* Imports — the regime every CBAM document is read under. */}
+        <div style={sectionStyle}>
+          <JurisdictionSelector
+            initialValue={resolveJurisdiction(entity.cbamJurisdiction)}
             isAdmin={sessionRole === 'ADMIN'}
           />
         </div>

@@ -17,7 +17,10 @@
     "contract:generate": "python3 contract/generate.py --typescript src/lib/nucleos/contract.ts && python3 contract/generate.py --digest > contract/DIGEST",
     "contract:check": "python3 contract/generate.py --check --typescript src/lib/nucleos/contract.ts",
     "verify:boundary": "node scripts/verify-boundary.mjs",
-    "seal:nucleos": "node scripts/seal-nucleos-chain.mjs"
+    "seal:nucleos": "node scripts/seal-nucleos-chain.mjs",
+    "python:setup": "node scripts/setup-python.mjs",
+    "test:python": "node scripts/test-python.mjs",
+    "test:all": "npm test && npm run test:python"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",

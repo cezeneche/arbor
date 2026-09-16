@@ -102,3 +102,42 @@ export async function getCbamCase(
     opts,
   )
 }
+
+export interface CbamAuditEvent {
+  id: string | null
+  event_type: string | null
+  actor: string | null
+  created_at: string | null
+  payload: Record<string, unknown> | null
+  /** Whether this single event's signature checks out. */
+  verified: boolean
+}
+
+export interface CbamAuditLog {
+  case_id: string
+  count: number
+  /** Whether the chain over the whole case is intact. */
+  chain_valid: boolean
+  chain_tampered: boolean
+  chain_gaps: unknown[]
+  chain_issues: unknown[]
+  events: CbamAuditEvent[]
+}
+
+/**
+ * The case's chained event history.
+ *
+ * Separate from Arbor's own audit chain and deliberately so: this one records
+ * what happened to the case on the Nucleos side, and the two are joined by the
+ * foreign-chain seal rather than merged. Showing them as one list would imply a
+ * single chain, which would be a claim about integrity that is not true.
+ */
+export async function getCbamAuditLog(
+  caseId: string,
+  opts: CasesRequestOptions = {},
+): Promise<CbamAuditLog> {
+  return nucleosGet<CbamAuditLog>(
+    `/api/cases/${encodeURIComponent(caseId)}/audit-log`,
+    opts,
+  )
+}

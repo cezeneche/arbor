@@ -401,6 +401,17 @@ def _post_case(
     return resp.json()
 
 
+# The three helpers below post to the flat collection routes the service
+# actually exposes — /api/cbam/shipments, /goods-lines, /emissions, each
+# carrying its parent's id in the body.
+#
+# They used to post to nested routes (/cases/{id}/shipments and so on) with
+# field names the request models do not have. Those routes have never existed
+# on this service, so every test in this file failed at step 2 the moment it was
+# run. It was never run: the module skips unless TEST_DATABASE_URL is set, and
+# nothing in CI sets it. A stale test that cannot execute reports nothing about
+# the pipeline it claims to cover.
+
 def _post_shipment(
     client,
     auth_headers: dict,
@@ -409,12 +420,11 @@ def _post_shipment(
     origin_country: str = "DE",
 ) -> dict:
     resp = client.post(
-        f"/api/cbam/cases/{case_id}/shipments",
+        "/api/cbam/shipments",
         json={
-            "import_date":     "2027-03-15",
-            "entry_reference": "24GB1709050000A1",
-            "incoterm":        "CIF",
-            "origin_country":  origin_country,
+            "cbam_case_id":      case_id,
+            "origin_country":    origin_country,
+            "customs_procedure": "CIF",
         },
         headers=auth_headers,
     )
@@ -431,16 +441,17 @@ def _post_goods_line(
     cn_code: str = "72081010",
     sector: str = "iron_steel",
 ) -> dict:
+    # sector is inferred from the CN code by the service, not supplied; the
+    # parameter is kept so callers reading as documentation still say which
+    # sector they mean.
     resp = client.post(
-        f"/api/cbam/cases/{case_id}/shipments/{shipment_id}/goods-lines",
+        "/api/cbam/goods-lines",
         json={
-            "cn_code":           cn_code,
-            "sector":            sector,
-            "description":       "Flat-rolled steel, hot-rolled, not clad",
-            "quantity":          500_000,
-            "quantity_unit":     "kg",
-            "installation_name": "Thyssenkrupp Steel Europe AG",
-            "installation_id":   "DE-INST-00001",
+            "shipment_id":         shipment_id,
+            "cn_code":             cn_code,
+            "product_description": "Flat-rolled steel, hot-rolled, not clad",
+            "net_mass_kg":         500_000,
+            "installation_id":     "DE-INST-00001",
         },
         headers=auth_headers,
     )
@@ -458,11 +469,13 @@ def _post_emissions(
     indirect_kgco2e: int = 150_000,
 ) -> dict:
     resp = client.post(
-        f"/api/cbam/goods-lines/{goods_line_id}/emissions",
+        "/api/cbam/emissions",
         json={
-            "method":                   method,
-            "direct_embedded_kgco2e":   direct_kgco2e,
-            "indirect_embedded_kgco2e": indirect_kgco2e,
+            "goods_line_id":              goods_line_id,
+            "calculation_method":         method,
+            "direct_emissions_kgco2e":    direct_kgco2e,
+            "indirect_emissions_kgco2e":  indirect_kgco2e,
+            "version":                    1,
         },
         headers=auth_headers,
     )
@@ -689,11 +702,15 @@ class TestHappyPathSteelActual:
         assert live_em["method"] == "actual"
 
         # Verify net mass captured correctly (500 t = 500,000 kg)
-        assert int(pkg["summary"]["total_net_mass_kg"]) == 500_000
+        # Decimal(...) rather than int(...): Postgres NUMERIC serialises as
+        # "500000.000000", which int() refuses. SQLite returned a bare integer,
+        # so the coercion only ever worked on the database these tests do not
+        # use.
+        assert Decimal(str(pkg["summary"]["total_net_mass_kg"])) == 500_000
 
         # ── Step 6: Python assertion layer ────────────────────────────────────
-        direct_kg   = int(pkg["summary"]["total_direct_emissions_kgco2e"])
-        indirect_kg = int(pkg["summary"]["total_indirect_emissions_kgco2e"])
+        direct_kg   = Decimal(str(pkg["summary"]["total_direct_emissions_kgco2e"]))
+        indirect_kg = Decimal(str(pkg["summary"]["total_indirect_emissions_kgco2e"]))
         narrative   = _make_narrative(
             total_direct_kgco2e=direct_kg,
             total_indirect_kgco2e=indirect_kg,
@@ -992,11 +1009,15 @@ class TestCPRClaim:
                 "origin_country_code":       "DE",
                 "qualifying_scheme_name":    "EU Emissions Trading System",
                 "carbon_price_local_currency": float(_EU_ETS_EUR_PRICE),
-                "currency_code":             "EUR",
+                # local_currency_code, not currency_code, and the rate date is
+                # required: the exchange rate that produced the relief has to be
+                # reproducible, so the date it was taken on travels with it.
+                "local_currency_code":       "EUR",
                 "free_allocations_received": 0,
                 "rebates_received":          0,
                 "verified_emissions_tco2e":  850,
                 "exchange_rate_to_gbp":      float(_EUR_TO_GBP_RATE),
+                "exchange_rate_date":        "2027-03-15",
                 "cbam_liability_gbp":        cbam_charge,
             },
             headers=auth,
@@ -1076,7 +1097,11 @@ class TestTenantIsolation:
         resp   = api_client.get("/api/cbam/cases", headers=auth_a)
         assert resp.status_code == 200
         body   = resp.json()
-        listed = body if isinstance(body, list) else body.get("cases", [])
+        # The route returns {"items": [...]}. Reading "cases" produced an empty
+        # list, so the "must not appear" half of this test passed vacuously —
+        # it would have passed just as happily if the endpoint leaked every
+        # tenant's cases.
+        listed = body if isinstance(body, list) else body.get("items", [])
         ids    = {c["id"] if isinstance(c, dict) else c for c in listed}
 
         assert case_a["id"] in ids,     "Tenant A's own case must be listed"

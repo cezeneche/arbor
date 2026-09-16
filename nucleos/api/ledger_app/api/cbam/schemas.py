@@ -44,6 +44,20 @@ class CBAMShipmentCreate(BaseModel):
     cbam_case_id: UUID
     origin_country: str | None = None
     customs_procedure: str | None = None
+    # Each of these has its own column and its own meaning. They used to share
+    # customs_procedure, which the insert then wrote to whichever column
+    # happened to exist — so a caller with an MRN saw it stored as a customs
+    # procedure code, entry_reference stayed null, and the resulting
+    # entry_reference_missing gap could never be closed.
+    entry_reference: str | None = Field(
+        default=None,
+        description="Customs entry reference (MRN) for the consignment.",
+    )
+    incoterm: str | None = Field(default=None, description="Delivery terms, e.g. CIF.")
+    import_date: date | None = Field(
+        default=None,
+        description="Date the goods were released into free circulation. Defaults to today.",
+    )
 
 
 class CBAMGoodsLineCreate(BaseModel):
@@ -51,6 +65,11 @@ class CBAMGoodsLineCreate(BaseModel):
     cn_code: str = Field(..., min_length=1)
     product_description: str | None = None
     net_mass_kg: Decimal = Field(..., gt=0)
+    # The installation the goods were produced at (EU 2023/956 Art. 10).
+    # Accepted at creation because the registry check in POST /emissions reads it
+    # off the goods line: without it here, every line arrived unattributed and
+    # the check could only ever report it missing.
+    installation_id: str | None = None
 
 
 class CBAMEmissionsCreate(BaseModel):

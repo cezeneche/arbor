@@ -55,6 +55,17 @@ enum PlanTier {
   ENTERPRISE
 }
 
+// Which CBAM regime the entity files under. UK and EU are not variants of each
+// other — the UK charges direct emissions only and produces an HMRC tax return,
+// the EU charges both and produces a quarterly XML declaration — so this drives
+// extraction, calculation and which return can be built. See
+// src/lib/nucleos/jurisdiction.ts for why BOTH extracts under EU rules.
+enum CbamJurisdiction {
+  UK
+  EU
+  BOTH
+}
+
 enum EntityType {
   SUPPLIER
   BUYER
@@ -71,6 +82,10 @@ model Entity {
   // uncapped demo/pilot default; assignment to a paid tier is an operator
   // action until billing exists.
   planTier                  PlanTier   @default(PILOT)
+  // UK-first: an entity that has never been asked files with HMRC. The previous
+  // behaviour was a hardcoded 'EU' in the extraction pipeline, which put every
+  // UK importer under the wrong regime with no way to see or change it.
+  cbamJurisdiction          CbamJurisdiction @default(UK)
   allowBenchmarkAggregation Boolean    @default(false)
   // Gap 8.4 — unique token for the entity's email-to-upload address.
   uploadEmailToken          String?    @unique
@@ -103,6 +118,7 @@ model Entity {
   domainStewards          DomainSteward[]
   supplierAgreements      DefinitionAgreement[]    @relation("AgreementSupplier")
   buyerAgreements         DefinitionAgreement[]    @relation("AgreementBuyer")
+  cbamCaseLinks           CbamCaseLink[]
 }
 
 // ── USER ──────────────────────────────────────────────────────────────────────
@@ -210,9 +226,51 @@ model Document {
   dataRecords       DataRecord[]
   extractionJobs    ExtractionJob[]
   groundTruthLabels GroundTruthLabel[]
+  cbamCaseLink      CbamCaseLink?
 
   @@index([entityId, status])
   @@index([entityId, submittedAt])
+}
+
+// How a confirmed CBAM document reached the case it produced.
+//
+// NOT a mirror of the case. Cases are Nucleos's domain state and Arbor holds no
+// copy — this row is a correlation handle and the record of one handoff: which
+// document, which case, under which regime, and what did not land. The contract
+// says the same thing about document ids going the other way.
+//
+// It exists because a handoff that fails after the case is created leaves a
+// real case with pieces missing, and the only place that fact can live is here.
+// Without it the user confirms a document, the case is short a goods line, and
+// nothing anywhere says so.
+model CbamCaseLink {
+  id         String   @id @default(cuid())
+  entityId   String
+  entity     Entity   @relation(fields: [entityId], references: [id])
+  // One case per confirmed document. The unique constraint is what stops a
+  // retried confirmation opening a second case for one real-world declaration.
+  documentId String   @unique
+  document   Document @relation(fields: [documentId], references: [id])
+  // Null when the case could not be created at all.
+  nucleosCaseId String?
+  jurisdiction  CbamJurisdiction
+  status        CbamHandoffStatus @default(CREATED)
+  // Plain English, one line per thing that did not land. Never summarised.
+  problems      String[]
+  goodsLineCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([entityId, createdAt])
+}
+
+enum CbamHandoffStatus {
+  // The case exists and everything on it landed.
+  CREATED
+  // The case exists but something on it is missing. `problems` says what.
+  PARTIAL
+  // No case was created. `problems` says why.
+  FAILED
 }
 
 enum DocumentType {
