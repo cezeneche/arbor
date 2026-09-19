@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
 import { isPublicPath } from '@/lib/public-paths'
+import { hasSignedInUser } from '@/lib/session-presence'
 import { unauthenticatedAction } from '@/lib/unauthenticated-response'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -21,7 +22,7 @@ function redirectTo(req: NextRequest, path: string): NextResponse {
 }
 
 export default auth((req) => {
-  const isAuthed = !!req.auth
+  const isAuthed = hasSignedInUser(req.auth)
   const isPublic = isPublicPath(req.nextUrl.pathname)
 
   if (!isAuthed && !isPublic) {
