@@ -2,7 +2,7 @@
 // database. Counts and classifies; it does not calculate, transform values, or
 // write. Powers the calm data-quality summary now folded into the Records screen.
 
-import { composeTiers, type TierComposition } from './tier-composition'
+import { composeTierCounts, type TierComposition } from './tier-composition'
 import { expectedFieldsFor } from './compulsory-fields'
 
 export type QualityRecord = {
@@ -13,6 +13,8 @@ export type QualityRecord = {
   documentType?: string | null
   /** Batch/mill records go stale after this date; null means they never stale. */
   staleAfterDate: Date | string | null
+  /** How many records this row stands for, when the database grouped them. */
+  count?: number
 }
 
 export type RecordQualitySummary = {
@@ -43,7 +45,6 @@ export function summariseRecordQuality(
   let estimated = 0
   let expiringSoon = 0
 
-  const tiers = records.map(r => r.trustTier)
 
   // Track what is present, and which document types were actually submitted —
   // a record set is only held to the specs of the documents behind it.
@@ -51,13 +52,14 @@ export function summariseRecordQuality(
   const docTypesByDomain: Record<string, Set<string>> = {}
 
   for (const r of records) {
-    if (r.trustTier === 'A') verified++
-    else if (r.trustTier === 'B') declared++
-    else estimated++
+    const n = r.count ?? 1
+    if (r.trustTier === 'A') verified += n
+    else if (r.trustTier === 'B') declared += n
+    else estimated += n
 
     if (r.staleAfterDate != null) {
       const stale = new Date(r.staleAfterDate).getTime()
-      if (!Number.isNaN(stale) && stale <= horizon) expiringSoon++
+      if (!Number.isNaN(stale) && stale <= horizon) expiringSoon += n
     }
 
     if (!presentByDomain[r.domain]) presentByDomain[r.domain] = new Set()
@@ -81,12 +83,12 @@ export function summariseRecordQuality(
   }
 
   return {
-    total: records.length,
+    total: verified + declared + estimated,
     verified,
     declared,
     estimated,
     missingCompulsoryFields,
     expiringSoon,
-    tierComposition: composeTiers(tiers),
+    tierComposition: composeTierCounts({ A: verified, B: declared, C: estimated }),
   }
 }

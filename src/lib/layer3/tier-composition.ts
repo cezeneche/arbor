@@ -49,8 +49,13 @@ export interface TierComposition {
 export function composeTiers(tiers: Tier[]): TierComposition {
   const counts: Record<Tier, number> = { A: 0, B: 0, C: 0 }
   for (const t of tiers) counts[t]++
+  return composeTierCounts(counts)
+}
 
-  const total = tiers.length
+/** composeTiers over counts, for callers that aggregated in the database. */
+export function composeTierCounts(input: Record<Tier, number>): TierComposition {
+  const counts: Record<Tier, number> = { A: input.A, B: input.B, C: input.C }
+  const total = counts.A + counts.B + counts.C
   const distribution: Record<Tier, number> = { A: 0, B: 0, C: 0 }
 
   if (total === 0) {
