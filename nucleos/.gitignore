@@ -62,3 +62,7 @@ node_modules/
 **/.next/
 *.tsbuildinfo
 next-env.d.ts
+
+# Local Claude Code permissions — machine-specific, and can hold credentials.
+.claude/settings.json
+.claude/settings.local.json

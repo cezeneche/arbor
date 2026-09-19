@@ -2,7 +2,7 @@
 --
 -- A new Nucleos database is built from the base lineage (supabase/migration.sql
 -- + db/migrations/). Beyond the CPR tables (008), the second lineage
--- (api/db/migrations/) held columns and tables the application writes to and
+-- (api/db/migrations/, since removed) held columns and tables the application writes to and
 -- the base lineage lacked. The code detects columns at runtime, so on the base
 -- lineage these were dropped silently rather than failing:
 --
@@ -16,7 +16,7 @@
 -- table) where the second lineage used UUID. Each statement is idempotent.
 
 -- ---------------------------------------------------------------------------
--- From api/db/migrations/008_consignment_fields.sql
+-- From the former api/db/migrations/008_consignment_fields.sql
 -- ---------------------------------------------------------------------------
 
 -- Migration 008: consignment-level fields for UK HMRC CBAM reporting
@@ -110,7 +110,7 @@ COMMENT ON COLUMN cbam.cbam_shipments.is_temporary_admission IS
     'be excluded from the quarterly HMRC return.';
 
 -- ---------------------------------------------------------------------------
--- From api/db/migrations/009_jurisdiction.sql
+-- From the former api/db/migrations/009_jurisdiction.sql
 -- ---------------------------------------------------------------------------
 
 -- Migration 009: jurisdiction selector and EU Art. 9 carbon price deduction
@@ -174,7 +174,7 @@ COMMENT ON COLUMN cbam.cbam_cases.carbon_price_paid_third_country_eur IS
     'price relief. Assessment via POST /cbam/carbon-pricing-schemes.';
 
 -- ---------------------------------------------------------------------------
--- From api/db/migrations/011_verification_fields.sql
+-- From the former api/db/migrations/011_verification_fields.sql
 -- ---------------------------------------------------------------------------
 
 -- Migration 011: Third-party verification fields for cbam_goods_lines
@@ -307,7 +307,7 @@ COMMENT ON COLUMN cbam.cbam_goods_lines.verified_at IS
     'NULL until the report passes compliance review.';
 
 -- ---------------------------------------------------------------------------
--- From api/db/migrations/012_registration.sql
+-- From the former api/db/migrations/012_registration.sql
 -- ---------------------------------------------------------------------------
 
 -- Migration 012: CBAM registration management tables

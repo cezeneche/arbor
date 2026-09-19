@@ -203,35 +203,19 @@ Recorded here so the next person does not have to re-derive it.
   still point at the old host and Arbor cannot serve those. Retire it after 6b,
   not before.
 
-- **Two migration lineages exist and do not compose.** `supabase/migration.sql`
-  plus `nucleos/db/migrations/` is one; `nucleos/api/db/migrations/001-015` is
-  another. The first creates `cbam.audit_log`, `public.current_tenant_id()` and
-  the RLS policies; the second adds `cbam_cpr_claims`, registration, supplier
-  tokens and verification fields but its `001` collides with the first.
-  `nucleos/scripts/create_test_db.sh` uses the first, because that is the one
-  the RLS suite passes against. **Which lineage production actually has is not
-  recorded anywhere and needs checking against Supabase before either is called
-  canonical.** Guessing changes what the RLS policies are.
+- **Migration lineage — resolved (19 September).** The base lineage
+  (`supabase/migration.sql` + `nucleos/db/migrations/`) is canonical. `008` and
+  `009` brought across what the application needed from the old second lineage,
+  which has been removed. `scripts/migrate.py` and `scripts/create_test_db.sh`
+  build identical schemas and policies from it. The production Nucleos database
+  still has to be created, from this lineage.
 
-- **Four Python tests still fail against a real Postgres.** None is a
-  regression — every one of them is in a module that had never executed. On
-  Postgres the suite is **1080 passed, 4 failed, 1 skipped**; the skip is the
-  narrative test, which needs `ANTHROPIC_API_KEY`. Without a Postgres it is 1047
-  passed, 38 skipped.
-  - `TestCPRClaim` and `test_aluminium_importer_cpr_claim_uk_jurisdiction` —
-    both need `cbam_cpr_claims`, which only the second migration lineage
-    creates. Blocked on the question above, not on any code.
-  - `TestHappyPathSteelActual` — the narrative validator rejects the fixture:
-    850,000 kgCO2e on the test's own goods line reads as implausibly high
-    against the Annex VI default, and `verification_status='not_required'`
-    downgrades the method to `actual_unverified`. Whether the fixture or the
-    validator is wrong is a calculation-behaviour question, and
-    `nucleos/CLAUDE.md` rule 5 says flag it, do not change it during
-    integration.
-  - `TestValidationFailure` — expects a 200 from the report package for a case
-    with no emissions; the service returns 422 and blocks. The service looks
-    right and the assertion looks stale, but that assertion is what the test
-    claims about regulatory gating, so it is flagged rather than rewritten.
+- **The four failing Python tests — resolved (19 September).** The two CPR
+  tests needed the CPR tables (now in `008`). The steel happy path exposed a
+  kg/t unit bug in the default-emissions helpers, now fixed; the test also now
+  verifies its goods line and asks for a UK case. The validation-failure test
+  now asserts the 422 where the service blocks. The suite on Postgres is
+  1098 passed, 0 failed, 1 live-model skip.
 
 ### Bugs this found
 
