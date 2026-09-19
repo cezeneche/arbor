@@ -11,7 +11,8 @@ import { runCrossValidation } from '@/lib/validation/cross-validation'
 import { assertRecordCapacity } from '@/lib/plan-guard'
 import { runConstraintValidation } from '@/lib/constraints/run-constraint-validation'
 import { buildReviewLabels } from '@/lib/confidence/review-capture'
-import { validateConfirmFields, deriveTrustTier } from '@/lib/layer2/confirm-validation'
+import { validateConfirmFields } from '@/lib/layer2/confirm-validation'
+import { certifyTier } from '@/lib/layer2/certification-policy'
 import { parseNumericValue } from '@/lib/parse-numeric'
 import { ExtractionMethod, TrustTier, type DataDomain, type GroundTruthSource } from '@prisma/client'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
@@ -91,9 +92,6 @@ export async function POST(
 
   const job = document.extractionJobs[0]
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[document.documentType] ?? []
-  const compulsoryFieldNames = new Set(
-    fieldDefs.filter((f) => f.admissibility === 'compulsory').map((f) => f.name)
-  )
 
   // A CBAM document's field names are generated, one set per goods line, so no
   // fixed definition list can contain them. Checking them against the customs
@@ -155,14 +153,29 @@ export async function POST(
   // `lines[0].cn_code` and `lines[0].net_mass_kg` — the two never intersect, so
   // the compulsory set could never be satisfied and every CBAM record came out
   // Declared no matter how well evidenced it was.
-  const tierIsA = cbamDocument
-    ? Boolean(job) && cbamCompulsoryFieldsPresent(confirmedValues)
-    : deriveTrustTier({
-        extracted: new Map((job?.extractedFields ?? []).map(f => [f.fieldName, f.rawValue])),
-        confirmed: new Map(parsed.data.fields.map(f => [f.fieldName, f.confirmedValue])),
-        compulsory: compulsoryFieldNames,
-        hasExtraction: Boolean(job),
-      }) === 'A'
+  //
+  // Every other document goes through the one certification policy — the
+  // admissibility spec extraction applied — so review can supply what was
+  // missing but cannot turn an estimate, an expired certificate or a document
+  // with no spec into Verified evidence.
+  let tierIsA: boolean
+  if (cbamDocument) {
+    tierIsA = Boolean(job) && cbamCompulsoryFieldsPresent(confirmedValues)
+  } else {
+    const entity = await prisma.entity.findUnique({
+      where: { id: entityId },
+      select: { legalName: true },
+    })
+    const periodEnds = parsed.data.fields.map(f => Date.parse(f.periodEnd)).filter(Number.isFinite)
+    tierIsA = certifyTier({
+      documentType: document.documentType,
+      extracted: new Map((job?.extractedFields ?? []).map(f => [f.fieldName, f.rawValue])),
+      confirmed: confirmedValues,
+      hasExtraction: Boolean(job),
+      entityName: entity?.legalName ?? '',
+      reportingPeriodEnd: periodEnds.length ? new Date(Math.max(...periodEnds)) : undefined,
+    }).tier === 'A'
+  }
 
   const trustTier: TrustTier = tierIsA ? TrustTier.A : TrustTier.B
 
