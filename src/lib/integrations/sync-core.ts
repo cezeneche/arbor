@@ -39,21 +39,20 @@ export async function writeIntegrationRecords(
       continue
     }
 
-    // Dedup: skip if a record with the same sourceRef already exists for this entity+field.
-    const existing = await prisma.dataRecord.findFirst({
-      where: { entityId, fieldName: rec.fieldName, sourceText: rec.sourceRef },
-      select: { id: true },
-    })
-    if (existing) {
-      skipped++
-      continue
-    }
-
     // Integration pulls are the easiest way to blow past a record cap — they
     // arrive in bulk and unattended — and were the one write path with no
     // capacity check at all. Counted inside the transaction that writes, so two
     // concurrent syncs cannot both see room for the last record.
     const written = await runSerializable(async (tx) => {
+      // Dedup on sourceRef inside the transaction that writes. Checked before it,
+      // two syncs of the same source running together both saw nothing and both
+      // wrote; serializable isolation makes one of them retry and see the other.
+      const existing = await tx.dataRecord.findFirst({
+        where: { entityId, fieldName: rec.fieldName, sourceText: rec.sourceRef },
+        select: { id: true },
+      })
+      if (existing) return 'duplicate' as const
+
       const capacity = await assertRecordCapacity(entityId, 1, tx)
       if (!capacity.allowed) return null
       return writeRecordWithAuditEntry(tx, {
@@ -73,6 +72,10 @@ export async function writeIntegrationRecords(
       })
     })
 
+    if (written === 'duplicate') {
+      skipped++
+      continue
+    }
     if (!written) {
       // Out of capacity: stop rather than churning through the rest of the batch
       // producing the same refusal, and report it on the sync outcome.

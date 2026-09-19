@@ -119,6 +119,7 @@ model Entity {
   supplierAgreements      DefinitionAgreement[]    @relation("AgreementSupplier")
   buyerAgreements         DefinitionAgreement[]    @relation("AgreementBuyer")
   cbamCaseLinks           CbamCaseLink[]
+  ingestOperations        IngestOperation[]
 }
 
 // ── USER ──────────────────────────────────────────────────────────────────────
@@ -243,6 +244,33 @@ model Document {
 // real case with pieces missing, and the only place that fact can live is here.
 // Without it the user confirms a document, the case is short a goods line, and
 // nothing anywhere says so.
+// One idempotent /api/v1/ingest batch. Reserved before any record is written;
+// each item's outcome is committed with its record, so a retry after a crash
+// writes only what did not land, and a completed batch replays its response.
+model IngestOperation {
+  id             String                @id @default(cuid())
+  entityId       String
+  entity         Entity                @relation(fields: [entityId], references: [id])
+  idempotencyKey String
+  // SHA-256 of the request's records. The same key with a different request is
+  // refused rather than silently answered with another request's results.
+  requestDigest  String
+  status         IngestOperationStatus @default(IN_PROGRESS)
+  // Item index → outcome, as returned to the caller.
+  results        Json                  @default("{}")
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([entityId, idempotencyKey])
+}
+
+enum IngestOperationStatus {
+  IN_PROGRESS
+  // Some items failed for a reason that may pass; the next call resumes it.
+  PARTIAL
+  COMPLETE
+}
+
 model CbamCaseLink {
   id         String   @id @default(cuid())
   entityId   String
