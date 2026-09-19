@@ -3,7 +3,7 @@
 -- The base lineage (supabase/migration.sql + db/migrations/) is the one the
 -- RLS suite passes against and the one a new Nucleos database is built from.
 -- It had no CPR tables: they existed only in the second lineage
--- (api/db/migrations/010_cpr_claims.sql), so no case built this way could
+-- (api/db/migrations/010_cpr_claims.sql, since removed), so no case built this way could
 -- record a CPR claim. This brings them across unchanged except:
 --
 --   - tenant_id is TEXT, as on every other base-lineage table (the second

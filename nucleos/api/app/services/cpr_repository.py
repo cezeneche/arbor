@@ -14,7 +14,6 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from app.services.cpr_calculator import CPRValidationError
 
 def lookup_qualifying_schemes_db(conn: Any, country_code: str) -> list[dict[str, Any]]:
     """Query ``cbam.cbam_qualifying_schemes`` for a given country code.

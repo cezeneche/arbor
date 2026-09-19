@@ -33,7 +33,7 @@ from ledger_app.services.cbam_emissions_selector import (
 
 _D = Decimal
 
-# ── Fixtures ───────────────────────────────────────────────────────────────────
+# Fixtures
 
 # Grey Portland cement CN 25232900 — Annex VI default direct=0.810 tCO2e/t
 _CEMENT_CN = "25232900"
@@ -47,7 +47,7 @@ _HIGH_CONFIDENCE = ACTUAL_QUALITY_THRESHOLD + 0.1   # 0.70 if threshold=0.60
 _LOW_CONFIDENCE = ACTUAL_QUALITY_THRESHOLD - 0.1    # 0.50
 
 
-# ── Path 1: Actual method ──────────────────────────────────────────────────────
+# Path 1: Actual method
 
 class TestActualMethod:
     def test_actual_selected_when_both_values_at_confidence(self):
@@ -109,7 +109,7 @@ class TestActualMethod:
         assert method_atom.outcome == METHOD_ACTUAL
 
 
-# ── Path 2: Estimated method (indirect gap-fill) ───────────────────────────────
+# Path 2: Estimated method (indirect gap-fill)
 
 class TestEstimatedMethod:
     def test_estimated_when_no_indirect(self):
@@ -180,7 +180,7 @@ class TestEstimatedMethod:
         assert result.method == METHOD_ESTIMATED
 
 
-# ── Path 3: Default method (no supplier data) ──────────────────────────────────
+# Path 3: Default method (no supplier data)
 
 class TestDefaultMethod:
     def test_default_when_no_supplier_data(self):
@@ -228,7 +228,7 @@ class TestDefaultMethod:
         assert any("no_default_factor" in w for w in result.warnings)
 
 
-# ── Path 4: Confidence below threshold ────────────────────────────────────────
+# Path 4: Confidence below threshold
 
 class TestLowConfidence:
     def test_low_confidence_falls_back_to_default(self):
@@ -250,7 +250,7 @@ class TestLowConfidence:
         assert result.method == METHOD_DEFAULT
 
 
-# ── Path 5: Extreme value detection ───────────────────────────────────────────
+# Path 5: Extreme value detection
 
 class TestExtremeValueDetection:
     def test_extreme_direct_downgrades_to_default(self):
@@ -290,7 +290,7 @@ class TestExtremeValueDetection:
         assert any("plausibility_deviation" in w for w in result.warnings)
 
 
-# ── Path 6: force_method override ─────────────────────────────────────────────
+# Path 6: force_method override
 
 class TestForceMethod:
     def test_force_actual_honours_supplier_values(self):
@@ -337,7 +337,7 @@ class TestForceMethod:
         assert "force_method" in steps
 
 
-# ── SEE calculation correctness ────────────────────────────────────────────────
+# SEE calculation correctness
 
 class TestSEECalculation:
     def test_see_formula_direct(self):
@@ -392,7 +392,7 @@ class TestSEECalculation:
         assert float(result.see_direct_tco2e_per_t) == pytest.approx(0.810, rel=1e-3)
 
 
-# ── Result type completeness ───────────────────────────────────────────────────
+# Result type completeness
 
 class TestResultType:
     def test_result_is_correct_type(self):
@@ -449,7 +449,7 @@ class TestResultType:
         assert result.net_mass_kg == _CEMENT_MASS_KG
 
 
-# ── Evidence atom confidence derivation ───────────────────────────────────────
+# Evidence atom confidence derivation
 
 class TestConfidenceFromEvidence:
     def test_derives_confidence_from_evidence_atoms(self):
@@ -496,7 +496,7 @@ class TestConfidenceFromEvidence:
         assert result.method == METHOD_DEFAULT
 
 
-# ── select_for_goods_line convenience wrapper ──────────────────────────────────
+# select_for_goods_line convenience wrapper
 
 class TestSelectForGoodsLine:
     def test_returns_method_selection_result(self):

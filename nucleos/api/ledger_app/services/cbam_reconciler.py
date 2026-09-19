@@ -38,7 +38,7 @@ _ZERO = _D("0")
 _THOUSAND = _D("1000")
 _SIX = _D("0.000001")
 
-# ── Thresholds ────────────────────────────────────────────────────────────────
+# Thresholds
 
 # B2: flag supplier SEE if it deviates more than this fraction from rolling mean
 SUPPLIER_SEE_DEVIATION_THRESHOLD = _D("0.30")
@@ -51,7 +51,7 @@ CARBON_PRICE_HIGH_BAND = _D("2.00")   # above 200% of EUA → suspiciously high
 MIN_HISTORY_FOR_STATS = 3
 
 
-# ── Result types ──────────────────────────────────────────────────────────────
+# Result types
 
 @dataclass(frozen=True)
 class SupplierSEEFlag:
@@ -149,7 +149,7 @@ class QuarterlyReconciliationResult:
     ])
 
 
-# ── EUA reference price bands (B3) ───────────────────────────────────────────
+# EUA reference price bands (B3)
 #
 # Quarterly indicative EU ETS (EUA) settlement price bands for the transitional
 # period.  Source: EC DG CLIMA / ICE EUA front-month closing prices.
@@ -180,7 +180,7 @@ def get_eua_reference_price(year: int, quarter: int) -> Decimal:
     return band[1] if band else _EUA_DEFAULT_MID
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _to_decimal(value: Any, default: Decimal = _ZERO) -> Decimal:
     if value is None:
@@ -198,7 +198,7 @@ def _compute_see_total(direct_kgco2e: Decimal, indirect_kgco2e: Decimal, mass_kg
     return ((direct_kgco2e + indirect_kgco2e) / mass_kg).quantize(_SIX)
 
 
-# ── B2: Supplier SEE consistency ─────────────────────────────────────────────
+# B2: Supplier SEE consistency
 
 def check_supplier_see_consistency(
     current_see: Decimal,
@@ -255,7 +255,7 @@ def check_supplier_see_consistency(
     )
 
 
-# ── B3: Carbon price plausibility ─────────────────────────────────────────────
+# B3: Carbon price plausibility
 
 def check_carbon_price_plausibility(
     declared_price_eur: Decimal,
@@ -321,7 +321,7 @@ def check_carbon_price_plausibility(
     return None
 
 
-# ── B1: Quarterly aggregation ─────────────────────────────────────────────────
+# B1: Quarterly aggregation
 
 def reconcile_quarter(
     cases: Sequence[dict[str, Any]],

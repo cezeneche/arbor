@@ -11,8 +11,6 @@ import re
 from typing import Any, Callable
 
 
-import re
-
 # Separators that group thousands but never mark a decimal.
 _GROUPING_WHITESPACE = re.compile(r"[\s  ]")
 
@@ -99,7 +97,7 @@ def _normalize_method(value: str | None) -> str | None:
     return None
 
 
-# ── Field validators ──────────────────────────────────────────────────────────
+# Field validators
 
 _INCOTERM_WHITELIST: frozenset[str] = frozenset(
     {"EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"}

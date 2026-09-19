@@ -15,14 +15,12 @@ from __future__ import annotations
 
 import os
 from decimal import Decimal
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
-import ledger_app.api.cbam as cbam_api
 from ledger_app.testing import _client_with_fake_engine
 from ledger_app.services.cbam_insights_service import (
     get_importer_kpis,
@@ -41,7 +39,7 @@ _CN_CEMENT = "25232900"
 _CN_STEEL = "72081000"
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _mock_kpis(**kwargs) -> ImporterKPIs:
     defaults = dict(
@@ -114,7 +112,7 @@ def _mock_supplier_result(**kwargs) -> SupplierComparisonResult:
     return SupplierComparisonResult(**defaults)
 
 
-# ── API layer tests ───────────────────────────────────────────────────────────
+# API layer tests
 
 class TestInsightsKPIsEndpoint:
     def setup_method(self):
@@ -357,7 +355,7 @@ class TestSectorSummaryEndpoint:
             assert "cn_codes" in sec
 
 
-# ── Service layer unit tests ──────────────────────────────────────────────────
+# Service layer unit tests
 
 class _MockMappings:
     def __init__(self, rows):

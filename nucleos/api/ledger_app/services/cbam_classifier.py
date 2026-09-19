@@ -40,13 +40,13 @@ from ledger_app.services.cbam_taric import lookup_sector
 
 _logger = logging.getLogger("ledger.cbam_classifier")
 
-# ── Thresholds ────────────────────────────────────────────────────────────────
+# Thresholds
 
 AUTO_ASSIGN_THRESHOLD: Decimal = Decimal("0.70")
 LLM_TRIGGER_THRESHOLD: Decimal = Decimal("0.60")
 REVIEW_THRESHOLD: Decimal = Decimal("0.40")
 
-# ── Data structures ───────────────────────────────────────────────────────────
+# Data structures
 
 
 @dataclass(frozen=True)
@@ -116,7 +116,7 @@ class CNClassificationResult:
     review_reason: str | None = None
 
 
-# ── Keyword / phrase classification table ────────────────────────────────────
+# Keyword / phrase classification table
 # Ordered for fast iteration; scoring is O(n·m) so keep n manageable.
 
 _CLASSIFIER_TABLE: list[ClassifierEntry] = [
@@ -731,7 +731,7 @@ _CLASSIFIER_TABLE: list[ClassifierEntry] = [
 ]
 
 
-# ── Text normalisation ────────────────────────────────────────────────────────
+# Text normalisation
 
 _PUNCT_RE = re.compile(r"[^\w\s\-]", re.UNICODE)
 _WHITESPACE_RE = re.compile(r"\s+")
@@ -746,7 +746,7 @@ def _normalize_text(text: str) -> str:
     return collapsed
 
 
-# ── CN code extraction from free text ────────────────────────────────────────
+# CN code extraction from free text
 
 # Match 6-8 consecutive digit sequences (possible CN codes embedded in text).
 _CN_CODE_RE = re.compile(r"\b(\d{6,8})\b")
@@ -761,7 +761,7 @@ def _extract_cn_code_from_text(description: str) -> str | None:
     return None
 
 
-# ── Per-entry scoring ─────────────────────────────────────────────────────────
+# Per-entry scoring
 
 _PHRASE_SCORE = 0.92
 _SYNONYM_SCORE = 0.78
@@ -811,7 +811,7 @@ def _score_entry(entry: ClassifierEntry, norm_description: str) -> float:
     return final
 
 
-# ── Keyword classification ────────────────────────────────────────────────────
+# Keyword classification
 
 
 def _run_keyword_classification(
@@ -843,7 +843,7 @@ def _build_candidates(
     ]
 
 
-# ── LLM fallback ──────────────────────────────────────────────────────────────
+# LLM fallback
 
 _CBAM_SECTORS = [
     "cement",
@@ -947,7 +947,7 @@ def _call_llm(
         return None
 
 
-# ── Review reason helpers ─────────────────────────────────────────────────────
+# Review reason helpers
 
 
 def _make_review_reason(
@@ -968,7 +968,7 @@ def _make_review_reason(
     return None
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 
 def classify_description(
@@ -1005,7 +1005,7 @@ def classify_description(
             review_reason="Empty description provided.",
         )
 
-    # ── 1. Honour hint CN code ─────────────────────────────────────────────
+    # 1. Honour hint CN code
     if hint_cn_code:
         if is_in_cbam_scope(hint_cn_code):
             sector = lookup_sector(hint_cn_code) or ""
@@ -1037,7 +1037,7 @@ def classify_description(
                 hint_cn_code,
             )
 
-    # ── 2. Check for embedded CN code in description text ─────────────────
+    # 2. Check for embedded CN code in description text
     embedded_cn = _extract_cn_code_from_text(description)
     if embedded_cn:
         sector = lookup_sector(embedded_cn) or ""
@@ -1065,7 +1065,7 @@ def classify_description(
             review_reason=None,
         )
 
-    # ── 3. Keyword / phrase classification ────────────────────────────────
+    # 3. Keyword / phrase classification
     norm_description = _normalize_text(description)
     scored = _run_keyword_classification(norm_description)
 
@@ -1080,7 +1080,7 @@ def classify_description(
         description[:80],
     )
 
-    # ── 4. LLM fallback (optional) ─────────────────────────────────────────
+    # 4. LLM fallback (optional)
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     use_llm = (
         llm_fallback
@@ -1145,7 +1145,7 @@ def classify_description(
                 "falling back to keyword result"
             )
 
-    # ── 5. Return keyword result ───────────────────────────────────────────
+    # 5. Return keyword result
     if best_entry is None or keyword_confidence == Decimal("0"):
         # No match at all
         return CNClassificationResult(
@@ -1175,7 +1175,7 @@ def classify_description(
     )
 
 
-# ── Public re-exports ─────────────────────────────────────────────────────────
+# Public re-exports
 
 __all__ = [
     "AUTO_ASSIGN_THRESHOLD",

@@ -259,7 +259,7 @@ class FileSystemSnapshotStore:
 
         previous = self.latest_snapshot(case_id)
 
-        # ── Write-time chain verification (CLAUDE.md Rule 5) ─────────────────
+        # Write-time chain verification (CLAUDE.md Rule 5)
         # If the caller supplies an explicit parent_hash, verify it matches the
         # stored predecessor before accepting the write.  This detects tampering
         # or concurrent writes that would silently corrupt the chain.
@@ -411,7 +411,7 @@ class SQLSnapshotStore:
 
             stored_predecessor_hash = row["payload_hash"] if row else None
 
-            # ── Write-time chain verification (CLAUDE.md Rule 5) ─────────────
+            # Write-time chain verification (CLAUDE.md Rule 5)
             # When an explicit parent_hash is supplied, verify it matches the
             # stored predecessor before accepting the write.
             if parent_hash is not None and stored_predecessor_hash is not None:

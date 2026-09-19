@@ -36,7 +36,6 @@ step can be added when the official EC XSD is available.
 
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -55,7 +54,7 @@ ET.register_namespace("cbam", _CBAM_NS)
 ET.register_namespace("xsi", _XSI_NS)
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _tag(name: str) -> str:
     return f"{{{_CBAM_NS}}}{name}"
@@ -103,7 +102,7 @@ def _quarter_end_date(year: int, quarter: int) -> str:
     return f"{year}-{month:02d}-{last_day:02d}"
 
 
-# ── Main export function ──────────────────────────────────────────────────────
+# Main export function
 
 def build_quarterly_declaration(
     *,
@@ -162,7 +161,7 @@ def build_quarterly_declaration(
     """
     ts = generated_at or datetime.now(timezone.utc).isoformat()
 
-    # ── Root element
+    # Root element
     root = ET.Element(
         _tag("quarterlyDeclaration"),
         attrib={
@@ -174,13 +173,13 @@ def build_quarterly_declaration(
         },
     )
 
-    # ── Declarant
+    # Declarant
     declarant = _sub(root, "declarant")
     _sub(declarant, "eori", importer_eori)
     if importer_name:
         _sub(declarant, "name", importer_name)
 
-    # ── Reporting period
+    # Reporting period
     period = _sub(root, "reportingPeriod")
     _sub(period, "periodCode", _quarter_to_period_code(reporting_year, reporting_quarter))
     _sub(period, "year", str(reporting_year))
@@ -188,7 +187,7 @@ def build_quarterly_declaration(
     _sub(period, "startDate", _quarter_start_date(reporting_year, reporting_quarter))
     _sub(period, "endDate", _quarter_end_date(reporting_year, reporting_quarter))
 
-    # ── Goods imported
+    # Goods imported
     goods_el = _sub(root, "goodsImported")
     total_direct = _ZERO
     total_indirect = _ZERO
@@ -237,7 +236,7 @@ def build_quarterly_declaration(
         total_indirect += indirect
         total_mass += mass_t
 
-    # ── Aggregated embedded emissions
+    # Aggregated embedded emissions
     agg_el = _sub(root, "embeddedEmissions")
     computed_total = total_direct + total_indirect
     reported_total = _to_decimal(total_embedded_tco2e) if total_embedded_tco2e is not None else computed_total
@@ -246,7 +245,7 @@ def build_quarterly_declaration(
     _sub(agg_el, "totalEmbeddedEmissions", _fmt(reported_total, 6))
     _sub(agg_el, "totalNetMassTonnes", _fmt(total_mass, 3))
 
-    # ── CBAM certificates
+    # CBAM certificates
     certs_el = _sub(root, "cbamCertificates")
     net_liab = _to_decimal(net_liability_tco2e) if net_liability_tco2e is not None else reported_total
     deduction = _to_decimal(carbon_price_deduction_tco2e) if carbon_price_deduction_tco2e is not None else _ZERO
@@ -264,7 +263,7 @@ def build_quarterly_declaration(
     if eu_ets_price_eur is not None:
         _sub(certs_el, "euEtsPriceEur", _fmt(_to_decimal(eu_ets_price_eur), 2))
 
-    # ── Regulatory references (informational)
+    # Regulatory references (informational)
     refs_el = _sub(root, "regulatoryReferences")
     _sub(refs_el, "ref", "EU Regulation 2023/956 (CBAM framework)")
     _sub(refs_el, "ref", "Commission Implementing Regulation 2023/1773 (methodology)")
@@ -284,7 +283,7 @@ def _pretty_xml(root: ET.Element) -> str:
     return "\n".join(lines)
 
 
-# ── Structural validator ──────────────────────────────────────────────────────
+# Structural validator
 
 _REQUIRED_ELEMENTS = [
     "declarant",
@@ -355,7 +354,7 @@ def validate_xml_structure(xml_str: str) -> list[str]:
     return errors
 
 
-# ── Convenience: build from QuarterlyReconciliationResult ─────────────────────
+# Convenience: build from QuarterlyReconciliationResult
 
 def declaration_from_reconciliation(
     reconciliation: Any,  # QuarterlyReconciliationResult

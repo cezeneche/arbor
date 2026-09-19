@@ -21,7 +21,6 @@ Coverage:
 
 from __future__ import annotations
 
-import json
 import re
 from copy import deepcopy
 
@@ -35,7 +34,7 @@ from app.services.compliance_pack import (
     serialise_to_registry_schema,
 )
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _make_pack(
     reporting_year: int = 2025,
@@ -128,7 +127,7 @@ def _make_goods_bundle(
     }
 
 
-# ── Schema metadata ───────────────────────────────────────────────────────────
+# Schema metadata
 
 class TestSchemaMetadata:
     def test_schema_version(self):
@@ -141,7 +140,7 @@ class TestSchemaMetadata:
         assert "Annex I" in result["schemaRef"]
 
 
-# ── Reporting period ──────────────────────────────────────────────────────────
+# Reporting period
 
 class TestReportingPeriod:
     @pytest.mark.parametrize("quarter", [1, 2, 3, 4])
@@ -154,7 +153,7 @@ class TestReportingPeriod:
         assert result["reportingPeriod"]["year"] == 2024
 
 
-# ── Declarant ─────────────────────────────────────────────────────────────────
+# Declarant
 
 class TestDeclarant:
     def test_eori(self):
@@ -166,7 +165,7 @@ class TestDeclarant:
         assert result["declarant"]["name"] == "Acme Steel Ltd"
 
 
-# ── Import entries ────────────────────────────────────────────────────────────
+# Import entries
 
 class TestImportEntries:
     def test_entry_reference(self):
@@ -195,7 +194,7 @@ class TestImportEntries:
         assert refs == ["REF-1", "REF-2"]
 
 
-# ── Goods per entry ───────────────────────────────────────────────────────────
+# Goods per entry
 
 class TestGoods:
     def _goods(self, **kwargs) -> dict:
@@ -236,7 +235,7 @@ class TestGoods:
         assert goods[1]["cnCode"] == "72081000"
 
 
-# ── Emissions determination ───────────────────────────────────────────────────
+# Emissions determination
 
 class TestEmissionsDetermination:
     def _det(self, **kwargs) -> dict:
@@ -298,7 +297,7 @@ class TestEmissionsDetermination:
         assert det["totalEmbeddedEmissionsTco2e"] == 0.0
 
 
-# ── Report totals ─────────────────────────────────────────────────────────────
+# Report totals
 
 class TestReportTotals:
     def test_direct_tco2e(self):
@@ -341,7 +340,7 @@ class TestReportTotals:
         assert totals["shipmentsCount"] == 3
 
 
-# ── Integration with build_cbam_compliance_pack ───────────────────────────────
+# Integration with build_cbam_compliance_pack
 
 class TestBuildIntegration:
     def _build(self, monkeypatch):

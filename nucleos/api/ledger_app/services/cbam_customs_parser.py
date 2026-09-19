@@ -37,7 +37,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# ── Detection signals ──────────────────────────────────────────────────────────
+# Detection signals
 
 _CUSTOMS_SIGNALS = [
     re.compile(r"single\s+administrative\s+document", re.I),
@@ -59,7 +59,7 @@ def is_customs_declaration(text: str) -> bool:
     return sum(1 for s in _CUSTOMS_SIGNALS if s.search(text)) >= _MIN_SIGNALS
 
 
-# ── Field extractors ──────────────────────────────────────────────────────────
+# Field extractors
 
 # SAD Box 33 / CDS commodity code: 8-digit CN code
 _CN_CODE_RE = re.compile(
@@ -177,7 +177,7 @@ def _extract_customs_procedure(text: str) -> str | None:
     return m.group(1) if m else None
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str, Any]:
     """Extract CBAM-relevant fields from a customs declaration document.

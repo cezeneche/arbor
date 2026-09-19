@@ -240,7 +240,7 @@ describe('evaluateAdmissibility  -  low confidence', () => {
   })
 })
 
-// ── 3.2 Delivery Note ────────────────────────────────────────────────────────
+// 3.2 Delivery Note
 
 function fullDeliveryNoteFields(
   overrides: Record<string, string | null> = {},
@@ -286,7 +286,7 @@ describe('evaluateAdmissibility  -  delivery note (3.2)', () => {
   })
 })
 
-// ── 3.3 Customs Declaration (comprehensive) ───────────────────────────────────
+// 3.3 Customs Declaration (comprehensive)
 
 function fullCustomsDeclarationFields(
   overrides: Record<string, string | null> = {},
@@ -359,7 +359,7 @@ describe('evaluateAdmissibility  -  customs declaration (3.3)', () => {
   })
 })
 
-// ── 2.4 Process Data Sheet ────────────────────────────────────────────────────
+// 2.4 Process Data Sheet
 
 function fullProcessDataSheetFields(
   overrides: Record<string, string | null> = {},
@@ -446,7 +446,7 @@ describe('evaluateAdmissibility  -  process data sheet (2.4)', () => {
   })
 })
 
-// ── 3.1 Freight Invoice ───────────────────────────────────────────────────────
+// 3.1 Freight Invoice
 
 function fullFreightInvoiceFields(
   overrides: Record<string, string | null> = {},
@@ -524,7 +524,7 @@ describe('evaluateAdmissibility  -  freight invoice (3.1)', () => {
   })
 })
 
-// ── 2.2 Material Intake Record ────────────────────────────────────────────────
+// 2.2 Material Intake Record
 
 function fullMaterialIntakeFields(
   overrides: Record<string, string | null> = {},
@@ -584,7 +584,7 @@ describe('evaluateAdmissibility  -  material intake record (2.2)', () => {
   })
 })
 
-// ── 1.2 Gas Bill ─────────────────────────────────────────────────────────────
+// 1.2 Gas Bill
 
 function fullGasBillFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
@@ -654,7 +654,7 @@ describe('evaluateAdmissibility  -  gas bill (1.2)', () => {
   })
 })
 
-// ── 1.3 Fuel Purchase Receipt ─────────────────────────────────────────────────
+// 1.3 Fuel Purchase Receipt
 
 function fullFuelReceiptFields(
   overrides: Record<string, string | null> = {},
@@ -725,7 +725,7 @@ describe('evaluateAdmissibility  -  fuel purchase receipt (1.3)', () => {
   })
 })
 
-// ── 2.1 Production Log ────────────────────────────────────────────────────────
+// 2.1 Production Log
 
 function fullProductionLogFields(
   overrides: Record<string, string | null> = {},
@@ -792,7 +792,7 @@ describe('evaluateAdmissibility  -  production log (2.1)', () => {
   })
 })
 
-// ── 4.1 Supplier Invoice ──────────────────────────────────────────────────────
+// 4.1 Supplier Invoice
 
 function fullSupplierInvoiceFields(
   overrides: Record<string, string | null> = {},
@@ -857,7 +857,7 @@ describe('evaluateAdmissibility  -  supplier invoice (4.1)', () => {
   })
 })
 
-// ── 2.3 Bill of Materials ─────────────────────────────────────────────────────
+// 2.3 Bill of Materials
 
 function fullBomFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
@@ -918,7 +918,7 @@ describe('evaluateAdmissibility  -  bill of materials (2.3)', () => {
   })
 })
 
-// ── CARBON FOOTPRINT REPORT ───────────────────────────────────────────────────
+// CARBON FOOTPRINT REPORT
 
 function fullCarbonFootprintFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
@@ -988,7 +988,7 @@ describe('evaluateAdmissibility  -  carbon footprint report', () => {
   })
 })
 
-// ── CHAIN OF CUSTODY ──────────────────────────────────────────────────────────
+// CHAIN OF CUSTODY
 
 function fullChainOfCustodyFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {

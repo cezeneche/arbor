@@ -25,7 +25,6 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from supabase import AsyncClient, acreate_client, AsyncClientOptions
-from supabase.lib.client_options import AsyncClientOptions
 
 logger = logging.getLogger(__name__)
 

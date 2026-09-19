@@ -47,7 +47,7 @@ from decimal import Decimal
 from typing import Any
 
 
-# ── Country helpers ─────────────────────────────────────────────────────────────
+# Country helpers
 
 # Countries where a translation cover note is recommended (value = language)
 _TRANSLATION_HINTS: dict[str, str] = {
@@ -118,7 +118,7 @@ def _country_name(iso2: str | None) -> str:
     return _COUNTRY_NAMES.get(iso2.upper(), iso2.upper())
 
 
-# ── Sector-specific data requirements ──────────────────────────────────────────
+# Sector-specific data requirements
 
 # (field_id, display_label, unit, description)
 _COMMON_FIELDS: list[tuple[str, str, str, str]] = [
@@ -371,7 +371,7 @@ _REGULATION_REFS: dict[str, list[str]] = {
 }
 
 
-# ── Domain types ────────────────────────────────────────────────────────────────
+# Domain types
 
 @dataclass
 class GoodsLineContext:
@@ -426,7 +426,7 @@ class SupplierRequest:
     )
 
 
-# ── Email text builder ──────────────────────────────────────────────────────────
+# Email text builder
 
 def _jurisdiction_label(jurisdiction: str) -> str:
     return {
@@ -611,7 +611,7 @@ Generated: {date.today().strftime("%d %B %Y")}
     return subject, body.strip(), field_ids
 
 
-# ── Main entry point ────────────────────────────────────────────────────────────
+# Main entry point
 
 def generate_supplier_request(
     ctx: GoodsLineContext,
@@ -675,7 +675,7 @@ def generate_supplier_request(
     )
 
 
-# ── PDF letter ──────────────────────────────────────────────────────────────────
+# PDF letter
 
 # Colour palette — professional neutral
 _PDF_TEAL   = "#0d9488"
@@ -800,7 +800,7 @@ def render_pdf_letter(req: SupplierRequest) -> bytes:
 
     story: list[Any] = []
 
-    # ── Letterhead ─────────────────────────────────────────────────────────
+    # Letterhead
     story.append(Paragraph("núcleo CBAM", logo_style))
     story.append(Paragraph("Carbon Border Adjustment Mechanism Compliance Platform", tagline_style))
     story.append(HRFlowable(width="100%", thickness=2, color=teal, spaceAfter=8))
@@ -839,7 +839,7 @@ def render_pdf_letter(req: SupplierRequest) -> bytes:
     ))
     story.append(Spacer(1, 0.4 * cm))
 
-    # ── Introduction ───────────────────────────────────────────────────────
+    # Introduction
     story.append(Paragraph("What is CBAM?", h2_style))
     story.append(Paragraph(
         f"The <b>{jlabel}</b> requires importers of certain carbon-intensive goods "
@@ -863,7 +863,7 @@ def render_pdf_letter(req: SupplierRequest) -> bytes:
         story.append(Paragraph(f"• {ref}", body_style))
     story.append(Spacer(1, 0.2 * cm))
 
-    # ── Data required table ────────────────────────────────────────────────
+    # Data required table
     story.append(Paragraph(
         f"Data Required — Calendar Year {year} (1 January – 31 December {year})",
         h1_style,
@@ -915,7 +915,7 @@ def render_pdf_letter(req: SupplierRequest) -> bytes:
             story.append(Paragraph(f"• {opt}", body_style))
         story.append(Spacer(1, 0.2 * cm))
 
-    # ── Verification requirement ───────────────────────────────────────────
+    # Verification requirement
     story.append(Paragraph("Verification Requirement", h2_style))
     story.append(Paragraph(
         "The emissions data you provide may be subject to independent verification "
@@ -937,7 +937,7 @@ def render_pdf_letter(req: SupplierRequest) -> bytes:
             warn_style,
         ))
 
-    # ── How to respond ─────────────────────────────────────────────────────
+    # How to respond
     story.append(Paragraph("How to Respond", h2_style))
     story.append(Paragraph(
         f"Please return completed data to <b>{importer}</b> by <b>{deadline}</b>.  "
@@ -958,7 +958,7 @@ def render_pdf_letter(req: SupplierRequest) -> bytes:
             warn_style,
         ))
 
-    # ── Confidentiality + sign-off ─────────────────────────────────────────
+    # Confidentiality + sign-off
     story.append(Spacer(1, 0.4 * cm))
     story.append(HRFlowable(width="100%", thickness=0.5, color=lgrey, spaceAfter=6))
     story.append(Paragraph(
@@ -980,7 +980,7 @@ def render_pdf_letter(req: SupplierRequest) -> bytes:
     return buf.getvalue()
 
 
-# ── Batch ZIP generator ─────────────────────────────────────────────────────────
+# Batch ZIP generator
 
 def _safe_filename(s: str | None, fallback: str = "unknown") -> str:
     """Sanitise a string for use as a filename component."""

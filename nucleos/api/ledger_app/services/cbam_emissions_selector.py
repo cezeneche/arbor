@@ -60,7 +60,7 @@ from ledger_app.services.cbam_calculation_service import compute_see
 _D = Decimal
 _ZERO = _D("0")
 
-# ── Quality thresholds ────────────────────────────────────────────────────────
+# Quality thresholds
 
 # Minimum confidence score for an extracted emission value to be accepted as
 # "actual" quality.  Evidence atoms below this threshold are treated as absent.
@@ -83,7 +83,7 @@ METHOD_ESTIMATED = "estimated"
 METHOD_DEFAULT = "default"
 
 
-# ── Evidence trace types ──────────────────────────────────────────────────────
+# Evidence trace types
 
 @dataclass
 class SelectionEvidenceAtom:
@@ -175,7 +175,7 @@ class MethodSelectionResult:
     ])
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _to_decimal(value: Any) -> Decimal | None:
     if value is None:
@@ -310,7 +310,7 @@ def _markup_defaults(
     return direct_kgco2e, indirect_kgco2e, markup.fraction, markup.table_version
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def select_and_calculate(
     *,
@@ -377,7 +377,7 @@ def select_and_calculate(
     cn = str(cn_code or "").strip()
     mass_kg = _to_decimal(net_mass_kg) or _ZERO
 
-    # ── Derive confidence from evidence atoms if not passed explicitly
+    # Derive confidence from evidence atoms if not passed explicitly
     if evidence and supplier_direct_confidence == 0.0:
         supplier_direct_confidence = _confidence(evidence, "direct_embedded_kgco2e")
     if evidence and supplier_indirect_confidence == 0.0:
@@ -386,7 +386,7 @@ def select_and_calculate(
     direct_sup = _to_decimal(direct_kgco2e_supplier)
     indirect_sup = _to_decimal(indirect_kgco2e_supplier)
 
-    # ── Handle force_method bypass
+    # Handle force_method bypass
     if force_method in (METHOD_ACTUAL, METHOD_ESTIMATED, METHOD_DEFAULT):
         trace.append(SelectionEvidenceAtom(
             step="force_method",
@@ -428,7 +428,7 @@ def select_and_calculate(
             markup_table_version=forced_markup_ver,
         )
 
-    # ── Step 1: check supplier direct emissions
+    # Step 1: check supplier direct emissions
     trace.append(SelectionEvidenceAtom(
         step="check_supplier_direct",
         outcome="found" if direct_sup is not None else "absent",
@@ -443,7 +443,7 @@ def select_and_calculate(
     ))
 
     if direct_sup is None or supplier_direct_confidence < ACTUAL_QUALITY_THRESHOLD:
-        # ── Path: Default (no usable supplier data)
+        # Path: Default (no usable supplier data)
         if direct_sup is None:
             t1_reason = "No supplier direct emissions found in extraction output."
             t2_reason = "Tier 2 requires at least partial supplier direct data; absent here."
@@ -484,7 +484,7 @@ def select_and_calculate(
                               rejected_method_reasons=rejected_method_reasons,
                               reporting_year=reporting_year, jurisdiction=jurisdiction)
 
-    # ── Step 2: plausibility check on actual value
+    # Step 2: plausibility check on actual value
     within_normal, within_extreme, plaus_warnings = _plausibility_check(
         direct_sup, mass_kg, cn, production_route
     )
@@ -536,7 +536,7 @@ def select_and_calculate(
                               rejected_method_reasons=extreme_rejected_method_reasons,
                               reporting_year=reporting_year, jurisdiction=jurisdiction)
 
-    # ── Step 3: check supplier indirect emissions
+    # Step 3: check supplier indirect emissions
     trace.append(SelectionEvidenceAtom(
         step="check_supplier_indirect",
         outcome="found" if indirect_sup is not None else "absent",
@@ -550,7 +550,7 @@ def select_and_calculate(
         regulation_ref="EU 2023/1773 Art. 4(1)",
     ))
 
-    # ── Step 4: determine method and indirect value
+    # Step 4: determine method and indirect value
     if (
         indirect_sup is not None
         and supplier_indirect_confidence >= ACTUAL_QUALITY_THRESHOLD
@@ -748,7 +748,7 @@ def _build_result(
     )
 
 
-# ── Convenience: run selector on a parsed goods line dict ─────────────────────
+# Convenience: run selector on a parsed goods line dict
 
 def select_for_goods_line(goods_line: dict[str, Any]) -> MethodSelectionResult:
     """Run the selector on a goods-line dict from the extraction pipeline.

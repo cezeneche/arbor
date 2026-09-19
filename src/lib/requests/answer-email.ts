@@ -8,6 +8,7 @@
 // recipient could detect. Records are now grouped by unit and each unit is
 // reported on its own line. Adding across units would be a calculation, and
 // Arbor does not calculate (PRD §3).
+import { escapeHtml } from '@/lib/email/client'
 
 export interface AnswerRecordValue {
   value: number
@@ -87,13 +88,4 @@ export function worstTier(tiers: string[]): string {
   if (tiers.length === 0) return ''
   const worst = tiers.reduce((w, t) => ((rank[t] ?? 0) > (rank[w] ?? 0) ? t : w), tiers[0])
   return label[worst] ?? worst
-}
-
-function escapeHtml(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 }

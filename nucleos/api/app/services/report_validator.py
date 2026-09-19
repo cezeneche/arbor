@@ -34,7 +34,7 @@ from typing import Any
 
 log = logging.getLogger("nucleos.report_validator")
 
-# ── Warning tag prefixes that must appear in narrative.limitations ─────────────
+# Warning tag prefixes that must appear in narrative.limitations
 # Any data_quality.warnings entry whose text contains one of these prefixes
 # must be referenced (as a substring) in the narrative limitations field.
 _MUST_SURFACE_IN_LIMITATIONS: tuple[str, ...] = (
@@ -54,7 +54,7 @@ _RECONCILIATION_TAGS: tuple[str, ...] = (
 _VALID_METHODS = frozenset({"actual", "estimated", "default"})
 
 
-# ── Result types ───────────────────────────────────────────────────────────────
+# Result types
 
 @dataclass
 class CheckResult:
@@ -101,7 +101,7 @@ class ValidationResult:
     method_downgrades: list[dict] = field(default_factory=list)
 
 
-# ── Internal helpers ───────────────────────────────────────────────────────────
+# Internal helpers
 
 def _to_decimal(value: Any) -> Decimal | None:
     if value is None:
@@ -125,7 +125,7 @@ def _iter_goods_lines(report_package: dict):
             yield shipment, goods_line, emissions
 
 
-# ── Public helper ─────────────────────────────────────────────────────────────
+# Public helper
 
 def requires_verification(
     goods_line: dict[str, Any],
@@ -161,7 +161,7 @@ def requires_verification(
     return method == "actual"
 
 
-# ── Numeric cross-checks ───────────────────────────────────────────────────────
+# Numeric cross-checks
 
 def _check_numeric_totals(
     report_package: dict,
@@ -242,7 +242,7 @@ def _check_numeric_totals(
     return all_passed
 
 
-# ── Reporting period check ─────────────────────────────────────────────────────
+# Reporting period check
 
 def _check_reporting_period(
     report_package: dict,
@@ -294,7 +294,7 @@ def _check_reporting_period(
     return passed
 
 
-# ── Completeness checks ────────────────────────────────────────────────────────
+# Completeness checks
 
 def _check_calculation_methods(
     report_package: dict,
@@ -549,7 +549,7 @@ def _check_reconciliation_warnings(
     return passed
 
 
-# ── Verification status check ─────────────────────────────────────────────────
+# Verification status check
 
 _VERIFIED_STATUS = "verified"
 _VERIFICATION_GUIDANCE = (
@@ -635,7 +635,7 @@ def _check_actual_verification_status(
     return passed
 
 
-# ── Audit log recording ────────────────────────────────────────────────────────
+# Audit log recording
 
 def _record_validation_in_audit_log(
     case_id: str,
@@ -676,7 +676,7 @@ def _record_validation_in_audit_log(
         log.debug("audit log write for narrative_validation failed (non-fatal): %s", exc)
 
 
-# ── Pre-output reconciliation checks (CLAUDE.md §Reconciliation Checks) ───────
+# Pre-output reconciliation checks (CLAUDE.md §Reconciliation Checks)
 #
 # These 4 checks are run by run_pre_output_reconciliation() before generating
 # compliance_pack_v1.  They complement the narrative-validation checks above.
@@ -887,7 +887,7 @@ def _check_hmac_chain(
     return True
 
 
-# ── Pre-output reconciliation gate ─────────────────────────────────────────────
+# Pre-output reconciliation gate
 
 def run_pre_output_reconciliation(
     report_package: dict,
@@ -932,30 +932,30 @@ def run_pre_output_reconciliation(
     open_gaps: list[dict] = []
     method_downgrades: list[dict] = []
 
-    # ── Check 1: Mass consistency ──────────────────────────────────────────────
+    # Check 1: Mass consistency
     mass_passed = _check_mass_consistency(report_package, checks, failures)
 
-    # ── Checks 2+3: SEE plausibility + unit normalisation (via recon tags) ────
+    # Checks 2+3: SEE plausibility + unit normalisation (via recon tags)
     recon_passed = _check_reconciliation_warnings(report_package, checks, failures)
 
-    # ── Check 4: Quarterly totals ─────────────────────────────────────────────
+    # Check 4: Quarterly totals
     totals_passed = _check_quarterly_totals(report_package, checks, failures)
 
-    # ── Check 5: CN code scope ────────────────────────────────────────────────
+    # Check 5: CN code scope
     scope_passed = _check_cn_code_scope(report_package, checks, failures)
 
-    # ── Check 6: HMAC chain ────────────────────────────────────────────────────
+    # Check 6: HMAC chain
     chain_passed = _check_hmac_chain(report_package, checks, failures)
 
-    # ── Check 7: Verification status ─────────────────────────────────────────
+    # Check 7: Verification status
     _check_actual_verification_status(
         report_package, checks, failures, open_gaps, method_downgrades
     )
 
-    # ── Check 8: CPR cap ──────────────────────────────────────────────────────
+    # Check 8: CPR cap
     cpr_cap_passed = _check_cpr_cap(report_package, checks, failures)
 
-    # ── Optional narrative consistency checks (when narrative provided) ───────
+    # Optional narrative consistency checks (when narrative provided)
     if narrative is not None:
         _check_numeric_totals(report_package, _narrative, checks, failures)
         _check_calculation_methods(report_package, checks, failures)
@@ -963,7 +963,7 @@ def run_pre_output_reconciliation(
         _check_cpr_verifier(report_package, _narrative, checks, failures)
         _check_reporting_period(report_package, _narrative, checks, failures)
 
-    # ── Gate decision ─────────────────────────────────────────────────────────
+    # Gate decision
     # Blocking failures: mass missing, reconciliation warnings, totals mismatch,
     # HMAC chain absent, CPR cap violated.  These prevent compliance_pack_v1.
     human_review_required = (
@@ -992,7 +992,7 @@ def run_pre_output_reconciliation(
     return result
 
 
-# ── Public API ─────────────────────────────────────────────────────────────────
+# Public API
 
 def validate_report_package_integrity(
     report_package: dict,
@@ -1029,11 +1029,11 @@ def validate_report_package_integrity(
     open_gaps: list[dict] = []
     method_downgrades: list[dict] = []
 
-    # ── Numeric cross-checks ───────────────────────────────────────────────────
+    # Numeric cross-checks
     numeric_passed = _check_numeric_totals(report_package, narrative, checks, failures)
     period_passed = _check_reporting_period(report_package, narrative, checks, failures)
 
-    # ── Completeness checks ────────────────────────────────────────────────────
+    # Completeness checks
     method_passed = _check_calculation_methods(report_package, checks, failures)
     warnings_passed = _check_warnings_surfaced_in_limitations(
         report_package, narrative, checks, failures
@@ -1042,7 +1042,7 @@ def validate_report_package_integrity(
     cpr_passed = _check_cpr_verifier(report_package, narrative, checks, failures)
     recon_passed = _check_reconciliation_warnings(report_package, checks, failures)
 
-    # ── Verification status check (Phase 3B) ──────────────────────────────────
+    # Verification status check (Phase 3B)
     # Non-blocking: populates open_gaps + method_downgrades for callers but
     # does NOT set human_review_required.  The return is produced with
     # conservative actual_unverified methods for any unverified goods lines.
@@ -1050,7 +1050,7 @@ def validate_report_package_integrity(
         report_package, checks, failures, open_gaps, method_downgrades
     )
 
-    # ── human_review_required decision ────────────────────────────────────────
+    # human_review_required decision
     # Triggers on: numeric mismatch, missing calculation_method, or unaddressed
     # reconciliation warnings. Completeness gaps (warnings not in limitations,
     # CPR verifier, unverified actual lines) surface as failures / open_gaps
@@ -1080,7 +1080,7 @@ def validate_report_package_integrity(
         method_downgrades=method_downgrades,
     )
 
-    # ── Audit log ─────────────────────────────────────────────────────────────
+    # Audit log
     if case_id:
         _record_validation_in_audit_log(case_id, result, checks)
 

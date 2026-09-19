@@ -48,7 +48,7 @@ const arborUrl = process.env.DATABASE_URL
 if (!nucleosUrl) fail('NUCLEOS_DATABASE_URL is not set. It is the database the chain lives in.')
 if (!arborUrl && !DRY_RUN) fail('DATABASE_URL is not set. It is where the seal is recorded.')
 
-// ── 1. Read the chain, in the order it was written ──────────────────────────
+// 1. Read the chain, in the order it was written
 // Ordering is part of what the seal commits to, so this is the same ORDER BY the
 // verifier uses. Reading it any other way would produce a different hash for the
 // same chain.
@@ -80,7 +80,7 @@ if (rows.length === 0) {
   )
 }
 
-// ── 2. Compute the seal with Nucleos's own implementation ───────────────────
+// 2. Compute the seal with Nucleos's own implementation
 
 const payload = JSON.stringify(
   rows.map(r => ({
@@ -124,7 +124,7 @@ if (DRY_RUN) {
   process.exit(0)
 }
 
-// ── 3. Record it in Arbor, through Arbor's own guard ────────────────────────
+// 3. Record it in Arbor, through Arbor's own guard
 // The guard refuses to overwrite a differing seal. Compiling the real module is
 // how that refusal stays the one that ships, rather than one written for a script.
 

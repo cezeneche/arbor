@@ -23,14 +23,14 @@ from uuid import uuid4
 
 import pytest
 
-# ── Path setup ────────────────────────────────────────────────────────────────
+# Path setup
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 for _pkg in ["api", "."]:
     _p = str(_REPO_ROOT / _pkg)
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-# ── Env vars (set BEFORE any app import) ─────────────────────────────────────
+# Env vars (set BEFORE any app import)
 _TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", "")
 os.environ.setdefault(
     "DATABASE_URL",
@@ -61,7 +61,7 @@ os.environ.setdefault("RESEND_FROM_EMAIL", "test@nucleos.io")
 os.environ.setdefault("SUPPORT_EMAIL",     "support@nucleos.io")
 os.environ.setdefault("BASE_URL",          "https://app.nucleos.io")
 
-# ── Skip marker ───────────────────────────────────────────────────────────────
+# Skip marker
 _DB_URL = os.environ.get("DATABASE_URL", "")
 _HAS_POSTGRES = _DB_URL.startswith("postgresql") or _DB_URL.startswith("postgres")
 
@@ -73,11 +73,11 @@ requires_supabase = pytest.mark.skipif(
     ),
 )
 
-# ── Fixtures directory ────────────────────────────────────────────────────────
+# Fixtures directory
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 
-# ── App + client fixtures ─────────────────────────────────────────────────────
+# App + client fixtures
 
 @pytest.fixture(scope="session")
 def app():
@@ -118,7 +118,7 @@ def client(app, make_headers):
     return TestClient(app, headers=make_headers())
 
 
-# ── Claude mock ───────────────────────────────────────────────────────────────
+# Claude mock
 
 @pytest.fixture()
 def mock_claude(monkeypatch):
@@ -134,7 +134,7 @@ def mock_claude(monkeypatch):
     return narrative
 
 
-# ── External API mocks ────────────────────────────────────────────────────────
+# External API mocks
 
 @pytest.fixture()
 def slack_mock():
@@ -168,7 +168,7 @@ def resend_mock():
         yield mock
 
 
-# ── Synthetic PDF factory ─────────────────────────────────────────────────────
+# Synthetic PDF factory
 
 def build_invoice_pdf(fields: dict[str, str]) -> bytes:
     """Generate a minimal synthetic invoice PDF using reportlab.
@@ -252,7 +252,7 @@ def aluminium_invoice_pdf() -> bytes:
     })
 
 
-# ── CBAM rate seeding ─────────────────────────────────────────────────────────
+# CBAM rate seeding
 
 @pytest.fixture(scope="session")
 def seed_cbam_rates(app):
@@ -301,7 +301,7 @@ def seed_cbam_rates(app):
     yield
 
 
-# ── Cleanup helper ────────────────────────────────────────────────────────────
+# Cleanup helper
 
 @pytest.fixture()
 def cleanup_cbam_cases():

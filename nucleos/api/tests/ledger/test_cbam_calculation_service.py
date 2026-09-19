@@ -41,7 +41,7 @@ pytestmark = pytest.mark.regulatory
 _D = Decimal
 
 
-# ── compute_see ───────────────────────────────────────────────────────────────
+# compute_see
 
 class TestComputeSEE:
     def test_direct_and_indirect(self):
@@ -84,7 +84,7 @@ class TestComputeSEE:
             compute_see(_D("100"), _D("0"), _D("-10"))
 
 
-# ── compute_cbam_liability ────────────────────────────────────────────────────
+# compute_cbam_liability
 
 def _make_line(
     goods_line_id: str = "gl-1",

@@ -27,9 +27,8 @@ from __future__ import annotations
 
 import os
 from decimal import Decimal
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock
 
-import pytest
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
@@ -46,7 +45,7 @@ from ledger_app.services.cbam_emission_factors import (
 from ledger_app.testing import FakeConnection
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 class _FakeResult:
     def __init__(self, rowcount=1, rows=None):
@@ -84,7 +83,7 @@ def _make_engine(tables_present: bool = True, rowcount: int = 1):
     return mock_engine
 
 
-# ── Seeder tests ──────────────────────────────────────────────────────────────
+# Seeder tests
 
 class TestSeedEmissionFactors:
     def test_returns_dict(self):
@@ -214,7 +213,7 @@ class TestGetFactorFromDb:
         assert executed[0].get("table_version") == "2024"
 
 
-# ── Schema shape tests (via FakeConnection column list) ──────────────────────
+# Schema shape tests (via FakeConnection column list)
 
 class TestMigration007Schema:
     """Verify migration 007 columns are present in the FakeConnection schema.
@@ -288,7 +287,7 @@ class TestMigration007Schema:
         assert "production_route" in self._col_names("cbam_emissions")
 
 
-# ── Module constants ──────────────────────────────────────────────────────────
+# Module constants
 
 class TestFactorConstants:
     def test_table_version_is_string(self):
@@ -308,7 +307,6 @@ class TestFactorConstants:
         assert "25232900" in cn_codes   # grey Portland cement
 
     def test_steel_cn_in_annex_vi(self):
-        cn_codes = {e.cn8_prefix for e in _ANNEX_VI}
         # At least one iron/steel entry
         steel = [e for e in _ANNEX_VI if e.sector == "iron_steel"]
         assert len(steel) > 0

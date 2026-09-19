@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null)
 
-  // ── Seed the initial catalogue ──────────────────────────────────────────────
+  // Seed the initial catalogue
   const asSeed = seedSchema.safeParse(body)
   if (asSeed.success) {
     const effectiveFrom = asSeed.data.effectiveFrom
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // ── Append a new version of one field ───────────────────────────────────────
+  // Append a new version of one field
   const parsed = publishSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(

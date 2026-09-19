@@ -10,13 +10,10 @@ Environment:
 Behaviour:
     1. Connects to the database.
     2. Creates schema_migrations table if it doesn't exist.
-    3. Discovers *.sql files from two directories (in dependency order):
-         - db/migrations/             (core public schema)
-         - nucleo-ledger/db/migrations/ (CBAM schema)
-       Files with the same numeric prefix are interleaved so that core
-       migrations always run before their CBAM counterparts (e.g. core
-       001_init.sql runs before ledger 001_add_cbam_tables.sql, ensuring
-       cbam.cbam_cases exists before core 002_cbam_tenant_id.sql alters it).
+    3. Applies the canonical lineage, in order: supabase/migration.sql (the
+       base schema), then db/migrations/*.sql by numeric prefix. This is the
+       same order scripts/create_test_db.sh builds the test database with,
+       so production and the test suite run on one schema.
     4. Skips files already recorded in schema_migrations.
     5. Applies each pending file in a single transaction.
     6. Prints applied/skipped counts; exits 0 on success, 1 on failure.
@@ -29,7 +26,7 @@ import os
 import re
 import sys
 
-# ── 1. Resolve DATABASE_URL ───────────────────────────────────────────────────
+# 1. Resolve DATABASE_URL
 database_url = os.getenv("DATABASE_URL", "").strip()
 if not database_url:
     print("ERROR: DATABASE_URL environment variable is not set.", file=sys.stderr)
@@ -46,7 +43,7 @@ except ImportError:
     print("ERROR: psycopg2 is not installed. Run: pip install psycopg2-binary", file=sys.stderr)
     sys.exit(1)
 
-# ── 2. Connect ────────────────────────────────────────────────────────────────
+# 2. Connect
 try:
     conn = psycopg2.connect(dsn)
 except Exception as exc:
@@ -56,7 +53,7 @@ except Exception as exc:
 conn.autocommit = False
 cur = conn.cursor()
 
-# ── 3. Ensure tracking table exists ──────────────────────────────────────────
+# 3. Ensure tracking table exists
 cur.execute(
     """
     CREATE TABLE IF NOT EXISTS public.schema_migrations (
@@ -67,45 +64,25 @@ cur.execute(
 )
 conn.commit()
 
-# ── 4. Discover migration files ───────────────────────────────────────────────
+# 4. Discover migration files
 repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Directories searched in priority order.  Within each numeric prefix group
-# the directory's position in this list determines execution order — core
-# migrations (index 0) run before CBAM migrations (index 1) so that the
-# public schema exists before the cbam schema references it, and so that
-# cbam.cbam_cases exists before core 002_cbam_tenant_id.sql alters it.
-MIGRATION_DIRS = [
-    os.path.join(repo_root, "db", "migrations"),
-    os.path.join(repo_root, "api", "db", "migrations"),
-]
+BASE_SCHEMA = os.path.join(repo_root, "supabase", "migration.sql")
+MIGRATIONS_DIR = os.path.join(repo_root, "db", "migrations")
 
 
-def _sort_key(filepath: str) -> tuple[int, int]:
-    """Sort by (numeric prefix, source-dir priority) for correct dependency order."""
-    filename = os.path.basename(filepath)
-    match = re.match(r"^(\d+)", filename)
-    prefix = int(match.group(1)) if match else 9999
-    # Determine dir priority based on position in MIGRATION_DIRS list.
-    for idx, mdir in enumerate(MIGRATION_DIRS):
-        if filepath.startswith(mdir):
-            return (prefix, idx)
-    return (prefix, len(MIGRATION_DIRS))
+def _prefix(filepath: str) -> int:
+    match = re.match(r"^(\d+)", os.path.basename(filepath))
+    return int(match.group(1)) if match else 9999
 
 
-all_files: list[str] = []
-for mdir in MIGRATION_DIRS:
-    if os.path.isdir(mdir):
-        all_files.extend(glob.glob(os.path.join(mdir, "*.sql")))
-
-files = sorted(all_files, key=_sort_key)
-
-if not files:
-    print("No migration files found in: " + ", ".join(MIGRATION_DIRS))
+files = [BASE_SCHEMA] + sorted(glob.glob(os.path.join(MIGRATIONS_DIR, "*.sql")), key=_prefix)
+missing = [f for f in files if not os.path.isfile(f)]
+if missing:
+    print("ERROR: migration file(s) not found: " + ", ".join(missing), file=sys.stderr)
     conn.close()
-    sys.exit(0)
+    sys.exit(1)
 
-# ── 5. Apply pending migrations ───────────────────────────────────────────────
+# 5. Apply pending migrations
 applied = 0
 skipped = 0
 
@@ -122,7 +99,14 @@ for filepath in files:
     try:
         with open(filepath, encoding="utf-8") as fh:
             sql = fh.read()
-        cur.execute(sql)
+        # A migration can be comments only (004 records a divergence and
+        # changes nothing); psycopg2 refuses an empty query, so record it
+        # without executing.
+        statements = "\n".join(
+            line for line in sql.splitlines() if line.strip() and not line.strip().startswith("--")
+        )
+        if statements:
+            cur.execute(sql)
         # Reset search_path in case the migration changed it (e.g. SET search_path TO cbam)
         cur.execute("SET search_path TO public")
         cur.execute(

@@ -26,7 +26,7 @@ __all__ = ["to_json", "to_csv", "to_pdf"]
 _MDASH = "\u2014"
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 
 def _emission_fields(em: dict[str, Any]) -> tuple[Any, Any]:
@@ -44,7 +44,7 @@ def _description_field(gl: dict[str, Any]) -> str:
     return str(gl.get("description") or gl.get("product_description") or "")
 
 
-# ── JSON ──────────────────────────────────────────────────────────────────────
+# JSON
 
 
 def to_json(report: dict[str, Any]) -> str:
@@ -52,7 +52,7 @@ def to_json(report: dict[str, Any]) -> str:
     return json.dumps(report, indent=2, default=str)
 
 
-# ── CSV ───────────────────────────────────────────────────────────────────────
+# CSV
 
 
 def to_csv(report: dict[str, Any]) -> str:
@@ -77,12 +77,12 @@ def to_csv(report: dict[str, Any]) -> str:
     def kv(label: str, value: Any) -> None:
         w.writerow([label, "" if value is None else value])
 
-    # ── Report metadata ────────────────────────────────────────────────────
+    # Report metadata
     w.writerow(["CBAM Report Package"])
     kv("Report Type", report.get("type", ""))
     kv("Generated At", report.get("generated_at", ""))
 
-    # ── Case information ───────────────────────────────────────────────────
+    # Case information
     section("Case Information")
     w.writerow(["Field", "Value"])
     case = report.get("case") or {}
@@ -96,7 +96,7 @@ def to_csv(report: dict[str, Any]) -> str:
     ]:
         kv(label, case.get(key, ""))
 
-    # ── Data quality ───────────────────────────────────────────────────────
+    # Data quality
     section("Data Quality Assessment")
     w.writerow(["Field", "Value"])
     dq = report.get("data_quality") or {}
@@ -106,7 +106,7 @@ def to_csv(report: dict[str, Any]) -> str:
     kv("Blocking Issues", "; ".join(str(m) for m in (dq.get("missing") or [])))
     kv("Warnings",        "; ".join(str(w_) for w_ in (dq.get("warnings") or [])))
 
-    # ── Goods lines ────────────────────────────────────────────────────────
+    # Goods lines
     section("Goods Lines")
     w.writerow([
         "Shipment ID", "Origin Country", "Import Date", "Entry Reference",
@@ -142,7 +142,7 @@ def to_csv(report: dict[str, Any]) -> str:
                 em.get("calculation_method") or em.get("method", ""),
             ])
 
-    # ── Summary ────────────────────────────────────────────────────────────
+    # Summary
     section("Summary Totals")
     w.writerow(["Field", "Value"])
     summary = report.get("summary") or {}
@@ -155,7 +155,7 @@ def to_csv(report: dict[str, Any]) -> str:
     ]:
         kv(label, summary.get(key, ""))
 
-    # ── Audit trail ────────────────────────────────────────────────────────
+    # Audit trail
     section("Audit Trail")
     w.writerow(["Field", "Value"])
     audit = report.get("audit") or {}
@@ -171,7 +171,7 @@ def to_csv(report: dict[str, Any]) -> str:
     return buf.getvalue()
 
 
-# ── PDF ───────────────────────────────────────────────────────────────────────
+# PDF
 
 # EU brand colours
 _EU_BLUE = "#003399"
@@ -278,7 +278,7 @@ def to_pdf(report: dict[str, Any]) -> bytes:
 
     story = []
 
-    # ── 1. Header ─────────────────────────────────────────────────────────
+    # 1. Header
     story.append(Paragraph("EU CBAM Report Package", title_style))
     story.append(Paragraph(
         "Carbon Border Adjustment Mechanism \u2014 EU Regulation 2023/956", sub_style
@@ -286,7 +286,7 @@ def to_pdf(report: dict[str, Any]) -> bytes:
     story.append(Paragraph(f"Generated: {generated_at}", small_style))
     story.append(hr())
 
-    # ── 2. Case Details ───────────────────────────────────────────────────
+    # 2. Case Details
     story.append(Paragraph("1. Case Details", section_style))
     story.append(kv_table([
         ("Case ID",          case.get("id", "\u2014")),
@@ -297,7 +297,7 @@ def to_pdf(report: dict[str, Any]) -> bytes:
         ("Status",           case.get("status", "\u2014")),
     ]))
 
-    # ── 3. Data Quality ───────────────────────────────────────────────────
+    # 3. Data Quality
     story.append(Paragraph("2. Data Quality Assessment", section_style))
     dq         = report.get("data_quality") or {}
     risk_tier  = dq.get("risk_tier", "unknown")
@@ -327,7 +327,7 @@ def to_pdf(report: dict[str, Any]) -> bytes:
     ]))
     story.append(dq_t)
 
-    # ── 4. Goods Lines ────────────────────────────────────────────────────
+    # 4. Goods Lines
     story.append(Paragraph("3. Goods Lines", section_style))
 
     gl_header = [
@@ -398,7 +398,7 @@ def to_pdf(report: dict[str, Any]) -> bytes:
     ]))
     story.append(gl_t)
 
-    # ── 5. Summary Totals ─────────────────────────────────────────────────
+    # 5. Summary Totals
     story.append(Paragraph("4. Summary Totals", section_style))
     summary = report.get("summary") or {}
     story.append(kv_table([
@@ -409,7 +409,7 @@ def to_pdf(report: dict[str, Any]) -> bytes:
         ("Total Embedded Emissions", f"{summary.get('total_embedded_emissions_kgco2e', _MDASH)} kgCO\u2082e"),
     ]))
 
-    # ── 6. Audit Trail ────────────────────────────────────────────────────
+    # 6. Audit Trail
     story.append(Paragraph("5. Audit Trail", section_style))
     audit = report.get("audit") or {}
     algo  = audit.get("algo_versions") or {}
@@ -423,7 +423,7 @@ def to_pdf(report: dict[str, Any]) -> bytes:
         ("Report Package Builder", algo.get("report_package_builder", "\u2014")),
     ]))
 
-    # ── Footer ────────────────────────────────────────────────────────────
+    # Footer
     story.append(Spacer(1, 0.5 * cm))
     story.append(hr())
     story.append(Paragraph(

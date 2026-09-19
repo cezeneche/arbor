@@ -47,14 +47,14 @@ from sqlalchemy.engine import Engine
 
 _log = logging.getLogger("nucleos.registration")
 
-# ── Regulatory constants ────────────────────────────────────────────────────────
+# Regulatory constants
 
 _THRESHOLD_GBP: Decimal = Decimal("50000.00")
 _APPROACHING_GBP: Decimal = Decimal("40000.00")  # 80 % of threshold
 _YEAR_1_DEADLINE: date = date(2028, 1, 31)        # first annual-filer deadline
 
 
-# ── Domain types ────────────────────────────────────────────────────────────────
+# Domain types
 
 @dataclass
 class ThresholdStatus:
@@ -133,7 +133,7 @@ class RegistrationUpsert(BaseModel):
     registered_at: date | None = None
 
 
-# ── Deadline helper ─────────────────────────────────────────────────────────────
+# Deadline helper
 
 def _next_registration_deadline(as_of_date: date) -> date:
     """Return the applicable HMRC CBAM registration deadline.
@@ -150,7 +150,7 @@ def _next_registration_deadline(as_of_date: date) -> date:
     return as_of_date.replace(day=1) + relativedelta(months=1)
 
 
-# ── Rolling value query ─────────────────────────────────────────────────────────
+# Rolling value query
 
 def _query_rolling_value(
     conn: Any,
@@ -190,7 +190,7 @@ def _query_rolling_value(
         return Decimal("0.00")
 
 
-# ── Core service functions ──────────────────────────────────────────────────────
+# Core service functions
 
 def check_registration_threshold(
     tenant_id: UUID,
@@ -212,7 +212,7 @@ def check_registration_threshold(
     window_start = as_of_date - relativedelta(months=12)
 
     with db.connect() as conn:
-        # ── Check if already registered (status = confirmed) ──────────────────
+        # Check if already registered (status = confirmed)
         reg_row = conn.execute(
             text("""
                 SELECT registration_status, registration_reference

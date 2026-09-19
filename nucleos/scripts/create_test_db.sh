@@ -16,10 +16,11 @@
 #
 # The base lineage — supabase/migration.sql + db/migrations/ — is canonical.
 # It is what the RLS suite passes against and what a new Nucleos database is
-# built from. db/migrations/008 and 009 carry across everything from the older
-# second lineage (api/db/migrations/, not applied) that the application writes
-# to: CPR tables, case jurisdiction, consignment and verification fields,
-# registration. The production database the second lineage may have described
+# built from, and scripts/migrate.py applies the same files in the same order.
+# db/migrations/008 and 009 carry across everything from the older second
+# lineage (api/db/migrations/, removed in September 2026) that the application
+# writes to: CPR tables, case jurisdiction, consignment and verification
+# fields, registration. The production database the second lineage may have described
 # no longer exists (September 2026), so there was nothing to reconcile against.
 set -euo pipefail
 

@@ -322,7 +322,7 @@ export function evaluateAdmissibility(
     }
   }
 
-  // ESG_DISCLOSURE: assurance_level != NONE requires assurance_body (spec Phase 3)
+  // ESG_DISCLOSURE: assurance_level != NONE requires assurance_body
   if (documentType === 'ESG_DISCLOSURE') {
     const level = fieldValues['assurance_level']
     if (level !== null && level !== 'NONE' && (!fieldValues['assurance_body'] || fieldValues['assurance_body'] === '')) {

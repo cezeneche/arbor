@@ -76,7 +76,7 @@ describe('trustDisplay', () => {
   })
 })
 
-// ── the "Moderate · 100%" contradiction ──────────────────────────────────────
+// the "Moderate · 100%" contradiction
 describe('overruled point estimates', () => {
   it('flags a point estimate the band overruled', () => {
     // 100% certain on the strength of one observation: the classifier downgrades

@@ -2,7 +2,7 @@
 // Converts stored SI values to recipient-requested units on output. Never modifies stored data.
 // PRD Section 14  -  supported conversion dimensions and constraints.
 
-// ── TO-SI (used at ingestion time, Layer 2) ───────────────────────────────────
+// TO-SI (used at ingestion time, Layer 2)
 
 export type SupportedUnit =
   // Energy (SI: mj)
@@ -67,7 +67,7 @@ export function normaliseToSI(value: number, unit: SupportedUnit): { value: numb
   }
 }
 
-// ── FROM-SI (used at output time, Layer 3) ────────────────────────────────────
+// FROM-SI (used at output time, Layer 3)
 
 export interface ConversionResult {
   originalValue: number

@@ -48,7 +48,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from ledger_app.api.cbam._shared import engine, set_tenant_context, _table_columns
+from ledger_app.api.cbam._shared import engine, set_tenant_context
 from ledger_app.services.cbam_insights_service import (
     get_importer_kpis,
     get_supplier_comparison,

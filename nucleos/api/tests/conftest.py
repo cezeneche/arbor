@@ -21,7 +21,7 @@ _API_DIR = str(Path(__file__).parent.parent)
 if _API_DIR not in sys.path:
     sys.path.insert(0, _API_DIR)
 
-# ── Test environment defaults (before any app import) ──────────────────────────
+# Test environment defaults (before any app import)
 # Pre-claim TEST_DATABASE_URL so that load_dotenv() (called at module level in
 # ledger_app/core/config.py) cannot overwrite it with the repo's .env value and
 # cause test_full_pipeline.py to evaluate _HAS_POSTGRES=True when no real
@@ -41,7 +41,7 @@ os.environ.setdefault("AUTH_DEV_TOKEN_ENDPOINT", "true")
 os.environ.setdefault("CBAM_REGISTRATION_SCHEDULER", "false")   # no APScheduler in tests
 
 
-# ── Restore what the fake-engine client swaps out ─────────────────────────────
+# Restore what the fake-engine client swaps out
 # `_client_with_fake_engine()` assigns a FakeEngine over `cbam_api.engine` and
 # redirects the snapshot store to a temp directory, and restored neither. Both
 # are module-level globals, so every test module that ran afterwards talked to

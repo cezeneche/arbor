@@ -8,9 +8,9 @@ import {
 
 // Submission proxy for the public supplier form.
 //
-// The browser posts here, not to Nucleos. Nucleos has no browser-facing surface
-// after Phase 2, and keeping it that way means the supplier's browser never
-// learns the service exists.
+// The browser posts here, not to Nucleos. Nucleos has no browser-facing
+// surface, and keeping it that way means the supplier's browser never learns
+// the service exists.
 //
 // Deliberately unauthenticated: the supplier has no Arbor account. The URL token
 // is the credential, and Nucleos validates it — this route does not try to second

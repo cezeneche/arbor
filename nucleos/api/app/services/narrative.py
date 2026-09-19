@@ -33,7 +33,7 @@ _REQUIRED_NARRATIVE_KEYS = (
 )
 
 
-# ── Report-package fetching ────────────────────────────────────────────────────
+# Report-package fetching
 
 def fetch_report_packet(case_id: str, packet_kind: str, request: Request) -> dict:
     """
@@ -78,7 +78,7 @@ def fetch_report_packet(case_id: str, packet_kind: str, request: Request) -> dic
     return result
 
 
-# ── Authoritative results extraction (hard override) ──────────────────────────
+# Authoritative results extraction (hard override)
 
 def _extract_results_from_packet(packet: dict) -> dict:
     """
@@ -122,7 +122,7 @@ def _extract_results_from_packet(packet: dict) -> dict:
     }
 
 
-# ── Claude prompt ──────────────────────────────────────────────────────────────
+# Claude prompt
 
 def _build_prompt(packet: dict) -> str:
     is_cbam = packet.get("type") == "cbam_report_package_v1"
@@ -203,7 +203,7 @@ def _build_prompt(packet: dict) -> str:
     )
 
 
-# ── Claude API call ────────────────────────────────────────────────────────────
+# Claude API call
 
 def _call_claude(packet: dict) -> dict:
     """
@@ -290,7 +290,7 @@ def _call_claude(packet: dict) -> dict:
     return narrative
 
 
-# ── Review flag persistence ────────────────────────────────────────────────────
+# Review flag persistence
 
 def _persist_review_flag(
     case_id: str,
@@ -322,7 +322,7 @@ def _persist_review_flag(
         log.debug("review flag update failed (non-fatal): %s", exc)
 
 
-# ── Pipeline entry point ───────────────────────────────────────────────────────
+# Pipeline entry point
 
 def _schedule_review_notification(
     case_id: str,

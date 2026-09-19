@@ -105,13 +105,6 @@ export function isCbamNumericFieldName(name: string): boolean {
   return ref !== null && ref.field in CBAM_NUMERIC_GOODS_LINE_FIELDS
 }
 
-/** The conversion-engine unit for a measured CBAM field, or null. */
-export function cbamFieldUnit(name: string): string | null {
-  const ref = parseGoodsLineFieldName(name)
-  if (!ref) return null
-  return CBAM_NUMERIC_GOODS_LINE_FIELDS[ref.field] ?? null
-}
-
 /**
  * Whether a confirmed CBAM document has everything Tier A requires.
  *

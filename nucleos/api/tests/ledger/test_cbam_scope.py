@@ -30,14 +30,12 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
 
 from ledger_app.services.cbam_scope import (
     ANNEX_II_COUNTRIES,
     DE_MINIMIS_THRESHOLD_EUR,
     EU_MEMBER_STATES,
     ScopeStatus,
-    ScopeDetermination,
     determine_cbam_scope,
 )
 
@@ -51,7 +49,7 @@ _VALID_EORI = "DE123456789"
 _THIRD_COUNTRY = "CN"
 
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# Constants
 
 class TestConstants:
     def test_de_minimis_threshold(self):
@@ -75,7 +73,7 @@ class TestConstants:
         assert EU_MEMBER_STATES.isdisjoint(ANNEX_II_COUNTRIES)
 
 
-# ── determine_cbam_scope — out_of_scope paths ─────────────────────────────────
+# determine_cbam_scope — out_of_scope paths
 
 class TestOutOfScope:
     def test_cn_code_not_in_annex_i(self):
@@ -142,7 +140,7 @@ class TestOutOfScope:
         assert any("annex_i:not_covered" in r for r in result.reasons)
 
 
-# ── determine_cbam_scope — in_scope path ──────────────────────────────────────
+# determine_cbam_scope — in_scope path
 
 class TestInScope:
     def test_full_in_scope(self):
@@ -185,7 +183,7 @@ class TestInScope:
         assert any("2023/956" in ref for ref in result.regulation_refs)
 
 
-# ── determine_cbam_scope — requires_review paths ──────────────────────────────
+# determine_cbam_scope — requires_review paths
 
 class TestRequiresReview:
     def test_missing_origin(self):
@@ -229,7 +227,7 @@ class TestRequiresReview:
         assert any("de_minimis:value_not_provided" in r for r in result.reasons)
 
 
-# ── Normalisation ─────────────────────────────────────────────────────────────
+# Normalisation
 
 class TestNormalisation:
     def test_cn_code_strips_spaces(self):
@@ -255,7 +253,7 @@ class TestNormalisation:
         assert result.status == ScopeStatus.IN_SCOPE
 
 
-# ── ScopeDetermination fields ─────────────────────────────────────────────────
+# ScopeDetermination fields
 
 class TestScopeDetermination:
     def test_result_echoes_inputs(self):
@@ -282,7 +280,7 @@ class TestScopeDetermination:
         assert len(result.regulation_refs) == len(set(result.regulation_refs))
 
 
-# ── API endpoint ──────────────────────────────────────────────────────────────
+# API endpoint
 
 class TestScopeCheckAPI:
     def _client(self):

@@ -23,22 +23,18 @@ Coverage:
 
 from __future__ import annotations
 
-import json
-import os
 import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-import ledger_app.services.cbam_eutl_client as eutl_mod
 from ledger_app.services.cbam_eutl_client import (
-    EUTLInstallationInfo,
     lookup_installation,
     reset_cache,
 )
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _mock_response(status_code: int, body: dict | list | None = None) -> MagicMock:
     resp = MagicMock()
@@ -64,7 +60,7 @@ def _clear_eutl_cache(monkeypatch):
     reset_cache()
 
 
-# ── Unit tests: lookup_installation ──────────────────────────────────────────
+# Unit tests: lookup_installation
 
 class TestLookupInstallation:
 
@@ -189,7 +185,7 @@ class TestLookupInstallation:
         assert result.country_code == "PL"
 
 
-# ── Cache behaviour ───────────────────────────────────────────────────────────
+# Cache behaviour
 
 class TestCache:
 
@@ -242,7 +238,7 @@ class TestCache:
         mock_get.assert_not_called()
 
 
-# ── Integration: validate_installation_id calls EUTL client ──────────────────
+# Integration: validate_installation_id calls EUTL client
 
 class TestValidateIntegration:
     """Verify that validate_installation_id in cbam_installation_registry calls
@@ -298,7 +294,7 @@ class TestValidateIntegration:
         )
         custom_resp = _mock_response(200)
         with patch("httpx.get", return_value=custom_resp) as mock_get:
-            result = self._validate("DE_12345678")
+            self._validate("DE_12345678")
         # httpx.get called once (custom registry), not the EUTL client
         assert mock_get.call_count == 1
         called_url = mock_get.call_args[0][0]

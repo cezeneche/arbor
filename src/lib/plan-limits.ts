@@ -29,7 +29,7 @@ export interface PlanLimits {
   /** STARTER is declaration-only — no document uploads at all. */
   allowsUploads: boolean
   /**
-   * Audit package generation (PRD §22.4 — a paid Phase 2 service, not a free
+   * Audit package generation (PRD §22.4 — a paid service, not a free
    * button). Metered per-entity-per-period billing does not exist yet, so this
    * is the entitlement seam rather than a real paywall: it gates who can
    * generate at all, and metering slots in here when billing lands.

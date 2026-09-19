@@ -12,7 +12,7 @@ if (process.env.VERCEL_ENV === "production") {
   }
 }
 
-// Gap 7a — security headers applied to every response. Table stakes for any
+// Security headers applied to every response. Table stakes for any
 // enterprise procurement / security review (securityheaders.com).
 const isDev = process.env.NODE_ENV !== "production";
 

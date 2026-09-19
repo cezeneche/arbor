@@ -46,7 +46,7 @@ __all__ = [
     "TARIC_METADATA",
 ]
 
-# ── Sector identifiers (match DB CHECK constraint values) ────────────────────
+# Sector identifiers (match DB CHECK constraint values)
 SECTOR_CEMENT = "cement"
 SECTOR_IRON_STEEL = "iron_steel"
 SECTOR_ALUMINIUM = "aluminium"
@@ -62,18 +62,18 @@ _E = SECTOR_ELECTRICITY
 _H = SECTOR_HYDROGEN
 
 
-# ── Full-heading coverage ────────────────────────────────────────────────────
+# Full-heading coverage
 # Every CN code whose first 4 digits match one of these keys is in scope.
 # Only headings where ALL subheadings are covered by CBAM Annex I are listed.
 #
 # Regulation reference: Annex I, Sections A–F.
 _HEADING_TO_SECTOR: dict[str, str] = {
-    # ── CEMENT (Annex I, Section A) ──────────────────────────────────────────
+    # CEMENT (Annex I, Section A)
     # Heading 2523: Portland cement, aluminous cement, slag cement,
     #   supersulphate cement and similar hydraulic cements
     "2523": _C,
 
-    # ── IRON AND STEEL (Annex I, Section B) ─────────────────────────────────
+    # IRON AND STEEL (Annex I, Section B)
     # Chapter 72 — Iron and steel (all headings in scope)
     "7201": _S,  # Pig iron and spiegeleisen in pigs, blocks or other primary forms
     "7202": _S,  # Ferro-alloys
@@ -133,7 +133,7 @@ _HEADING_TO_SECTOR: dict[str, str] = {
     "7325": _S,  # Other cast articles of iron or steel
     "7326": _S,  # Other articles of iron or steel
 
-    # ── ALUMINIUM (Annex I, Section C) ──────────────────────────────────────
+    # ALUMINIUM (Annex I, Section C)
     "7601": _A,  # Unwrought aluminium
     "7602": _A,  # Aluminium waste and scrap
     "7603": _A,  # Aluminium powders and flakes
@@ -153,30 +153,30 @@ _HEADING_TO_SECTOR: dict[str, str] = {
 }
 
 
-# ── Specific 8-digit CN code overrides ──────────────────────────────────────
+# Specific 8-digit CN code overrides
 # Used where only certain subheadings within a heading are covered by CBAM.
 # Key: exactly 8 digits (no spaces, dashes or dots).
 # Regulation reference: Annex I, Sections A, D, E, F.
 _CN8_TO_SECTOR: dict[str, str] = {
-    # ── CEMENT — calcined kaolin (partial heading 2507) ──────────────────────
+    # CEMENT — calcined kaolin (partial heading 2507)
     # Only CN 2507 00 80 (calcined) is in scope; 2507 00 20 (uncalcined) is not.
     "25070080": _C,
 
-    # ── ELECTRICITY (heading 2716 — single CN8) ──────────────────────────────
+    # ELECTRICITY (heading 2716 — single CN8)
     "27160000": _E,
 
-    # ── HYDROGEN (partial heading 2804) ──────────────────────────────────────
+    # HYDROGEN (partial heading 2804)
     # Only 2804 10 00 (hydrogen) is in scope; other subheadings of 2804 are not.
     "28041000": _H,
 
-    # ── FERTILISERS — Chapter 28 partial headings ─────────────────────────────
+    # FERTILISERS — Chapter 28 partial headings
     "28080000": _F,  # Nitric acid; sulphonitric acids
     "28141000": _F,  # Anhydrous ammonia
     "28142000": _F,  # Ammonia in aqueous solution
     "28332100": _F,  # Sulphates of magnesium (partial heading 2833)
     "28342100": _F,  # Nitrates of potassium (partial heading 2834)
 
-    # ── FERTILISERS — Heading 3102 (nitrogenous mineral/chemical fertilisers) ─
+    # FERTILISERS — Heading 3102 (nitrogenous mineral/chemical fertilisers)
     "31021000": _F,  # Urea, whether or not in aqueous solution
     "31021090": _F,  # Urea, other forms
     "31022100": _F,  # Ammonium sulphate
@@ -190,7 +190,7 @@ _CN8_TO_SECTOR: dict[str, str] = {
     "31028000": _F,  # Mixtures of urea and ammonium nitrate in aqueous or ammoniacal solution
     "31029000": _F,  # Other nitrogenous mineral or chemical fertilisers
 
-    # ── FERTILISERS — Heading 3105 (mineral/chemical fertilisers, multiple elements) ─
+    # FERTILISERS — Heading 3105 (mineral/chemical fertilisers, multiple elements)
     "31051000": _F,  # Goods in tablets or similar forms or in packages of a gross weight ≤10 kg
     "31052010": _F,  # Mineral or chemical fertilisers containing nitrogen, phosphorus and potassium
     "31052090": _F,  # Other mineral or chemical fertilisers with three fertilising elements
@@ -288,7 +288,7 @@ def is_in_cbam_scope(cn_code: str) -> bool:
     return lookup_sector(cn_code) is not None
 
 
-# ── TARIC table provenance metadata ──────────────────────────────────────────
+# TARIC table provenance metadata
 # Computed once at import time so it auto-updates when any table entry changes.
 # Include TARIC_METADATA in every calculation snapshot and in the
 # GET /api/cbam/regulatory-tables response for third-party audit verification.

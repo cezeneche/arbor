@@ -76,8 +76,6 @@ export const submittedPackageSchema = z.object({
   packageIntegrityHash: z.string().min(1),
 })
 
-export type SubmittedPackage = z.infer<typeof submittedPackageSchema>
-
 export type SubmittedPackageVerdict =
   | { ok: false; reason: 'malformed' }
   | {

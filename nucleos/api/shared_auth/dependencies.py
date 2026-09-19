@@ -30,7 +30,7 @@ def get_auth_context(
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _unauthorized()
 
-    # ── Try OIDC first (activated only when OIDC_JWKS_URL env var is set) ────
+    # Try OIDC first (activated only when OIDC_JWKS_URL env var is set)
     try:
         from shared_auth.oidc import try_decode_oidc_token
         oidc_ctx = try_decode_oidc_token(credentials.credentials)
@@ -48,7 +48,7 @@ def get_auth_context(
         # be silently discarded — without this log, revocations are invisible.
         _log.warning("OIDC token validation failed, falling through to HS256: %s", exc)
 
-    # ── Fall back to internal HS256 JWT ───────────────────────────────────────
+    # Fall back to internal HS256 JWT
     try:
         context = decode_access_token(credentials.credentials)
     except ValueError:

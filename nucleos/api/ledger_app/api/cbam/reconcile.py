@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query
 
 from ledger_app.api.cbam._shared import engine, _table_columns, _pick_existing
 from ledger_app.services.cbam_reconciler import (
@@ -34,7 +34,7 @@ _D = Decimal
 _ZERO = _D("0")
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# helpers
 
 def _load_cases_for_quarter(
     tenant_id: str,
@@ -234,7 +234,7 @@ def _result_to_dict(result: QuarterlyReconciliationResult) -> dict:
     }
 
 
-# ── Endpoints ──────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.get("/reconcile")
 async def reconcile_quarterly(

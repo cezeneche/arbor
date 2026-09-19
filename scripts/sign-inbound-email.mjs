@@ -47,10 +47,9 @@ const defaultBody = JSON.stringify({
 
 const rawBody = bodyFile ? readFileSync(bodyFile, 'utf8') : defaultBody
 
-// ── The two lines a signing proxy needs ──────────────────────────────────────
+// The two lines a signing proxy needs
 const timestamp = Math.floor(Date.now() / 1000).toString()
 const signature = createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex')
-// ─────────────────────────────────────────────────────────────────────────────
 
 const headers = {
   'Content-Type': 'application/json',

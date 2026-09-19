@@ -102,7 +102,7 @@ FACTOR_METADATA = {
     ),
 }
 
-# ── Production route constants ────────────────────────────────────────────────
+# Production route constants
 PRODUCTION_ROUTE_BF_BOF = "BF_BOF"
 PRODUCTION_ROUTE_EAF = "EAF"
 PRODUCTION_ROUTE_DRI_EAF = "DRI_EAF"
@@ -153,7 +153,7 @@ class DefaultSEE:
         return self.direct_tco2e_per_t + self.indirect_tco2e_per_t
 
 
-# ── Annex VI tables ───────────────────────────────────────────────────────────
+# Annex VI tables
 # All values: tCO2e per tonne of goods (tCO2e/MWh for electricity).
 # production_route=None  →  official world-average default (Art. 4(3) table).
 # production_route=<tag> →  engineering estimate for actual-measurement use.
@@ -172,7 +172,7 @@ _AVI = "EU 2023/1773 Art.4(3) Default Values, DG TAXUD Dec 2023"
 
 _ANNEX_VI: list[DefaultSEE] = [
 
-    # ── CEMENT (Table 1) ──────────────────────────────────────────────────────
+    # CEMENT (Table 1)
     # Official world-average default values.  All values tCO2e/t.
     DefaultSEE("25070080", _C, None, _D("0.230"), _D("0.080"),
                "Calcined kaolin", _AVI),
@@ -187,7 +187,7 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("25239000", _C, None, _D("0.590"), _D("0.040"),
                "Other hydraulic cements", _AVI),
 
-    # ── IRON AND STEEL (Table 2) ──────────────────────────────────────────────
+    # IRON AND STEEL (Table 2)
     # production_route=None: official world-average default per Art. 4(3) table.
     # Route-tagged entries: engineering estimates for actual-measurement use only.
     #
@@ -414,7 +414,7 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("7229", _S, None,                     _D("1.840"), _D("0.750"),
                "Wire of other alloy steel — official default", _AVI),
 
-    # ── CHAPTER 73 — Downstream articles of iron or steel ─────────────────────
+    # CHAPTER 73 — Downstream articles of iron or steel
     # Per-heading official default values from Art. 4(3) table.
     # Note: CN 7313 (barbed wire) is excluded from CBAM scope per EU 2023/956 Annex I.
     DefaultSEE("7301", _S, None,                     _D("2.030"), _D("0.360"),
@@ -494,7 +494,7 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("7326", _S, None,                     _D("1.970"), _D("0.390"),
                "Other articles of iron or steel, Ch.73 (fallback)", _AVI),
 
-    # ── ALUMINIUM (Table 3) ───────────────────────────────────────────────────
+    # ALUMINIUM (Table 3)
     # Official Art. 4(3) world-average values.  The official table does not
     # publish a SECONDARY route default; SECONDARY entries are engineering
     # estimates for actual-measurement use only.
@@ -582,7 +582,7 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("76", _A, PRODUCTION_ROUTE_SECONDARY,   _D("0.420"), _D("0.265"),
                "Other aluminium articles Ch.76, secondary — engineering estimate", _AVI),
 
-    # ── FERTILISERS (Table 4) ─────────────────────────────────────────────────
+    # FERTILISERS (Table 4)
     # N2O process emissions included in direct values for ammonium nitrate.
     # Ammonia values reflect full upstream (gas extraction + Haber-Bosch).
     DefaultSEE("28080000", _F, None, _D("2.560"), _D("0.050"),
@@ -638,13 +638,13 @@ _ANNEX_VI: list[DefaultSEE] = [
     DefaultSEE("3105", _F, None,    _D("0.940"), _D("0.080"),
                "Compound fertilisers Ch.3105 — world average (fallback)", _AVI),
 
-    # ── ELECTRICITY (Table 5) ─────────────────────────────────────────────────
+    # ELECTRICITY (Table 5)
     # Unit: tCO2e per MWh.  Country-specific values in ELECTRICITY_FACTORS below.
     # Entry below is the IEA world-average fallback when no country factor is available.
     DefaultSEE("27160000", _E, None, _D("0.493"), _D("0.000"),
                "Electrical energy — world average IEA grid emission factor", _AVI),
 
-    # ── HYDROGEN (Table 6) ────────────────────────────────────────────────────
+    # HYDROGEN (Table 6)
     # Official Art. 4(3) default is a single world-average (JRC 2023 H2 mix).
     # Route-specific entries are engineering estimates for actual-measurement use.
     DefaultSEE("28041000", _H, None,                    _D("10.400"), _D("0.000"),
@@ -658,7 +658,7 @@ _ANNEX_VI: list[DefaultSEE] = [
 ]
 
 
-# ── Country-specific electricity emission factors (tCO2e per MWh) ────────────
+# Country-specific electricity emission factors (tCO2e per MWh)
 # Source: IEA 5-year average 2016–2020, applied via Art. 4(3) operative table.
 # Used for indirect embedded emissions in non-electricity CBAM goods.
 # Country ISO-3166-1 alpha-2 codes.
@@ -718,7 +718,7 @@ ELECTRICITY_FACTORS: dict[str, Decimal] = {
 }
 
 
-# ── Build lookup index ────────────────────────────────────────────────────────
+# Build lookup index
 # Index keyed by (cn8_prefix, production_route | None) → DefaultSEE.
 # Longer prefixes take priority.
 _INDEX: dict[tuple[str, str | None], DefaultSEE] = {

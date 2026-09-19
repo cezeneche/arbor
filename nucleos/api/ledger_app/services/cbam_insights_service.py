@@ -52,7 +52,7 @@ _D = Decimal
 _ZERO = _D("0")
 
 
-# ── Sector lookup (safe wrapper) ──────────────────────────────────────────────
+# Sector lookup (safe wrapper)
 
 def _sector(cn_code: str | None) -> str:
     """Return CBAM sector for a CN code, or 'unknown'."""
@@ -65,7 +65,7 @@ def _sector(cn_code: str | None) -> str:
         return "unknown"
 
 
-# ── Shared SQL fragment helpers ───────────────────────────────────────────────
+# Shared SQL fragment helpers
 
 def _tenant_clause(tenant_id: str) -> str:
     """Return a WHERE / AND fragment for tenant isolation on cbam_cases."""
@@ -81,7 +81,7 @@ def _quarter_clause(has_year: bool, has_quarter: bool) -> str:
     return " ".join(parts)
 
 
-# ── Result dataclasses ────────────────────────────────────────────────────────
+# Result dataclasses
 
 @dataclass
 class ImporterKPIs:
@@ -207,7 +207,7 @@ class SectorSummaryResult:
     sectors: list[SectorEntry] = field(default_factory=list)
 
 
-# ── Column introspection cache (per connection) ───────────────────────────────
+# Column introspection cache (per connection)
 
 def _cols(conn: Connection, table: str) -> set[str]:
     from ledger_app.api.cbam._shared import _table_columns
@@ -221,7 +221,7 @@ def _pick(cols: set[str], candidates: list[str]) -> str | None:
     return None
 
 
-# ── Core aggregation query ────────────────────────────────────────────────────
+# Core aggregation query
 
 def _run_goods_line_query(
     conn: Connection,
@@ -299,7 +299,7 @@ def _run_goods_line_query(
     return [dict(r) for r in rows]
 
 
-# ── 1. Importer KPIs ──────────────────────────────────────────────────────────
+# 1. Importer KPIs
 
 def get_importer_kpis(
     conn: Connection,
@@ -414,7 +414,7 @@ def get_importer_kpis(
     )
 
 
-# ── 2. Supplier comparison ────────────────────────────────────────────────────
+# 2. Supplier comparison
 
 def get_supplier_comparison(
     conn: Connection,
@@ -535,7 +535,7 @@ def get_supplier_comparison(
     )
 
 
-# ── 3. Country intensity ──────────────────────────────────────────────────────
+# 3. Country intensity
 
 def get_country_intensity(
     conn: Connection,
@@ -618,7 +618,7 @@ def get_country_intensity(
     )
 
 
-# ── 4. Sector summary ─────────────────────────────────────────────────────────
+# 4. Sector summary
 
 def get_sector_summary(
     conn: Connection,

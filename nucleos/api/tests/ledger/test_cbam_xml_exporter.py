@@ -18,7 +18,7 @@ from ledger_app.services.cbam_reconciler import reconcile_quarter
 
 _D = Decimal
 
-# ── Fixtures ───────────────────────────────────────────────────────────────────
+# Fixtures
 
 _SAMPLE_LINES = [
     {
@@ -79,7 +79,7 @@ def _text(root: ET.Element, *path: str) -> str | None:
     return el.text if el is not None else None
 
 
-# ── XML well-formedness ────────────────────────────────────────────────────────
+# XML well-formedness
 
 class TestXMLWellFormedness:
     def test_output_is_valid_xml(self):
@@ -111,7 +111,7 @@ class TestXMLWellFormedness:
         assert root.attrib.get("version") == "1.0"
 
 
-# ── Declarant block ────────────────────────────────────────────────────────────
+# Declarant block
 
 class TestDeclarantBlock:
     def test_eori_present(self):
@@ -130,7 +130,7 @@ class TestDeclarantBlock:
         assert _find(root, "declarant", "name") is None
 
 
-# ── Reporting period ──────────────────────────────────────────────────────────
+# Reporting period
 
 class TestReportingPeriod:
     def test_period_code_format(self):
@@ -165,7 +165,7 @@ class TestReportingPeriod:
         assert _text(root, "reportingPeriod", "endDate") == "2024-12-31"
 
 
-# ── Goods lines ────────────────────────────────────────────────────────────────
+# Goods lines
 
 class TestGoodsLines:
     def test_correct_number_of_lines(self):
@@ -246,7 +246,7 @@ class TestGoodsLines:
         assert second_line.find(_tag("productionRoute")) is None
 
 
-# ── Aggregated emissions block ────────────────────────────────────────────────
+# Aggregated emissions block
 
 class TestAggregatedEmissions:
     def test_total_embedded_emissions_present(self):
@@ -267,7 +267,7 @@ class TestAggregatedEmissions:
         assert float(mass_el.text) == pytest.approx(15.0)  # 10 + 5
 
 
-# ── CBAM certificates block ───────────────────────────────────────────────────
+# CBAM certificates block
 
 class TestCBAMCertificates:
     def test_certificates_required_present(self):
@@ -305,7 +305,7 @@ class TestCBAMCertificates:
         assert certs.find(_tag("euEtsPriceEur")) is None
 
 
-# ── Structural validation ──────────────────────────────────────────────────────
+# Structural validation
 
 class TestValidateXMLStructure:
     def test_valid_xml_returns_no_errors(self):
@@ -344,7 +344,7 @@ class TestValidateXMLStructure:
         assert any("eori" in e.lower() for e in errors)
 
 
-# ── Integration: build from reconciliation result ─────────────────────────────
+# Integration: build from reconciliation result
 
 class TestDeclarationFromReconciliation:
     def _make_case(self):

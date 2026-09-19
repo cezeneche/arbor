@@ -58,7 +58,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   )
   lines.push('')
 
-  // ── Contents ───────────────────────────────────────────────────────────────
+  // Contents
   lines.push('## What is in this package')
   lines.push('')
   lines.push('| File | What it is |')
@@ -68,7 +68,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   lines.push('| `documents/` | The original source documents the records were extracted from. |')
   lines.push('')
 
-  // ── Summary ────────────────────────────────────────────────────────────────
+  // Summary
   lines.push('## Summary')
   lines.push('')
   lines.push('| | Count |')
@@ -88,7 +88,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   )
   lines.push('')
 
-  // ── Integrity ──────────────────────────────────────────────────────────────
+  // Integrity
   lines.push('## Integrity')
   lines.push('')
   lines.push(`**Package integrity hash:** \`${pkg.packageIntegrityHash}\``)
@@ -122,7 +122,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   )
   lines.push('')
 
-  // ── Independent verification ───────────────────────────────────────────────
+  // Independent verification
   lines.push('## Independent verification')
   lines.push('')
   if (pkg.verification) {
@@ -136,7 +136,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   }
   lines.push('')
 
-  // ── Records ────────────────────────────────────────────────────────────────
+  // Records
   lines.push('## Records')
   lines.push('')
   if (pkg.dataRecords.length === 0) {
@@ -157,7 +157,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   }
   lines.push('')
 
-  // ── Source text ────────────────────────────────────────────────────────────
+  // Source text
   const withSourceText = pkg.dataRecords.filter(r => r.sourceText)
   if (withSourceText.length > 0) {
     lines.push('## Source text')
@@ -170,7 +170,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
     lines.push('')
   }
 
-  // ── Source documents ───────────────────────────────────────────────────────
+  // Source documents
   lines.push('## Source documents')
   lines.push('')
   if (pkg.sourceDocuments.length === 0) {
@@ -186,7 +186,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   }
   lines.push('')
 
-  // ── Cross-validation ───────────────────────────────────────────────────────
+  // Cross-validation
   lines.push('## Cross-validation')
   lines.push('')
   if (pkg.crossValidationResults.length === 0) {
@@ -203,7 +203,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   }
   lines.push('')
 
-  // ── Scope of certification ─────────────────────────────────────────────────
+  // Scope of certification
   lines.push('## What this package does and does not certify')
   lines.push('')
   lines.push(

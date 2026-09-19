@@ -12,7 +12,7 @@ here.  New code should import directly from the relevant sub-module.
 """
 from __future__ import annotations
 
-# ── External service imports re-exported for callers ──────────────────────────
+# External service imports re-exported for callers
 from ledger_app.core.crypto import decrypt_field, encrypt_field  # noqa: F401
 from ledger_app.db.rls import set_tenant_context  # noqa: F401
 from ledger_app.db.session import engine  # noqa: F401
@@ -43,7 +43,7 @@ from ledger_app.services.snapshot_store import (  # noqa: F401
     sha256_hex,
 )
 
-# ── Sub-module re-exports ──────────────────────────────────────────────────────
+# Sub-module re-exports
 from .schemas import (  # noqa: F401
     ALLOWED_EMISSIONS_METHODS,
     CBAM_STORAGE_ROOT,

@@ -50,7 +50,7 @@ _INACTIVE_STATUSES: frozenset[str] = frozenset(
 )
 
 
-# ── Result dataclass ──────────────────────────────────────────────────────────
+# Result dataclass
 
 @dataclass(frozen=True)
 class EUTLInstallationInfo:
@@ -77,7 +77,7 @@ class EUTLInstallationInfo:
     permit_status: str | None = field(default=None)
 
 
-# ── In-memory TTL cache ───────────────────────────────────────────────────────
+# In-memory TTL cache
 
 @dataclass
 class _CacheEntry:
@@ -111,7 +111,7 @@ def _set_cached(key: str, info: EUTLInstallationInfo, ttl: float) -> None:
         _cache[key] = _CacheEntry(info=info, expires_at=time.monotonic() + ttl)
 
 
-# ── Active status helper ──────────────────────────────────────────────────────
+# Active status helper
 
 def _is_active(permit_status: str | None) -> bool:
     """Return True when the permit is considered active.
@@ -150,7 +150,7 @@ def _parse_country_code(data: dict[str, Any]) -> str | None:
     return None
 
 
-# ── HTTP fetch ────────────────────────────────────────────────────────────────
+# HTTP fetch
 
 def _fetch(id_str: str, base_url: str, timeout: float) -> EUTLInstallationInfo | None:
     """Perform the actual HTTP GET against the EUTL API.
@@ -206,7 +206,7 @@ def _fetch(id_str: str, base_url: str, timeout: float) -> EUTLInstallationInfo |
     return None
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def lookup_installation(id_str: str) -> EUTLInstallationInfo | None:
     """Look up an installation in the EEA EUTL.

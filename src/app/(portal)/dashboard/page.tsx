@@ -149,7 +149,7 @@ export default async function DashboardPage() {
     tierGroups.filter(g => g.trustTier === tier).reduce((n, g) => n + g._count._all, 0)
   const keptDomains = [...new Set(tierGroups.map(g => g.domain as string))]
 
-  // ── shared derivations ──────────────────────────────────────────────────────
+  // shared derivations
   const canonical = canonicalUnitIndex()
   const unitConflicts = findUnitConflicts(
     unitGroups.map(g => ({
@@ -232,7 +232,7 @@ export default async function DashboardPage() {
 
   return (
     <div style={container}>
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -303,7 +303,7 @@ export default async function DashboardPage() {
         />
       ) : (
         <>
-          {/* ── Attention, three states, always this position ──────────────── */}
+          {/* Attention, three states, always this position */}
           {attention.state === 'blocking' && (
             <AttentionBlock heading="Needs you now" items={attention.blocking} tone="blocking" />
           )}
@@ -314,7 +314,7 @@ export default async function DashboardPage() {
             <AttentionClear line={attention.clearLine} />
           )}
 
-          {/* ── Totals ─────────────────────────────────────────────────────── */}
+          {/* Totals */}
           <section style={{ marginBottom: spacing[5] }}>
             <span style={sectionLabel}>Totals for {period.year}</span>
             <div style={{ display: 'flex', gap: spacing[6], flexWrap: 'wrap' }}>
@@ -382,7 +382,7 @@ export default async function DashboardPage() {
             <AttentionBlock heading="Worth a look" items={attention.attention} tone="attention" />
           )}
 
-          {/* ── Coverage ───────────────────────────────────────────────────── */}
+          {/* Coverage */}
           {(() => {
             const rows = buildCoverageMatrix({
               records: records.map(r => ({
@@ -398,12 +398,12 @@ export default async function DashboardPage() {
             return <CoverageMatrix rows={rows} summary={summariseCoverage(rows)} />
           })()}
 
-          {/* ── Provenance ─────────────────────────────────────────────────── */}
+          {/* Provenance */}
           <ProvenanceBar verified={verified} declared={declared} estimated={estimated} />
         </>
       )}
 
-      {/* ── Requests and review — the loop that fills the repository ───────── */}
+      {/* Requests and review — the loop that fills the repository */}
       {(openRequests > 0 || awaitingReview > 0) && (
         <section style={{ marginBottom: spacing[5] }}>
           <div style={{ display: 'flex', gap: spacing[6], flexWrap: 'wrap' }}>
@@ -430,7 +430,7 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* ── Recent activity ────────────────────────────────────────────────── */}
+      {/* Recent activity */}
       {auditEntries.length > 0 && (
         <section>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>

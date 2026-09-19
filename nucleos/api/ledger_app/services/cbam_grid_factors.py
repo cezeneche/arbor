@@ -29,7 +29,7 @@ from typing import Any
 _D = Decimal
 _ZERO = _D("0")
 
-# ── Grid emission factor table ────────────────────────────────────────────────
+# Grid emission factor table
 #
 # Format: ISO 3166-1 alpha-2 → tCO2e/MWh (Decimal)
 #
@@ -42,7 +42,7 @@ _ZERO = _D("0")
 # IEA world average (WORLD_AVG) applies per Art. 7(3).
 
 _GRID_FACTORS: dict[str, Decimal] = {
-    # ── CBAM-relevant non-EU origin countries ────────────────────────────────
+    # CBAM-relevant non-EU origin countries
     # Major CBAM export economies listed first (highest import volumes to EU)
 
     "CN": _D("0.5810"),   # China — coal-heavy, National Grid (IEA 2023)
@@ -102,7 +102,7 @@ _GRID_FACTORS: dict[str, Decimal] = {
     "KE": _D("0.0650"),   # Kenya — geothermal + hydro (IEA 2023)
     "ET": _D("0.0400"),   # Ethiopia — hydro dominant (IEA 2023)
 
-    # ── EU member states (informational — EU goods not subject to CBAM) ──────
+    # EU member states (informational — EU goods not subject to CBAM)
     "DE": _D("0.3850"),   # Germany (IEA 2023)
     "FR": _D("0.0510"),   # France — nuclear dominant (IEA 2023)
     "PL": _D("0.7180"),   # Poland — coal dominant (IEA 2023)
@@ -112,15 +112,15 @@ _GRID_FACTORS: dict[str, Decimal] = {
     "FI": _D("0.0740"),   # Finland — nuclear + hydro (IEA 2023)
     "AT": _D("0.0780"),   # Austria — hydro dominant (IEA 2023)
 
-    # ── UK (ETS-linked, Art. 9 eligible) ─────────────────────────────────────
+    # UK (ETS-linked, Art. 9 eligible)
     "GB": _D("0.2070"),   # UK — gas + nuclear + renewables (IEA 2023)
 
-    # ── Global reference ──────────────────────────────────────────────────────
+    # Global reference
     "WORLD_AVG": _D("0.4940"),  # IEA world average (2023 World Energy Outlook)
 }
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def get_grid_factor(country_code: str | None) -> Decimal:
     """Return the electricity grid emission factor for *country_code* (tCO2e/MWh).

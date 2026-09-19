@@ -22,7 +22,6 @@ Coverage:
 
 from __future__ import annotations
 
-import pytest
 
 from ledger_app.services.cbam_data_quality import (
     _compute_score,
@@ -36,7 +35,7 @@ from ledger_app.services.cbam_data_quality import (
 )
 
 
-# ── _issue_weight ─────────────────────────────────────────────────────────────
+# _issue_weight
 
 class TestIssueWeight:
     def test_exact_missing_match(self):
@@ -86,7 +85,7 @@ class TestIssueWeight:
         assert _issue_weight(issue, _WARNING_WEIGHT_MAP, _DEFAULT_WARNING_WEIGHT) == 12
 
 
-# ── _compute_score ────────────────────────────────────────────────────────────
+# _compute_score
 
 class TestComputeScore:
     def test_no_issues_is_100(self):
@@ -129,7 +128,7 @@ class TestComputeScore:
         assert score_with_missing < score_with_warnings
 
 
-# ── _risk_tier ────────────────────────────────────────────────────────────────
+# _risk_tier
 
 class TestRiskTier:
     def test_blocking_when_missing(self):
@@ -158,7 +157,7 @@ class TestRiskTier:
         assert _risk_tier(80.0, False) == "low"
 
 
-# ── Sector validation integration ─────────────────────────────────────────────
+# Sector validation integration
 
 def _run_dq(*, cn_code, sector, method="actual", installation_id="DE_12345678"):
     """Helper: run evaluate_cbam_data_quality with a single goods line."""
@@ -266,7 +265,7 @@ class TestSectorValidation:
         assert all("sector_mismatch" not in w for w in dq["warnings"])
 
 
-# ── evaluate_cbam_data_quality — output shape ─────────────────────────────────
+# evaluate_cbam_data_quality — output shape
 
 class TestEvaluateDQOutputShape:
     def _minimal_ok(self):
@@ -442,7 +441,7 @@ class TestEvaluateDQOutputShape:
         assert dq_method["score"] < dq_incoterm["score"]
 
 
-# ── Backward-compatibility: existing test scenario ────────────────────────────
+# Backward-compatibility: existing test scenario
 
 class TestBackwardCompatibility:
     def test_invoice_number_missing_not_triggered_when_only_entry_reference_present(self):

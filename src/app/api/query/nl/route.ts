@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
   })
 }
 
-// ── QUERY RUNNERS ─────────────────────────────────────────────────────────────
+// QUERY RUNNERS
 
 type NlRecord = {
   id: string
@@ -343,7 +343,7 @@ async function runGapQuery(params: {
   return { ownMissingDomains, supplierGaps }
 }
 
-// ── SUMMARY BUILDER ───────────────────────────────────────────────────────────
+// SUMMARY BUILDER
 
 function buildSummary(count: number, hasMore: boolean, queryType: QueryType, domain: string | undefined | null, gapResult: GapResult | null): string {
   const DOMAIN_LABELS: Record<string, string> = {

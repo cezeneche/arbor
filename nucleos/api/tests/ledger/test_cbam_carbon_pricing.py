@@ -38,7 +38,7 @@ from ledger_app.services.cbam_carbon_pricing import (
 )
 
 
-# ── lookup_carbon_pricing_scheme ──────────────────────────────────────────────
+# lookup_carbon_pricing_scheme
 
 class TestLookup:
     def test_gb_recognised(self):
@@ -113,7 +113,7 @@ class TestLookup:
         assert scheme is not None
 
 
-# ── get_all_recognised_schemes ────────────────────────────────────────────────
+# get_all_recognised_schemes
 
 class TestGetAll:
     def test_returns_list(self):
@@ -145,7 +145,7 @@ class TestGetAll:
             assert s.regulation_ref
 
 
-# ── RecognisedScheme dataclass ────────────────────────────────────────────────
+# RecognisedScheme dataclass
 
 class TestRecognisedScheme:
     def test_frozen(self):
@@ -159,7 +159,7 @@ class TestRecognisedScheme:
         assert s1 == s2
 
 
-# ── API endpoint: GET /cbam/carbon-pricing-schemes ───────────────────────────
+# API endpoint: GET /cbam/carbon-pricing-schemes
 
 class TestCarbonPricingSchemesAPI:
     def _client(self):
@@ -199,7 +199,7 @@ class TestCarbonPricingSchemesAPI:
         assert "2023/956" in gb["regulation_ref"]
 
 
-# ── Integration: liability endpoint scheme detection ──────────────────────────
+# Integration: liability endpoint scheme detection
 
 def _make_case_with_emission(conn, suffix: str, origin_country: str | None = None):
     """Populate FakeConnection dicts for one case → shipment → goods_line → emission."""

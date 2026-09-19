@@ -47,7 +47,7 @@ def _get_signing_key() -> bytes:
     return key.encode("utf-8")
 
 
-# ── Signing ───────────────────────────────────────────────────────────────────
+# Signing
 
 def sign_event(
     case_id: str,
@@ -83,7 +83,7 @@ def sign_event(
     return hmac.new(_get_signing_key(), msg, hashlib.sha256).hexdigest()
 
 
-# ── Chain helper ──────────────────────────────────────────────────────────────
+# Chain helper
 
 def get_prev_chain_hmac(case_id: str, conn: Any) -> str | None:
     """
@@ -110,7 +110,7 @@ def get_prev_chain_hmac(case_id: str, conn: Any) -> str | None:
     return row[0] if row else None
 
 
-# ── Verification ──────────────────────────────────────────────────────────────
+# Verification
 
 def verify_event(row: Mapping[str, Any]) -> bool | None:
     """
@@ -156,7 +156,7 @@ def verify_event(row: Mapping[str, Any]) -> bool | None:
     return False
 
 
-# ── Chain verification ────────────────────────────────────────────────────────
+# Chain verification
 
 @dataclass(frozen=True)
 class ChainVerificationResult:
@@ -305,7 +305,7 @@ def verify_chain(
     )
 
 
-# ── S3 immutable export ───────────────────────────────────────────────────────
+# S3 immutable export
 
 def export_to_s3_immutable(
     case_id: str,

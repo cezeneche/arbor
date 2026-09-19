@@ -77,6 +77,3 @@ export async function appendAuditEntry(
 
   return { hash, previousHash, sequence }
 }
-
-/** The order the chain must be read in — for verification, export, or display. */
-export const AUDIT_CHAIN_ORDER = { sequence: 'asc' } as const

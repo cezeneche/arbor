@@ -53,7 +53,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# ── Detection signals ──────────────────────────────────────────────────────────
+# Detection signals
 
 _CERT_SIGNALS = [
     re.compile(r"inspection\s+certificate", re.I),
@@ -75,7 +75,7 @@ def is_mill_certificate(text: str) -> bool:
     return count >= _MIN_SIGNAL_COUNT
 
 
-# ── Certificate type (3.1 vs 3.2) ─────────────────────────────────────────────
+# Certificate type (3.1 vs 3.2)
 
 _TYPE_32 = re.compile(r"\b3\s*[\.\-]\s*2\b")
 _TYPE_31 = re.compile(r"\b3\s*[\.\-]\s*1\b")
@@ -89,7 +89,7 @@ def _detect_cert_type(text: str) -> str:
     return "unknown"
 
 
-# ── Heat / batch number ────────────────────────────────────────────────────────
+# Heat / batch number
 
 # The keyword is optionally followed by "number" / "no." / "#", which is then
 # skipped rather than captured. The previous alternation listed "heat" before
@@ -110,7 +110,7 @@ def _extract_heat_number(text: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
-# ── Grade / alloy designation ──────────────────────────────────────────────────
+# Grade / alloy designation
 
 _GRADE_RE = re.compile(
     r"(?:grade|steel\s+grade|material|alloy|designation|spec(?:ification)?)[:\s]+([A-Z0-9\-/\s]{2,30}?)(?:\n|,|\s{2,}|$)",
@@ -123,7 +123,7 @@ def _extract_grade(text: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
-# ── Product form ───────────────────────────────────────────────────────────────
+# Product form
 
 _PRODUCT_FORMS = [
     "plate", "sheet", "coil", "strip", "tube", "pipe", "rod", "bar",
@@ -141,7 +141,7 @@ def _extract_product_form(text: str) -> str | None:
     return m.group(1).lower() if m else None
 
 
-# ── Chemical composition ───────────────────────────────────────────────────────
+# Chemical composition
 
 _ELEMENT_SYMBOLS = [
     "C", "Mn", "Si", "S", "P", "Cr", "Ni", "Mo", "V", "Cu",
@@ -170,7 +170,7 @@ def _extract_chemical_composition(text: str) -> dict[str, float]:
     return composition
 
 
-# ── Mechanical properties ──────────────────────────────────────────────────────
+# Mechanical properties
 
 _MECH_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("yield_strength_mpa", re.compile(r"(?:yield|reh?l?|r[pe]0?\.?2|proof)\s*(?:strength)?[:\s]+(\d+\.?\d*)\s*(?:N/mm²|MPa|mpa)?", re.I)),
@@ -192,7 +192,7 @@ def _extract_mechanical_properties(text: str) -> dict[str, float]:
     return props
 
 
-# ── Production route heuristic from chemical composition ──────────────────────
+# Production route heuristic from chemical composition
 #
 # Rules (approximate):
 #   - High P (>0.015%) + High S (>0.015%) + low Cr → likely BF-BOF (basic oxygen process)
@@ -233,7 +233,7 @@ def _infer_production_route(composition: dict[str, float]) -> str | None:
     return None
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def parse_mill_certificate(text: str, layout: dict | None = None) -> dict[str, Any]:
     """Extract mill certificate data from document text.

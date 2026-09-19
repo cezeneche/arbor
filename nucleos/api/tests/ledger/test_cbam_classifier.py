@@ -3,12 +3,10 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
 
 from ledger_app.services.cbam_classifier import (
     AUTO_ASSIGN_THRESHOLD,
     LLM_TRIGGER_THRESHOLD,
-    REVIEW_THRESHOLD,
     CNClassificationResult,
     classify_description,
 )

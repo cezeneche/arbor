@@ -50,7 +50,7 @@ __all__ = [
     "return_to_pdf",
 ]
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# Constants
 
 # HMRC brand colours
 _HMRC_BLACK  = "#0B0C0C"
@@ -69,7 +69,7 @@ _QUARTER_DATES: dict[int, tuple[int, int, int]] = {
 }
 
 
-# ── Input / Output dataclasses ────────────────────────────────────────────────
+# Input / Output dataclasses
 
 @dataclass
 class HMRCReturnInput:
@@ -117,7 +117,7 @@ class HMRCConsignment:
 
 @dataclass
 class HMRCReturnDocument:
-    # ── Return header ──────────────────────────────────────────────────────────
+    # Return header
     return_period_start: date
     return_period_end: date
     return_type: str                   # "annual" | "quarterly"
@@ -132,16 +132,16 @@ class HMRCReturnDocument:
     accuracy_declaration: bool
     generated_at: datetime
     audit_chain_hash: str              # HMAC-SHA256 over the return data
-    # ── Consignment schedule ───────────────────────────────────────────────────
+    # Consignment schedule
     consignments: list[HMRCConsignment]
-    # ── Metadata ───────────────────────────────────────────────────────────────
+    # Metadata
     source_package_snapshot_hash: str | None
     warnings: list[str]                # non-blocking build warnings
     narrative_limitations: str | None = None
     """Methodology / limitations text from the narrative pipeline (rendered in PDF)."""
 
 
-# ── Exceptions ────────────────────────────────────────────────────────────────
+# Exceptions
 
 class HMRCReturnValidationError(ValueError):
     """Raised when the report_package or input_data fails pre-build validation."""
@@ -151,7 +151,7 @@ class HMRCReturnValidationError(ValueError):
         super().__init__("HMRC return validation failed: " + "; ".join(failures))
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _to_decimal(value: Any, default: Decimal = Decimal("0")) -> Decimal:
     if value is None:
@@ -251,7 +251,7 @@ def _consignment_ref(shipment: dict[str, Any]) -> tuple[str, str]:
     return f"SHIP-{str(shipment.get('id', 'UNKNOWN'))[:12]}", "generated"
 
 
-# ── Validation ────────────────────────────────────────────────────────────────
+# Validation
 
 def _validate(
     report_package: dict[str, Any],
@@ -304,7 +304,7 @@ def _validate(
         raise HMRCReturnValidationError(failures)
 
 
-# ── Core builder ──────────────────────────────────────────────────────────────
+# Core builder
 
 def build_hmrc_return(
     report_package: dict[str, Any],
@@ -334,7 +334,7 @@ def build_hmrc_return(
         reporting_year, reporting_quarter
     )
 
-    # ── Build consignment schedule ────────────────────────────────────────────
+    # Build consignment schedule
     consignments: list[HMRCConsignment] = []
     total_charge = Decimal("0")
     total_cpr    = Decimal("0")
@@ -351,7 +351,7 @@ def build_hmrc_return(
 
         origin      = str(shipment.get("origin_country") or "")
 
-        # ── UK CBAM Rule: precursor exclusion ─────────────────────────────────
+        # UK CBAM Rule: precursor exclusion
         # UK-origin goods (origin_country = 'GB') are produced within the UK
         # customs territory and are NOT subject to UK CBAM.
         # Finance (No.2) Bill 2025-26 excludes UK-produced precursor goods.
@@ -417,7 +417,7 @@ def build_hmrc_return(
                 Decimal("0.000001"), rounding=ROUND_HALF_UP
             )
 
-            # ── UK CBAM Rule: indirect emissions excluded until 2029 ──────────
+            # UK CBAM Rule: indirect emissions excluded until 2029
             # UK CBAM charges ONLY direct (Scope 1) emissions.
             # Indirect emissions (electricity, Scope 2) are excluded until the
             # jurisdiction_indirect_date >= 2029 (Finance No.2 Bill 2025-26).
@@ -511,7 +511,7 @@ def build_hmrc_return(
 
     total_liability = _gbp(max(total_charge - total_cpr, Decimal("0")))
 
-    # ── Compute audit chain HMAC ──────────────────────────────────────────────
+    # Compute audit chain HMAC
     # Key material: the report_package's immutable snapshot_hash (if available)
     # so the HMRC return is cryptographically chained to its source audit record.
     snapshot_hash = (audit.get("snapshot_hash") or audit.get("payload_hash") or "no-snapshot")
@@ -558,7 +558,7 @@ def build_hmrc_return(
     )
 
 
-# ── JSON serialisation ────────────────────────────────────────────────────────
+# JSON serialisation
 
 def _default_serialiser(obj: Any) -> Any:
     if isinstance(obj, Decimal):
@@ -573,7 +573,7 @@ def return_to_json(return_doc: HMRCReturnDocument) -> str:
     return json.dumps(asdict(return_doc), indent=2, default=_default_serialiser)
 
 
-# ── PDF generation ────────────────────────────────────────────────────────────
+# PDF generation
 
 def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
     """
@@ -606,7 +606,7 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
     hash_short = return_doc.audit_chain_hash[:32] + "…"
     generated  = return_doc.generated_at.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # ── Footer callback ───────────────────────────────────────────────────────
+    # Footer callback
     def _on_page(canvas, doc):
         canvas.saveState()
         canvas.setFont("Helvetica", 6)
@@ -680,9 +680,7 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
 
     story: list[Any] = []
 
-    # ═══════════════════════════════════════════════════════════════════════════
     # PAGE 1 — Cover
-    # ═══════════════════════════════════════════════════════════════════════════
     story.append(Paragraph("HM Revenue &amp; Customs", sub_style))
     story.append(Paragraph("UK CBAM Tax Return", title_style))
     story.append(Paragraph(
@@ -757,9 +755,7 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
 
     story.append(PageBreak())
 
-    # ═══════════════════════════════════════════════════════════════════════════
     # PAGE 2+ — Consignment Schedule
-    # ═══════════════════════════════════════════════════════════════════════════
     story.append(Paragraph("Consignment Schedule", section_style))
     story.append(Paragraph(
         "One row per CBAM goods line.  All weights in kg; emissions in tCO\u2082e; "
@@ -850,9 +846,7 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
     story.append(sched_t)
     story.append(PageBreak())
 
-    # ═══════════════════════════════════════════════════════════════════════════
     # Methodology Notes
-    # ═══════════════════════════════════════════════════════════════════════════
     story.append(Paragraph("Calculation Methodology and Limitations", section_style))
     story.append(hr())
     notes_text = return_doc.narrative_limitations or (
@@ -878,9 +872,7 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
     ]))
     story.append(PageBreak())
 
-    # ═══════════════════════════════════════════════════════════════════════════
     # Accuracy Declaration
-    # ═══════════════════════════════════════════════════════════════════════════
     story.append(Paragraph("Accuracy Declaration", section_style))
     story.append(hr())
     story.append(Spacer(1, 0.3 * cm))
@@ -933,6 +925,6 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
         small_style,
     ))
 
-    # ── Build ─────────────────────────────────────────────────────────────────
+    # Build
     doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
     return buf.getvalue()

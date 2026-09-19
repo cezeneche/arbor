@@ -42,7 +42,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -50,7 +49,6 @@ from app.services.report_validator import requires_verification
 from ledger_app.api.cbam._shared import (
     _table_columns,
     engine,
-    set_tenant_context,
 )
 from shared_auth.dependencies import require_scopes
 from shared_auth.models import AuthContext
@@ -69,7 +67,7 @@ _TRANSITIONS: dict[str, frozenset[str]] = {
 }
 
 
-# ── Pydantic models ────────────────────────────────────────────────────────────
+# Pydantic models
 
 class RejectionRequest(BaseModel):
     reason: str = Field(
@@ -78,7 +76,7 @@ class RejectionRequest(BaseModel):
     )
 
 
-# ── Internal helpers ───────────────────────────────────────────────────────────
+# Internal helpers
 
 def _tenant_id(request: Request) -> str:
     return getattr(getattr(request.state, "auth_context", None), "tenant_id", "") or ""
@@ -205,7 +203,7 @@ def _try_write_audit(case_id: str, event_type: str, payload: dict) -> None:
         _log.debug("audit log write for %s failed (non-fatal): %s", event_type, exc)
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.post(
     "/goods-lines/{goods_line_id}/request-verification",

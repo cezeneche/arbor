@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import os
 import re
 from decimal import Decimal
 from uuid import uuid4
 
-import datetime
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
 
 _log = logging.getLogger(__name__)
 from sqlalchemy import text
@@ -459,7 +456,7 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                     warnings.append(f"emissions_reused:{goods_line_id}")
                     continue
 
-                # ── Automated method selection (EU 2023/1773 Art. 4) ──────────
+                # Automated method selection (EU 2023/1773 Art. 4)
                 # Determines actual / estimated / default and computes direct +
                 # indirect kgCO2e values.  Always runs — even when the caller
                 # supplies a method and values, the selector validates them.

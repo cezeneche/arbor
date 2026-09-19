@@ -1,6 +1,6 @@
 // Recording a foreign chain's final state.
 //
-// Phase 4 made Arbor's chain the only one accepting writes. The Nucleos CBAM
+// Since the Nucleos integration, Arbor's chain is the only one accepting writes. The Nucleos CBAM
 // chain was not imported — none of its entries backed a filed declaration or was
 // shown to a supplier or auditor, and its cases were sample data, so attaching
 // them to real entities would have meant guessing which company each belonged

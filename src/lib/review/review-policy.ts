@@ -53,7 +53,7 @@ export function summariseReviewQueue(fieldCount: number): ReviewQueueSummary {
   return { fieldCount: Math.max(0, fieldCount), estimatedMinutes }
 }
 
-// ── PERIOD DERIVATION ─────────────────────────────────────────────────────────
+// PERIOD DERIVATION
 // A record's period must be a deterministic function of the DOCUMENT, never of
 // when it happened to be uploaded.
 //

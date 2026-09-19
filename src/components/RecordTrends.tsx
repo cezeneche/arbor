@@ -37,7 +37,7 @@ export function RecordTrends({ trends }: { trends: Trends }) {
 
   return (
     <div style={{ width: '100%' }}>
-      {/* ── Field coverage by quarter ── */}
+      {/* Field coverage by quarter */}
       <section style={{ marginBottom: spacing[5] }}>
         <p style={sectionLabel}>Field coverage by quarter</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -98,7 +98,7 @@ export function RecordTrends({ trends }: { trends: Trends }) {
         </div>
       </section>
 
-      {/* ── Period-over-period value comparison ── */}
+      {/* Period-over-period value comparison */}
       {trends.periodOverPeriod.length > 0 && (
         <section>
           <p style={sectionLabel}>Period-over-period comparison</p>

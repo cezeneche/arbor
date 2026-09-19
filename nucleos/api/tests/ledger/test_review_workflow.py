@@ -14,12 +14,9 @@ All tests use a fake engine / fake connection — no real DB required.
 """
 from __future__ import annotations
 
-import json
 import os
-from typing import Any
 from uuid import uuid4
 
-import pytest
 from fastapi import FastAPI, Depends
 from fastapi.testclient import TestClient
 

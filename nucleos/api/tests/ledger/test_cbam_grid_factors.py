@@ -16,7 +16,7 @@ from ledger_app.services.cbam_grid_factors import (
 _D = Decimal
 
 
-# ── get_grid_factor ────────────────────────────────────────────────────────────
+# get_grid_factor
 
 class TestGetGridFactor:
     def test_china_returns_known_value(self):
@@ -85,7 +85,7 @@ class TestGetGridFactor:
         assert get_grid_factor("FR") < _D("0.1")
 
 
-# ── compute_indirect_from_electricity ─────────────────────────────────────────
+# compute_indirect_from_electricity
 
 class TestComputeIndirectFromElectricity:
     def test_basic_calculation(self):
@@ -141,7 +141,7 @@ class TestComputeIndirectFromElectricity:
         assert float(result) == pytest.approx(expected, rel=1e-4)
 
 
-# ── get_all_grid_factors ───────────────────────────────────────────────────────
+# get_all_grid_factors
 
 class TestGetAllGridFactors:
     def test_returns_dict(self):
@@ -160,7 +160,7 @@ class TestGetAllGridFactors:
         assert "FAKE" not in f2
 
 
-# ── list_cbam_relevant_countries ──────────────────────────────────────────────
+# list_cbam_relevant_countries
 
 class TestListCbamRelevantCountries:
     def test_returns_list(self):
