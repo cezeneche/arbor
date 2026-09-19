@@ -1,6 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { rateLimitKey } from '@/lib/rate-limit-pure'
+import { redisCredentials } from '@/lib/redis-credentials'
 
 // Sliding-window rate limiting backed by Upstash Redis.
 // The client is instantiated lazily so `next build` never needs the secrets,
@@ -42,10 +43,9 @@ export const RATE_LIMITS = {
 
 let _redis: Redis | null = null
 function getRedis(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  if (!url || !token) return null
-  if (!_redis) _redis = new Redis({ url, token })
+  const credentials = redisCredentials(process.env)
+  if (!credentials) return null
+  if (!_redis) _redis = new Redis(credentials)
   return _redis
 }
 
@@ -111,6 +111,24 @@ export async function checkRateLimit(
     // A Redis hiccup must not silently drop a fail-closed brute-force gate.
     console.error(`[rate-limit] check failed for '${config.prefix}', failing ${failMode}:`, e)
     return { allowed: failMode === 'open', remaining: failMode === 'open' ? config.limit : 0 }
+  }
+}
+
+/**
+ * Whether the limiter can reach Upstash. Sign-in fails closed, so an unreachable
+ * limiter rejects every password as if it were wrong — readiness reports this
+ * rather than leaving the deployment looking healthy while nobody can log in.
+ */
+export async function rateLimiterHealth(): Promise<{ ok: boolean; detail?: string }> {
+  const redis = getRedis()
+  if (!redis) {
+    return { ok: false, detail: 'UPSTASH_REDIS_REST_URL / _TOKEN are not set, so nobody can sign in.' }
+  }
+  try {
+    await redis.ping()
+    return { ok: true }
+  } catch {
+    return { ok: false, detail: 'Upstash did not answer, so nobody can sign in.' }
   }
 }
 

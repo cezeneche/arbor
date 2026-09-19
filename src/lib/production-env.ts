@@ -1,3 +1,5 @@
+import { redisCredentials } from './redis-credentials'
+
 // What a production deployment cannot run without. Checked by the build
 // (next.config.ts) and reported by /api/health/ready.
 //
@@ -11,8 +13,6 @@ export const REQUIRED_PRODUCTION_ENV = [
   'AUTH_SECRET', // session signing
   'AUDIT_CHAIN_SECRET', // HMAC audit chain
   'TOTP_ENCRYPTION_KEY', // 2FA secret encryption
-  'UPSTASH_REDIS_REST_URL', // rate limits; login fails closed without it
-  'UPSTASH_REDIS_REST_TOKEN',
   'NUCLEOS_URL', // CBAM extraction, cases, returns
   'NUCLEOS_INTERNAL_TOKEN',
   'INNGEST_EVENT_KEY', // document extraction runs as an Inngest function
@@ -24,6 +24,12 @@ export const REQUIRED_PRODUCTION_ENV = [
   'ANTHROPIC_API_KEY', // document extraction
 ] as const
 
+/** Named apart from the list because either pair of names will do. */
+export const REDIS_CREDENTIALS_LABEL = 'UPSTASH_REDIS_REST_URL / KV_REST_API_URL (+ token)'
+
 export function missingProductionEnv(env: Record<string, string | undefined>): string[] {
-  return REQUIRED_PRODUCTION_ENV.filter(k => !env[k])
+  const missing: string[] = REQUIRED_PRODUCTION_ENV.filter(k => !env[k])
+  // Rate limits; login fails closed without them.
+  if (!redisCredentials(env)) missing.push(REDIS_CREDENTIALS_LABEL)
+  return missing
 }
