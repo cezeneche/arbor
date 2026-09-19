@@ -9,6 +9,7 @@
 // declarations to make.
 
 import { NucleosUnavailableError, isNucleosConfigured } from './extraction-client'
+import { nucleosHeaders } from './service-auth'
 
 export interface CbamCaseSummary {
   id: string
@@ -55,7 +56,7 @@ async function nucleosGet<T>(pathAndQuery: string, opts: CasesRequestOptions = {
 
   try {
     const res = await doFetch(`${process.env.NUCLEOS_URL}${pathAndQuery}`, {
-      headers: { authorization: `Bearer ${process.env.NUCLEOS_INTERNAL_TOKEN as string}` },
+      headers: nucleosHeaders(),
       signal: controller.signal,
       cache: 'no-store',
     })

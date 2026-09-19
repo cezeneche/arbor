@@ -45,6 +45,9 @@ const PUBLIC_PREFIXES = [
   '/api/audit/verify-public',
   // Scheduled jobs — each route enforces its own CRON_SECRET Bearer auth.
   '/api/cron',
+  // Readiness for uptime monitors: ready / not ready only without the
+  // CRON_SECRET bearer.
+  '/api/health',
 ] as const
 
 /**
