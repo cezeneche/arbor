@@ -11,8 +11,6 @@ import re
 from typing import Any, Callable
 
 
-import re
-
 # Separators that group thousands but never mark a decimal.
 _GROUPING_WHITESPACE = re.compile(r"[\s  ]")
 

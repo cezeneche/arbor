@@ -30,14 +30,12 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
 
 from ledger_app.services.cbam_scope import (
     ANNEX_II_COUNTRIES,
     DE_MINIMIS_THRESHOLD_EUR,
     EU_MEMBER_STATES,
     ScopeStatus,
-    ScopeDetermination,
     determine_cbam_scope,
 )
 

@@ -16,11 +16,9 @@ Coverage:
 
 from __future__ import annotations
 
-import pytest
 
 from ledger_app.services.cbam_installation_registry import (
     INSTALLATION_ID_RE,
-    InstallationValidationResult,
     validate_installation_id,
 )
 

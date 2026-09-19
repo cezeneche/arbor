@@ -42,7 +42,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -50,7 +49,6 @@ from app.services.report_validator import requires_verification
 from ledger_app.api.cbam._shared import (
     _table_columns,
     engine,
-    set_tenant_context,
 )
 from shared_auth.dependencies import require_scopes
 from shared_auth.models import AuthContext

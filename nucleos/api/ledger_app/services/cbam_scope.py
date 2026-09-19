@@ -42,7 +42,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
 
-from ledger_app.services.cbam_taric import is_in_cbam_scope, lookup_sector
+from ledger_app.services.cbam_taric import lookup_sector
 
 __all__ = [
     "ScopeStatus",

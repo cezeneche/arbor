@@ -21,14 +21,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from dataclasses import asdict
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -38,7 +36,6 @@ from app.services.cpr_calculator import (
     get_qualifying_schemes,
 )
 from app.services.cpr_repository import (
-    get_exchange_rate_db,
     lookup_qualifying_schemes_db,
 )
 from shared_auth.dependencies import require_scopes
@@ -55,7 +52,6 @@ from ledger_app.api.cbam._shared import (
     _table_columns,
     _insert_returning,
 )
-from ledger_app.api.cbam._shared import encrypt_field, decrypt_field
 
 
 # Pydantic models

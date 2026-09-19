@@ -27,9 +27,8 @@ from __future__ import annotations
 
 import os
 from decimal import Decimal
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock
 
-import pytest
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
@@ -308,7 +307,6 @@ class TestFactorConstants:
         assert "25232900" in cn_codes   # grey Portland cement
 
     def test_steel_cn_in_annex_vi(self):
-        cn_codes = {e.cn8_prefix for e in _ANNEX_VI}
         # At least one iron/steel entry
         steel = [e for e in _ANNEX_VI if e.sector == "iron_steel"]
         assert len(steel) > 0

@@ -6,6 +6,7 @@ routes compared tenants only when both sides had one, matched ownership on the
 JWT subject alone — which is not unique across tenants — and listed every
 ownerless row in the database. Each test puts tenant B against tenant A's data.
 """
+# ruff: noqa: F811 — fixtures are imported from test_full_pipeline and requested by name.
 from __future__ import annotations
 
 from uuid import uuid4

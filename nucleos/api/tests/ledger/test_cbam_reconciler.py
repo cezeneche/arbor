@@ -6,14 +6,9 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
 
 from ledger_app.services.cbam_reconciler import (
-    CARBON_PRICE_HIGH_BAND,
-    CARBON_PRICE_LOW_BAND,
-    MIN_HISTORY_FOR_STATS,
     SUPPLIER_SEE_DEVIATION_THRESHOLD,
-    CarbonPriceFlag,
     QuarterlyReconciliationResult,
     SupplierSEEFlag,
     check_carbon_price_plausibility,

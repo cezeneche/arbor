@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
 
 from ledger_app.services.cbam_emission_factors import (
     ELECTRICITY_FACTORS,

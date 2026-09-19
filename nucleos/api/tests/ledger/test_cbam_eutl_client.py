@@ -23,16 +23,12 @@ Coverage:
 
 from __future__ import annotations
 
-import json
-import os
 import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-import ledger_app.services.cbam_eutl_client as eutl_mod
 from ledger_app.services.cbam_eutl_client import (
-    EUTLInstallationInfo,
     lookup_installation,
     reset_cache,
 )
@@ -298,7 +294,7 @@ class TestValidateIntegration:
         )
         custom_resp = _mock_response(200)
         with patch("httpx.get", return_value=custom_resp) as mock_get:
-            result = self._validate("DE_12345678")
+            self._validate("DE_12345678")
         # httpx.get called once (custom registry), not the EUTL client
         assert mock_get.call_count == 1
         called_url = mock_get.call_args[0][0]

@@ -27,7 +27,6 @@ from __future__ import annotations
 import io
 import logging
 from dataclasses import asdict
-from datetime import date
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID

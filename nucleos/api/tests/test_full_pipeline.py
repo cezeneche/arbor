@@ -46,11 +46,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import sys
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from pathlib import Path
-from uuid import uuid4, UUID
+from uuid import uuid4
 
 import pytest
 
@@ -78,20 +76,16 @@ requires_anthropic = pytest.mark.skipif(
 from shared_auth.testing import make_test_token  # noqa: E402
 
 from app.services.hmrc_return_builder import (   # noqa: E402
-    HMRCReturnDocument,
     HMRCReturnInput,
     HMRCReturnValidationError,
     build_hmrc_return,
     return_to_json,
 )
 from app.services.report_validator import (   # noqa: E402
-    CheckResult,
-    ValidationResult,
     validate_report_package_integrity,
 )
 from app.services.cpr_calculator import (   # noqa: E402
     CPRResult,
-    CPRValidationError,
     calculate_cpr,
 )
 

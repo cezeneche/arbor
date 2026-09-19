@@ -15,14 +15,12 @@ from __future__ import annotations
 
 import os
 from decimal import Decimal
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
-import ledger_app.api.cbam as cbam_api
 from ledger_app.testing import _client_with_fake_engine
 from ledger_app.services.cbam_insights_service import (
     get_importer_kpis,

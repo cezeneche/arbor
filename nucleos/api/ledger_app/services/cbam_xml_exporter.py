@@ -36,7 +36,6 @@ step can be added when the official EC XSD is available.
 
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any

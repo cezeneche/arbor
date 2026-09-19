@@ -18,7 +18,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import pytest
 
 import ledger_app.services.cbam_extractor as cbam_extractor
 from ledger_app.services.cbam_extractor import ClaudeCBAMExtractor
@@ -334,7 +333,7 @@ class TestCallClaude:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
         extractor = ClaudeCBAMExtractor()
-        result = extractor._call_claude("test document text")
+        extractor._call_claude("test document text")
 
         assert "model" in captured_kwargs
         assert captured_kwargs["model"] == extractor.model

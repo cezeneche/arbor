@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from . import _shared
 from ledger_app.services.cbam_classifier import classify_description
-from ledger_app.services.cbam_taric import is_in_cbam_scope, lookup_sector, CBAMCodeNotInScope
+from ledger_app.services.cbam_taric import is_in_cbam_scope, lookup_sector
 from shared_auth.dependencies import require_scopes
 
 router = APIRouter()

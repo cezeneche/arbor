@@ -39,7 +39,7 @@ from __future__ import annotations
 import csv
 import io
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 
 _D = Decimal

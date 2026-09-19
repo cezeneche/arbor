@@ -32,7 +32,6 @@ import pytest
 
 from ledger_app.services.cbam_mrn import (
     MRN_LENGTH,
-    MRNValidationResult,
     validate_mrn,
 )
 
@@ -66,7 +65,6 @@ class TestValidMRN:
         assert validate_mrn(valid).is_valid is True
 
     def test_all_digit_body_valid(self):
-        result = validate_mrn("24DE000000000000001"[:18])
         # Build exact 18-char all-digit body variant
         mrn = "24DE" + "A" * 12 + "0" + "9"  # 2+2+12+1+1 = 18
         assert validate_mrn(mrn).is_valid is True

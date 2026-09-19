@@ -635,8 +635,6 @@ def build_case_hmrc_return(
             headers={"Content-Disposition": f'attachment; filename="hmrc-cbam-return-{safe_id}.pdf"'},
         )
 
-    import json as _json  # noqa: PLC0415
-    from dataclasses import asdict  # noqa: PLC0415
 
     def _serial(obj):
         if isinstance(obj, Decimal):

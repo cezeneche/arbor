@@ -22,7 +22,6 @@ Coverage:
 
 from __future__ import annotations
 
-import pytest
 
 from ledger_app.services.cbam_data_quality import (
     _compute_score,

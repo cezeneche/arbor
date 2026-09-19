@@ -2,19 +2,15 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
 import pytest
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
-import ledger_app.api.cbam as cbam_api
-import ledger_app.api.report_package as report_package_api
 from ledger_app.testing import _client_with_fake_engine
 
 

@@ -19,7 +19,6 @@ EU Regulation 2023/956, Article 9 — Carbon price already paid in a third count
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Optional
 
 # Re-export plausibility helpers from the reconciler so callers can import
