@@ -363,36 +363,36 @@ class TestComputeSEE:
         result = compute_see_from_defaults("25232900", _D("1000"))
         assert result is not None
         direct, indirect = result
-        # 1000 kg = 1 t × 0.810 tCO2e/t = 0.810 tCO2e
-        assert direct == _D("0.810")
+        # 1000 kg = 1 t × 0.810 tCO2e/t = 0.810 tCO2e = 810 kgCO2e
+        assert direct == _D("810.000")
 
     def test_cement_500_kg(self):
         result = compute_see_from_defaults("25232900", _D("500"))
         assert result is not None
         direct, indirect = result
-        # 500 kg = 0.5 t × 0.810 = 0.405 tCO2e
-        assert direct == _D("0.405")
+        # 500 kg = 0.5 t × 0.810 = 0.405 tCO2e = 405 kgCO2e
+        assert direct == _D("405.000")
 
     def test_pig_iron_bf_bof_10_tonnes(self):
         result = compute_see_from_defaults("72011000", _D("10000"), PRODUCTION_ROUTE_BF_BOF)
         assert result is not None
         direct, indirect = result
-        # 10000 kg = 10 t × 2.200 tCO2e/t = 22.000 tCO2e
-        assert direct == _D("22.000")
+        # 10000 kg = 10 t × 2.200 tCO2e/t = 22 tCO2e = 22 000 kgCO2e
+        assert direct == _D("22000.000")
 
     def test_urea_2000_kg(self):
         result = compute_see_from_defaults("31021000", _D("2000"))
         assert result is not None
         direct, indirect = result
-        # 2000 kg = 2 t × 1.780 tCO2e/t = 3.560 tCO2e
-        assert direct == _D("3.560")
+        # 2000 kg = 2 t × 1.780 tCO2e/t = 3.560 tCO2e = 3 560 kgCO2e
+        assert direct == _D("3560.000")
 
     def test_hydrogen_smr_500_kg(self):
         result = compute_see_from_defaults("28041000", _D("500"), PRODUCTION_ROUTE_SMR)
         assert result is not None
         direct, _ = result
-        # 500 kg = 0.5 t × 9.0 = 4.5 tCO2e
-        assert direct == _D("4.500")
+        # 500 kg = 0.5 t × 9.0 = 4.5 tCO2e = 4 500 kgCO2e
+        assert direct == _D("4500.000")
 
     def test_out_of_scope_returns_none(self):
         assert compute_see_from_defaults("39011000", _D("1000")) is None
@@ -402,14 +402,30 @@ class TestComputeSEE:
 # Grey Portland cement (25232900) has official default 0.810 tCO2e/t.
 
 class TestValidateAgainstDefaults:
+    # Units: direct_kgco2e is kilograms. The default it is compared with is
+    # SEE (tCO2e/t) × mass (t) × 1000. Comparing kilograms with tonnes flagged
+    # every realistic actual figure as implausibly high and let a default-method
+    # submission 1000× too small pass unremarked.
+    def test_realistic_steel_actual_is_plausible(self):
+        # 850 tCO2e for 500 t of hot-rolled flat steel is 1.7 t/t — squarely in
+        # the BF-BOF range. It was flagged ">10× default≈1005 kgCO2e".
+        vr = validate_against_defaults(
+            "72081010", "actual",
+            direct_kgco2e=_D("850000"),
+            net_mass_kg=_D("500000"),
+        )
+        assert vr.warnings == []
+        assert vr.computed_direct_kgco2e is not None
+        assert vr.computed_direct_kgco2e > _D("100000")  # hundreds of tonnes, in kg
+
     # ── method="default" ──────────────────────────────────────────────────────
 
     def test_default_method_no_deviation_no_warning(self):
         # Submit exact Annex VI value → no warning
-        # Portland cement: 0.810 tCO2e/t → for 1000 kg = 0.810 tCO2e
+        # Portland cement: 0.810 tCO2e/t → for 1000 kg = 810 kgCO2e
         vr = validate_against_defaults(
             "25232900", "default",
-            direct_kgco2e=_D("0.810"),
+            direct_kgco2e=_D("810"),
             net_mass_kg=_D("1000"),
         )
         assert vr.warnings == []
@@ -419,7 +435,7 @@ class TestValidateAgainstDefaults:
         # 10 % deviation is within the 20 % threshold
         vr = validate_against_defaults(
             "25232900", "default",
-            direct_kgco2e=_D("0.810") * _D("1.10"),
+            direct_kgco2e=_D("810") * _D("1.10"),
             net_mass_kg=_D("1000"),
         )
         assert vr.warnings == []
@@ -428,7 +444,7 @@ class TestValidateAgainstDefaults:
         # 50 % deviation exceeds the 20 % threshold
         vr = validate_against_defaults(
             "25232900", "default",
-            direct_kgco2e=_D("0.810") * _D("1.50"),  # +50%
+            direct_kgco2e=_D("810") * _D("1.50"),  # +50%
             net_mass_kg=_D("1000"),
         )
         assert len(vr.warnings) == 1
@@ -458,7 +474,7 @@ class TestValidateAgainstDefaults:
         # 15 % deviation: above 10 % custom threshold → warning
         vr = validate_against_defaults(
             "25232900", "default",
-            direct_kgco2e=_D("0.810") * _D("1.15"),
+            direct_kgco2e=_D("810") * _D("1.15"),
             net_mass_kg=_D("1000"),
             deviation_threshold_pct=_D("10"),
         )
@@ -470,7 +486,7 @@ class TestValidateAgainstDefaults:
         # Within 5 %–1000 % of default → no warning
         vr = validate_against_defaults(
             "25232900", "actual",
-            direct_kgco2e=_D("0.700"),  # ~86 % of 0.810 default
+            direct_kgco2e=_D("700"),  # ~86 % of the 810 kg default
             net_mass_kg=_D("1000"),
         )
         assert vr.warnings == []
@@ -479,7 +495,7 @@ class TestValidateAgainstDefaults:
         # Less than 5 % of default → implausibly low
         vr = validate_against_defaults(
             "25232900", "actual",
-            direct_kgco2e=_D("0.001"),  # <0.1 % of default
+            direct_kgco2e=_D("1"),  # ~0.1 % of the 810 kg default
             net_mass_kg=_D("1000"),
         )
         assert len(vr.warnings) == 1
@@ -489,7 +505,7 @@ class TestValidateAgainstDefaults:
         # More than 10× default → implausibly high
         vr = validate_against_defaults(
             "25232900", "actual",
-            direct_kgco2e=_D("0.810") * _D("11"),  # 11×
+            direct_kgco2e=_D("810") * _D("11"),  # 11×
             net_mass_kg=_D("1000"),
         )
         assert len(vr.warnings) == 1
@@ -509,10 +525,10 @@ class TestValidateAgainstDefaults:
     # ── ValidationResult fields ───────────────────────────────────────────────
 
     def test_result_deviation_pct_computed(self):
-        # Submitted is 10 % above default (0.810 × 1.10 = 0.891)
+        # Submitted is 10 % above default (810 × 1.10 = 891 kg)
         vr = validate_against_defaults(
             "25232900", "default",
-            direct_kgco2e=_D("0.810") * _D("1.10"),
+            direct_kgco2e=_D("810") * _D("1.10"),
             net_mass_kg=_D("1000"),
         )
         assert vr.deviation_pct is not None
@@ -521,7 +537,7 @@ class TestValidateAgainstDefaults:
     def test_result_default_see_is_returned(self):
         vr = validate_against_defaults(
             "25232900", "default",
-            direct_kgco2e=_D("0.810"),
+            direct_kgco2e=_D("810"),
             net_mass_kg=_D("1000"),
         )
         assert isinstance(vr.default_see, DefaultSEE)
@@ -530,10 +546,10 @@ class TestValidateAgainstDefaults:
     def test_result_computed_kgco2e_set_for_1000kg(self):
         vr = validate_against_defaults(
             "25232900", "default",
-            direct_kgco2e=_D("0.810"),
+            direct_kgco2e=_D("810"),
             net_mass_kg=_D("1000"),
         )
-        assert vr.computed_direct_kgco2e == _D("0.810")
+        assert vr.computed_direct_kgco2e == _D("810.000")  # 1 t × 0.810 tCO2e/t, in kg
 
     def test_zero_mass_returns_no_computed(self):
         vr = validate_against_defaults(
