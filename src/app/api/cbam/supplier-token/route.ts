@@ -1,31 +1,34 @@
 import { NextResponse } from 'next/server'
 import { requireWriteAccess } from '@/lib/auth-helpers'
+import { getSessionUser } from '@/lib/session'
 import {
   createSupplierToken,
   SupplierRequestRejectedError,
 } from '@/lib/nucleos/supplier-request-client'
+import { resolveGoodsLineAccess } from '@/lib/nucleos/goods-line-access'
 
 // Creates a tokenised supplier form link for a goods line.
 //
 // Write access, not just a session: this generates a credential that lets
-// someone outside the organisation submit data against a goods line.
+// someone outside the organisation submit data against a goods line. So the
+// line has to be the caller's — on a case their organisation owns.
 
 export async function POST(request: Request) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
-  let body: { goods_line_id?: unknown }
+  let body: { case_id?: unknown; goods_line_id?: unknown }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Choose a goods line and try again.' }, { status: 400 })
   }
 
-  const goodsLineId = String(body.goods_line_id ?? '').trim()
-  if (!goodsLineId) {
-    return NextResponse.json({ error: 'Choose a goods line and try again.' }, { status: 400 })
-  }
+  const entityId = getSessionUser(session).entityId as string
+  const access = await resolveGoodsLineAccess(body.case_id, body.goods_line_id, entityId)
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
+  const goodsLineId = String(body.goods_line_id).trim()
   try {
     return NextResponse.json(await createSupplierToken(goodsLineId))
   } catch (err) {

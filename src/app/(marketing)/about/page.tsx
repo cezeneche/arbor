@@ -120,21 +120,21 @@ export default function AboutPage() {
               margin: '0 0 40px',
             }}
           >
-            arbor holds the data. It does not process it.
+            arbor holds the data. Calculation lives elsewhere.
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', backgroundColor: colours.border }}>
             {[
               {
-                heading: 'Not a calculation engine',
-                body: 'arbor does not calculate emissions, carbon footprints, or ESG scores. Those calculations happen in your tools, using arbor as the data source. Calculation logic and data storage are deliberately separate.',
+                heading: 'Storage and calculation kept apart',
+                body: 'The certified store never calculates. Emissions, footprints and ESG scores are worked out in your tools, using arbor as the source. The one calculation arbor runs for you, CBAM, happens in a separate, versioned engine that reads confirmed records and never writes back to them.',
               },
               {
-                heading: 'Not a reporting tool',
-                body: 'arbor does not produce CBAM returns, Scope 3 inventories, sustainability reports, or any other regulatory output. It holds the verified operational data those outputs require.',
+                heading: 'One regulatory output: CBAM',
+                body: 'From a confirmed customs declaration, arbor opens a CBAM case and produces the UK HMRC return or the EU CBAM declaration. It does not produce Scope 3 inventories, sustainability reports, or any other regulatory output. It holds the verified data those outputs require.',
               },
               {
                 heading: 'Not a compliance platform',
-                body: 'arbor does not assess whether your data meets any particular regulatory threshold. It records, certifies, and stores. Whether the data satisfies a given framework is determined by the framework, not arbor.',
+                body: 'Beyond telling you whether your imports fall within CBAM, arbor does not assess whether your data meets any regulatory threshold. It records, certifies, and stores. Whether the data satisfies a given framework is determined by the framework, not arbor.',
               },
             ].map(({ heading, body }) => (
               <div key={heading} style={{ backgroundColor: colours.surface, padding: '32px' }}>

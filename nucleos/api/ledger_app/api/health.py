@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from ledger_app.db.session import db_healthcheck, missing_required_tables
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["health"])
 
@@ -17,14 +21,16 @@ def _readiness():
     configured with either path gets the same answer."""
     try:
         db_ok = bool(db_healthcheck().get("db_ok"))
-    except Exception as exc:
+    except Exception:
+        # Logged, not returned: this route is unauthenticated, and the driver's
+        # error names the database host and project.
+        logger.exception("readiness: database unreachable")
         return JSONResponse(
             status_code=503,
             content={
                 "ready": False,
                 "service": "nucleo-ledger",
                 "dependencies": {"db": "unreachable"},
-                "detail": str(exc),
             },
         )
     if not db_ok:

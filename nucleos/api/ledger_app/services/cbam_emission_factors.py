@@ -753,6 +753,9 @@ _FACTOR_TABLE_SHA256: str = hashlib.sha256(
 FACTOR_METADATA["table_sha256"] = _FACTOR_TABLE_SHA256
 
 
+_KG_PER_T = _D("1000")
+
+
 def _normalize_cn(cn_code: str) -> str:
     return "".join(ch for ch in cn_code if ch.isdigit())
 
@@ -821,16 +824,20 @@ def compute_see_from_defaults(
     -------
     tuple[Decimal, Decimal] | None
         ``(direct_kgco2e, indirect_kgco2e)`` computed as
-        ``SEE_tco2e_per_t × mass_kg / 1000``, or *None* when no default
-        is available for the CN code.
+        ``SEE_tco2e_per_t × (mass_kg / 1000) × 1000`` — tonnes of product times
+        tonnes CO2e per tonne, expressed in kilograms — or *None* when no
+        default is available for the CN code.
     """
     see = get_default_see(cn_code, production_route)
     if see is None:
         return None
 
+    # EU 2023/1773 Annex VI — default SEE × net mass. The result is stored in
+    # kgCO2e columns, so it is returned in kilograms; returning tonnes here
+    # stored every default-filled line at 1/1000 of its emissions.
     mass_t = Decimal(net_mass_kg) / _D("1000")
-    direct = (see.direct_tco2e_per_t * mass_t).quantize(_D("0.001"))
-    indirect = (see.indirect_tco2e_per_t * mass_t).quantize(_D("0.001"))
+    direct = (see.direct_tco2e_per_t * mass_t * _KG_PER_T).quantize(_D("0.001"))
+    indirect = (see.indirect_tco2e_per_t * mass_t * _KG_PER_T).quantize(_D("0.001"))
     return direct, indirect
 
 
@@ -899,8 +906,9 @@ def validate_against_defaults(
     if net_mass_kg is None or Decimal(net_mass_kg) <= 0:
         return ValidationResult(warnings, see, None, None)
 
+    # In kilograms, like the submitted figure it is compared with.
     mass_t = Decimal(net_mass_kg) / _D("1000")
-    computed_direct = (see.direct_tco2e_per_t * mass_t).quantize(_D("0.001"))
+    computed_direct = (see.direct_tco2e_per_t * mass_t * _KG_PER_T).quantize(_D("0.001"))
 
     if direct_kgco2e is None:
         # No submitted value — caller should fill from defaults

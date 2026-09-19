@@ -79,8 +79,11 @@ export default async function DashboardPage() {
       where: { id: entityId },
       select: { legalName: true, createdAt: true },
     }),
+    // Only the records in the periods this screen shows: the year's totals, the
+    // coverage grid and the outlier window all sit inside them. Everything that
+    // needs the whole store is counted by the database below.
     prisma.dataRecord.findMany({
-      where: { entityId, isActive: true },
+      where: { entityId, isActive: true, periodEnd: { gte: periods[0].start } },
       select: {
         id: true, domain: true, fieldName: true, value: true, unit: true, trustTier: true,
         periodStart: true, periodEnd: true, submittedById: true,
@@ -128,10 +131,34 @@ export default async function DashboardPage() {
 
   if (!entity) redirect('/login')
 
+  // All-time figures, counted rather than loaded.
+  const [tierGroups, unitGroups, documentBackedCount] = await Promise.all([
+    prisma.dataRecord.groupBy({
+      by: ['trustTier', 'domain'],
+      where: { entityId, isActive: true },
+      _count: { _all: true },
+    }),
+    prisma.dataRecord.groupBy({
+      by: ['domain', 'fieldName', 'unit'],
+      where: { entityId, isActive: true },
+      _count: { _all: true },
+    }),
+    prisma.dataRecord.count({ where: { entityId, isActive: true, documentId: { not: null } } }),
+  ])
+  const tierCount = (tier: 'A' | 'B' | 'C') =>
+    tierGroups.filter(g => g.trustTier === tier).reduce((n, g) => n + g._count._all, 0)
+  const keptDomains = [...new Set(tierGroups.map(g => g.domain as string))]
+
   // ── shared derivations ──────────────────────────────────────────────────────
   const canonical = canonicalUnitIndex()
   const unitConflicts = findUnitConflicts(
-    records.map(r => ({ id: r.id, domain: r.domain, fieldName: r.fieldName, unit: r.unit })),
+    unitGroups.map(g => ({
+      id: `${g.domain}::${g.fieldName}::${g.unit}`,
+      domain: g.domain,
+      fieldName: g.fieldName,
+      unit: g.unit,
+      count: g._count._all,
+    })),
     canonical,
   )
 
@@ -173,12 +200,13 @@ export default async function DashboardPage() {
     ],
     unitConflicts,
     disagreements: disagreementRows,
+    keptDomains,
   })
 
-  const totalRecords = records.length
-  const verified = records.filter(r => r.trustTier === 'A').length
-  const declared = records.filter(r => r.trustTier === 'B').length
-  const estimated = records.filter(r => r.trustTier === 'C').length
+  const verified = tierCount('A')
+  const declared = tierCount('B')
+  const estimated = tierCount('C')
+  const totalRecords = verified + declared + estimated
 
   const openRequests = requests.length
   const overdueRequests = requests.filter(q => q.deadline && new Date(q.deadline) < now).length
@@ -259,7 +287,7 @@ export default async function DashboardPage() {
 
       {lowData ? (
         <SetupChecklist
-          typesStarted={[...new Set(records.map(r => r.domain))].map(d => ({
+          typesStarted={keptDomains.map(d => ({
             label: d.charAt(0) + d.slice(1).toLowerCase().replace(/_/g, ' '),
             started: true,
           }))}
@@ -269,7 +297,7 @@ export default async function DashboardPage() {
               r => new Date(r.periodStart) <= p.end && new Date(r.periodEnd) >= p.start,
             ),
           }))}
-          documentBacked={records.filter(r => r.document).length}
+          documentBacked={documentBackedCount}
           totalRecords={totalRecords}
           threshold={LOW_DATA_THRESHOLD}
         />

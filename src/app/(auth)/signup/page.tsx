@@ -43,6 +43,7 @@ export default function SignupPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -59,7 +60,7 @@ export default function SignupPage() {
     const res = await fetch('/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyName, sector, country, name, email, password, entityType }),
+      body: JSON.stringify({ companyName, sector, country, name, email, password, entityType, inviteCode }),
     })
 
     const data = await res.json()
@@ -130,6 +131,13 @@ export default function SignupPage() {
         >
           Create your account
         </p>
+        <p style={{ ...textStyles.caption, color: colours.textSecondary, margin: `${spacing[2]} 0 0` }}>
+          arbor is in a private pilot. You need an invite code to sign up.{' '}
+          <a href="mailto:hello@arbor.io?subject=arbor%20pilot%20access" style={{ color: colours.textPrimary }}>
+            Ask for one
+          </a>
+          .
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
@@ -167,6 +175,18 @@ export default function SignupPage() {
         </div>
 
         <div style={{ borderTop: `1px solid ${colours.border}`, marginTop: '4px' }} />
+
+        <div>
+          <label htmlFor="inviteCode" style={labelStyle}>Invite code</label>
+          <input
+            id="inviteCode"
+            type="text"
+            value={inviteCode}
+            onChange={e => setInviteCode(e.target.value)}
+            autoComplete="off"
+            style={inputStyle}
+          />
+        </div>
 
         <div>
           <label htmlFor="companyName" style={labelStyle}>Company name</label>

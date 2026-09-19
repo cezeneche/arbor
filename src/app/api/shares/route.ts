@@ -41,10 +41,13 @@ export async function POST(req: NextRequest) {
 
   // Reuse the Gap-4 audit package to derive a verifiable integrity hash for the
   // scope, and log it so the public verify endpoint will recognise it.
+  // Scoped exactly as the share displays it — domain included — so the hash
+  // covers the records the recipient sees at the moment the share is issued.
   const { package: pkg } = await assembleAuditPackage({
     entityId,
     periodStart,
     periodEnd,
+    domain: parsed.data.domain ?? null,
     logRequestedById: createdById,
   })
 
@@ -59,6 +62,8 @@ export async function POST(req: NextRequest) {
       periodStart,
       periodEnd,
       packageHash: pkg.packageIntegrityHash,
+      // Frozen: the share shows exactly the records its hash covers.
+      recordIds: pkg.dataRecords.map(r => r.id),
       createdById,
       expiresAt,
     },

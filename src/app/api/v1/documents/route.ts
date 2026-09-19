@@ -6,6 +6,7 @@ import { err } from '@/lib/api-helpers'
 import { inngest } from '@/inngest/client'
 import { documentTypeSchema } from '@/lib/constants'
 import { assertUploadAllowed } from '@/lib/plan-guard'
+import { createDocumentWithinQuota, UploadQuotaError } from '@/lib/document-quota'
 
 const bodySchema = z.object({
   documentType: documentTypeSchema,
@@ -55,8 +56,11 @@ export async function POST(req: NextRequest) {
   })
   if (!adminUser) return err('No admin user found for entity', 'INTERNAL_ERROR', 500)
 
-  const document = await prisma.document.create({
-    data: {
+  // Counted again inside the write: the check above is a fast refusal, this
+  // one is binding under concurrent uploads.
+  let document: Awaited<ReturnType<typeof createDocumentWithinQuota>>
+  try {
+    document = await createDocumentWithinQuota({
       entityId: auth.entityId!,
       documentType,
       blobUrl,
@@ -64,8 +68,11 @@ export async function POST(req: NextRequest) {
       fileType: fileName.split('.').pop() ?? 'pdf',
       submittedById: adminUser.id,
       status: 'PENDING',
-    },
-  })
+    })
+  } catch (e) {
+    if (e instanceof UploadQuotaError) return err(e.message, 'PLAN_LIMIT', 402)
+    throw e
+  }
 
   await inngest.send({
     name: 'document/uploaded',

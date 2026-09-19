@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { isFrozenShare, shareRecordWhere } from '@/lib/shares/share-records'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
@@ -39,21 +40,17 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     select: { legalName: true },
   })
 
+  const frozen = isFrozenShare(share)
   const records = await prisma.dataRecord.findMany({
-    where: {
-      entityId: share.entityId,
-      isActive: true,
-      ...(share.domain ? { domain: share.domain } : {}),
-      ...(share.periodStart ? { periodStart: { gte: share.periodStart } } : {}),
-      ...(share.periodEnd ? { periodEnd: { lte: share.periodEnd } } : {}),
-    },
+    where: shareRecordWhere(share),
     orderBy: [{ domain: 'asc' }, { periodStart: 'asc' }],
     select: {
       id: true, domain: true, fieldName: true, value: true, unit: true,
       trustTier: true, confidenceScore: true, periodStart: true, periodEnd: true,
-      sourceText: true,
+      sourceText: true, isActive: true,
     },
   })
+  const correctedSince = records.filter(r => !r.isActive).length
 
   // Log each open — one RecordAccessLog row per record disclosed (method EXPORT).
   // Throttled per token so a refresh loop can't amplify writes: at most one log
@@ -89,7 +86,9 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
         <div style={{ marginBottom: spacing[4], padding: spacing[3], backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px' }}>
           <p style={{ margin: `0 0 ${spacing[2]}`, fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary }}>
-            This data set is backed by a cryptographic audit chain. You can confirm it has not been altered — no account needed.
+            {frozen
+              ? `These are the records as they stood when this share was issued on ${share.createdAt.toISOString().slice(0, 10)}, and the check below covers exactly them — no account needed.${correctedSince ? ` ${correctedSince} ${correctedSince === 1 ? 'has' : 'have'} been corrected since; the correction is on the audit chain, and the sender can issue a new share.` : ''}`
+              : 'Every record here is part of a cryptographic audit chain. You can check that the chain is intact and that Arbor issued this share — no account needed. This share predates snapshots, so it shows the current records.'}
           </p>
           <ShareVerifyButton entityId={share.entityId} packageHash={share.packageHash} />
         </div>
@@ -117,6 +116,11 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                   <tr key={r.id} style={{ borderBottom: i < records.length - 1 ? `1px solid ${colours.border}` : 'none' }}>
                     <td style={{ padding: '12px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
                       {fieldLabel(r.fieldName)}
+                      {!r.isActive && (
+                        <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.amber, marginTop: '2px' }}>
+                          Corrected since this share was issued
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
                       {r.value.toLocaleString('en-GB', { maximumFractionDigits: 4 })} {r.unit}

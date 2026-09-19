@@ -14,7 +14,9 @@ Do not begin any task until you have read both files. If either file is unavaila
 
 A certified operational data repository. Manufacturers, suppliers, and producers upload operational documents. The platform extracts, certifies, and stores the data. **The database is the product.**
 
-Arbor does not perform sustainability calculations. It does not produce CBAM returns, Scope 3 inventories, or ESG disclosures. It holds the verified operational data that those calculations require. The calculations happen in the customer's tools. Arbor is the data source, not the processing engine.
+Arbor's own layers do not perform sustainability calculations, and it does not produce Scope 3 inventories or ESG disclosures. It holds the verified operational data those calculations require; they happen in the customer's tools. Arbor is the data source, not the processing engine.
+
+The one exception is CBAM. A confirmed customs declaration opens a case in Nucleos (`nucleos/`), a separate, versioned calculation engine that produces the UK HMRC return and the EU CBAM declaration. Nucleos reads what Arbor certified and never writes to Arbor's database; Arbor stores no calculation logic. The three-layer rules below apply to Arbor unchanged, and Nucleos has its own rules in `nucleos/CLAUDE.md`.
 
 Every feature must either fill the database, improve the quality of existing records, or make the database more accessible to legitimate users. Features that do none of these are not built.
 

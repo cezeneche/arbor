@@ -86,3 +86,27 @@ describe('summariseRecordQuality', () => {
     expect(s.expiringSoon).toBe(2)
   })
 })
+
+describe('summariseRecordQuality — grouped input', () => {
+  // The Records screen summarises the whole filtered set. Loading every row to
+  // count it grew with the store; the database now groups and counts, and one
+  // row per group carries its count. The answer must be exactly the same.
+  it('gives the same summary for counted groups as for the rows they stand for', () => {
+    const now = new Date('2026-09-19T00:00:00Z')
+    const soon = new Date('2026-09-25T00:00:00Z')
+    const rows = [
+      ...Array.from({ length: 3 }, () => ({ domain: 'ENERGY', fieldName: 'total_consumption_kwh', trustTier: 'A' as const, documentType: 'ELECTRICITY_BILL', staleAfterDate: null })),
+      ...Array.from({ length: 2 }, () => ({ domain: 'MATERIALS', fieldName: 'net_mass', trustTier: 'B' as const, documentType: null, staleAfterDate: soon })),
+      { domain: 'EMISSIONS', fieldName: 'co2e', trustTier: 'C' as const, documentType: null, staleAfterDate: null },
+    ]
+    const grouped = [
+      { ...rows[0], count: 3 },
+      { ...rows[3], count: 2 },
+      { ...rows[5], count: 1 },
+    ]
+    const compulsory = { ELECTRICITY_BILL: ['total_consumption_kwh', 'meter_reference'] }
+    expect(summariseRecordQuality(grouped, compulsory, { now })).toEqual(
+      summariseRecordQuality(rows, compulsory, { now }),
+    )
+  })
+})

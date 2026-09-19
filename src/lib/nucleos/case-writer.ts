@@ -30,6 +30,20 @@ const DEFAULT_TIMEOUT_MS = 30_000
 export interface CaseWriteOptions {
   timeoutMs?: number
   fetchImpl?: typeof fetch
+  /** Called after every step that created something, with the progress so far.
+   *  The caller persists it; if persisting throws, the write stops there. */
+  onProgress?: (progress: CaseWriteProgress) => Promise<void>
+}
+
+/** Which Nucleos rows already exist for this case, keyed by payload line index. */
+export interface CaseWriteProgress {
+  caseId: string | null
+  shipmentId: string | null
+  lines: Record<string, { goodsLineId: string; emissionsRecorded: boolean }>
+}
+
+export function emptyProgress(): CaseWriteProgress {
+  return { caseId: null, shipmentId: null, lines: {} }
 }
 
 export interface CaseWriteResult {
@@ -91,65 +105,107 @@ function idOf(row: unknown, what: string): string {
   return id
 }
 
+/** Opens a case from nothing. */
 export async function createCbamCase(
   payload: CasePayload,
   opts: CaseWriteOptions = {},
 ): Promise<CaseWriteResult> {
-  const problems: string[] = []
+  const { caseId, goodsLineIds, problems } = await writeCbamCase(payload, emptyProgress(), opts)
+  return { caseId, goodsLineIds, problems }
+}
 
-  const caseRow = await post<Record<string, unknown>>('/api/cbam/cases', payload.case, opts)
-  const caseId = idOf(caseRow, 'case')
-
-  // From here the case exists. Nothing below throws out of the function: a
-  // failure after this point leaves a real case that the user can see, and the
-  // honest report of it is the id plus what is missing.
-  let shipmentId: string
-  try {
-    const shipmentRow = await post<Record<string, unknown>>(
-      '/api/cbam/shipments',
-      { cbam_case_id: caseId, ...payload.shipment },
-      opts,
-    )
-    shipmentId = idOf(shipmentRow, 'shipment')
-  } catch (err) {
-    return {
-      caseId,
-      goodsLineIds: [],
-      problems: [
-        `The case was opened but its consignment could not be added, so it has no goods on it yet: ${(err as Error).message}`,
-      ],
-    }
+/**
+ * Brings a case up to its payload, starting from what already exists.
+ *
+ * Every step is skipped when `progress` says it already landed, and every step
+ * that lands is reported through `onProgress` before the next one starts. So an
+ * interrupted handoff resumed with its recorded progress adds only what is
+ * missing: the case, shipment and goods lines that exist are never posted again.
+ */
+export async function writeCbamCase(
+  payload: CasePayload,
+  start: CaseWriteProgress,
+  opts: CaseWriteOptions = {},
+): Promise<CaseWriteResult & { progress: CaseWriteProgress }> {
+  const progress: CaseWriteProgress = {
+    caseId: start.caseId,
+    shipmentId: start.shipmentId,
+    lines: { ...start.lines },
   }
+  const save = async () => {
+    if (opts.onProgress) await opts.onProgress(progress)
+  }
+  const problems: string[] = []
+  const done = () => ({
+    caseId: progress.caseId,
+    goodsLineIds: payload.lines
+      .map(l => progress.lines[String(l.lineIndex)]?.goodsLineId)
+      .filter((id): id is string => Boolean(id)),
+    problems,
+    progress,
+  })
 
-  const goodsLineIds: string[] = []
-  for (const line of payload.lines) {
-    let goodsLineId: string
+  if (!progress.caseId) {
+    const caseRow = await post<Record<string, unknown>>('/api/cbam/cases', payload.case, opts)
+    progress.caseId = idOf(caseRow, 'case')
+    await save()
+  }
+  const caseId = progress.caseId
+
+  // From here the case exists. Nothing below throws out of the function except
+  // a failure to record progress: a failure after this point leaves a real case
+  // that the user can see, and the honest report of it is the id plus what is
+  // missing.
+  if (!progress.shipmentId) {
     try {
-      const lineRow = await post<Record<string, unknown>>(
-        '/api/cbam/goods-lines',
-        {
-          shipment_id: shipmentId,
-          cn_code: line.cn_code,
-          product_description: line.product_description,
-          net_mass_kg: line.net_mass_kg,
-          installation_id: line.installation_id,
-        },
+      const shipmentRow = await post<Record<string, unknown>>(
+        '/api/cbam/shipments',
+        { cbam_case_id: caseId, ...payload.shipment },
         opts,
       )
-      goodsLineId = idOf(lineRow, 'goods line')
+      progress.shipmentId = idOf(shipmentRow, 'shipment')
     } catch (err) {
       problems.push(
-        `Goods line ${line.lineIndex + 1} (${line.cn_code}) could not be added to the case: ${(err as Error).message}`,
+        `The case was opened but its consignment could not be added, so it has no goods on it yet: ${(err as Error).message}`,
       )
-      continue
+      return done()
+    }
+    await save()
+  }
+  const shipmentId = progress.shipmentId
+
+  for (const line of payload.lines) {
+    const key = String(line.lineIndex)
+    let entry = progress.lines[key]
+
+    if (!entry) {
+      try {
+        const lineRow = await post<Record<string, unknown>>(
+          '/api/cbam/goods-lines',
+          {
+            shipment_id: shipmentId,
+            cn_code: line.cn_code,
+            product_description: line.product_description,
+            net_mass_kg: line.net_mass_kg,
+            installation_id: line.installation_id,
+          },
+          opts,
+        )
+        entry = { goodsLineId: idOf(lineRow, 'goods line'), emissionsRecorded: false }
+      } catch (err) {
+        problems.push(
+          `Goods line ${line.lineIndex + 1} (${line.cn_code}) could not be added to the case: ${(err as Error).message}`,
+        )
+        continue
+      }
+      progress.lines[key] = entry
+      await save()
     }
 
-    goodsLineIds.push(goodsLineId)
-
-    if (!line.emissions) continue
+    if (!line.emissions || entry.emissionsRecorded) continue
     try {
       await post('/api/cbam/emissions', {
-        goods_line_id: goodsLineId,
+        goods_line_id: entry.goodsLineId,
         direct_emissions_kgco2e: line.emissions.direct_emissions_kgco2e,
         indirect_emissions_kgco2e: line.emissions.indirect_emissions_kgco2e,
         calculation_method: line.emissions.calculation_method,
@@ -166,8 +222,11 @@ export async function createCbamCase(
         `Goods line ${line.lineIndex + 1} (${line.cn_code}) is on the case, but its emissions figure ` +
           `could not be recorded: ${(err as Error).message}`,
       )
+      continue
     }
+    progress.lines[key] = { ...entry, emissionsRecorded: true }
+    await save()
   }
 
-  return { caseId, goodsLineIds, problems }
+  return done()
 }

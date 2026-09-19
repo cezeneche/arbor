@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { requirePageSession } from '@/lib/page-auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { lookupDefaultValues } from '@/lib/nucleos/default-value-client'
 
 export async function GET(request: Request) {
-  await requirePageSession()
+  const { session, response } = await requireAuth()
+  if (!session) return response!
   const q = new URL(request.url).searchParams.get('q') ?? ''
   try {
     return NextResponse.json({ results: await lookupDefaultValues(q) })

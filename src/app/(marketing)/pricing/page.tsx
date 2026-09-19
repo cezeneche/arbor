@@ -29,7 +29,7 @@ const supplierPlans: Plan[] = [
       'Standard trust tier labels',
       'arbor data portal access',
     ],
-    cta: 'Get started free',
+    cta: 'Join the pilot',
   },
   {
     name: 'Micro',
@@ -44,7 +44,7 @@ const supplierPlans: Plan[] = [
       'Buyer data request handling',
       'Email notifications',
     ],
-    cta: 'Get started',
+    cta: 'Join the pilot',
   },
   {
     name: 'Small',
@@ -62,7 +62,7 @@ const supplierPlans: Plan[] = [
       'Priority email support',
     ],
     highlighted: true,
-    cta: 'Get started',
+    cta: 'Join the pilot',
   },
   {
     name: 'Growth',
@@ -80,7 +80,7 @@ const supplierPlans: Plan[] = [
       'Buyer data request handling',
       'Dedicated onboarding',
     ],
-    cta: 'Get started',
+    cta: 'Join the pilot',
   },
 ]
 
@@ -98,7 +98,7 @@ const buyerPlans: Plan[] = [
       'CSV export',
       'API read access',
     ],
-    cta: 'Get started',
+    cta: 'Join the pilot',
   },
   {
     name: 'Business',
@@ -116,7 +116,7 @@ const buyerPlans: Plan[] = [
       'Priority support',
     ],
     highlighted: true,
-    cta: 'Get started',
+    cta: 'Join the pilot',
   },
   {
     name: 'Enterprise',
@@ -328,6 +328,27 @@ export default function PricingPage() {
             Supplier plans are priced by record volume and upload capacity.
             Buyer plans are priced by supplier entity connections.
           </p>
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textPrimary,
+              lineHeight: typography.lineHeight.body,
+              margin: '16px 0 0',
+              padding: '12px 16px',
+              border: `1px solid ${colours.border}`,
+              borderRadius: '6px',
+              backgroundColor: colours.surface,
+            }}
+          >
+            arbor is in a private pilot. Pilot organisations join by invitation,
+            and their plan and price are agreed directly. The plans below are
+            what arbor will offer when it opens.{' '}
+            <a href="mailto:hello@arbor.io?subject=arbor%20pilot%20access" style={{ color: colours.textPrimary }}>
+              Ask to join the pilot
+            </a>
+            .
+          </p>
         </div>
       </section>
 
@@ -430,7 +451,7 @@ export default function PricingPage() {
           >
             {[
               'All prices are exclusive of VAT. VAT is charged at the applicable rate for UK businesses.',
-              'Annual billing is available on all paid plans at a 20% discount.',
+              'When arbor opens, annual billing will be available on all paid plans at a 20% discount.',
               'Responding to buyer data requests is always free for suppliers, regardless of plan.',
               'Data submitted to arbor remains owned by the submitting entity. arbor holds a licence to store and serve it.',
               'A Data Processing Agreement is included in the Enterprise plan and available separately for other plans.',

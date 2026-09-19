@@ -78,6 +78,9 @@ export interface AttentionInput {
   documents: AttentionDocument[]
   unitConflicts: UnitConflict[]
   disagreements: Disagreement[]
+  /** Every record type this entity keeps, all-time. Defaults to the types in
+   *  `records`; pass it when `records` is limited to a window of periods. */
+  keptDomains?: string[]
 }
 
 export interface AttentionResult {
@@ -104,7 +107,7 @@ export function buildAttention(input: AttentionInput): AttentionResult {
   const attention: AttentionItem[] = []
 
   const period = currentDeclarationPeriod(now)
-  const keptDomains = [...new Set(records.map(r => r.domain))]
+  const keptDomains = input.keptDomains ?? [...new Set(records.map(r => r.domain))]
 
   // ── blocking ──────────────────────────────────────────────────────────────
 
@@ -164,7 +167,7 @@ export function buildAttention(input: AttentionInput): AttentionResult {
   }
   for (const [key, group] of conflictsByField) {
     const [c] = group
-    const count = group.length
+    const count = group.reduce((n, g) => n + (g.count ?? 1), 0)
     blocking.push({
       key: `unit-${key}`,
       severity: 'blocking',

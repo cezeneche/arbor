@@ -20,6 +20,7 @@ const PUBLIC_PREFIXES = [
   '/signup',
   '/forgot-password',
   '/reset-password',
+  '/verify-email',
   '/2fa-verify',
   '/sso',
   // Scoped supplier/buyer entry links. The token is the credential — the whole

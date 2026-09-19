@@ -386,15 +386,19 @@ def _post_case(
     auth_headers: dict,
     *,
     reporting_year: int = 2027,
+    jurisdiction: str | None = None,
 ) -> dict:
+    body = {
+        "importer_eori":     _IMPORTER_EORI,
+        "importer_name":     _IMPORTER_NAME,
+        "reporting_year":    reporting_year,
+        "reporting_quarter": 1,
+    }
+    if jurisdiction:
+        body["jurisdiction"] = jurisdiction
     resp = client.post(
         "/api/cbam/cases",
-        json={
-            "importer_eori":     _IMPORTER_EORI,
-            "importer_name":     _IMPORTER_NAME,
-            "reporting_year":    reporting_year,
-            "reporting_quarter": 1,
-        },
+        json=body,
         headers=auth_headers,
     )
     assert resp.status_code in (200, 201), f"Create case failed {resp.status_code}: {resp.text}"
@@ -662,7 +666,9 @@ class TestHappyPathSteelActual:
         auth = _auth_headers(tenant_id)
 
         # ── Step 1: Create CBAM case ──────────────────────────────────────────
-        case    = _post_case(api_client, auth)
+        # UK, because this test builds an HMRC return. A case's regime defaults
+        # to EU, and the HMRC builder rightly refuses an EU-only case.
+        case    = _post_case(api_client, auth, jurisdiction="UK")
         case_id = case["id"]
         cleanup_cases.append(case_id)
 
@@ -677,6 +683,24 @@ class TestHappyPathSteelActual:
         # Verify extraction result: correct CN code and sector assignment
         assert gl["cn_code"] == "72081010", "Extraction must produce CN 72081010 for steel"
         assert gl["sector"]  == "iron_steel"
+
+        # A verified line, which is what makes this the happy path: an actual
+        # figure without verification is correctly downgraded to
+        # actual_unverified and flagged. The upload-and-approve workflow that
+        # gets a line here needs a stored verifier report, so this records its
+        # outcome directly.
+        from ledger_app.api.cbam._shared import engine as _engine
+        from sqlalchemy import text as _text
+
+        with _engine.begin() as conn:
+            conn.execute(
+                _text(
+                    "UPDATE cbam.cbam_goods_lines SET verification_status = 'verified', "
+                    "verifier_name = 'Example Verification Ltd', "
+                    "verifier_accreditation = 'UKAS', verified_at = now() WHERE id = :id"
+                ),
+                {"id": goods_line_id},
+            )
 
         # ── Step 4: Record actual emissions (Tier 1) ──────────────────────────
         em = _post_emissions(
@@ -712,6 +736,7 @@ class TestHappyPathSteelActual:
         direct_kg   = Decimal(str(pkg["summary"]["total_direct_emissions_kgco2e"]))
         indirect_kg = Decimal(str(pkg["summary"]["total_indirect_emissions_kgco2e"]))
         narrative   = _make_narrative(
+            reporting_quarter=pkg["case"].get("reporting_quarter"),
             total_direct_kgco2e=direct_kg,
             total_indirect_kgco2e=indirect_kg,
             total_embedded_kgco2e=direct_kg + indirect_kg,
@@ -853,7 +878,7 @@ class TestDefaultValueFallback:
         """End-to-end: default method flows through API and appears correctly in return."""
         auth = _auth_headers(tenant_id)
 
-        case    = _post_case(api_client, auth)
+        case    = _post_case(api_client, auth, jurisdiction="UK")
         case_id = case["id"]
         cleanup_cases.append(case_id)
 
@@ -992,7 +1017,7 @@ class TestCPRClaim:
         """
         auth = _auth_headers(tenant_id)
 
-        case    = _post_case(api_client, auth)
+        case    = _post_case(api_client, auth, jurisdiction="UK")
         case_id = case["id"]
         cleanup_cases.append(case_id)
 
@@ -1106,6 +1131,39 @@ class TestTenantIsolation:
 
         assert case_a["id"] in ids,     "Tenant A's own case must be listed"
         assert case_b["id"] not in ids, "Tenant B's case must not appear in Tenant A's list"
+
+    def test_case_list_ids_filter_narrows_within_tenant(self, api_client, cleanup_cases):
+        """
+        GET /api/cbam/cases?ids=... returns only the named cases.
+
+        Every Arbor organisation shares one service token, so within one Nucleos
+        tenant Arbor asks for exactly the cases an organisation owns. The filter
+        narrows inside the tenant and never widens past it: a foreign tenant's id
+        named in the filter is still not returned.
+        """
+        tenant_a = str(uuid4())
+        tenant_b = str(uuid4())
+        auth_a   = _auth_headers(tenant_a)
+        auth_b   = _auth_headers(tenant_b)
+
+        owned    = _post_case(api_client, auth_a)
+        other    = _post_case(api_client, auth_a)
+        foreign  = _post_case(api_client, auth_b)
+        cleanup_cases.extend([owned["id"], other["id"], foreign["id"]])
+
+        resp = api_client.get(
+            f"/api/cbam/cases?ids={owned['id']},{foreign['id']}", headers=auth_a
+        )
+        assert resp.status_code == 200
+        ids = {c["id"] for c in resp.json()["items"]}
+        assert ids == {owned["id"]}
+
+    def test_case_list_rejects_malformed_ids(self, api_client):
+        """A non-UUID in the ids filter is a 422, not a query error."""
+        resp = api_client.get(
+            "/api/cbam/cases?ids=not-a-uuid", headers=_auth_headers(str(uuid4()))
+        )
+        assert resp.status_code == 422
 
     def test_emissions_write_blocked_across_tenants(self, api_client, cleanup_cases):
         """
@@ -1288,11 +1346,13 @@ class TestValidationFailure:
         self, api_client, tenant_id, cleanup_cases
     ):
         """
-        A case where a goods line has no emissions record:
-          - Report package is retrievable (200)
-          - Assertion layer sets human_review_required=True
-          - HMRC return builder raises HMRCReturnValidationError
-        This enforces that an incomplete declaration cannot be submitted.
+        A case where a goods line has no emissions record cannot be submitted.
+
+        The service blocks it at the report package — before any return can be
+        built — with 422 human_review_required, naming the missing emissions
+        as a blocking issue. This test used to expect the package to be served
+        and the return builder to refuse afterwards; the gate now sits earlier,
+        which is the stronger form of the same rule.
         """
         auth = _auth_headers(tenant_id)
 
@@ -1301,18 +1361,15 @@ class TestValidationFailure:
         cleanup_cases.append(case_id)
 
         ship = _post_shipment(api_client, auth, case_id)
-        _post_goods_line(api_client, auth, case_id, ship["id"])
+        gl   = _post_goods_line(api_client, auth, case_id, ship["id"])
         # Deliberately skip _post_emissions → goods line has no method
 
-        pkg = _get_report_package(api_client, auth, case_id)
-        assert pkg["type"] == "cbam_report_package_v1"
-
-        # The assertion layer flags the missing method
-        result = validate_report_package_integrity(pkg, narrative={})
-        assert result.human_review_required is True, (
-            "Assertion layer must flag human review when emissions are absent"
-        )
-
-        # The HMRC return builder refuses to generate the return
-        with pytest.raises(HMRCReturnValidationError):
-            build_hmrc_return(pkg, _make_hmrc_input())
+        resp = api_client.get(f"/api/cbam/cases/{case_id}/report-package", headers=auth)
+        assert resp.status_code == 422, resp.text
+        detail = resp.json()["detail"]
+        assert detail["code"] == "human_review_required"
+        assert detail["risk_tier"] == "blocking"
+        assert any(
+            gl["id"] in issue and "missing_emissions" in issue
+            for issue in detail["blocking_issues"]
+        ), detail["blocking_issues"]

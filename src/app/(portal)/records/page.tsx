@@ -13,6 +13,7 @@ import { RecordsQueryPanel } from '@/components/RecordsQueryPanel'
 import { RecordQualitySummary } from '@/components/RecordQualitySummary'
 import { RecordTrends } from '@/components/RecordTrends'
 import { BenchmarksView } from '@/components/BenchmarksView'
+import { loadRecordQualityRows } from '@/lib/layer3/record-quality-rows'
 import { summariseRecordQuality } from '@/lib/layer3/record-quality'
 import { buildRecordTrends } from '@/lib/layer3/record-trends'
 import { getCompulsoryStorableFieldsByDocumentType } from '@/lib/layer3/compulsory-fields'
@@ -66,13 +67,12 @@ export default async function RecordsPage({
       take: PAGE_SIZE,
     }),
     prisma.dataRecord.count({ where }),
-    // Lightweight read across the full filtered set for the data-quality summary.
-    prisma.dataRecord.findMany({
-      where,
-      select: {
-        domain: true, fieldName: true, trustTier: true, staleAfterDate: true,
-        document: { select: { documentType: true } },
-      },
+    // The data-quality summary covers the full filtered set, grouped and
+    // counted by the database rather than loaded row by row.
+    loadRecordQualityRows({
+      entityId,
+      domain: domain.success ? domain.data : undefined,
+      trustTier: tier.success ? tier.data : undefined,
     }),
     prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true, planTier: true } }),
     // Unfiltered and newest-first: the query suggestions describe what this
@@ -99,16 +99,7 @@ export default async function RecordsPage({
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
-  const quality = summariseRecordQuality(
-    summaryRecords.map(r => ({
-      domain: r.domain,
-      fieldName: r.fieldName,
-      trustTier: r.trustTier as 'A' | 'B' | 'C',
-      staleAfterDate: r.staleAfterDate,
-      documentType: r.document?.documentType ?? null,
-    })),
-    getCompulsoryStorableFieldsByDocumentType(),
-  )
+  const quality = summariseRecordQuality(summaryRecords, getCompulsoryStorableFieldsByDocumentType())
 
   // Trends is a secondary view of the same data - fetched only when selected, over
   // the entity's full active history (trends need every quarter, not one page).

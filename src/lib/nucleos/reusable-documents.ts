@@ -11,8 +11,14 @@
 
 import { CBAM_RELEVANT_DOCUMENT_TYPES } from './cbam-relevance'
 
-/** Statuses a document must have reached before it can back a CBAM case. */
-const USABLE_STATUSES = new Set(['REVIEW_REQUIRED', 'ACCEPTED'])
+/**
+ * Statuses from which a document can still open a CBAM case.
+ *
+ * Only awaiting review: confirming it is what opens the case. An accepted
+ * document cannot be confirmed again, and its case — or its unfinished handoff,
+ * with Resume — is already shown on the CBAM page.
+ */
+const USABLE_STATUSES = new Set(['REVIEW_REQUIRED'])
 
 export interface DocumentSummary {
   id: string
@@ -32,7 +38,8 @@ export interface ReusableDocument extends DocumentSummary {
  *
  * Rejected and still-extracting documents are excluded: one has no usable
  * content, the other has none *yet*, and offering either invites the user to
- * start a case on something that will never produce goods lines.
+ * start a case on something that will never produce goods lines. Accepted ones
+ * are excluded because they already went through the handoff.
  */
 export function selectReusableDocuments(
   documents: (DocumentSummary & { hasCbamFields?: boolean })[],

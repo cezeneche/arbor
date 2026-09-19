@@ -173,6 +173,7 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          case_id: case_.id,
           goods_line_id: lineId,
           origin_country_code: (case_.origin_country ?? '').toUpperCase(),
           qualifying_scheme_name: scheme.schemeName,

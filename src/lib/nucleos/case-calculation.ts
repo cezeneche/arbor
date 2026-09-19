@@ -12,6 +12,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { getCbamCase } from './cases-client'
+import { resolveCaseAccess } from './case-ownership'
 import { buildDeclarationPayload, toProvenanceTier, type CaseGoodsLine } from './declaration-payload'
 import { calculateDeclaration } from './calculate-client'
 import { presentCalculation, type PresentedCalculation } from './emissions-presenter'
@@ -39,26 +40,20 @@ export interface CaseCalculation {
 /**
  * Whose case this is, and what Arbor's records behind it are worth.
  *
- * A case with no link row predates the handoff — there is no Arbor document
- * behind it, so there is no evidence to claim and the honest floor is Declared.
- * Ownership is only enforced where a link exists, for the same reason: refusing
- * every unlinked case would take the existing screens down.
+ * Forbidden unless this entity's link row names the case — including a case
+ * with no link at all. See case-ownership.ts for why an unowned case is refused.
  */
 export async function caseContext(caseId: string, entityId: string): Promise<{
   forbidden: boolean
   provenance: ProvenanceTier
 }> {
-  const link = await prisma.cbamCaseLink.findFirst({
-    where: { nucleosCaseId: caseId },
-    select: { entityId: true, documentId: true },
-  })
-  if (!link) return { forbidden: false, provenance: 'DECLARED' }
-  if (link.entityId !== entityId) return { forbidden: true, provenance: 'DECLARED' }
+  const access = await resolveCaseAccess(caseId, entityId)
+  if (!access.allowed) return { forbidden: true, provenance: 'DECLARED' }
 
   // Every record from one confirmation shares one derived tier, so the first
   // active record for the document is the tier of all of them.
   const record = await prisma.dataRecord.findFirst({
-    where: { documentId: link.documentId, isActive: true },
+    where: { documentId: access.documentId, isActive: true },
     select: { trustTier: true },
   })
   return { forbidden: false, provenance: toProvenanceTier(record?.trustTier ?? null) }
