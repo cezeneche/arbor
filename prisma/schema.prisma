@@ -1264,6 +1264,10 @@ model SharedExport {
   periodEnd   DateTime?
   // Gap-4 audit-package integrity hash for the scope; verifiable via /api/audit/verify-public.
   packageHash String
+  // The records the share was issued with — exactly the set packageHash covers.
+  // A share shows these, marking any since corrected. Empty for shares issued
+  // before snapshots, which keep their live scope.
+  recordIds   String[]    @default([])
   createdById String
   createdAt   DateTime    @default(now())
   expiresAt   DateTime?
