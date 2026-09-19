@@ -4,13 +4,14 @@ import os
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
 import ledger_app.api.cbam as cbam_api
 import ledger_app.api.report_package as report_package_api
+from shared_auth import get_auth_context
 
 
 class _Result:
@@ -402,7 +403,12 @@ def _client_with_fake_engine() -> tuple[TestClient, FakeConnection]:
 
     token = make_test_token(scopes=["cbam:read", "cbam:write", "narrative:run"])
 
+    # Mounted as production mounts them, behind get_auth_context. Without it the
+    # tenant on request.state was empty, and any route that reads the real engine
+    # (insights binds it at import) ran its queries unscoped.
     app = FastAPI()
-    app.include_router(cbam_api.router, prefix="/api")
-    app.include_router(report_package_api.router, prefix="/api")
+    app.include_router(cbam_api.router, prefix="/api", dependencies=[Depends(get_auth_context)])
+    app.include_router(
+        report_package_api.router, prefix="/api", dependencies=[Depends(get_auth_context)]
+    )
     return TestClient(app, headers={"Authorization": f"Bearer {token}"}), conn

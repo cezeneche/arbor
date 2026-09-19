@@ -4,48 +4,48 @@ Row-Level Security session helpers.
 Call ``set_tenant_context(conn, tenant_id)`` at the start of any database
 transaction that touches tenant-scoped tables (cases, cbam_cases, audit_log).
 
-This sets the PostgreSQL session variable ``app.tenant_id`` which the RLS
-policies (migration 003) read via ``current_setting('app.tenant_id', true)``.
+It sets both settings the RLS policies read, transaction-local, on the same
+connection as the queries that follow: ``app.current_tenant_id`` (the base
+schema's ``public.current_tenant_id()``) and ``app.tenant_id`` (the other
+migration lineage's policies). Which lineage production runs is not yet
+settled, and setting only one left the other's policies blind.
 
-The helper is a no-op on non-PostgreSQL engines (SQLite in tests) so existing
-test suites continue to work unchanged.
+A no-op on non-PostgreSQL engines (SQLite in tests).
 """
 from __future__ import annotations
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+_POSTGRES_DIALECTS = ("postgresql", "psycopg2", "pg8000", "asyncpg")
+
+
+class TenantContextError(RuntimeError):
+    """Raised when a tenant-scoped transaction has no tenant to scope it to."""
+
 
 def set_tenant_context(conn: Connection, tenant_id: str | None) -> None:
     """
-    Set ``app.tenant_id`` on the current PostgreSQL connection.
+    Scope the current PostgreSQL transaction to ``tenant_id`` for RLS.
 
-    Parameters
-    ----------
-    conn:
-        An open SQLAlchemy ``Connection`` (inside a transaction context).
-    tenant_id:
-        The tenant identifier from the JWT ``tenant_id`` claim.
-        ``None`` or ``""`` is silently skipped (legacy / system contexts bypass RLS).
+    Raises ``TenantContextError`` for an empty tenant, and lets a failure to set
+    the context propagate: a query that runs unscoped because the scoping
+    silently failed is the failure RLS exists to prevent.
     """
-    if not tenant_id:
-        return
-
-    # Only run on PostgreSQL; SQLite and other backends don't support SET LOCAL.
     try:
         dialect = conn.dialect.name  # type: ignore[attr-defined]
     except AttributeError:
         dialect = ""
-
-    if dialect not in ("postgresql", "psycopg2", "pg8000", "asyncpg"):
+    if dialect not in _POSTGRES_DIALECTS:
         return
 
-    try:
-        conn.execute(
-            text("SET LOCAL app.tenant_id = :tid"),
-            {"tid": str(tenant_id)},
-        )
-    except Exception:
-        # Never raise — RLS set failure should surface as a policy violation on
-        # the query itself, not as an unhandled exception here.
-        pass
+    if not tenant_id:
+        raise TenantContextError("A tenant-scoped query was attempted with no tenant.")
+
+    conn.execute(
+        text(
+            "SELECT set_config('app.current_tenant_id', :tid, true), "
+            "set_config('app.tenant_id', :tid, true)"
+        ),
+        {"tid": str(tenant_id)},
+    )
