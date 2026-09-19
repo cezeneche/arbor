@@ -51,6 +51,16 @@ describe('token-authenticated entry links reachable without an account', () => {
     expect(isPublicPath('/submit/abc123')).toBe(true)
   })
 
+  // Audit P1 #3: the form page was public but the endpoint it submits to was
+  // not, so every supplier's submission was redirected to /login.
+  it('lets a supplier submit the CBAM emissions form', () => {
+    expect(isPublicPath('/api/supplier-form/abc123')).toBe(true)
+  })
+
+  it('does not open a neighbouring API path that merely starts with the same word', () => {
+    expect(isPublicPath('/api/supplier-forms')).toBe(false)
+  })
+
   it('lets a buyer open a shared export', () => {
     expect(isPublicPath('/share/abc123')).toBe(true)
   })

@@ -34,6 +34,10 @@ const PUBLIC_PREFIXES = [
   '/api/legal',
   '/api/auth',
   '/api/submit',
+  // The CBAM supplier form's submission. The URL token is the credential and
+  // Nucleos validates it; without this the form page loads and its submit
+  // is redirected to /login.
+  '/api/supplier-form',
   '/api/signup',
   '/api/inngest',
   '/api/inbound-email',

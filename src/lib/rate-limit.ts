@@ -28,6 +28,8 @@ export const RATE_LIMITS = {
   signup: { prefix: 'signup', limit: 5, window: '60 m' },
   // keyed by IP: caps probing of public supplier submission links.
   submitToken: { prefix: 'submit-token', limit: 30, window: '10 m' },
+  // keyed by IP: caps probing of public CBAM supplier form links.
+  supplierForm: { prefix: 'supplier-form', limit: 20, window: '10 m' },
   // keyed by IP: caps probing of the public audit-package verify endpoint.
   verifyPublic: { prefix: 'verify-public', limit: 10, window: '1 m' },
   // keyed by entity (API key): buyer query API budget.
