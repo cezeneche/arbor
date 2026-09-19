@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { NucleosUnavailableError, isNucleosConfigured } from '@/lib/nucleos/extraction-client'
+import { nucleosHeaders } from '@/lib/nucleos/service-auth'
 
 // Records a carbon price relief claim. This one writes.
 
@@ -19,10 +20,7 @@ export async function POST(request: Request) {
     if (!isNucleosConfigured()) throw new NucleosUnavailableError('not configured')
     const res = await fetch(`${process.env.NUCLEOS_URL}/api/cbam/cpr/claims`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${process.env.NUCLEOS_INTERNAL_TOKEN as string}`,
-      },
+      headers: nucleosHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(body),
       cache: 'no-store',
     })

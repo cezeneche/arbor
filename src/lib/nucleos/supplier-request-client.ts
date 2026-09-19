@@ -15,6 +15,7 @@
 // being applied silently, as though it were the same answer.
 
 import { NucleosUnavailableError, isNucleosConfigured } from './extraction-client'
+import { nucleosHeaders } from './service-auth'
 
 /**
  * The request will never succeed as sent — a goods line the service rejects, or
@@ -56,10 +57,7 @@ export async function createSupplierToken(
     `${base()}/api/cbam/goods-lines/${encodeURIComponent(goodsLineId)}/supplier-token`,
     {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${process.env.NUCLEOS_INTERNAL_TOKEN as string}`,
-      },
+      headers: nucleosHeaders({ 'content-type': 'application/json' }),
       cache: 'no-store',
     },
   )
