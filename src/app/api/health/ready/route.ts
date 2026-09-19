@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { missingProductionEnv } from '@/lib/production-env'
 import { evaluateReadiness } from '@/lib/readiness'
+import { rateLimiterHealth } from '@/lib/rate-limit'
 import { serviceTokenExpiry } from '@/lib/nucleos/service-auth'
 
 export const dynamic = 'force-dynamic'
@@ -35,11 +36,12 @@ async function checkNucleos(): Promise<{ ok: boolean; detail?: string }> {
 }
 
 export async function GET(req: NextRequest) {
-  const [database, nucleos] = await Promise.all([checkDatabase(), checkNucleos()])
+  const [database, nucleos, rateLimiter] = await Promise.all([checkDatabase(), checkNucleos(), rateLimiterHealth()])
   const readiness = evaluateReadiness({
     missingEnv: missingProductionEnv(process.env),
     database,
     nucleos,
+    rateLimiter,
     serviceToken: serviceTokenExpiry(process.env.NUCLEOS_INTERNAL_TOKEN ?? ''),
   })
 

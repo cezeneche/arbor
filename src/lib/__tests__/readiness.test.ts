@@ -7,6 +7,7 @@ const good = {
   missingEnv: [],
   database: { ok: true },
   nucleos: { ok: true },
+  rateLimiter: { ok: true },
   serviceToken: { expiresAt: null, daysLeft: null, expired: false },
 }
 
@@ -21,6 +22,12 @@ describe('evaluateReadiness', () => {
     expect(evaluateReadiness({ ...good, missingEnv: ['NUCLEOS_URL'] }).ready).toBe(false)
     expect(evaluateReadiness({ ...good, database: { ok: false, detail: 'timeout' } }).ready).toBe(false)
     expect(evaluateReadiness({ ...good, nucleos: { ok: false, detail: '503' } }).ready).toBe(false)
+  })
+
+  it('is not ready when the rate limiter is unreachable, because sign-in fails closed', () => {
+    const r = evaluateReadiness({ ...good, rateLimiter: { ok: false, detail: 'Upstash did not answer.' } })
+    expect(r.ready).toBe(false)
+    expect(r.checks.rateLimiter.detail).toBe('Upstash did not answer.')
   })
 
   it('is not ready once the Nucleos service token has expired', () => {

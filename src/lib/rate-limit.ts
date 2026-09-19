@@ -115,6 +115,24 @@ export async function checkRateLimit(
 }
 
 /**
+ * Whether the limiter can reach Upstash. Sign-in fails closed, so an unreachable
+ * limiter rejects every password as if it were wrong — readiness reports this
+ * rather than leaving the deployment looking healthy while nobody can log in.
+ */
+export async function rateLimiterHealth(): Promise<{ ok: boolean; detail?: string }> {
+  const redis = getRedis()
+  if (!redis) {
+    return { ok: false, detail: 'UPSTASH_REDIS_REST_URL / _TOKEN are not set, so nobody can sign in.' }
+  }
+  try {
+    await redis.ping()
+    return { ok: true }
+  } catch {
+    return { ok: false, detail: 'Upstash did not answer, so nobody can sign in.' }
+  }
+}
+
+/**
  * Single-use claim on `key`, expiring after `ttlSeconds`. Returns true the first
  * time a key is seen and false for every repeat inside the window.
  *

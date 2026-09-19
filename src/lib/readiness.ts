@@ -8,6 +8,7 @@ export interface ReadinessFacts {
   missingEnv: string[]
   database: { ok: boolean; detail?: string }
   nucleos: { ok: boolean; detail?: string }
+  rateLimiter: { ok: boolean; detail?: string }
   serviceToken: TokenExpiry
 }
 
@@ -17,6 +18,7 @@ export interface Readiness {
     environment: { ok: boolean; missing: string[] }
     database: { ok: boolean; detail?: string }
     nucleos: { ok: boolean; detail?: string }
+    rateLimiter: { ok: boolean; detail?: string }
     serviceToken: { ok: boolean; expiresAt: string | null; daysLeft: number | null }
   }
   warnings: string[]
@@ -36,6 +38,7 @@ export function evaluateReadiness(facts: ReadinessFacts): Readiness {
     environment: { ok: facts.missingEnv.length === 0, missing: facts.missingEnv },
     database: facts.database,
     nucleos: facts.nucleos,
+    rateLimiter: facts.rateLimiter,
     serviceToken: { ok: !token.expired, expiresAt: token.expiresAt, daysLeft: token.daysLeft },
   }
   return { ready: Object.values(checks).every(c => c.ok), checks, warnings }
