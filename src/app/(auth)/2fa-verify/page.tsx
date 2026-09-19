@@ -75,6 +75,7 @@ export default function TwoFactorVerifyPage() {
       await update({ totpVerifiedNonce: data?.nonce })
       // Hard navigation so the middleware sees the upgraded session cookie. A soft
       // router.push() races the cookie write and gets bounced back to /2fa-verify.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- deliberate hard navigation, see above
       window.location.href = '/dashboard'
       return
     }
@@ -82,6 +83,7 @@ export default function TwoFactorVerifyPage() {
     // If the challenge was already completed (e.g. a double submit after success),
     // the user is in fact verified — proceed to the dashboard instead of erroring.
     if (res?.status === 400 && data?.error === 'No 2FA challenge is active.') {
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- same hard navigation as above
       window.location.href = '/dashboard'
       return
     }

@@ -1,6 +1,10 @@
-# CI — enforces the CLAUDE.md deployment gate on every push/PR:
-# all tests pass (zero failures, zero skips) and the code typechecks.
-# Vercel only compiles; this is where the suite actually runs.
+# CI — the CLAUDE.md deployment gate, for every service this repo deploys.
+#
+# Vercel only compiles. This is where each deployed thing is actually checked:
+# Arbor (types, lint, tests, production build, the Nucleos contract), Nucleos
+# (its full suite against a real Postgres, and the HTTP boundary with Arbor),
+# and the brain. A job that skips what it cannot run does not pass — the Python
+# report is gated on failures AND skips, see scripts/ci/check-pytest-report.py.
 name: CI
 
 on:
@@ -9,7 +13,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  arbor:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +23,10 @@ jobs:
           node-version: 24
           cache: npm
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: npm ci
 
@@ -26,5 +34,87 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Lint
+        run: npx eslint --max-warnings=0 src
+
       - name: Tests
         run: npx jest --ci
+
+      - name: Production build
+        run: npx next build
+
+      # The TypeScript contract is generated from the Python one; a hand edit to
+      # either side drifts them apart silently.
+      - name: Contract drift
+        run: npm run contract:check
+
+  nucleos:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      TEST_DATABASE_URL: postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/nucleos_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: nucleos/api/requirements.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Nucleos
+        run: |
+          python -m venv nucleos/.venv
+          nucleos/.venv/bin/python -m pip install --upgrade pip
+          nucleos/.venv/bin/python -m pip install -r nucleos/api/requirements.txt
+
+      - name: Build the test database
+        run: nucleos/scripts/create_test_db.sh
+
+      - name: Suite (Postgres)
+        # The gate is the report check below, not pytest's exit code: pytest
+        # passes a suite that skipped what needed Postgres.
+        run: npm run test:python -- -q -p no:warnings --junitxml=pytest-report.xml || true
+
+      - name: Gate the report (failures and skips)
+        run: python scripts/ci/check-pytest-report.py nucleos/pytest-report.xml
+
+      - name: Install Arbor (for the boundary check)
+        run: npm ci
+
+      - name: Arbor–Nucleos boundary
+        run: npm run verify:boundary
+
+  brain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: brain/requirements.txt
+
+      - name: Install
+        run: pip install -r brain/requirements.txt pytest httpx
+
+      - name: Tests
+        working-directory: brain
+        run: python -m pytest -q
