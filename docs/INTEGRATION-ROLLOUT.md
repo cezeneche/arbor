@@ -167,6 +167,24 @@ Recorded here so the next person does not have to re-derive it.
 - **The Python suite runs from the repo root.** `npm run python:setup`,
   `npm run test:python`, `npm run test:all`.
 
+### Update, 19 September 2026
+
+- **#89 (case on confirm) is merged and live.** Its two migrations were applied
+  to production on 16 September; `foreign_chain_seal` (step 7) was already there.
+- **The old standalone Nucleos Supabase project is gone** (the tenant lookup
+  fails), so the migration-lineage question below can only be answered against
+  the database `nucleos-api` uses now, whose credentials are in that Vercel
+  project's environment.
+- **Found while fixing tenant isolation:** `POST /api/cases` (legacy) writes a
+  `prev_hmac` column on `public.audit_log` that only one lineage has — more
+  evidence the lineages diverge. Not changed.
+- **Readiness:** Nucleos `/ready` and `/health/ready` now serve one check
+  (database plus the tables a case is written to); Arbor has
+  `/api/health/ready`, which also reports the service token's expiry.
+- **CI** runs the Nucleos suite against Postgres and gates on the four known
+  failures below, each listed with its owning decision in
+  `scripts/ci/check-pytest-report.py`.
+
 ### Open, and why
 
 - **Step 6b has not been run.** No real document has been through the live path.
