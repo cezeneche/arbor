@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { runSerializable } from '@/lib/layer2/serializable'
@@ -22,7 +22,7 @@ export async function GET() {
   return NextResponse.json(planUnitCorrections(await activeRecords()))
 }
 
-export async function POST(_req: NextRequest) {
+export async function POST() {
   const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
 
