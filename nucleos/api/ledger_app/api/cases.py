@@ -38,10 +38,15 @@ def _check_case_access(conn, case_id: str, auth) -> None:
     if auth is None:
         return  # no auth context (test mode) — allow
 
+    # Tenant first, for everyone. It used to be compared only when both sides
+    # had one, and only for admins — so ownership matched on the JWT subject
+    # alone, which is not unique across tenants. 404, not 403: whether the case
+    # exists in another tenant is not the caller's to learn.
+    if (row["tenant_id"] or "") != (auth.tenant_id or ""):
+        raise HTTPException(status_code=404, detail="Case not found")
+
     # Admin bypass: cbam:admin scope can see any case in the tenant
     if "cbam:admin" in (auth.scopes or []):
-        if row["tenant_id"] and auth.tenant_id and row["tenant_id"] != auth.tenant_id:
-            raise HTTPException(status_code=403, detail="Forbidden")
         return
 
     # Owner access
@@ -153,7 +158,8 @@ def list_cases(request: Request):
                            reporting_period_start, reporting_period_end,
                            status, owner_sub, tenant_id, created_at
                     FROM cases
-                    WHERE (
+                    WHERE tenant_id = :tenant_id
+                    AND (
                         owner_sub = :sub
                         OR owner_sub IS NULL
                         OR EXISTS (
@@ -163,12 +169,11 @@ def list_cases(request: Request):
                     )
                     ORDER BY created_at DESC
                 """),
-                {"sub": actor_sub},
+                {"sub": actor_sub, "tenant_id": tenant_id},
             ).mappings().all()
         else:
-            rows = conn.execute(
-                text("SELECT id, supplier_name, status, created_at FROM cases ORDER BY created_at DESC")
-            ).mappings().all()
+            # No subject, no tenant: nothing is this caller's.
+            rows = []
 
     return [dict(r) for r in rows]
 

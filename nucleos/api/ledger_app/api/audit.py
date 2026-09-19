@@ -104,11 +104,13 @@ def get_audit_log(
     case_id: str,
     export: bool = Query(default=False, description="Export to S3 with Object Lock"),
 ):
+    tenant_id = getattr(getattr(request.state, "auth_context", None), "tenant_id", "") or ""
     with _cbam_engine.connect() as conn:
-        # Verify the case exists in the CBAM schema
+        # The case must be the caller's tenant's. Without this, any
+        # authenticated caller could read any case's audit chain by id.
         exists = conn.execute(
-            text("SELECT 1 FROM cbam.cbam_cases WHERE id = :id LIMIT 1"),
-            {"id": case_id},
+            text("SELECT 1 FROM cbam.cbam_cases WHERE id = :id AND tenant_id = :tenant_id LIMIT 1"),
+            {"id": case_id, "tenant_id": tenant_id},
         ).fetchone()
         if not exists:
             raise HTTPException(status_code=404, detail="Case not found")

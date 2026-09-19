@@ -1,17 +1,10 @@
 import type { NextConfig } from "next";
+import { missingProductionEnv } from "./src/lib/production-env";
 
-// Production build gate: these must be present or runtime behaviour silently
-// degrades (localhost links in customer emails, unsigned sessions, broken 2FA
-// secrets). Failing the build is loud; failing at request time is invisible.
+// Production build gate: see src/lib/production-env.ts for what and why.
 // Only enforced on Vercel *production* builds so local/preview stay unblocked.
 if (process.env.VERCEL_ENV === "production") {
-  const required = [
-    "NEXT_PUBLIC_APP_URL", // canonical external origin for all minted links
-    "AUTH_SECRET", // NextAuth JWT signing
-    "AUDIT_CHAIN_SECRET", // HMAC audit chain
-    "TOTP_ENCRYPTION_KEY", // 2FA secret encryption
-  ] as const;
-  const missing = required.filter((k) => !process.env[k]);
+  const missing = missingProductionEnv(process.env);
   if (missing.length > 0) {
     throw new Error(
       `Production build blocked — missing required env vars: ${missing.join(", ")}`,
