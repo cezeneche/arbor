@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test doubles stand in for Prisma's generic argument types */
 import { createDocumentWithinQuota, UploadQuotaError } from '../document-quota'
 
 // The monthly upload cap was counted, then the document created in a separate
