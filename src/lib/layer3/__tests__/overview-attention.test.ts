@@ -196,3 +196,20 @@ describe('ordering and shape', () => {
     }
   })
 })
+
+describe('bounded inputs', () => {
+  // The dashboard reads only the records in the periods it shows, and counts
+  // the rest in the database. Neither may change what attention reports.
+  it('flags a gap for a record type kept only outside the records passed in', () => {
+    const closing = new Date('2026-09-20T00:00:00Z') // inside the blocking window
+    const r = buildAttention(input({ now: closing, records: [], keptDomains: ['WASTE_AND_WATER'] }))
+    expect(r.blocking.some(i => i.key.startsWith('gap-WASTE_AND_WATER'))).toBe(true)
+  })
+
+  it('counts a grouped unit conflict by the records it stands for', () => {
+    const r = buildAttention(input({
+      unitConflicts: [{ recordId: 'r1', domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'kwh', expected: 'mj', count: 7 }],
+    }))
+    expect(r.blocking[0].sentence).toMatch(/^7 total consumption kwh records are stored in kwh/)
+  })
+})
