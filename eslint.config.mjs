@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // nucleos/ carries its own apps (legacy web and marketing) with their own
+    // Next/React versions and lockfiles. Arbor's rules are not theirs; they are
+    // linted and built in their own CI job.
+    "nucleos/**",
   ]),
 ]);
 
