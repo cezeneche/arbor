@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { getSessionUser } from '@/lib/session'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { err } from '@/lib/api-helpers'
-import { prisma } from '@/lib/prisma'
+import { resolveCaseAccess } from '@/lib/nucleos/case-ownership'
 import {
   ReturnNotAvailableError,
   buildEuXmlDeclaration,
@@ -43,16 +43,11 @@ export async function POST(
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
 
-  // A case Arbor opened belongs to the entity that confirmed the document. A
-  // case with no link predates the handoff and is left readable, so the
-  // existing screens keep working.
-  const link = await prisma.cbamCaseLink.findFirst({
-    where: { nucleosCaseId: caseId },
-    select: { entityId: true },
-  })
-  if (link && link.entityId !== entityId) {
-    return err('This case belongs to another organisation.', 'FORBIDDEN', 403)
-  }
+  // A regulatory return is a filing. It is built only for a case this entity's
+  // own link row names — never for another organisation's, and never for one
+  // with no recorded owner.
+  const access = await resolveCaseAccess(caseId, entityId)
+  if (!access.allowed) return err('This case could not be found.', 'NOT_FOUND', 404)
 
   // Which outputs this case can produce is the case's own jurisdiction, not the
   // entity's current preference. Offering a UK importer an EU registry XML

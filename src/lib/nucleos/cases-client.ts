@@ -76,20 +76,40 @@ async function nucleosGet<T>(pathAndQuery: string, opts: CasesRequestOptions = {
   }
 }
 
+/**
+ * One page of the caller's own cases.
+ *
+ * `ids` is the organisation's owned case ids (case-ownership.ts), newest first,
+ * and is required: every organisation shares one service token, so Nucleos
+ * alone cannot scope this list. Paging happens over those ids, Nucleos is asked
+ * for that page only, and the answer is filtered to it again in case Nucleos
+ * ignores the filter.
+ */
 export async function listCbamCases(
-  opts: CasesRequestOptions & { limit?: number; offset?: number } = {},
+  opts: CasesRequestOptions & { ids: string[]; limit?: number; offset?: number },
 ): Promise<CbamCaseListPage> {
   const limit = opts.limit ?? 100
   const offset = opts.offset ?? 0
-  const body = await nucleosGet<{ items?: CbamCaseSummary[]; total?: number } | CbamCaseSummary[]>(
-    `/api/cbam/cases?limit=${limit}&offset=${offset}`,
+  const total = opts.ids.length
+  const pageIds = opts.ids.slice(offset, offset + limit)
+  if (pageIds.length === 0) return { items: [], total }
+
+  const query = new URLSearchParams({
+    ids: pageIds.join(','),
+    limit: String(pageIds.length),
+    offset: '0',
+  })
+  const body = await nucleosGet<{ items?: CbamCaseSummary[] } | CbamCaseSummary[]>(
+    `/api/cbam/cases?${query.toString()}`,
     opts,
   )
 
   // The endpoint has returned both a bare array and a paginated object over its
   // life. Normalising here keeps that history out of the page.
-  const items = Array.isArray(body) ? body : (body.items ?? [])
-  const total = Array.isArray(body) ? body.length : (body.total ?? items.length)
+  const returned = Array.isArray(body) ? body : (body.items ?? [])
+  const byId = new Map(returned.map(c => [c.id, c]))
+  // Owned order, owned ids only.
+  const items = pageIds.map(id => byId.get(id)).filter((c): c is CbamCaseSummary => Boolean(c))
   return { items, total }
 }
 

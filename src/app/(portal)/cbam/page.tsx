@@ -3,6 +3,7 @@ import { requirePageSession } from '@/lib/page-auth'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { CBAM_VIEWS, resolveCbamView, type CbamView } from '@/lib/nucleos/cbam-views'
 import { listCbamCases } from '@/lib/nucleos/cases-client'
+import { ownedCaseIds } from '@/lib/nucleos/case-ownership'
 import { CbamCaseList } from '@/components/CbamCaseList'
 import { CbamScopeChecker } from '@/components/CbamScopeChecker'
 import { CbamStartCase } from '@/components/CbamStartCase'
@@ -60,7 +61,7 @@ export default async function CbamPage({
   let casesError: string | null = null
   if (NEEDS_CASES.includes(view)) {
     try {
-      cases = (await listCbamCases()).items
+      cases = (await listCbamCases({ ids: await ownedCaseIds(entityId) })).items
     } catch (err) {
       casesError = (err as Error).message
     }
