@@ -9,6 +9,7 @@ import { sniffFileType } from '@/lib/upload/sniff'
 import { inngest } from '@/inngest/client'
 import { documentTypeSchema, DOCUMENT_MAX_BYTES, ALLOWED_MIME_TYPES } from '@/lib/constants'
 import { assertUploadAllowed } from '@/lib/plan-guard'
+import { createDocumentWithinQuota, UploadQuotaError } from '@/lib/document-quota'
 
 const bodySchema = z.object({
   documentType: documentTypeSchema,
@@ -62,8 +63,11 @@ export async function POST(req: NextRequest) {
   const entity = await prisma.entity.findUnique({ where: { id: entityId } })
   if (!entity) return err('Entity not found', 'ENTITY_NOT_FOUND', 404)
 
-  const document = await prisma.document.create({
-    data: {
+  // Counted again inside the write: the check above is a fast refusal, this
+  // one is binding under concurrent uploads.
+  let document: Awaited<ReturnType<typeof createDocumentWithinQuota>>
+  try {
+    document = await createDocumentWithinQuota({
       entityId,
       fileName: file.name,
       fileType: sniffedType,
@@ -71,8 +75,11 @@ export async function POST(req: NextRequest) {
       blobUrl: url,
       submittedById: session.user!.id!,
       status: 'PENDING',
-    },
-  })
+    })
+  } catch (e) {
+    if (e instanceof UploadQuotaError) return err(e.message, 'PLAN_LIMIT', 402)
+    throw e
+  }
 
   try {
     await inngest.send({
