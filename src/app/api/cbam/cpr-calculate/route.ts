@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requirePageSession } from '@/lib/page-auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { NucleosUnavailableError, isNucleosConfigured } from '@/lib/nucleos/extraction-client'
 
 // Previews a carbon price relief claim. Calculation only — nothing is written.
@@ -10,7 +10,8 @@ import { NucleosUnavailableError, isNucleosConfigured } from '@/lib/nucleos/extr
 // seen and trusted.
 
 export async function POST(request: Request) {
-  await requirePageSession()
+  const { session, response } = await requireAuth()
+  if (!session) return response!
 
   let body: unknown
   try {
