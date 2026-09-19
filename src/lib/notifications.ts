@@ -1,7 +1,7 @@
-import { Resend } from 'resend'
 import { prisma } from '@/lib/prisma'
 import { EMAIL_FROM } from '@/lib/email/config'
 import type { NotificationType, Prisma } from '@prisma/client'
+import { escapeHtml, getResend } from '@/lib/email/client'
 
 export type { NotificationType }
 
@@ -102,17 +102,6 @@ export type NotificationInput<T extends NotificationType = NotificationType> = {
   entityId: string
   type: T
   payload: NotificationPayloads[T]
-}
-
-// Lazily instantiated so importing this module (e.g. during `next build` page
-// data collection) never requires RESEND_API_KEY. Returns null when no key is
-// configured — email delivery is non-fatal, so notifications still persist.
-let _resend: Resend | null = null
-function getResend(): Resend | null {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return null
-  if (!_resend) _resend = new Resend(apiKey)
-  return _resend
 }
 
 export async function sendNotification<T extends NotificationType>(
@@ -217,15 +206,6 @@ function notificationSubject(type: NotificationType, payload: NotificationPayloa
     default:
       return `arbor notification`
   }
-}
-
-function escapeHtml(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 }
 
 function notificationHtml(

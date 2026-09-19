@@ -1,24 +1,5 @@
-import { Resend } from 'resend'
 import { EMAIL_FROM } from '@/lib/email/config'
-
-// Lazily instantiated so importing this module (e.g. during `next build`) never
-// requires RESEND_API_KEY. Mirrors the pattern in src/lib/notifications.ts.
-let _resend: Resend | null = null
-function getResend(): Resend | null {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return null
-  if (!_resend) _resend = new Resend(apiKey)
-  return _resend
-}
-
-function escapeHtml(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
+import { escapeHtml, getResend } from '@/lib/email/client'
 
 /**
  * Sends the password reset link. Delivery is best-effort: a missing API key or a

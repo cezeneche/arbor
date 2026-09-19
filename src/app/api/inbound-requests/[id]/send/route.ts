@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { Resend } from 'resend'
+import { getResend } from '@/lib/email/client'
 import { getSessionUser } from '@/lib/session'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
@@ -48,8 +48,8 @@ export async function POST(
     return err('The original email had no reply address', 'NO_REPLY_ADDRESS', 409)
   }
 
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
+  const resend = getResend()
+  if (!resend) {
     return err('Email sending is not configured on this environment', 'EMAIL_UNCONFIGURED', 503)
   }
 
@@ -75,7 +75,6 @@ export async function POST(
     return err('This request has already been answered', 'ALREADY_ANSWERED', 409)
   }
 
-  const resend = new Resend(apiKey)
   const { error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: request.fromEmail,
