@@ -5,10 +5,14 @@
 //   1. auditHash on DataRecord always matches the stored AuditEntry.hash
 //   2. previousHash is fetched inside the transaction (not stale from before tx start)
 //   3. Record + hash update + audit entry are a single atomic unit
+//   4. The stored value is in its dimension's SI unit, whichever path wrote it,
+//      and the period does not run backwards. Held here, not per route, because
+//      per-route copies of these rules drifted apart.
 //
 // Call this inside prisma.$transaction(..., { isolationLevel: 'Serializable' })
 // to prevent concurrent requests from corrupting the per-entity audit chain.
 import { appendAuditEntry } from './audit-append'
+import { canonicaliseMeasurement } from './canonical-measurement'
 import type { AuditPayload } from './audit-chain'
 import type { DataDomain, TrustTier, ExtractionMethod, Prisma } from '@prisma/client'
 
@@ -40,6 +44,13 @@ export interface RecordInput {
   staleAfterDate?: Date | null
 }
 
+export class InvalidRecordPeriodError extends Error {
+  constructor() {
+    super('The end of the period must not come before its start.')
+    this.name = 'InvalidRecordPeriodError'
+  }
+}
+
 export interface RecordWriteResult {
   recordId: string
   hash: string
@@ -50,13 +61,20 @@ export async function writeRecordWithAuditEntry(
   input: RecordInput,
   eventType = 'CREATED',
 ): Promise<RecordWriteResult> {
+  // A zero-length period is a point in time — an accounting transaction — and
+  // is allowed. A negative one is an error on every path.
+  if (input.periodEnd.getTime() < input.periodStart.getTime()) throw new InvalidRecordPeriodError()
+
+  // Throws for a unit that cannot be converted, before anything is written.
+  const canonical = canonicaliseMeasurement(input.value, input.unit)
+
   const record = await tx.dataRecord.create({
     data: {
       entityId: input.entityId,
       domain: input.domain,
       fieldName: input.fieldName,
-      value: input.value,
-      unit: input.unit,
+      value: canonical.value,
+      unit: canonical.unit,
       originalValue: input.originalValue,
       originalUnit: input.originalUnit,
       periodStart: input.periodStart,
@@ -79,8 +97,8 @@ export async function writeRecordWithAuditEntry(
     entityId: input.entityId,
     domain: input.domain,
     fieldName: input.fieldName,
-    value: input.value,
-    unit: input.unit,
+    value: canonical.value,
+    unit: canonical.unit,
     originalValue: input.originalValue,
     originalUnit: input.originalUnit,
     periodStart: input.periodStart.toISOString(),

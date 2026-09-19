@@ -6,6 +6,7 @@ import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { assertRecordCapacity } from '@/lib/plan-guard'
+import { isStorableUnit } from '@/lib/layer2/canonical-measurement'
 import { TrustTier, ExtractionMethod } from '@prisma/client'
 import type { IntegrationRecord } from './mappers'
 
@@ -14,6 +15,8 @@ export interface SyncResult {
   skipped: number
   /** True when the entity's plan ran out of record capacity part-way through. */
   capacityReached?: boolean
+  /** Records refused because their unit cannot be stored in canonical form. */
+  unsupportedUnits?: string[]
 }
 
 export async function writeIntegrationRecords(
@@ -23,8 +26,19 @@ export async function writeIntegrationRecords(
   const systemUser = await getSystemUser(entityId)
   let created = 0
   let skipped = 0
+  const unsupportedUnits = new Set<string>()
+  const unsupported = () =>
+    unsupportedUnits.size ? { unsupportedUnits: [...unsupportedUnits] } : {}
 
   for (const rec of records) {
+    // A unit the writer cannot store canonically would throw mid-sync. Refuse
+    // it here and report it, so the rest of the pull still lands.
+    if (!isStorableUnit(rec.unit)) {
+      unsupportedUnits.add(rec.unit)
+      skipped++
+      continue
+    }
+
     // Dedup: skip if a record with the same sourceRef already exists for this entity+field.
     const existing = await prisma.dataRecord.findFirst({
       where: { entityId, fieldName: rec.fieldName, sourceText: rec.sourceRef },
@@ -62,12 +76,12 @@ export async function writeIntegrationRecords(
     if (!written) {
       // Out of capacity: stop rather than churning through the rest of the batch
       // producing the same refusal, and report it on the sync outcome.
-      return { created, skipped, capacityReached: true }
+      return { created, skipped, capacityReached: true, ...unsupported() }
     }
     created++
   }
 
-  return { created, skipped }
+  return { created, skipped, ...unsupported() }
 }
 
 export async function recordSyncOutcome(credentialId: string, status: string): Promise<void> {

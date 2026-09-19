@@ -174,3 +174,13 @@ describe('deriveTrustTier', () => {
     ).toBe('A')
   })
 })
+
+describe('validateConfirmFields — units', () => {
+  // The record writer stores every unit canonically, so review accepts the
+  // spellings documents use rather than refusing "KG" and "kWh".
+  it('accepts a supported unit in any case, and a common spelling', () => {
+    expect(validateConfirmFields([field({ confirmedUnit: 'KG' })])).toEqual([])
+    expect(validateConfirmFields([field({ confirmedUnit: 'kWh' })])).toEqual([])
+    expect(validateConfirmFields([field({ confirmedUnit: 'cu.m' })])).toEqual([])
+  })
+})

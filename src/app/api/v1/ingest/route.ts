@@ -1,4 +1,5 @@
 // Layer 2 — ERP / accounting system ingest webhook.
+import { isStorableUnit } from '@/lib/layer2/canonical-measurement'
 // Accepts structured operational data pushed from third-party systems.
 // Records are written as Tier B / SYSTEM_INTEGRATION — no source document is attached.
 // A source document must be submitted separately to upgrade to Tier A.
@@ -19,7 +20,7 @@ const recordSchema = z.object({
   domain: domainSchema,
   fieldName: z.string().min(1).max(120),
   value: z.number().finite(),
-  unit: z.string().min(1).max(60),
+  unit: z.string().min(1).max(60).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
   sourceSystem: z.string().max(120).optional(),

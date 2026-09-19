@@ -8,7 +8,7 @@ import { writeRecordWithAuditEntry } from './record-writer'
 import { assertRecordCapacity } from '@/lib/plan-guard'
 import { findDuplicates } from './duplicate-check'
 import { computeStaleAfterDate } from './staleness'
-import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
+import { isStorableUnit } from './canonical-measurement'
 import { DOMAIN_BY_DOCUMENT_TYPE, DataDomain } from '@/lib/constants'
 import { NUMERIC_FIELDS, derivePeriod } from '@/lib/review/review-policy'
 import { parseNumericValue } from '@/lib/parse-numeric'
@@ -48,16 +48,14 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
       return { f, rawNum }
     })
     .filter((p) => !isNaN(p.rawNum))
-    .map(({ f, rawNum }) => {
-      const unit = f.rawUnit ?? 'unknown'
-      const lower = unit.toLowerCase()
-      const { value: siValue, siUnit } = isSupportedUnit(lower)
-        ? normaliseToSI(rawNum, lower)
-        : { value: rawNum, siUnit: unit }
-      return { f, rawNum, unit, siValue, siUnit }
-    })
+    .map(({ f, rawNum }) => ({ f, rawNum, unit: f.rawUnit ?? 'unknown' }))
 
   if (prepared.length === 0) return []
+
+  // A unit the record writer cannot store in canonical form needs a person to
+  // say what it is. Leave the document in review rather than store a figure no
+  // total can use.
+  if (prepared.some(p => !isStorableUnit(p.unit))) return []
 
   // Never auto-accept over something already stored. Auto-accept runs with no
   // user present, so there is nobody to ask — and writing anyway is how two
@@ -97,7 +95,7 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
       if (!capacity.allowed) return []
 
       const ids: string[] = []
-      for (const { f, rawNum, unit, siValue, siUnit } of prepared) {
+      for (const { f, rawNum, unit } of prepared) {
         const prior = await tx.dataRecord.findMany({
           where: { entityId: document.entityId, domain, fieldName: f.fieldName, periodStart, periodEnd, isActive: true },
           select: { id: true },
@@ -109,8 +107,9 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
             entityId: document.entityId,
             domain,
             fieldName: f.fieldName,
-            value: siValue,
-            unit: siUnit,
+            // The writer stores it in canonical SI units.
+            value: rawNum,
+            unit,
             originalValue: rawNum,
             originalUnit: unit,
             periodStart,

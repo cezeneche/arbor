@@ -7,7 +7,7 @@
 // regardless — a payload of entirely unusable values produced an ACCEPTED
 // document with no records behind it, and the user was told it had been saved.
 import { parseNumericValue } from '@/lib/parse-numeric'
-import { isSupportedUnit } from '@/lib/layer3/unit-conversion'
+import { isStorableUnit } from './canonical-measurement'
 
 export interface ConfirmField {
   fieldName: string
@@ -69,7 +69,7 @@ export function validateConfirmFields(
     // A unit that cannot be normalised cannot be converted on output either, and
     // Layer 3's promise is that any recipient can ask for their own units. An
     // absent unit is a different thing: no unit was claimed.
-    if (field.confirmedUnit && !isSupportedUnit(field.confirmedUnit)) {
+    if (field.confirmedUnit && !isStorableUnit(field.confirmedUnit)) {
       fail(field.fieldName, 'unsupported_unit')
     }
 
