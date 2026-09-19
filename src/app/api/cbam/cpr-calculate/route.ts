@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requirePageSession } from '@/lib/page-auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { NucleosUnavailableError, isNucleosConfigured } from '@/lib/nucleos/extraction-client'
 import { nucleosHeaders } from '@/lib/nucleos/service-auth'
 
@@ -11,7 +11,8 @@ import { nucleosHeaders } from '@/lib/nucleos/service-auth'
 // seen and trusted.
 
 export async function POST(request: Request) {
-  await requirePageSession()
+  const { session, response } = await requireAuth()
+  if (!session) return response!
 
   let body: unknown
   try {

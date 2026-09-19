@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { domainSchema, tierSchema } from '@/lib/constants'
+import { parsePageParams } from '@/lib/page-params'
 
 export async function GET(req: NextRequest) {
   const { session, response } = await requireAuth()
@@ -41,18 +42,33 @@ export async function GET(req: NextRequest) {
     if (isNaN(periodEnd.getTime())) return err('Invalid periodEnd', 'VALIDATION_ERROR', 400)
   }
 
-  const records = await prisma.dataRecord.findMany({
-    where: {
-      entityId,
-      isActive: true,
-      ...(domain ? { domain } : {}),
-      ...(tier ? { trustTier: tier } : {}),
-      ...(periodStart ? { periodStart: { gte: periodStart } } : {}),
-      ...(periodEnd ? { periodEnd: { lte: periodEnd } } : {}),
-    },
-    include: { validationFlags: true },
-    orderBy: { submittedAt: 'desc' },
-  })
+  const page = parsePageParams(searchParams)
+  if (!page.ok) return err(page.error, 'VALIDATION_ERROR', 400)
 
-  return ok(records)
+  const where = {
+    entityId,
+    isActive: true,
+    ...(domain ? { domain } : {}),
+    ...(tier ? { trustTier: tier } : {}),
+    ...(periodStart ? { periodStart: { gte: periodStart } } : {}),
+    ...(periodEnd ? { periodEnd: { lte: periodEnd } } : {}),
+  }
+  // A bounded page, never the whole store. The body stays an array for
+  // existing callers; the total and the page travel in headers.
+  const [records, total] = await Promise.all([
+    prisma.dataRecord.findMany({
+      where,
+      include: { validationFlags: true },
+      orderBy: [{ submittedAt: 'desc' }, { id: 'asc' }],
+      take: page.limit,
+      skip: page.offset,
+    }),
+    prisma.dataRecord.count({ where }),
+  ])
+
+  const res = ok(records)
+  res.headers.set('x-total-count', String(total))
+  res.headers.set('x-limit', String(page.limit))
+  res.headers.set('x-offset', String(page.offset))
+  return res
 }

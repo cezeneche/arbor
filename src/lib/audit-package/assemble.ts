@@ -3,6 +3,7 @@
 // stored data, no calculation. Optionally logs the package hash for public
 // verification — that single write is provenance bookkeeping, not a
 // modification of any data record.
+import type { DataDomain } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import {
   generateAuditPackage,
@@ -16,6 +17,8 @@ export interface AssembleOptions {
   entityId: string
   periodStart?: Date | null
   periodEnd?: Date | null
+  /** Scope the package's records to one domain, as a domain-scoped share displays. */
+  domain?: DataDomain | null
   /** When set, an AuditPackageLog row is written with the package's integrity hash. */
   logRequestedById?: string
 }
@@ -40,7 +43,7 @@ export interface AssembledPackage {
 }
 
 export async function assembleAuditPackage(opts: AssembleOptions): Promise<AssembledPackage> {
-  const { entityId, periodStart, periodEnd } = opts
+  const { entityId, periodStart, periodEnd, domain } = opts
 
   const periodFilter = {
     ...(periodStart ? { periodStart: { gte: periodStart } } : {}),
@@ -50,7 +53,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
   const [entity, records, auditEntries, allCrossValidations, verifiedAssignment] = await Promise.all([
     prisma.entity.findUniqueOrThrow({ where: { id: entityId }, select: { legalName: true } }),
     prisma.dataRecord.findMany({
-      where: { entityId, isActive: true, ...periodFilter },
+      where: { entityId, isActive: true, ...periodFilter, ...(domain ? { domain } : {}) },
       include: { document: { select: { id: true, fileName: true, documentType: true, submittedAt: true } } },
       orderBy: { submittedAt: 'asc' },
     }),

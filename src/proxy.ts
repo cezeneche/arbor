@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
 import { isPublicPath } from '@/lib/public-paths'
 import { hasSignedInUser } from '@/lib/session-presence'
+import { unauthenticatedAction } from '@/lib/unauthenticated-response'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -25,6 +26,9 @@ export default auth((req) => {
   const isPublic = isPublicPath(req.nextUrl.pathname)
 
   if (!isAuthed && !isPublic) {
+    if (unauthenticatedAction(req.nextUrl.pathname) === 'json-401') {
+      return NextResponse.json({ error: 'Unauthorised', code: 'AUTH_REQUIRED' }, { status: 401 })
+    }
     return redirectTo(req, '/login')
   }
 
