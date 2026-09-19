@@ -18,17 +18,8 @@ Usage: check-pytest-report.py report.xml
 import sys
 import xml.etree.ElementTree as ET
 
-KNOWN_FAILURES = {
-    # Need cbam_cpr_claims / cbam_qualifying_schemes, which only the second
-    # Nucleos migration lineage creates. Blocked on confirming which lineage
-    # production has (docs/INTEGRATION-ROLLOUT.md, "Two migration lineages").
-    "api.tests.test_full_pipeline.TestCPRClaim::test_cpr_claim_persisted_and_readable_via_api",
-    "tests.test_e2e_workflows::test_aluminium_importer_cpr_claim_uk_jurisdiction",
-    # Calculation-behaviour questions nucleos/CLAUDE.md rule 5 says to flag, not
-    # change during integration. Owner decision recorded in INTEGRATION-ROLLOUT.md.
-    "api.tests.test_full_pipeline.TestHappyPathSteelActual::test_full_pipeline_via_api",
-    "api.tests.test_full_pipeline.TestValidationFailure::test_incomplete_case_blocks_hmrc_return_via_api",
-}
+# Empty. Add an entry only with the open decision that owns it.
+KNOWN_FAILURES: set[str] = set()
 
 ALLOWED_SKIPS = {
     # Live-model test: needs ANTHROPIC_API_KEY, which CI does not hold. Reported

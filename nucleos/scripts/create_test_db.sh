@@ -12,25 +12,15 @@
 #   TEST_DATABASE_URL="postgresql+psycopg2://${PGUSER:-postgres}@${PGHOST:-127.0.0.1}:${PGPORT:-5432}/${PGDATABASE:-nucleos_test}" \
 #     pytest
 #
-# MIGRATION SETS — read this before changing the order below.
+# MIGRATION SETS
 #
-# The repo carries two overlapping sets and they do not compose:
-#
-#   supabase/migration.sql + db/migrations/     the base schema. Creates
-#       cbam.audit_log, public.current_tenant_id() and the RLS policies the
-#       isolation suite asserts on. Has no cbam_cpr_claims.
-#
-#   api/db/migrations/001-015                   a separate lineage. Adds
-#       cpr_claims, registration, supplier tokens and verification fields, but
-#       its 001 conflicts with the base schema and its later files assume
-#       helpers the base schema provides.
-#
-# This script uses the first, because that is the one the RLS suite passes
-# against. A case built this way cannot record a CPR claim, so
-# TestCPRClaim::test_cpr_claim_persisted_and_readable_via_api fails here.
-# Reconciling the two sets is a decision about which lineage is production's,
-# and it needs someone who knows which one Supabase actually has. Do not guess:
-# picking wrong silently changes what the RLS policies are.
+# The base lineage — supabase/migration.sql + db/migrations/ — is canonical.
+# It is what the RLS suite passes against and what a new Nucleos database is
+# built from. db/migrations/008 and 009 carry across everything from the older
+# second lineage (api/db/migrations/, not applied) that the application writes
+# to: CPR tables, case jurisdiction, consignment and verification fields,
+# registration. The production database the second lineage may have described
+# no longer exists (September 2026), so there was nothing to reconcile against.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
