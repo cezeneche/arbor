@@ -1,0 +1,8 @@
+supplier page public: true
+supplier submission public: false
+Estimated electricity: extraction tier B confirmation tier A
+OTHER document: extraction tier B confirmation tier A
+A reads B case via actual route with mocked downstream: {"status":200,"data":{"id":"case-B","owner":"entity-B","importer_name":"Private B"}}
+Unlinked case ownership decision: {"forbidden":false,"provenance":"DECLARED"}
+Manual record status 201 writer received 100 kwh expected canonical { value: 360, siUnit: 'mj' }
+Concurrent handoff external creations before link upsert: 2 [ 'case-1', 'case-2' ]

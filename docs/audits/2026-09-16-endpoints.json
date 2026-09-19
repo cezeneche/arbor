@@ -1,0 +1,2504 @@
+[
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/admin/accuracy/health",
+    "source": "src/app/api/admin/accuracy/health/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/admin/auditor-access",
+    "source": "src/app/api/admin/auditor-access/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/admin/benchmarks/compute",
+    "source": "src/app/api/admin/benchmarks/compute/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/admin/benchmarks/dp",
+    "source": "src/app/api/admin/benchmarks/dp/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/admin/calibration/health",
+    "source": "src/app/api/admin/calibration/health/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/admin/constraints/scan",
+    "source": "src/app/api/admin/constraints/scan/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/admin/definitions",
+    "source": "src/app/api/admin/definitions/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/admin/entity-links/[id]",
+    "source": "src/app/api/admin/entity-links/[id]/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/admin/entity-links",
+    "source": "src/app/api/admin/entity-links/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/admin/flow/anomalies",
+    "source": "src/app/api/admin/flow/anomalies/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/admin/graph/neighbourhood",
+    "source": "src/app/api/admin/graph/neighbourhood/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/admin/schema-inference",
+    "source": "src/app/api/admin/schema-inference/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/admin/verification-assignments",
+    "source": "src/app/api/admin/verification-assignments/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/admin/zk/statement",
+    "source": "src/app/api/admin/zk/statement/route.ts",
+    "guards": [
+      "requirePlatformAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "DELETE",
+    "path": "/api/api-keys/[id]",
+    "source": "src/app/api/api-keys/[id]/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/api-keys",
+    "source": "src/app/api/api-keys/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/api-keys",
+    "source": "src/app/api/api-keys/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/audit/[entityId]",
+    "source": "src/app/api/audit/[entityId]/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/audit/[entityId]/verify",
+    "source": "src/app/api/audit/[entityId]/verify/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/audit/verify-public",
+    "source": "src/app/api/audit/verify-public/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/audit/verify-public",
+    "source": "src/app/api/audit/verify-public/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/audit-package/[entityId]",
+    "source": "src/app/api/audit-package/[entityId]/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/audit-package/me",
+    "source": "src/app/api/audit-package/me/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/auth/2fa/complete",
+    "source": "src/app/api/auth/2fa/complete/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/auth/2fa/disable",
+    "source": "src/app/api/auth/2fa/disable/route.ts",
+    "guards": [
+      "requireAuth",
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/auth/2fa/enable",
+    "source": "src/app/api/auth/2fa/enable/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/auth/2fa/setup",
+    "source": "src/app/api/auth/2fa/setup/route.ts",
+    "guards": [
+      "requireAuth",
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/auth/[...nextauth]",
+    "source": "src/app/api/auth/[...nextauth]/route.ts",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "not exercised: framework/external flow"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/auth/[...nextauth]",
+    "source": "src/app/api/auth/[...nextauth]/route.ts",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "not exercised: framework/external flow"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/auth/forgot-password",
+    "source": "src/app/api/auth/forgot-password/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/auth/reset-password",
+    "source": "src/app/api/auth/reset-password/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 400,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/benchmarks",
+    "source": "src/app/api/benchmarks/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cbam/cases/[caseId]/calculate",
+    "source": "src/app/api/cbam/cases/[caseId]/calculate/route.ts",
+    "guards": [
+      "requirePageSession"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/cbam/cases/[caseId]/return",
+    "source": "src/app/api/cbam/cases/[caseId]/return/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cbam/cases/[caseId]",
+    "source": "src/app/api/cbam/cases/[caseId]/route.ts",
+    "guards": [
+      "requirePageSession"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/cbam/cpr-calculate",
+    "source": "src/app/api/cbam/cpr-calculate/route.ts",
+    "guards": [
+      "requirePageSession"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/cbam/cpr-claims",
+    "source": "src/app/api/cbam/cpr-claims/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cbam/default-value",
+    "source": "src/app/api/cbam/default-value/route.ts",
+    "guards": [
+      "requirePageSession"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/cbam/scope-check",
+    "source": "src/app/api/cbam/scope-check/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/cbam/supplier-token",
+    "source": "src/app/api/cbam/supplier-token/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cron/accuracy",
+    "source": "src/app/api/cron/accuracy/route.ts",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cron/calibrate",
+    "source": "src/app/api/cron/calibrate/route.ts",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cron/escalate-flags",
+    "source": "src/app/api/cron/escalate-flags/route.ts",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cron/keepalive",
+    "source": "src/app/api/cron/keepalive/route.ts",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cron/project-graph",
+    "source": "src/app/api/cron/project-graph/route.ts",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/cron/resolve-entities",
+    "source": "src/app/api/cron/resolve-entities/route.ts",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/definitions/agreements/[id]/respond",
+    "source": "src/app/api/definitions/agreements/[id]/respond/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/definitions/agreements",
+    "source": "src/app/api/definitions/agreements/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/definitions",
+    "source": "src/app/api/definitions/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/documents/[id]/confirm",
+    "source": "src/app/api/documents/[id]/confirm/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/documents/[id]",
+    "source": "src/app/api/documents/[id]/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "DELETE",
+    "path": "/api/documents/[id]",
+    "source": "src/app/api/documents/[id]/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/documents/upload",
+    "source": "src/app/api/documents/upload/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "PATCH",
+    "path": "/api/entities/[entityId]/benchmark-consent",
+    "source": "src/app/api/entities/[entityId]/benchmark-consent/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "PATCH",
+    "path": "/api/entity",
+    "source": "src/app/api/entity/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/flags/mine",
+    "source": "src/app/api/flags/mine/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "DELETE",
+    "path": "/api/grants/[id]",
+    "source": "src/app/api/grants/[id]/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/grants/revoke-all",
+    "source": "src/app/api/grants/revoke-all/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/grants",
+    "source": "src/app/api/grants/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/grants",
+    "source": "src/app/api/grants/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/inbound-email",
+    "source": "src/app/api/inbound-email/route.ts",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/inbound-requests/[id]/send",
+    "source": "src/app/api/inbound-requests/[id]/send/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/inngest",
+    "source": "src/app/api/inngest/route.ts",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "not exercised: framework/external flow"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/inngest",
+    "source": "src/app/api/inngest/route.ts",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "not exercised: framework/external flow"
+  },
+  {
+    "service": "Arbor",
+    "method": "PUT",
+    "path": "/api/inngest",
+    "source": "src/app/api/inngest/route.ts",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "not exercised: framework/external flow"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/institutional/enquiry",
+    "source": "src/app/api/institutional/enquiry/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 422,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/integrations/[provider]",
+    "source": "src/app/api/integrations/[provider]/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "DELETE",
+    "path": "/api/integrations/[provider]",
+    "source": "src/app/api/integrations/[provider]/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/integrations/[provider]/sync",
+    "source": "src/app/api/integrations/[provider]/sync/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/integrations",
+    "source": "src/app/api/integrations/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/legal/dpa",
+    "source": "src/app/api/legal/dpa/route.ts",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "not exercised: framework/external flow"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/query/export",
+    "source": "src/app/api/query/export/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/query/nl",
+    "source": "src/app/api/query/nl/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/query",
+    "source": "src/app/api/query/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest",
+      "requireAuth"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/questionnaires/[template]/prefill",
+    "source": "src/app/api/questionnaires/[template]/prefill/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/questionnaires",
+    "source": "src/app/api/questionnaires/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/records/[id]",
+    "source": "src/app/api/records/[id]/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/records/convert",
+    "source": "src/app/api/records/convert/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest",
+      "requireAuth"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/records/convert/units",
+    "source": "src/app/api/records/convert/units/route.ts",
+    "guards": [],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/records/manual",
+    "source": "src/app/api/records/manual/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/records",
+    "source": "src/app/api/records/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "PATCH",
+    "path": "/api/requests/[id]",
+    "source": "src/app/api/requests/[id]/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/requests/[id]/token",
+    "source": "src/app/api/requests/[id]/token/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/requests",
+    "source": "src/app/api/requests/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/requests",
+    "source": "src/app/api/requests/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/settings/benchmark-consent",
+    "source": "src/app/api/settings/benchmark-consent/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/settings/cbam-jurisdiction",
+    "source": "src/app/api/settings/cbam-jurisdiction/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "DELETE",
+    "path": "/api/shares/[id]",
+    "source": "src/app/api/shares/[id]/route.ts",
+    "guards": [
+      "requireWriteAccess"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/shares",
+    "source": "src/app/api/shares/route.ts",
+    "guards": [
+      "requireWriteAccess",
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/shares",
+    "source": "src/app/api/shares/route.ts",
+    "guards": [
+      "requireWriteAccess",
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/signup",
+    "source": "src/app/api/signup/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 400,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/stewards",
+    "source": "src/app/api/stewards/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "PUT",
+    "path": "/api/stewards",
+    "source": "src/app/api/stewards/route.ts",
+    "guards": [
+      "requireAuth",
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/submit/[token]",
+    "source": "src/app/api/submit/[token]/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 404,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/submit/[token]",
+    "source": "src/app/api/submit/[token]/route.ts",
+    "guards": [
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 404,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/supplier-form/[token]",
+    "source": "src/app/api/supplier-form/[token]/route.ts",
+    "guards": [],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "PATCH",
+    "path": "/api/user/profile",
+    "source": "src/app/api/user/profile/route.ts",
+    "guards": [
+      "requireAuth"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/v1/documents",
+    "source": "src/app/api/v1/documents/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/v1/ingest",
+    "source": "src/app/api/v1/ingest/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/v1/records/[recordId]/dispute",
+    "source": "src/app/api/v1/records/[recordId]/dispute/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest",
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/v1/records",
+    "source": "src/app/api/v1/records/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest",
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/v1/records",
+    "source": "src/app/api/v1/records/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest",
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/v1/supply-chain/[supplierId]/records",
+    "source": "src/app/api/v1/supply-chain/[supplierId]/records/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest",
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/v1/supply-chain/gaps",
+    "source": "src/app/api/v1/supply-chain/gaps/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest",
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/v1/supply-chain",
+    "source": "src/app/api/v1/supply-chain/route.ts",
+    "guards": [
+      "authenticateApiKeyRequest",
+      "checkRateLimit"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/verifier/assignments/[id]",
+    "source": "src/app/api/verifier/assignments/[id]/route.ts",
+    "guards": [
+      "requireVerifier"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "DELETE",
+    "path": "/api/webhooks/[id]",
+    "source": "src/app/api/webhooks/[id]/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/webhooks",
+    "source": "src/app/api/webhooks/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/webhooks",
+    "source": "src/app/api/webhooks/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 307,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/workos/authorize",
+    "source": "src/app/api/workos/authorize/route.ts",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "not exercised: framework/external flow"
+  },
+  {
+    "service": "Arbor",
+    "method": "GET",
+    "path": "/api/workos/callback",
+    "source": "src/app/api/workos/callback/route.ts",
+    "guards": [
+      "authenticateWithCode"
+    ],
+    "unauthenticated_status": null,
+    "note": "not exercised: framework/external flow"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/workos/organization",
+    "source": "src/app/api/workos/organization/route.ts",
+    "guards": [
+      "requireAdmin"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Arbor",
+    "method": "POST",
+    "path": "/api/workos/scim",
+    "source": "src/app/api/workos/scim/route.ts",
+    "guards": [
+      "verifyWorkosSignature"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/openapi.json",
+    "source": "FastAPI framework route",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/docs",
+    "source": "FastAPI framework route",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/docs/oauth2-redirect",
+    "source": "FastAPI framework route",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/redoc",
+    "source": "FastAPI framework route",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/health/deep",
+    "source": "nucleos/api/app/core/health.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/health",
+    "source": "nucleos/api/ledger_app/api/health.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/ready",
+    "source": "nucleos/api/ledger_app/api/health.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/health/ready",
+    "source": "nucleos/api/ledger_app/api/health.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/health",
+    "source": "nucleos/api/ledger_app/api/health.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/ready",
+    "source": "nucleos/api/ledger_app/api/health.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/health/ready",
+    "source": "nucleos/api/ledger_app/api/health.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/auth/token",
+    "source": "nucleos/api/ledger_app/api/auth.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/auth/supabase",
+    "source": "nucleos/api/ledger_app/api/auth.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/auth/context",
+    "source": "nucleos/api/ledger_app/api/auth.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/auth/scope-check",
+    "source": "nucleos/api/ledger_app/api/auth.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/db-check",
+    "source": "nucleos/api/ledger_app/api/db_check.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/storage-check",
+    "source": "nucleos/api/ledger_app/api/storage_check.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/storage-test-upload",
+    "source": "nucleos/api/ledger_app/api/storage_check.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases",
+    "source": "nucleos/api/ledger_app/api/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cases",
+    "source": "nucleos/api/ledger_app/api/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cases/{case_id}",
+    "source": "nucleos/api/ledger_app/api/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/internal/cbam/extract",
+    "source": "nucleos/api/ledger_app/api/cbam_extraction.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/internal/calculate",
+    "source": "nucleos/api/ledger_app/api/cbam_calculate.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/extract",
+    "source": "nucleos/api/ledger_app/api/extract.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/calculate",
+    "source": "nucleos/api/ledger_app/api/calculate.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cases/{case_id}/bundle",
+    "source": "nucleos/api/ledger_app/api/bundle.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cases/{case_id}/gaps",
+    "source": "nucleos/api/ledger_app/api/gaps.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/resolve-conflict",
+    "source": "nucleos/api/ledger_app/api/resolve.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cases/{case_id}/report-package",
+    "source": "nucleos/api/ledger_app/api/report_package.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/scope-check",
+    "source": "nucleos/api/ledger_app/api/cbam/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/carbon-pricing-schemes",
+    "source": "nucleos/api/ledger_app/api/cbam/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cases",
+    "source": "nucleos/api/ledger_app/api/cbam/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cases/{case_id}",
+    "source": "nucleos/api/ledger_app/api/cbam/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "PATCH",
+    "path": "/api/cbam/cases/{case_id}",
+    "source": "nucleos/api/ledger_app/api/cbam/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "DELETE",
+    "path": "/api/cbam/cases/{case_id}",
+    "source": "nucleos/api/ledger_app/api/cbam/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cases",
+    "source": "nucleos/api/ledger_app/api/cbam/cases.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/classify",
+    "source": "nucleos/api/ledger_app/api/cbam/classify.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cases/{case_id}/goods-lines/{line_id}/reclassify",
+    "source": "nucleos/api/ledger_app/api/cbam/classify.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/drafts/from-parsed-invoice",
+    "source": "nucleos/api/ledger_app/api/cbam/drafts.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/shipments",
+    "source": "nucleos/api/ledger_app/api/cbam/emissions.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/goods-lines",
+    "source": "nucleos/api/ledger_app/api/cbam/emissions.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/emissions",
+    "source": "nucleos/api/ledger_app/api/cbam/emissions.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cases/{case_id}/summary",
+    "source": "nucleos/api/ledger_app/api/cbam/report.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cases/{case_id}/report-package",
+    "source": "nucleos/api/ledger_app/api/cbam/report.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cases/{case_id}/liability",
+    "source": "nucleos/api/ledger_app/api/cbam/report.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/regulatory-tables",
+    "source": "nucleos/api/ledger_app/api/cbam/report.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cases/{case_id}/hmrc-return",
+    "source": "nucleos/api/ledger_app/api/cbam/report.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cases/{case_id}/eu-xml",
+    "source": "nucleos/api/ledger_app/api/cbam/report.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cases/{case_id}/explain",
+    "source": "nucleos/api/ledger_app/api/cbam/explain.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/reconcile",
+    "source": "nucleos/api/ledger_app/api/cbam/reconcile.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/suppliers/{supplier_eori}/see-history",
+    "source": "nucleos/api/ledger_app/api/cbam/reconcile.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/insights/kpis",
+    "source": "nucleos/api/ledger_app/api/cbam/insights.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/insights/supplier-comparison",
+    "source": "nucleos/api/ledger_app/api/cbam/insights.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/insights/country-intensity",
+    "source": "nucleos/api/ledger_app/api/cbam/insights.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/insights/sector-summary",
+    "source": "nucleos/api/ledger_app/api/cbam/insights.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cases/{case_id}/audit-log",
+    "source": "nucleos/api/ledger_app/api/audit.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/review/flag",
+    "source": "nucleos/api/ledger_app/api/review.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/review/clear",
+    "source": "nucleos/api/ledger_app/api/review.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/review/approve",
+    "source": "nucleos/api/ledger_app/api/review.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/review/reject",
+    "source": "nucleos/api/ledger_app/api/review.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cases/{case_id}/review",
+    "source": "nucleos/api/ledger_app/api/review.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/public/cbam-cn-lookup",
+    "source": "nucleos/api/app/api/public_tools.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/public/cbam-scope-check",
+    "source": "nucleos/api/app/api/public_tools.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/public/cbam-liability-estimate",
+    "source": "nucleos/api/app/api/public_tools.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/public/supplier-form/{token}",
+    "source": "nucleos/api/app/api/supplier_token.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/public/supplier-form/{token}",
+    "source": "nucleos/api/app/api/supplier_token.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cpr/qualifying-schemes",
+    "source": "nucleos/api/app/api/cpr.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cpr/exchange-rates",
+    "source": "nucleos/api/app/api/cpr.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cpr/calculate",
+    "source": "nucleos/api/app/api/cpr.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cpr/claims",
+    "source": "nucleos/api/app/api/cpr.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "_require_cbam_write",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cpr/claims/{goods_line_id}",
+    "source": "nucleos/api/app/api/cpr.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cpr/upload-verification/{goods_line_id}",
+    "source": "nucleos/api/app/api/cpr.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "_require_cbam_write",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/registration/status",
+    "source": "nucleos/api/app/api/registration.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "PUT",
+    "path": "/api/cbam/registration",
+    "source": "nucleos/api/app/api/registration.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "_require_write",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/registration/alerts",
+    "source": "nucleos/api/app/api/registration.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/registration/alerts/{alert_id}/acknowledge",
+    "source": "nucleos/api/app/api/registration.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "_require_write",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/goods-lines/{goods_line_id}/generate-supplier-request",
+    "source": "nucleos/api/app/api/supplier_outreach.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cases/{case_id}/generate-all-supplier-requests",
+    "source": "nucleos/api/app/api/supplier_outreach.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/goods-lines/{goods_line_id}/supplier-token",
+    "source": "nucleos/api/app/api/supplier_token.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/goods-lines/{goods_line_id}/request-verification",
+    "source": "nucleos/api/app/api/verification.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "_require_write",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/goods-lines/{goods_line_id}/upload-verification",
+    "source": "nucleos/api/app/api/verification.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "_require_write",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/goods-lines/{goods_line_id}/verify",
+    "source": "nucleos/api/app/api/verification.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "_require_write",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/goods-lines/{goods_line_id}/reject-verification",
+    "source": "nucleos/api/app/api/verification.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "_require_write",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/api/cbam/cases/{case_id}/verification-status",
+    "source": "nucleos/api/app/api/verification.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cbam/cases/{case_id}/compliance-pack",
+    "source": "nucleos/api/app/api/cbam_compliance.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/narrative/pipeline",
+    "source": "nucleos/api/app/api/narrative_pipeline.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "POST",
+    "path": "/api/cases/{case_id}/narrative/pipeline/async",
+    "source": "nucleos/api/app/api/narrative_pipeline.py",
+    "guards": [
+      "<fastapi.security.http.HTTPBearer object at 0x10a0d1b50>",
+      "_dependency",
+      "get_auth_context"
+    ],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/tools/cbam-checker",
+    "source": "nucleos/api/main.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Nucleos",
+    "method": "GET",
+    "path": "/",
+    "source": "nucleos/api/main.py",
+    "guards": [],
+    "unauthenticated_status": null,
+    "note": "Not exercised; public route"
+  },
+  {
+    "service": "Brain",
+    "method": "GET",
+    "path": "/openapi.json",
+    "source": "FastAPI framework route",
+    "guards": [],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "GET",
+    "path": "/docs",
+    "source": "FastAPI framework route",
+    "guards": [],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "GET",
+    "path": "/docs/oauth2-redirect",
+    "source": "FastAPI framework route",
+    "guards": [],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "GET",
+    "path": "/redoc",
+    "source": "FastAPI framework route",
+    "guards": [],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "GET",
+    "path": "/health",
+    "source": "brain/app/main.py",
+    "guards": [],
+    "unauthenticated_status": 200,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "POST",
+    "path": "/calibration/fit",
+    "source": "brain/app/main.py",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "POST",
+    "path": "/fusion/fields",
+    "source": "brain/app/main.py",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "POST",
+    "path": "/resolution/score",
+    "source": "brain/app/main.py",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "POST",
+    "path": "/infotheory/schema",
+    "source": "brain/app/main.py",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "POST",
+    "path": "/constraints/check",
+    "source": "brain/app/main.py",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "POST",
+    "path": "/flow/check",
+    "source": "brain/app/main.py",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Brain",
+    "method": "POST",
+    "path": "/privacy/benchmark",
+    "source": "brain/app/main.py",
+    "guards": [],
+    "unauthenticated_status": 401,
+    "note": "Unauthenticated request only; business success unverified"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "GET",
+    "path": "/api-proxy/ledger/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/ledger/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "POST",
+    "path": "/api-proxy/ledger/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/ledger/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "PUT",
+    "path": "/api-proxy/ledger/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/ledger/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "PATCH",
+    "path": "/api-proxy/ledger/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/ledger/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "DELETE",
+    "path": "/api-proxy/ledger/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/ledger/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "GET",
+    "path": "/api-proxy/narrative/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/narrative/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "POST",
+    "path": "/api-proxy/narrative/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/narrative/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "PUT",
+    "path": "/api-proxy/narrative/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/narrative/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "PATCH",
+    "path": "/api-proxy/narrative/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/narrative/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  },
+  {
+    "service": "Legacy Nucleos web",
+    "method": "DELETE",
+    "path": "/api-proxy/narrative/[...path]",
+    "source": "nucleos/web/src/app/api-proxy/narrative/[...path]/route.ts",
+    "guards": [
+      "upstream Bearer auth"
+    ],
+    "unauthenticated_status": null,
+    "note": "Static inspection only; app-specific dependencies not installed"
+  }
+]
