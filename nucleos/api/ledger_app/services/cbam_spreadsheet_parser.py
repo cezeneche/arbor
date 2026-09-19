@@ -45,7 +45,7 @@ from typing import Any
 _D = Decimal
 _ZERO = _D("0")
 
-# ── Column name normalisation ─────────────────────────────────────────────────
+# Column name normalisation
 
 _NORM_RE = re.compile(r"[\s_\-\.]+")
 
@@ -235,7 +235,7 @@ def _parse_rows(headers: list[str], rows: list[list[str]]) -> dict[str, Any]:
     }
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def parse_csv(data: bytes, encoding: str = "utf-8") -> dict[str, Any]:
     """Parse a CSV file into the standard extractor output dict.

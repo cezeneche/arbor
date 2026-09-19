@@ -126,7 +126,7 @@ def validate_installation_id(
     missing: list[str] = []
     warnings: list[str] = []
 
-    # ── 1. Presence check (blocking) ─────────────────────────────────────────
+    # 1. Presence check (blocking)
     if not installation_id or not str(installation_id).strip():
         missing.append(
             f"{prefix}installation_id_required_for_actual_method — "
@@ -139,7 +139,7 @@ def validate_installation_id(
 
     id_str = str(installation_id).strip()
 
-    # ── 2. Format check (warning) ─────────────────────────────────────────────
+    # 2. Format check (warning)
     if not INSTALLATION_ID_RE.match(id_str):
         warnings.append(
             f"{prefix}installation_id_format_suspect:{id_str!r} — "
@@ -148,7 +148,7 @@ def validate_installation_id(
             f"(DG TAXUD) per EU 2023/956 Art. 10"
         )
 
-    # ── 3. Allowlist check (warning) ──────────────────────────────────────────
+    # 3. Allowlist check (warning)
     effective_allowlist = allowlist if allowlist is not None else _load_allowlist()
     if effective_allowlist and id_str not in effective_allowlist:
         warnings.append(
@@ -157,11 +157,11 @@ def validate_installation_id(
             f"confirm registration in EU CBAM Transitional Registry (DG TAXUD)"
         )
 
-    # ── 4. Live registry lookup ───────────────────────────────────────────────
+    # 4. Live registry lookup
     registry_url = (os.getenv("CBAM_INSTALLATION_REGISTRY_URL") or "").strip()
 
     if registry_url:
-        # ── 4a. Custom / DG TAXUD CBAM Transitional Registry ─────────────────
+        # 4a. Custom / DG TAXUD CBAM Transitional Registry
         # Caller has configured a specific registry URL (e.g. the authenticated
         # DG TAXUD endpoint).  Use a simple status-code check as before.
         try:
@@ -185,7 +185,7 @@ def validate_installation_id(
             _logger.warning("installation_registry_unreachable: %s", exc)
 
     else:
-        # ── 4b. EEA EUTL public API (default) ────────────────────────────────
+        # 4b. EEA EUTL public API (default)
         # When no custom registry URL is configured, fall back to the EEA EU
         # Transaction Log public REST API (https://eutl.eea.europa.eu/api/v1).
         # Returns None on network errors → gracefully skip to avoid false

@@ -6,7 +6,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// ── NEXTAUTH TABLES ───────────────────────────────────────────────────────────
+// NEXTAUTH TABLES
 
 model Account {
   id                String  @id @default(cuid())
@@ -42,7 +42,7 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ── ENTITY ────────────────────────────────────────────────────────────────────
+// ENTITY
 
 enum PlanTier {
   PILOT
@@ -72,27 +72,27 @@ enum EntityType {
 }
 
 model Entity {
-  id                        String     @id @default(cuid())
+  id                        String           @id @default(cuid())
   legalName                 String
   registrationNumber        String?
   country                   String
   sector                    String
-  entityType                EntityType @default(SUPPLIER)
+  entityType                EntityType       @default(SUPPLIER)
   // Pricing tier driving usage limits (src/lib/plan-limits.ts). PILOT is the
   // uncapped demo/pilot default; assignment to a paid tier is an operator
   // action until billing exists.
-  planTier                  PlanTier   @default(PILOT)
+  planTier                  PlanTier         @default(PILOT)
   // UK-first: an entity that has never been asked files with HMRC. The previous
   // behaviour was a hardcoded 'EU' in the extraction pipeline, which put every
   // UK importer under the wrong regime with no way to see or change it.
   cbamJurisdiction          CbamJurisdiction @default(UK)
-  allowBenchmarkAggregation Boolean    @default(false)
-  // Gap 8.4 — unique token for the entity's email-to-upload address.
-  uploadEmailToken          String?    @unique
-  // Gap 10 — WorkOS SSO organisation binding.
-  workosOrganisationId      String?    @unique
-  createdAt                 DateTime   @default(now())
-  updatedAt                 DateTime   @updatedAt
+  allowBenchmarkAggregation Boolean          @default(false)
+  // Unique token for the entity's email-to-upload address.
+  uploadEmailToken          String?          @unique
+  // WorkOS SSO organisation binding.
+  workosOrganisationId      String?          @unique
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
 
   users                   User[]
   documents               Document[]
@@ -122,44 +122,44 @@ model Entity {
   ingestOperations        IngestOperation[]
 }
 
-// ── USER ──────────────────────────────────────────────────────────────────────
+// USER
 
 model User {
-  id               String   @id @default(cuid())
-  email            String   @unique
-  name             String
-  passwordHash     String?
-  role             UserRole @default(CONTRIBUTOR)
+  id                       String    @id @default(cuid())
+  email                    String    @unique
+  name                     String
+  passwordHash             String?
+  role                     UserRole  @default(CONTRIBUTOR)
   // Nullable for platform-level roles (VERIFIER, AUDITOR) that belong to no entity.
-  entityId         String?
-  entity           Entity?  @relation(fields: [entityId], references: [id])
-  createdAt        DateTime @default(now())
-  twoFactorSecret  String? // AES-256-GCM encrypted TOTP secret (the ACTIVE one)
+  entityId                 String?
+  entity                   Entity?   @relation(fields: [entityId], references: [id])
+  createdAt                DateTime  @default(now())
+  twoFactorSecret          String? // AES-256-GCM encrypted TOTP secret (the ACTIVE one)
   // A secret from an in-progress enrolment, not yet confirmed by a valid code.
   // Kept separate from twoFactorSecret so re-running setup on an account that
   // already has 2FA cannot brick the authenticator that is currently working —
   // the swap happens only when /2fa/enable verifies a code from the new device.
-  twoFactorPendingSecret String?
-  twoFactorEnabled Boolean  @default(false)
+  twoFactorPendingSecret   String?
+  twoFactorEnabled         Boolean   @default(false)
   // When the user proved they control this address. Null until then; not a
   // sign-in gate (see src/lib/auth/email-verification.ts).
-  emailVerifiedAt  DateTime?
+  emailVerifiedAt          DateTime?
   // Single-use proof (SHA-256 hash) that a 2FA challenge was passed server-side.
   // The jwt callback consumes this to upgrade a pending2fa session — the client
   // can no longer self-assert verification. Nulled on consume; short-lived.
   twoFactorVerifiedNonce   String?
   twoFactorVerifiedExpires DateTime?
-  tokenVersion     Int      @default(0)
-  // Gap 10 — set false by SCIM deprovision; all auth checks require true.
-  isActive         Boolean  @default(true)
+  tokenVersion             Int       @default(0)
+  // Set false by SCIM deprovision; all auth checks require true.
+  isActive                 Boolean   @default(true)
   // Platform operator (Arbor staff). Gates cross-tenant /api/admin surfaces.
   // Distinct from the tenant-level ADMIN role, which only governs a user's own
   // entity. Never set by self-service — granted out of band. Default false.
-  isPlatformAdmin  Boolean  @default(false)
+  isPlatformAdmin          Boolean   @default(false)
   // Single-use SSO bridge nonce (SHA-256 hash) minted by the WorkOS callback and
   // consumed once when completing sign-in — makes the login token non-replayable.
-  ssoNonceHash     String?
-  ssoNonceExpires  DateTime?
+  ssoNonceHash             String?
+  ssoNonceExpires          DateTime?
 
   accounts                Account[]
   sessions                Session[]
@@ -178,7 +178,7 @@ model User {
   agreementsAnswered      DefinitionAgreement[]    @relation("AgreementResponder")
 }
 
-// ── TOTP RECOVERY CODES ───────────────────────────────────────────────────────
+// TOTP RECOVERY CODES
 
 model TotpRecoveryCode {
   id        String    @id @default(cuid())
@@ -191,7 +191,7 @@ model TotpRecoveryCode {
   @@index([userId])
 }
 
-// ── PASSWORD RESET ────────────────────────────────────────────────────────────
+// PASSWORD RESET
 
 model EmailVerificationToken {
   id        String    @id @default(cuid())
@@ -226,7 +226,7 @@ enum UserRole {
   AUDITOR
 }
 
-// ── DOCUMENT ──────────────────────────────────────────────────────────────────
+// DOCUMENT
 
 model Document {
   id            String         @id @default(cuid())
@@ -288,36 +288,36 @@ enum IngestOperationStatus {
 }
 
 model CbamCaseLink {
-  id         String   @id @default(cuid())
-  entityId   String
-  entity     Entity   @relation(fields: [entityId], references: [id])
+  id               String            @id @default(cuid())
+  entityId         String
+  entity           Entity            @relation(fields: [entityId], references: [id])
   // One case per confirmed document. The unique constraint is what stops a
   // retried confirmation opening a second case for one real-world declaration.
-  documentId String   @unique
-  document   Document @relation(fields: [documentId], references: [id])
+  documentId       String            @unique
+  document         Document          @relation(fields: [documentId], references: [id])
   // Null when the case could not be created at all.
-  nucleosCaseId String?
-  jurisdiction  CbamJurisdiction
-  status        CbamHandoffStatus @default(CREATED)
+  nucleosCaseId    String?
+  jurisdiction     CbamJurisdiction
+  status           CbamHandoffStatus @default(CREATED)
   // Plain English, one line per thing that did not land. Never summarised.
-  problems      String[]
-  goodsLineCount Int      @default(0)
+  problems         String[]
+  goodsLineCount   Int               @default(0)
   // What the handoff was asked to do, written in the confirmation's own
   // transaction: the reviewer's confirmed values, the regime and the period.
   // It is what lets a failed or interrupted handoff be resumed later without
   // the original request — the non-measurement values in it (EORI, CN codes)
   // are not stored anywhere else.
-  handoffInput   Json?
+  handoffInput     Json?
   // Which Nucleos rows already exist for this case: the case, the shipment,
   // and each goods line and its emissions figure. Written after every step, so
   // a resume adds only what is missing and never re-posts what landed.
-  progress       Json?
+  progress         Json?
   // Set while an attempt is running. A second attempt waits until this is
   // stale rather than racing the first into opening two cases.
   attemptStartedAt DateTime?
-  attempts       Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  attempts         Int               @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([entityId, createdAt])
   @@index([status, updatedAt])
@@ -380,7 +380,7 @@ enum DocumentStatus {
   WITHDRAWN
 }
 
-// ── EXTRACTION JOB ────────────────────────────────────────────────────────────
+// EXTRACTION JOB
 
 model ExtractionJob {
   id                 String           @id @default(cuid())
@@ -391,11 +391,11 @@ model ExtractionJob {
   completedAt        DateTime?
   errorMessage       String?          @db.Text
   rawOutput          Json?
-  // Gap 1 — Layer 1 multilingual + degraded-document metadata.
+  // Layer 1 multilingual + degraded-document metadata.
   detectedLanguage   String? // ISO 639-1 code, or 'unknown'
   imageQualityScore  Float? // 1 (unreadable) to 5 (clear); null for PDFs
   imageQualityIssues Json? // string[] of detected issues e.g. ["blurry","skewed"]
-  // Core 3 — best-guess free-text document class for GENERIC (schema-on-read) docs.
+  // Best-guess free-text document class for GENERIC (schema-on-read) docs.
   documentClass      String?
   // MLOps guardrail — the extractor (model id + prompt version) that produced
   // these fields, so a later accuracy regression is attributable to the exact
@@ -418,7 +418,7 @@ enum ExtractionStatus {
   FAILED
 }
 
-// ── EXTRACTED FIELD ───────────────────────────────────────────────────────────
+// EXTRACTED FIELD
 
 model ExtractedField {
   id              String             @id @default(cuid())
@@ -444,7 +444,7 @@ enum FieldAdmissibility {
   OPTIONAL
 }
 
-// ── DATA RECORD ───────────────────────────────────────────────────────────────
+// DATA RECORD
 
 model DataRecord {
   id                  String           @id @default(cuid())
@@ -462,7 +462,7 @@ model DataRecord {
   periodEnd           DateTime
   sourceText          String?          @db.Text
   confidenceScore     Float            @default(1.0)
-  // Upgrade 1 — calibrated posterior sidecar: JSONB ConfidencePosterior
+  // Calibrated posterior sidecar: JSONB ConfidencePosterior
   // { posteriorMean, ciLow, ciHigh, ciMass, method, priorClass, rawScore }.
   // Null until the calibration pipeline populates it; confidenceScore stays the raw scalar.
   confidencePosterior Json?
@@ -476,7 +476,7 @@ model DataRecord {
   supersededByThis    DataRecord[]     @relation("Supersession")
   isActive            Boolean          @default(true)
   auditHash           String
-  // Gap 2 — batch/mill records go stale after this date (null for non-batch records).
+  // Batch/mill records go stale after this date (null for non-batch records).
   staleAfterDate      DateTime?
 
   validationFlags ValidationFlag[]
@@ -490,7 +490,7 @@ model DataRecord {
   @@index([entityId, staleAfterDate])
 }
 
-// ── RECORD ACCESS LOG (Gap 5 — who viewed which record, when, how) ────────────
+// RECORD ACCESS LOG — who viewed which record, when, how
 
 model RecordAccessLog {
   id              String       @id @default(cuid())
@@ -533,7 +533,7 @@ enum ExtractionMethod {
   SYSTEM_INTEGRATION
 }
 
-// ── GROUND TRUTH LABEL (Upgrade 1 — calibration training signal) ──────────────
+// GROUND TRUTH LABEL — calibration training signal
 // Every human review decision produces one labelled datapoint: the model's
 // confidence at extraction time paired with whether the extracted value was
 // actually correct (survived review unchanged). POST /calibration/fit consumes
@@ -547,23 +547,23 @@ enum GroundTruthSource {
 }
 
 model GroundTruthLabel {
-  id                     String            @id @default(cuid())
-  entityId               String
-  entity                 Entity            @relation(fields: [entityId], references: [id])
-  documentId             String?
-  document               Document?         @relation(fields: [documentId], references: [id])
+  id                      String            @id @default(cuid())
+  entityId                String
+  entity                  Entity            @relation(fields: [entityId], references: [id])
+  documentId              String?
+  document                Document?         @relation(fields: [documentId], references: [id])
   // Loose reference — a corrected-and-discarded field never becomes a DataRecord.
-  recordId               String?
-  fieldName              String
+  recordId                String?
+  fieldName               String
   // Typed DocumentType value, or the schema-on-read class for GENERIC docs.
-  documentClass          String
-  domain                 DataDomain
-  extractedValue         String?           @db.Text
-  confirmedValue         String?           @db.Text
-  wasCorrect             Boolean
-  confidenceAtExtraction Float
-  source                 GroundTruthSource
-  // Upgrade 2 A/B instrumentation — the expected information gain the review UI
+  documentClass           String
+  domain                  DataDomain
+  extractedValue          String?           @db.Text
+  confirmedValue          String?           @db.Text
+  wasCorrect              Boolean
+  confidenceAtExtraction  Float
+  source                  GroundTruthSource
+  // A/B instrumentation — the expected information gain the review UI
   // ranked this field by, and its low-information verdict. Nullable: labels from
   // before this instrumentation (and any non-review source) have no ranking signal.
   expectedInformationGain Float?
@@ -572,7 +572,7 @@ model GroundTruthLabel {
   // this field. Lets the accuracy monitor slice correct-rate by extractor and
   // attribute a regression to a model/prompt change. Null for pre-stamping labels.
   extractorVersion        String?
-  createdAt              DateTime          @default(now())
+  createdAt               DateTime          @default(now())
 
   @@index([fieldName, documentClass])
   @@index([domain, createdAt])
@@ -580,7 +580,7 @@ model GroundTruthLabel {
   @@index([extractorVersion, createdAt])
 }
 
-// ── CALIBRATION METRICS (Upgrade 1 — measurement loop) ────────────────────────
+// CALIBRATION METRICS — measurement loop
 // Each offline calibration fit records one CalibrationRun plus a per-group
 // metric row. This is how the headline ECE / Brier are tracked over time and the
 // plan's kill signal (ECE < 5% for supplier identity, mass, emissions intensity)
@@ -614,7 +614,7 @@ model CalibrationGroupMetric {
   @@index([group, id])
 }
 
-// ── ACCURACY & DRIFT MONITOR (MLOps guardrail) ────────────────────────────────
+// ACCURACY & DRIFT MONITOR (MLOps guardrail)
 // Calibration ECE says whether confidence is honest; it says nothing about
 // whether extraction is CORRECT or whether the input mix has DRIFTED. Each drift
 // cron records one AccuracyRun plus a per-group metric row: recent correct-rate
@@ -654,7 +654,7 @@ model AccuracyGroupMetric {
   @@index([group, id])
 }
 
-// ── VALIDATION FLAG ───────────────────────────────────────────────────────────
+// VALIDATION FLAG
 
 model ValidationFlag {
   id           String     @id @default(cuid())
@@ -665,7 +665,7 @@ model ValidationFlag {
   severity     Severity
   resolvedAt   DateTime?
   resolvedNote String?
-  // ── Stewardship. A flag with no owner is nobody's job, which is how a CRITICAL
+  // Stewardship. A flag with no owner is nobody's job, which is how a CRITICAL
   // finding sits open for a quarter. Routed at raise time to the steward for the
   // record's domain, falling back to an entity admin (src/lib/stewardship/assign.ts).
   // Nullable: a tenant with neither is UNASSIGNED, and the workload summary shows
@@ -708,7 +708,7 @@ enum Severity {
   CRITICAL
 }
 
-// ── GOVERNED DATA DICTIONARY ──────────────────────────────────────────────────
+// GOVERNED DATA DICTIONARY
 // The agreed business definition of a field: what the number is, what is counted,
 // and what is deliberately left out. Versioned by effective date and NEVER edited
 // in place — the same discipline DataRecord supersession already applies, for the
@@ -754,7 +754,7 @@ enum AgreementStatus {
   WITHDRAWN
 }
 
-// ── BILATERAL DEFINITION AGREEMENT ────────────────────────────────────────────
+// BILATERAL DEFINITION AGREEMENT
 // A published definition is Arbor's declaration. An agreed one is a fact about
 // two organisations: this supplier and this buyer are both on record that they
 // mean the same thing by a field. Only the second makes a number safely
@@ -765,24 +765,24 @@ enum AgreementStatus {
 // SUPERSEDED so the gap is visible rather than papered over. Either side may
 // propose; only the other side may answer (src/lib/definitions/agreement.ts).
 model DefinitionAgreement {
-  id                String          @id @default(cuid())
-  fieldDefinitionId String
-  fieldDefinition   FieldDefinition @relation(fields: [fieldDefinitionId], references: [id])
+  id                 String          @id @default(cuid())
+  fieldDefinitionId  String
+  fieldDefinition    FieldDefinition @relation(fields: [fieldDefinitionId], references: [id])
   // Denormalised so ordering by version needs no join on the read path.
-  definitionVersion Int
-  supplierEntityId  String
-  supplierEntity    Entity          @relation("AgreementSupplier", fields: [supplierEntityId], references: [id])
-  buyerEntityId     String
-  buyerEntity       Entity          @relation("AgreementBuyer", fields: [buyerEntityId], references: [id])
-  status            AgreementStatus @default(PROPOSED)
+  definitionVersion  Int
+  supplierEntityId   String
+  supplierEntity     Entity          @relation("AgreementSupplier", fields: [supplierEntityId], references: [id])
+  buyerEntityId      String
+  buyerEntity        Entity          @relation("AgreementBuyer", fields: [buyerEntityId], references: [id])
+  status             AgreementStatus @default(PROPOSED)
   proposedByEntityId String
-  proposedById      String
-  proposedBy        User            @relation("AgreementProposer", fields: [proposedById], references: [id])
-  proposedAt        DateTime        @default(now())
-  respondedById     String?
-  respondedBy       User?           @relation("AgreementResponder", fields: [respondedById], references: [id])
-  respondedAt       DateTime?
-  note              String?         @db.Text
+  proposedById       String
+  proposedBy         User            @relation("AgreementProposer", fields: [proposedById], references: [id])
+  proposedAt         DateTime        @default(now())
+  respondedById      String?
+  respondedBy        User?           @relation("AgreementResponder", fields: [respondedById], references: [id])
+  respondedAt        DateTime?
+  note               String?         @db.Text
 
   // Explicit map: the auto-derived name would be 72 chars, past Postgres's 63-char
   // identifier limit, so it is pinned to match the migration exactly.
@@ -791,7 +791,7 @@ model DefinitionAgreement {
   @@index([buyerEntityId, status])
 }
 
-// ── DOMAIN STEWARD ────────────────────────────────────────────────────────────
+// DOMAIN STEWARD
 // The named person accountable for the quality of one domain's data at one
 // entity. Distinct from authorship: submittedById says who entered a record,
 // which the store has always known. This says who owns it being right — the
@@ -811,7 +811,7 @@ model DomainSteward {
   @@index([userId])
 }
 
-// ── AUDIT ENTRY ───────────────────────────────────────────────────────────────
+// AUDIT ENTRY
 
 model AuditEntry {
   id           String   @id @default(cuid())
@@ -838,7 +838,7 @@ model AuditEntry {
   @@index([recordId])
 }
 
-// ── FOREIGN CHAIN SEAL (Phase 4 — the Nucleos chain's final state) ───────────
+// FOREIGN CHAIN SEAL — the Nucleos chain's final state
 // A chain that stopped accepting writes, recorded so that it stopping is itself
 // auditable.
 //
@@ -851,25 +851,25 @@ model AuditEntry {
 //
 // Not entity-scoped, because it is not a fact about any one entity.
 model ForeignChainSeal {
-  id             String   @id @default(cuid())
-  origin         String   @unique
-  algorithm      String
-  entryCount     Int
-  firstEventAt   DateTime?
-  lastEventAt    DateTime?
-  finalSignature String?
-  sealHash       String
-  sealedAt       DateTime
+  id                String    @id @default(cuid())
+  origin            String    @unique
+  algorithm         String
+  entryCount        Int
+  firstEventAt      DateTime?
+  lastEventAt       DateTime?
+  finalSignature    String?
+  sealHash          String
+  sealedAt          DateTime
   // False when the sealed chain's entries were deliberately left behind. Stored
   // rather than implied, so a reader can tell "nothing was imported" from
   // "nobody recorded whether anything was imported".
-  importedIntoArbor Boolean @default(false)
+  importedIntoArbor Boolean   @default(false)
   // Why this chain was sealed rather than imported, in plain English.
-  reason         String   @db.Text
-  recordedAt     DateTime @default(now())
+  reason            String    @db.Text
+  recordedAt        DateTime  @default(now())
 }
 
-// ── MERKLE ROOT (Upgrade 7 — Merkle-DAG audit structure) ──────────────────────
+// MERKLE ROOT — Merkle-DAG audit structure
 // A committed RFC 6962 root over the ordered per-record auditHash leaves for an
 // entity+period, persisted when an audit package is generated. Lets an external
 // verifier confirm a single record's inclusion offline (a log2(n) proof) and
@@ -892,12 +892,12 @@ model MerkleRoot {
   @@index([entityId, generatedAt])
 }
 
-// ── ENTITY LINK (Upgrade 5 — entity resolution) ───────────────────────────────
+// ENTITY LINK — entity resolution
 // A proposed "same real-world entity" edge between two Entity rows, produced by
 // the resolution job (blocking + lexical scoring). Non-destructive by design:
 // it NEVER mutates or merges the entities — records stay immutable and their
 // audit chains untouched. A human always reviews (status PENDING → CONFIRMED /
-// REJECTED); nothing auto-links. This edge is also the seed of Upgrade 4's graph.
+// REJECTED); nothing auto-links. This edge is also the seed of the property graph.
 enum EntityLinkStatus {
   PENDING
   CONFIRMED
@@ -909,30 +909,30 @@ enum EntityLinkRelation {
 }
 
 model EntityLink {
-  id        String             @id @default(cuid())
+  id                String             @id @default(cuid())
   // Ordered a<b by id so each unordered pair has exactly one row.
-  entityAId String
-  entityA   Entity             @relation("EntityLinkA", fields: [entityAId], references: [id])
-  entityBId String
-  entityB   Entity             @relation("EntityLinkB", fields: [entityBId], references: [id])
-  relation  EntityLinkRelation @default(SAME_AS)
-  similarity Float
+  entityAId         String
+  entityA           Entity             @relation("EntityLinkA", fields: [entityAId], references: [id])
+  entityBId         String
+  entityB           Entity             @relation("EntityLinkB", fields: [entityBId], references: [id])
+  relation          EntityLinkRelation @default(SAME_AS)
+  similarity        Float
   // The scorer's banding when proposed (match | review) — persisted for context.
   suggestedDecision String
   // Algorithm provenance, e.g. "lexical-baseline-v1".
-  method    String
-  status    EntityLinkStatus   @default(PENDING)
-  reviewedById String?
-  reviewedBy   User?           @relation(fields: [reviewedById], references: [id])
-  reviewedAt   DateTime?
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  method            String
+  status            EntityLinkStatus   @default(PENDING)
+  reviewedById      String?
+  reviewedBy        User?              @relation(fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@unique([entityAId, entityBId])
   @@index([status, createdAt])
 }
 
-// ── PROPERTY GRAPH (Upgrade 4) ────────────────────────────────────────────────
+// PROPERTY GRAPH
 // A derived graph projection of the relational store: entities, documents, and
 // records as nodes; who-submitted-what, which-document-yielded-which-record,
 // who-supplies-whom, and confirmed same-entity links as edges. Rebuilt off the
@@ -983,7 +983,7 @@ model GraphEdge {
   @@index([type])
 }
 
-// ── DATA REQUEST ──────────────────────────────────────────────────────────────
+// DATA REQUEST
 
 model DataRequest {
   id                    String        @id @default(cuid())
@@ -1019,7 +1019,7 @@ enum RequestStatus {
   CLOSED
 }
 
-// ── DATA ACCESS GRANT ─────────────────────────────────────────────────────────
+// DATA ACCESS GRANT
 
 model DataAccessGrant {
   id              String      @id @default(cuid())
@@ -1046,7 +1046,7 @@ model DataAccessGrant {
   @@index([grantorEntityId, isActive])
 }
 
-// ── NOTIFICATION ──────────────────────────────────────────────────────────────
+// NOTIFICATION
 
 model Notification {
   id        String           @id @default(cuid())
@@ -1079,7 +1079,7 @@ enum NotificationType {
   FLAG_OVERDUE // a flag passed its resolution deadline and was escalated
 }
 
-// ── SECTOR BENCHMARK ──────────────────────────────────────────────────────────
+// SECTOR BENCHMARK
 
 // A differentially-private release that has already been made.
 //
@@ -1092,7 +1092,9 @@ model DpBenchmarkRelease {
   id               String   @id @default(cuid())
   groupKey         String
   epsilon          Float
-  /** SHA-256 of the group's sorted values and bounds. */
+  /**
+   * SHA-256 of the group's sorted values and bounds.
+   */
   inputFingerprint String
   suppressed       Boolean
   n                Int
@@ -1127,7 +1129,7 @@ model SectorBenchmark {
   @@unique([sector, domain, fieldName, unit, year], map: "SectorBenchmark_sector_domain_field_unit_year_key")
 }
 
-// ── CROSS-VALIDATION RESULT ───────────────────────────────────────────────────
+// CROSS-VALIDATION RESULT
 
 model CrossValidationResult {
   id                 String    @id @default(cuid())
@@ -1156,7 +1158,7 @@ model CrossValidationResult {
   @@index([entityId, createdAt])
 }
 
-// ── API KEY ───────────────────────────────────────────────────────────────────
+// API KEY
 
 enum ApiKeyScope {
   READ
@@ -1164,28 +1166,28 @@ enum ApiKeyScope {
 }
 
 model ApiKey {
-  id        String    @id @default(cuid())
-  entityId  String
-  entity    Entity    @relation(fields: [entityId], references: [id])
-  keyPrefix String    @unique
-  keyHash   String    @unique
-  label     String
+  id          String      @id @default(cuid())
+  entityId    String
+  entity      Entity      @relation(fields: [entityId], references: [id])
+  keyPrefix   String      @unique
+  keyHash     String      @unique
+  label       String
   // Read-only vs read+write. Enforced on write endpoints. Default READ_WRITE keeps
   // existing keys fully capable; new keys can be minted read-only.
   scope       ApiKeyScope @default(READ_WRITE)
   // Optional hard expiry; null never expires.
   expiresAt   DateTime?
   // Optional source-IP allowlist; empty permits any IP, else exact match required.
-  ipAllowlist String[]  @default([])
-  lastUsed  DateTime?
-  createdAt DateTime  @default(now())
-  revokedAt DateTime?
-  isActive  Boolean   @default(true)
+  ipAllowlist String[]    @default([])
+  lastUsed    DateTime?
+  createdAt   DateTime    @default(now())
+  revokedAt   DateTime?
+  isActive    Boolean     @default(true)
 
   @@index([entityId, isActive])
 }
 
-// ── VERIFICATION ASSIGNMENT (Gap 3 — third-party verifier sign-off) ───────────
+// VERIFICATION ASSIGNMENT — third-party verifier sign-off
 
 model VerificationAssignment {
   id            String             @id @default(cuid())
@@ -1213,7 +1215,7 @@ enum VerificationStatus {
   REJECTED
 }
 
-// ── AUDIT PACKAGE LOG (Gap 4 — packageHash for public verification) ───────────
+// AUDIT PACKAGE LOG — packageHash for public verification
 
 model AuditPackageLog {
   id            String   @id @default(cuid())
@@ -1228,7 +1230,7 @@ model AuditPackageLog {
   @@index([entityId, packageHash])
 }
 
-// ── AUDITOR ACCESS (Gap 4 — scoped external auditor read access) ──────────────
+// AUDITOR ACCESS — scoped external auditor read access
 
 model AuditorAccess {
   id            String   @id @default(cuid())
@@ -1244,7 +1246,7 @@ model AuditorAccess {
   @@index([auditorUserId, entityId])
 }
 
-// ── WEBHOOK SUBSCRIPTION (Gap 6 — buyer-facing event delivery) ────────────────
+// WEBHOOK SUBSCRIPTION — buyer-facing event delivery
 
 model WebhookSubscription {
   id                 String    @id @default(cuid())
@@ -1269,7 +1271,7 @@ enum WebhookEventType {
   ACCESS_REVOKED
 }
 
-// ── INTEGRATION CREDENTIAL (Gap 9 — ERP / customs connectors) ─────────────────
+// INTEGRATION CREDENTIAL — ERP / customs connectors
 
 model IntegrationCredential {
   id                   String              @id @default(cuid())
@@ -1293,7 +1295,7 @@ enum IntegrationProvider {
   ORACLE
 }
 
-// ── SHARED EXPORT (Core 2 — signed public record share) ───────────────────────
+// SHARED EXPORT — signed public record share
 
 model SharedExport {
   id          String      @id @default(cuid())
@@ -1306,7 +1308,7 @@ model SharedExport {
   domain      DataDomain?
   periodStart DateTime?
   periodEnd   DateTime?
-  // Gap-4 audit-package integrity hash for the scope; verifiable via /api/audit/verify-public.
+  // Audit-package integrity hash for the scope; verifiable via /api/audit/verify-public.
   packageHash String
   // The records the share was issued with — exactly the set packageHash covers.
   // A share shows these, marking any since corrected. Empty for shares issued
@@ -1320,7 +1322,7 @@ model SharedExport {
   @@index([entityId, createdAt])
 }
 
-// ── INBOUND REQUEST (Core 5 — email-forward data request handler) ─────────────
+// INBOUND REQUEST — email-forward data request handler
 
 model InboundRequest {
   id           String               @id @default(cuid())
@@ -1344,7 +1346,7 @@ enum InboundRequestStatus {
   NEEDS_DATA
 }
 
-// ── INSTITUTIONAL ENQUIRY ────────────────────────────────────────────────────
+// INSTITUTIONAL ENQUIRY
 
 model InstitutionalEnquiry {
   id           String   @id @default(cuid())

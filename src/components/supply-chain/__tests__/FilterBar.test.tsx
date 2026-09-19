@@ -20,7 +20,7 @@ import {
 } from '../FilterBar'
 import type { FilterState } from '@/types/filters'
 
-// ── Pure utility tests (no DOM required) ──────────────────────────────────────
+// Pure utility tests (no DOM required)
 
 describe('quarterLabel', () => {
   it('formats a quarter value as Q-first display', () => {
@@ -215,7 +215,7 @@ describe('buildFilterTags', () => {
   })
 })
 
-// ── React component tests ─────────────────────────────────────────────────────
+// React component tests
 
 const COUNTRIES = ['Germany', 'France', 'Poland']
 

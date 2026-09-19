@@ -99,7 +99,7 @@ def _normalize_method(value: str | None) -> str | None:
     return None
 
 
-# ── Field validators ──────────────────────────────────────────────────────────
+# Field validators
 
 _INCOTERM_WHITELIST: frozenset[str] = frozenset(
     {"EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"}

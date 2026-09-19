@@ -28,7 +28,7 @@ import re
 from dataclasses import dataclass, field
 
 
-# ── MRN format constants ──────────────────────────────────────────────────────
+# MRN format constants
 
 MRN_LENGTH = 18
 
@@ -42,7 +42,7 @@ MRN_REGULATION_REF = (
 )
 
 
-# ── Result type ───────────────────────────────────────────────────────────────
+# Result type
 
 @dataclass(frozen=True)
 class MRNValidationResult:
@@ -73,7 +73,7 @@ class MRNValidationResult:
     regulation_ref: str = field(default=MRN_REGULATION_REF)
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def validate_mrn(entry_reference: str | None) -> MRNValidationResult:
     """Validate *entry_reference* against the EU 18-character MRN format.

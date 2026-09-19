@@ -34,7 +34,7 @@ _D = Decimal
 _ZERO = _D("0")
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# helpers
 
 def _load_cases_for_quarter(
     tenant_id: str,
@@ -234,7 +234,7 @@ def _result_to_dict(result: QuarterlyReconciliationResult) -> dict:
     }
 
 
-# ── Endpoints ──────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.get("/reconcile")
 async def reconcile_quarterly(

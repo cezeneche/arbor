@@ -56,7 +56,7 @@ class RecognisedScheme:
     notes: str = ""
 
 
-# ── Recognised schemes table (EU 2023/956 Art. 9) ────────────────────────────
+# Recognised schemes table (EU 2023/956 Art. 9)
 #
 # Countries whose ETS is *linked* to the EU ETS (Annex II: IS, LI, NO, CH)
 # are excluded from CBAM entirely and must NOT appear here.
@@ -83,7 +83,7 @@ _RECOGNISED_SCHEMES: dict[str, RecognisedScheme] = {
 }
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 
 def lookup_carbon_pricing_scheme(country_code: str | None) -> Optional[RecognisedScheme]:

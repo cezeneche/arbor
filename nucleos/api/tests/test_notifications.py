@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 
 
-# ── Mock factory ──────────────────────────────────────────────────────────────
+# Mock factory
 
 def _mock_client(status_code: int = 200, text: str = "ok") -> MagicMock:
     """Return a mock httpx.AsyncClient context-manager that records post() calls."""
@@ -36,7 +36,7 @@ def _mock_client(status_code: int = 200, text: str = "ok") -> MagicMock:
     return client
 
 
-# ── Flow 1: notify_review_required ───────────────────────────────────────────
+# Flow 1: notify_review_required
 
 class TestNotifyReviewRequired:
     """Slack internal-webhook notification for human_review_required."""
@@ -140,7 +140,7 @@ class TestNotifyReviewRequired:
                 )  # Must not raise
 
 
-# ── Flow 2: notify_report_ready ───────────────────────────────────────────────
+# Flow 2: notify_report_ready
 
 class TestNotifyReportReady:
     """Resend email notification when a CBAM compliance report is approved."""

@@ -153,13 +153,13 @@ def parse_cbam_xml_declaration(xml_bytes: bytes) -> dict[str, Any]:
     def _t(*path: str) -> str | None:
         return _find_text(root, ns, *path)
 
-    # ── Detect document type
+    # Detect document type
     local_tag = root.tag.split("}")[-1] if "}" in root.tag else root.tag
     is_quarterly = "quarterly" in local_tag.lower() or "declaration" in local_tag.lower()
 
     evidence: list[dict] = []
 
-    # ── Declarant / importer
+    # Declarant / importer
     eori = _t("declarant", "eori") or _t("authorisedDeclarant", "eori") or ""
     importer_name = _t("declarant", "name") or _t("authorisedDeclarant", "name")
     if eori:
@@ -167,12 +167,12 @@ def parse_cbam_xml_declaration(xml_bytes: bytes) -> dict[str, Any]:
     if importer_name:
         evidence.append(_evidence("importer.name", importer_name))
 
-    # ── Reporting period → use as proxy for invoice date context
+    # Reporting period → use as proxy for invoice date context
     period_code = _t("reportingPeriod", "periodCode")  # e.g. "2024Q2"
     year_str = _t("reportingPeriod", "year")
     quarter_str = _t("reportingPeriod", "quarter")
 
-    # ── Goods lines
+    # Goods lines
     goods_el = root.find(_tag(ns, "goodsImported")) if ns else root.find("goodsImported")
     if goods_el is None:
         goods_el = root  # fallback: look for goodsLine at root level
@@ -238,7 +238,7 @@ def parse_cbam_xml_declaration(xml_bytes: bytes) -> dict[str, Any]:
 
         lines_data.append(line)
 
-    # ── Aggregate emissions from <embeddedEmissions> or <cbamCertificates> at root
+    # Aggregate emissions from <embeddedEmissions> or <cbamCertificates> at root
     agg_el = root.find(_tag(ns, "embeddedEmissions")) if ns else root.find("embeddedEmissions")
     if agg_el is not None:
         root_direct = _to_decimal(_find_text(agg_el, ns, "totalDirectEmissions"))

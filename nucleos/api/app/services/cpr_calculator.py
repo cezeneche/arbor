@@ -59,7 +59,7 @@ __all__ = [
     "get_qualifying_schemes",
 ]
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# Constants
 
 _GBP2  = Decimal("0.01")    # 2 d.p. for GBP amounts
 _D4    = Decimal("0.0001")  # 4 d.p. for intermediate per-tonne prices
@@ -67,7 +67,7 @@ _D6    = Decimal("0.000001")
 _ZERO  = Decimal("0")
 _ONE   = Decimal("1")
 
-# ── Exceptions ────────────────────────────────────────────────────────────────
+# Exceptions
 
 class CPRValidationError(ValueError):
     """Raised when CPR inputs fail pre-calculation validation."""
@@ -77,7 +77,7 @@ class CPRValidationError(ValueError):
         super().__init__(f"CPR validation failed: {'; '.join(failures)}")
 
 
-# ── Result dataclass ──────────────────────────────────────────────────────────
+# Result dataclass
 
 @dataclass
 class CPRResult:
@@ -110,7 +110,7 @@ class CPRResult:
     warnings: list[str] = field(default_factory=list)
 
 
-# ── Qualifying scheme registry ─────────────────────────────────────────────────
+# Qualifying scheme registry
 
 @dataclass(frozen=True)
 class UKQualifyingScheme:
@@ -209,7 +209,7 @@ def get_qualifying_schemes(country_code: str) -> list[UKQualifyingScheme]:
     return _UK_QUALIFYING_SCHEMES.get(country_code.upper().strip(), [])
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _gbp(value: Decimal) -> Decimal:
     """Round to 2 decimal places (GBP pence) using ROUND_HALF_UP."""
@@ -254,7 +254,7 @@ def _validate_inputs(
     return failures
 
 
-# ── Main calculation ──────────────────────────────────────────────────────────
+# Main calculation
 
 def calculate_cpr(
     verified_emissions_tco2e: Decimal,
@@ -321,7 +321,7 @@ def calculate_cpr(
 
     warnings: list[str] = []
 
-    # ── GACI accreditation check (CLAUDE.md Rule 7) ───────────────────────────
+    # GACI accreditation check (CLAUDE.md Rule 7)
     # CPR requires independent verification by a GACI-accredited body operating
     # to ISO 17029 / ISO 14064-3 / ISO 14065 / ISO 14066.
     # If verifier_accreditation_body is not supplied, we cannot confirm the CPR

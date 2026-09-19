@@ -45,7 +45,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, model_validator
 
-# ── Regulatory constants ────────────────────────────────────────────────────────
+# Regulatory constants
 
 _UK_THRESHOLD_GBP: Decimal = Decimal("50000.00")
 _UK_APPROACHING_GBP: Decimal = Decimal("40000.00")
@@ -77,7 +77,7 @@ _PROFESSIONAL_TIER_GBP: Decimal = Decimal("2499.00")
 _UK_FIRST_RETURN: date = date(2028, 5, 31)   # Year 1 annual (2027 imports)
 _EU_FIRST_RETURN: date = date(2027, 5, 31)   # First annual (2026 imports)
 
-# ── Rate limiting ───────────────────────────────────────────────────────────────
+# Rate limiting
 
 _RATE_WINDOW: int = 60    # seconds
 _RATE_LIMIT: int = 30     # requests per window per IP
@@ -106,7 +106,7 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-# ── Sector-specific next-step templates ────────────────────────────────────────
+# Sector-specific next-step templates
 
 _SECTOR_STEPS: dict[str, list[str]] = {
     "iron_steel": [
@@ -177,7 +177,7 @@ def _build_next_steps(
     return steps[:5]
 
 
-# ── Emission factor helpers ─────────────────────────────────────────────────────
+# Emission factor helpers
 
 def _load_factors():
     """Lazy import to avoid circular imports at module load time."""
@@ -223,7 +223,7 @@ def _resolve_see(cn8_code: str) -> tuple[object, str] | tuple[None, None]:
     return (entry, entry.cn8_prefix) if entry else (None, None)
 
 
-# ── Pydantic request models ─────────────────────────────────────────────────────
+# Pydantic request models
 
 class ScopeCheckRequest(BaseModel):
     cn8_code: str = Field(..., description="CN8 commodity code (2–8 digits)")
@@ -267,14 +267,14 @@ class LiabilityRequest(BaseModel):
         return self
 
 
-# ── Router ──────────────────────────────────────────────────────────────────────
+# Router
 
 router = APIRouter(prefix="/public", tags=["public-tools"])
 
 # No auth dependencies on any endpoint in this router.
 
 
-# ── CN Code Lookup (autocomplete) ───────────────────────────────────────────────
+# CN Code Lookup (autocomplete)
 
 @router.get(
     "/cbam-cn-lookup",
@@ -300,7 +300,7 @@ def cn_lookup(
     }
 
 
-# ── Scope Checker ───────────────────────────────────────────────────────────────
+# Scope Checker
 
 @router.post(
     "/cbam-scope-check",
@@ -458,7 +458,7 @@ def scope_check(request: Request, body: ScopeCheckRequest) -> dict:
     }
 
 
-# ── Liability Estimator ─────────────────────────────────────────────────────────
+# Liability Estimator
 
 @router.post(
     "/cbam-liability-estimate",

@@ -38,7 +38,7 @@ from ledger_app.services.cbam_eutl_client import (
 )
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _mock_response(status_code: int, body: dict | list | None = None) -> MagicMock:
     resp = MagicMock()
@@ -64,7 +64,7 @@ def _clear_eutl_cache(monkeypatch):
     reset_cache()
 
 
-# ── Unit tests: lookup_installation ──────────────────────────────────────────
+# Unit tests: lookup_installation
 
 class TestLookupInstallation:
 
@@ -189,7 +189,7 @@ class TestLookupInstallation:
         assert result.country_code == "PL"
 
 
-# ── Cache behaviour ───────────────────────────────────────────────────────────
+# Cache behaviour
 
 class TestCache:
 
@@ -242,7 +242,7 @@ class TestCache:
         mock_get.assert_not_called()
 
 
-# ── Integration: validate_installation_id calls EUTL client ──────────────────
+# Integration: validate_installation_id calls EUTL client
 
 class TestValidateIntegration:
     """Verify that validate_installation_id in cbam_installation_registry calls

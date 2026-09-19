@@ -25,7 +25,7 @@ from ledger_app.services.cbam_reconciler import (
 _D = Decimal
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# Helpers
 
 def _make_case(
     case_id: str = "case-1",
@@ -56,7 +56,7 @@ def _make_case(
     }
 
 
-# ── B1: Quarterly aggregation ─────────────────────────────────────────────────
+# B1: Quarterly aggregation
 
 class TestReconcileQuarterAggregation:
     def test_single_case_aggregates_correctly(self):
@@ -164,7 +164,7 @@ class TestReconcileQuarterAggregation:
         assert set(result.case_ids) == {"id-alpha", "id-beta"}
 
 
-# ── Art. 9 deduction ───────────────────────────────────────────────────────────
+# Art. 9 deduction
 
 class TestArt9Deduction:
     def test_zero_carbon_price_no_deduction(self):
@@ -214,7 +214,7 @@ class TestArt9Deduction:
         assert result.net_liability_tco2e >= _D("0")
 
 
-# ── Financial liability ────────────────────────────────────────────────────────
+# Financial liability
 
 class TestFinancialLiability:
     def test_financial_liability_computed_when_ets_price_given(self):
@@ -241,7 +241,7 @@ class TestFinancialLiability:
         assert result.net_financial_liability_eur is None
 
 
-# ── B2: Supplier SEE consistency ──────────────────────────────────────────────
+# B2: Supplier SEE consistency
 
 class TestSupplierSEEConsistency:
     def _history(self, values: list[float]) -> list[Decimal]:
@@ -370,7 +370,7 @@ class TestSupplierSEEConsistency:
         assert flag.case_ids == ids
 
 
-# ── B3: Carbon price plausibility ─────────────────────────────────────────────
+# B3: Carbon price plausibility
 
 class TestCarbonPricePlausibility:
     def test_plausible_price_no_flag(self):
@@ -464,7 +464,7 @@ class TestCarbonPricePlausibility:
         assert result.carbon_price_flags == []
 
 
-# ── EUA reference table ───────────────────────────────────────────────────────
+# EUA reference table
 
 class TestEUAReferenceTable:
     def test_known_period_returns_value(self):
@@ -486,7 +486,7 @@ class TestEUAReferenceTable:
             assert price > _D("0"), f"Zero price for {year} Q{quarter}"
 
 
-# ── Regulation references ─────────────────────────────────────────────────────
+# Regulation references
 
 class TestRegulationRefs:
     def test_result_contains_regulation_refs(self):

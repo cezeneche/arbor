@@ -52,7 +52,7 @@ _log = logging.getLogger("nucleos.supplier_outreach")
 router = APIRouter(prefix="/cbam", tags=["supplier-outreach"])
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────────
+# Helpers
 
 def _resolved_tenant(request: Request) -> UUID:
     """Extract and validate the tenant UUID from the request auth context."""
@@ -167,7 +167,7 @@ def _supplier_request_to_dict(req) -> dict:
     return d
 
 
-# ── Request / response models ─────────────────────────────────────────────────────
+# Request / response models
 
 class SingleRequestBody(BaseModel):
     """Body for the single-goods-line endpoint."""
@@ -179,7 +179,7 @@ class SingleRequestBody(BaseModel):
     """Jurisdiction determines which regulation references appear in the letter."""
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.post(
     "/goods-lines/{goods_line_id}/generate-supplier-request",

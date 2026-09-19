@@ -10,7 +10,7 @@ import type {
   QuarterValue,
 } from '@/types/filters'
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// Constants
 
 export const SECTOR_OPTIONS: SectorOption[] = [
   'Steel', 'Aluminium', 'Cement', 'Fertiliser', 'Hydrogen', 'Agriculture', 'Other',
@@ -37,7 +37,7 @@ const ALL_TIERS: TrustTier[] = ['A', 'B', 'C']
 const PERIOD_START = '2025-Q1'
 const PERIOD_END = '2027-Q4'
 
-// ── Quarter utilities (exported for testing) ──────────────────────────────────
+// Quarter utilities (exported for testing)
 
 export function quarterLabel(q: QuarterValue): string {
   const [year, qPart] = q.split('-')
@@ -107,7 +107,7 @@ export function countActiveFilters(filters: FilterState, defaults = getDefaultFi
   return count
 }
 
-// ── SQL preview builder (exported for testing) ────────────────────────────────
+// SQL preview builder (exported for testing)
 
 export function buildSqlPreview(filters: FilterState, buyerId = '[BUYER_ID]'): string {
   const { sectors, countries, periodFrom, periodTo, trustTiers, domain } = filters
@@ -140,7 +140,7 @@ export function buildSqlPreview(filters: FilterState, buyerId = '[BUYER_ID]'): s
   return lines.join('\n')
 }
 
-// ── Tag builder ───────────────────────────────────────────────────────────────
+// Tag builder
 
 type FilterTag = { key: string; label: string; value: string; onRemove: () => void }
 
@@ -206,7 +206,7 @@ export function buildFilterTags(filters: FilterState, onChange: (f: FilterState)
   return tags
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// Sub-components
 
 function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () => void) {
   useEffect(() => {
@@ -626,7 +626,7 @@ function PeriodPicker({
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// Main component
 
 export interface FilterBarProps {
   supplierCountries: string[]

@@ -91,7 +91,7 @@ describe('nucleos contract', () => {
   })
 
   it('no payload carries a document blob', () => {
-    // Document blobs stop crossing the boundary in Phase 2. A schema that accepts
+    // Document blobs do not cross the boundary: Arbor sends text. A schema that accepts
     // a blob reference is how that quietly comes back.
     const source = readFileSync(GENERATED_TS, 'utf8')
     for (const banned of ['blobUrl', 'blob_url', 'content_base64', 'storage_uri', 'file_url']) {

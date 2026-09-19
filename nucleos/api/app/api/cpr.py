@@ -58,7 +58,7 @@ from ledger_app.api.cbam._shared import (
 from ledger_app.api.cbam._shared import encrypt_field, decrypt_field
 
 
-# ── Pydantic models ────────────────────────────────────────────────────────────
+# Pydantic models
 
 class CPRCalculateRequest(BaseModel):
     """Input for the pure CPR calculation endpoint.  No DB write occurs."""
@@ -166,7 +166,7 @@ class ExchangeRateOverrideRequest(BaseModel):
     to_currency: str = Field(default="GBP", min_length=3, max_length=3)
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# Helpers
 
 def _decimal_default(obj: Any) -> Any:
     if isinstance(obj, Decimal):
@@ -184,7 +184,7 @@ def _require_cbam_write(auth_context: AuthContext = Depends(require_scopes(["cba
     return auth_context
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.get("/qualifying-schemes")
 def list_qualifying_schemes(

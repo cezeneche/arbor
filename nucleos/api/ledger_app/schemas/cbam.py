@@ -131,7 +131,7 @@ class CBAMCaseSummaryRead(BaseModel):
     goods_lines: list[CBAMGoodsLineSummary]
 
 
-# ── Liability calculation schemas ─────────────────────────────────────────────
+# Liability calculation schemas
 
 class CBAMLiabilityRequest(BaseModel):
     """Input for CBAM liability calculation (EU 2023/956 Arts. 9 and 21)."""

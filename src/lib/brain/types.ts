@@ -36,7 +36,7 @@ export interface CalibrationFitResponse {
   fitted_at: string
 }
 
-// ── Entity-resolution baseline scoring ───────────────────────────
+// Entity-resolution baseline scoring
 
 export interface ResolutionEntityName {
   id: string
@@ -62,7 +62,7 @@ export interface ResolutionScoreResponse {
   scores: ScoredPair[]
 }
 
-// ── Schema inference from field co-occurrence ────────────────────
+// Schema inference from field co-occurrence
 
 export interface SchemaFieldPair {
   a: string
@@ -77,7 +77,7 @@ export interface SchemaInferResponse {
   pairs: SchemaFieldPair[]
 }
 
-// ── Algebraic constraints + MaxEnt completion ────────────────────
+// Algebraic constraints + MaxEnt completion
 
 export interface ConstraintRecordInput {
   id: string
@@ -112,7 +112,7 @@ export interface ConstraintCheckResponse {
   results: ConstraintRecordResult[]
 }
 
-// ── Graph flow consistency ───────────────────────────────────────
+// Graph flow consistency
 
 export interface FlowNodeInput {
   id: string
@@ -155,7 +155,7 @@ export interface FlowCheckResponse {
   double_counting: DoubleCountAnomaly[]
 }
 
-// ── Differential privacy on cross-tenant aggregates ─────────────
+// Differential privacy on cross-tenant aggregates
 
 export interface DPGroupInput {
   key: string

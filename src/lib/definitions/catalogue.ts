@@ -38,7 +38,7 @@ export interface SeedDefinition {
 const SPEC = 'Arbor Admissibility Spec v1.0'
 
 export const SEED_DEFINITIONS: SeedDefinition[] = [
-  // ── ENERGY ────────────────────────────────────────────────────────────────
+  // ENERGY
   {
     fieldName: 'total_consumption_kwh',
     domain: 'ENERGY',
@@ -100,7 +100,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     sourceStandard: SPEC,
   },
 
-  // ── MATERIALS ─────────────────────────────────────────────────────────────
+  // MATERIALS
   {
     fieldName: 'quantity',
     domain: 'MATERIALS',
@@ -126,7 +126,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     sourceStandard: SPEC,
   },
 
-  // ── PRODUCTION ────────────────────────────────────────────────────────────
+  // PRODUCTION
   {
     fieldName: 'quantity_produced',
     domain: 'PRODUCTION',
@@ -164,7 +164,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     sourceStandard: SPEC,
   },
 
-  // ── LOGISTICS ─────────────────────────────────────────────────────────────
+  // LOGISTICS
   {
     fieldName: 'shipment_weight',
     domain: 'LOGISTICS',
@@ -190,7 +190,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     sourceStandard: SPEC,
   },
 
-  // ── COMPLIANCE ────────────────────────────────────────────────────────────
+  // COMPLIANCE
   {
     fieldName: 'declared_weight',
     domain: 'COMPLIANCE',
@@ -240,7 +240,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     sourceStandard: SPEC,
   },
 
-  // ── EMISSIONS ─────────────────────────────────────────────────────────────
+  // EMISSIONS
   {
     fieldName: 'total_co2e',
     domain: 'EMISSIONS',
@@ -266,7 +266,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     sourceStandard: SPEC,
   },
 
-  // ── WASTE AND WATER ───────────────────────────────────────────────────────
+  // WASTE AND WATER
   {
     fieldName: 'quantity',
     domain: 'WASTE_AND_WATER',
@@ -292,7 +292,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     sourceStandard: SPEC,
   },
 
-  // ── AGRICULTURE ───────────────────────────────────────────────────────────
+  // AGRICULTURE
   {
     fieldName: 'area_hectares',
     domain: 'AGRICULTURE',

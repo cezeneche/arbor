@@ -41,7 +41,7 @@ _CN_CEMENT = "25232900"
 _CN_STEEL = "72081000"
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _mock_kpis(**kwargs) -> ImporterKPIs:
     defaults = dict(
@@ -114,7 +114,7 @@ def _mock_supplier_result(**kwargs) -> SupplierComparisonResult:
     return SupplierComparisonResult(**defaults)
 
 
-# ── API layer tests ───────────────────────────────────────────────────────────
+# API layer tests
 
 class TestInsightsKPIsEndpoint:
     def setup_method(self):
@@ -357,7 +357,7 @@ class TestSectorSummaryEndpoint:
             assert "cn_codes" in sec
 
 
-# ── Service layer unit tests ──────────────────────────────────────────────────
+# Service layer unit tests
 
 class _MockMappings:
     def __init__(self, rows):

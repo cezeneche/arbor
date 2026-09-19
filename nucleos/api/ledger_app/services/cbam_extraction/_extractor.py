@@ -421,7 +421,7 @@ class ClaudeCBAMExtractor:
         evidence: list[dict[str, Any]] = []
         flags: list[dict[str, Any]] = []
 
-        # ── 1. Load document text (LlamaIndex handles PDF / DOCX / TXT) ──────
+        # 1. Load document text (LlamaIndex handles PDF / DOCX / TXT)
         from ._regex import _read_raw_text
 
         raw_text = ""
@@ -441,7 +441,7 @@ class ClaudeCBAMExtractor:
             if len(candidate) > 0 and printable / max(len(candidate[:200]), 1) > 0.8:
                 raw_text = candidate
 
-        # ── 2. Deterministic (regex-first) extraction — always the primary source
+        # 2. Deterministic (regex-first) extraction — always the primary source
         det_structured = _parse_structured_response(
             "{}",
             raw_text,
@@ -450,10 +450,10 @@ class ClaudeCBAMExtractor:
             pages=pages,
         )
 
-        # ── 3. Validate all deterministic fields; clear invalids, record flags
+        # 3. Validate all deterministic fields; clear invalids, record flags
         _validate_deterministic_fields(det_structured, flags)
 
-        # ── 4. Claude gap-filling (one API call, scalar fields then lines) ────
+        # 4. Claude gap-filling (one API call, scalar fields then lines)
         api_key = os.getenv("ANTHROPIC_API_KEY")
         extractor_tag = "regex"
         claude_json: dict[str, Any] = {}
@@ -474,7 +474,7 @@ class ClaudeCBAMExtractor:
                 )
                 flags.append({"issue": "claude_api_call_failed", "source": "claude"})
 
-        # ── 5. Build payload from the merged deterministic result ─────────────
+        # 5. Build payload from the merged deterministic result
         payload = _build_extraction_payload(
             raw_text,
             det_structured,
@@ -484,7 +484,7 @@ class ClaudeCBAMExtractor:
             flags=flags,
         )
 
-        # ── 6. Merge Claude lines only when deterministic found none ──────────
+        # 6. Merge Claude lines only when deterministic found none
         if not payload.get("lines") and claude_json:
             self._merge_claude_lines(payload, claude_json, evidence, raw_text, flags, pages)
 

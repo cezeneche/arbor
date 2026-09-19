@@ -150,7 +150,7 @@ def _enrich_cases_with_liability(
     # string ('0'), which Postgres would otherwise sum as text and reject.
     mass_expr = f"gl.{mass_col}" if mass_col else "0"
 
-    # ── Query 1: latest direct emissions + net mass per (case_id, sector) ────
+    # Query 1: latest direct emissions + net mass per (case_id, sector)
     emission_rows = conn.execute(
         text(
             f"""
@@ -179,7 +179,7 @@ def _enrich_cases_with_liability(
         {"case_ids": case_ids},
     ).mappings().all()
 
-    # ── Query 2: first non-null origin_country per case ───────────────────────
+    # Query 2: first non-null origin_country per case
     origin_rows = conn.execute(
         text(
             f"""
@@ -195,7 +195,7 @@ def _enrich_cases_with_liability(
         {"case_ids": case_ids},
     ).mappings().all()
 
-    # ── Aggregate in Python ───────────────────────────────────────────────────
+    # Aggregate in Python
     # Each entry: (sector, kgco2e, mass_kg) — mass_kg used for rough-estimate fallback
     emissions_by_case: dict[str, list[tuple[str, Decimal, Decimal]]] = {}
     mass_by_case: dict[str, Decimal] = {}
@@ -396,7 +396,7 @@ def get_cbam_case(request: Request, case_id: str):
             result["goods_lines"] = goods_lines
             result["shipments"]   = [e.get("shipment") or {} for e in shipments_payload]
 
-            # ── Data quality / open gaps ──────────────────────────────────────
+            # Data quality / open gaps
             # Re-run the same check used during extraction so the case page
             # always shows the current state of the data, not a stale snapshot.
             try:
@@ -434,7 +434,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
     actor_sub: str = getattr(getattr(request.state, "auth_context", None), "sub", "system")
 
     with _shared.engine.begin() as conn:
-        # ── Verify case ───────────────────────────────────────────────────────
+        # Verify case
         columns = _shared._table_columns(conn, "cbam_cases")
         _shared._enforce_tenant_id(columns, tenant_id)
         _shared.set_tenant_context(conn, tenant_id)
@@ -446,7 +446,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
         ).fetchone():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
-        # ── cbam_cases ────────────────────────────────────────────────────────
+        # cbam_cases
         case_set: list[str] = []
         case_p: dict[str, object] = {"id": str(case_id), "tenant_id": tenant_id}
 
@@ -474,7 +474,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
                 case_p,
             )
 
-        # ── Locate first shipment (FK col name varies by migration) ──────────
+        # Locate first shipment (FK col name varies by migration)
         ship_cols = _shared._table_columns(conn, "cbam_shipments")
         case_fk   = _shared._pick_existing(ship_cols, ["cbam_case_id", "case_id", "cbam_case_uuid"])
 
@@ -496,7 +496,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
         if ship_row:
             ship_id = str(ship_row[0])
 
-            # ── cbam_shipments ────────────────────────────────────────────────
+            # cbam_shipments
             ship_set: list[str] = []
             ship_p: dict[str, object] = {"id": ship_id}
             if payload.origin_country is not None and "origin_country" in ship_cols:
@@ -511,7 +511,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
             if ship_set:
                 conn.execute(text(f"UPDATE cbam.cbam_shipments SET {', '.join(ship_set)} WHERE id = :id"), ship_p)
 
-            # ── Locate first goods line ───────────────────────────────────────
+            # Locate first goods line
             gl_cols = _shared._table_columns(conn, "cbam_goods_lines")
             gl_row  = conn.execute(
                 text("SELECT id FROM cbam.cbam_goods_lines WHERE shipment_id = :sid ORDER BY id ASC LIMIT 1"),
@@ -521,7 +521,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
             if gl_row:
                 gl_id = str(gl_row[0])
 
-                # ── cbam_goods_lines ──────────────────────────────────────────
+                # cbam_goods_lines
                 gl_set: list[str] = []
                 gl_p: dict[str, object] = {"id": gl_id}
                 mass_col = _shared._pick_existing(gl_cols, ["net_mass_kg", "quantity"])
@@ -536,7 +536,7 @@ def patch_cbam_case(request: Request, case_id: str, payload: CBAMCasePatch):
                 if gl_set:
                     conn.execute(text(f"UPDATE cbam.cbam_goods_lines SET {', '.join(gl_set)} WHERE id = :id"), gl_p)
 
-                # ── cbam_emissions ────────────────────────────────────────────
+                # cbam_emissions
                 if payload.emissions_method is not None or payload.direct_kgco2e is not None:
                     em_cols    = _shared._table_columns(conn, "cbam_emissions")
                     direct_col = _shared._pick_existing(em_cols, ["direct_kgco2e", "direct_emissions_kgco2e", "direct_embedded_kgco2e"])

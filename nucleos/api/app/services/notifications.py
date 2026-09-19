@@ -47,7 +47,7 @@ def _base_url() -> str:
     return os.getenv("BASE_URL", "").rstrip("/")
 
 
-# ── Flow 1: pipeline error alert (sync) ───────────────────────────────────────
+# Flow 1: pipeline error alert (sync)
 
 def notify_pipeline_error(
     stage: str,
@@ -85,7 +85,7 @@ def notify_pipeline_error(
         log.error("notify_pipeline_error: failed stage=%s case=%s: %s", stage, case_id, exc)
 
 
-# ── Flow 2: human review alert (async) ────────────────────────────────────────
+# Flow 2: human review alert (async)
 
 async def notify_review_required(
     case_id: str,
@@ -179,7 +179,7 @@ async def notify_review_required(
         log.error("notify_review_required: failed for case=%s: %s", case_id, exc)
 
 
-# ── Flow 2: supplier form invitation via Resend ───────────────────────────────
+# Flow 2: supplier form invitation via Resend
 
 async def notify_supplier_form(
     supplier_email: str,
@@ -313,7 +313,7 @@ def _build_supplier_form_html(
     )
 
 
-# ── Flow 3: importer alert when supplier submits ──────────────────────────────
+# Flow 3: importer alert when supplier submits
 
 async def notify_importer_supplier_submitted(
     recipient_email: str,
@@ -421,7 +421,7 @@ async def notify_importer_supplier_submitted(
         log.error("notify_importer_supplier_submitted: failed email=%s: %s", recipient_email, exc)
 
 
-# ── Flow 4: customer email via Resend ─────────────────────────────────────────
+# Flow 4: customer email via Resend
 
 async def notify_report_ready(
     case_id: str,
@@ -503,7 +503,7 @@ async def notify_report_ready(
         log.error("notify_report_ready: failed for case=%s: %s", case_id, exc)
 
 
-# ── Email body builders ────────────────────────────────────────────────────────
+# Email body builders
 
 def _build_plain_text(
     period: str,

@@ -38,14 +38,14 @@ from uuid import uuid4
 
 import httpx
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# Config
 
 API_URL          = os.getenv("API_URL", "http://localhost:8000")
 RECIPIENT_EMAIL  = os.getenv("RECIPIENT_EMAIL", "")   # where the report-ready email goes
 DEMO_TENANT      = str(uuid4())          # full UUID — required by cbam_cpr_claims.tenant_id UUID NOT NULL
 TIMEOUT          = httpx.Timeout(60.0)
 
-# ── Colour helpers ─────────────────────────────────────────────────────────────
+# Colour helpers
 
 RESET  = "\033[0m"
 BOLD   = "\033[1m"
@@ -87,7 +87,7 @@ def error(text: str) -> None:
     print(f"      {RED}✗ {text}{RESET}", file=sys.stderr)
 
 
-# ── JWT helper ─────────────────────────────────────────────────────────────────
+# JWT helper
 
 def mint_token(client: httpx.Client) -> str:
     """Mint a dev JWT with full scopes via the dev-only token endpoint."""
@@ -106,7 +106,7 @@ def mint_token(client: httpx.Client) -> str:
     return r.json()["access_token"]
 
 
-# ── Notification helpers (use real external services) ─────────────────────────
+# Notification helpers (use real external services)
 
 async def fire_slack(case_id: str, tenant_name: str, flags: list[str]) -> None:
     """Fire a real Slack Block Kit notification to SLACK_WEBHOOK_URL."""
@@ -135,9 +135,7 @@ async def fire_email(case_id: str, period: str, liability_str: str) -> None:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Scenario 1: Steel importer — Tier 1 actual data, report-ready email
-# ─────────────────────────────────────────────────────────────────────────────
 
 def run_steel_scenario(client: httpx.Client) -> None:
     header("SCENARIO 1 — Steel Importer (DE)  |  Tier 1 Actual Data  |  Email Notification")
@@ -264,9 +262,7 @@ def run_steel_scenario(client: httpx.Client) -> None:
         warn("Set RECIPIENT_EMAIL=you@example.com to receive the report-ready email")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Scenario 2: Cement importer — missing data, Slack human-review alert
-# ─────────────────────────────────────────────────────────────────────────────
 
 def run_cement_scenario(client: httpx.Client) -> None:
     header("SCENARIO 2 — Cement Importer (TR)  |  Missing Emissions Data  |  Slack Alert")
@@ -357,9 +353,7 @@ def run_cement_scenario(client: httpx.Client) -> None:
     ok("Resend email NOT triggered (case not approved — correct behaviour)")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Scenario 3: Aluminium + Norwegian CO₂ tax CPR claim
-# ─────────────────────────────────────────────────────────────────────────────
 
 def run_aluminium_scenario(client: httpx.Client) -> None:
     header("SCENARIO 3 — Aluminium Importer (NO)  |  CPR Claim  |  UK Indirect Exclusion")
@@ -528,9 +522,7 @@ def run_aluminium_scenario(client: httpx.Client) -> None:
         warn(f"Compliance pack: {r.status_code} — {r.text[:200]}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Entry point
-# ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     # Load .env if present

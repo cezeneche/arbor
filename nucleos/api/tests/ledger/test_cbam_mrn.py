@@ -37,7 +37,7 @@ from ledger_app.services.cbam_mrn import (
 )
 
 
-# ── validate_mrn — valid paths ────────────────────────────────────────────────
+# validate_mrn — valid paths
 
 class TestValidMRN:
     def test_fixture_mrn_valid(self):
@@ -81,7 +81,7 @@ class TestValidMRN:
         assert result.entry_reference == "24GB123456789000A1"
 
 
-# ── validate_mrn — missing paths ──────────────────────────────────────────────
+# validate_mrn — missing paths
 
 class TestMissingMRN:
     def test_none_is_missing(self):
@@ -104,7 +104,7 @@ class TestMissingMRN:
         assert result.entry_reference is None
 
 
-# ── validate_mrn — format invalid paths ───────────────────────────────────────
+# validate_mrn — format invalid paths
 
 class TestInvalidMRNFormat:
     def test_er_001_invalid(self):
@@ -156,7 +156,7 @@ class TestInvalidMRNFormat:
             assert result.is_valid is False, f"{ref!r} should be invalid"
 
 
-# ── validate_mrn — normalisation ──────────────────────────────────────────────
+# validate_mrn — normalisation
 
 class TestNormalisation:
     def test_lowercase_cc_normalised_and_valid(self):
@@ -175,7 +175,7 @@ class TestNormalisation:
         assert result.entry_reference == original
 
 
-# ── MRNValidationResult immutability ──────────────────────────────────────────
+# MRNValidationResult immutability
 
 class TestMRNValidationResultFrozen:
     def test_frozen(self):
@@ -184,7 +184,7 @@ class TestMRNValidationResultFrozen:
             result.is_valid = False  # type: ignore[misc]
 
 
-# ── Data quality integration ──────────────────────────────────────────────────
+# Data quality integration
 
 class TestDataQualityMRNIntegration:
     """evaluate_cbam_data_quality() must surface MRN format warnings."""
@@ -255,7 +255,7 @@ class TestDataQualityMRNIntegration:
         assert dq["blocking"] is False
 
 
-# ── Compliance pack flags ─────────────────────────────────────────────────────
+# Compliance pack flags
 
 class TestCompliancePackMRNFlags:
     """_build_data_quality_flags() in narrative service must also check MRN."""

@@ -28,7 +28,7 @@ from ledger_app.services.cbam_taric import (
 )
 
 
-# ── Cement ────────────────────────────────────────────────────────────────────
+# Cement
 
 class TestCement:
     def test_portland_cement_8digit(self):
@@ -56,7 +56,7 @@ class TestCement:
         assert lookup_sector("2507") is None
 
 
-# ── Iron & Steel ──────────────────────────────────────────────────────────────
+# Iron & Steel
 
 class TestIronSteel:
     def test_chapter_72_heading(self):
@@ -85,7 +85,7 @@ class TestIronSteel:
         assert lookup_sector("73181500") == SECTOR_IRON_STEEL
 
 
-# ── Aluminium ─────────────────────────────────────────────────────────────────
+# Aluminium
 
 class TestAluminium:
     def test_unwrought_aluminium_heading(self):
@@ -105,7 +105,7 @@ class TestAluminium:
             assert lookup_sector(heading) == SECTOR_ALUMINIUM, heading
 
 
-# ── Fertilisers ───────────────────────────────────────────────────────────────
+# Fertilisers
 
 class TestFertilisers:
     def test_anhydrous_ammonia(self):
@@ -148,7 +148,7 @@ class TestFertilisers:
         assert lookup_sector("28331100") is None
 
 
-# ── Electricity ───────────────────────────────────────────────────────────────
+# Electricity
 
 class TestElectricity:
     def test_electrical_energy_8digit(self):
@@ -163,7 +163,7 @@ class TestElectricity:
         assert lookup_sector("2716") is None
 
 
-# ── Hydrogen ──────────────────────────────────────────────────────────────────
+# Hydrogen
 
 class TestHydrogen:
     def test_hydrogen_8digit(self):
@@ -180,7 +180,7 @@ class TestHydrogen:
         assert lookup_sector("2804") is None
 
 
-# ── Out-of-scope codes ────────────────────────────────────────────────────────
+# Out-of-scope codes
 
 class TestOutOfScope:
     def test_plastics_not_in_scope(self):
@@ -203,7 +203,7 @@ class TestOutOfScope:
         assert lookup_sector("73130090") is None
 
 
-# ── Input format tolerance ────────────────────────────────────────────────────
+# Input format tolerance
 
 class TestInputFormats:
     def test_spaces_stripped(self):
@@ -223,7 +223,7 @@ class TestInputFormats:
         assert lookup_sector("7208100090") == SECTOR_IRON_STEEL
 
 
-# ── CBAMCodeNotInScope exception ──────────────────────────────────────────────
+# CBAMCodeNotInScope exception
 
 class TestCBAMCodeNotInScope:
     def test_exception_carries_cn_code(self):
@@ -240,7 +240,7 @@ class TestCBAMCodeNotInScope:
             raise CBAMCodeNotInScope("00000000")
 
 
-# ── is_in_cbam_scope helper ───────────────────────────────────────────────────
+# is_in_cbam_scope helper
 
 class TestIsInCBAMScope:
     def test_cement_in_scope(self):

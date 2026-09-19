@@ -74,7 +74,7 @@ def seed_emission_factors(engine: Engine) -> dict:
                 )
                 return {"annex_vi_inserted": 0, "electricity_inserted": 0, "skipped": True}
 
-            # ── Annex VI SEE factors ──────────────────────────────────────────
+            # Annex VI SEE factors
             for entry in _ANNEX_VI:
                 row = {
                     "id": str(uuid4()),
@@ -112,7 +112,7 @@ def seed_emission_factors(engine: Engine) -> dict:
                 """), row)
                 annex_vi_count += result.rowcount
 
-            # ── Country electricity factors ───────────────────────────────────
+            # Country electricity factors
             for country_iso2, tco2e_per_mwh in ELECTRICITY_FACTORS.items():
                 row = {
                     "id": str(uuid4()),

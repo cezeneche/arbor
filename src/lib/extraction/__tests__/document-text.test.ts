@@ -5,7 +5,7 @@ import {
   MAX_TRANSCRIBED_PAGES,
 } from '../document-text'
 
-// Arbor owns document→text from Phase 2. Nucleos's contract carries text, and
+// Arbor owns document→text. Nucleos's contract carries text, and
 // Arbor previously had none: it sent the document straight to the model and got
 // fields back, never a transcription.
 //

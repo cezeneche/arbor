@@ -109,7 +109,7 @@ export function buildAttention(input: AttentionInput): AttentionResult {
   const period = currentDeclarationPeriod(now)
   const keptDomains = input.keptDomains ?? [...new Set(records.map(r => r.domain))]
 
-  // ── blocking ──────────────────────────────────────────────────────────────
+  // blocking
 
   // A record type with nothing for a period about to close. Named for what it
   // costs: the period reports as Estimated rather than Verified.
@@ -178,7 +178,7 @@ export function buildAttention(input: AttentionInput): AttentionResult {
     })
   }
 
-  // ── attention ─────────────────────────────────────────────────────────────
+  // attention
 
   for (const req of requests) {
     if (!req.deadline) continue
@@ -242,7 +242,7 @@ export function buildAttention(input: AttentionInput): AttentionResult {
     })
   }
 
-  // ── order and state ───────────────────────────────────────────────────────
+  // order and state
 
   const byDeadline = (a: AttentionItem, b: AttentionItem) => {
     if (a.deadline && b.deadline) return a.deadline.getTime() - b.deadline.getTime()

@@ -45,14 +45,14 @@ from ledger_app.services.cbam_emission_factors import (
 _D = Decimal
 
 
-# ── TABLE_VERSION ─────────────────────────────────────────────────────────────
+# TABLE_VERSION
 
 class TestTableVersion:
     def test_table_version_is_2023(self):
         assert TABLE_VERSION == "2023"
 
 
-# ── Cement ────────────────────────────────────────────────────────────────────
+# Cement
 # All values: EC DG TAXUD Art.4(3) operative table, Dec 2023.
 
 class TestCementFactors:
@@ -88,7 +88,7 @@ class TestCementFactors:
         assert see.total_tco2e_per_t == see.direct_tco2e_per_t + see.indirect_tco2e_per_t
 
 
-# ── Iron and Steel ─────────────────────────────────────────────────────────────
+# Iron and Steel
 # production_route=None → official world-average default.
 # BF_BOF / EAF entries → engineering estimates for actual-measurement use.
 
@@ -172,7 +172,7 @@ class TestIronSteelFactors:
         assert "2023/1773" in see.source_ref
 
 
-# ── Aluminium ─────────────────────────────────────────────────────────────────
+# Aluminium
 
 class TestAluminiumFactors:
     def test_unwrought_primary(self):
@@ -211,7 +211,7 @@ class TestAluminiumFactors:
         assert see.direct_tco2e_per_t == _D("0.420")
 
 
-# ── Fertilisers ───────────────────────────────────────────────────────────────
+# Fertilisers
 
 class TestFertilisersFactors:
     def test_anhydrous_ammonia(self):
@@ -257,7 +257,7 @@ class TestFertilisersFactors:
         assert see.sector == "fertilisers"
 
 
-# ── Electricity ───────────────────────────────────────────────────────────────
+# Electricity
 
 class TestElectricityFactors:
     def test_world_average(self):
@@ -284,7 +284,7 @@ class TestElectricityFactors:
         assert ELECTRICITY_FACTORS["WORLD"] == _D("0.493")
 
 
-# ── Hydrogen ──────────────────────────────────────────────────────────────────
+# Hydrogen
 
 class TestHydrogenFactors:
     def test_smr_default(self):
@@ -312,7 +312,7 @@ class TestHydrogenFactors:
         assert see.direct_tco2e_per_t == _D("10.400")
 
 
-# ── Out-of-scope CN codes ─────────────────────────────────────────────────────
+# Out-of-scope CN codes
 
 class TestOutOfScope:
     def test_plastics_no_default(self):
@@ -325,7 +325,7 @@ class TestOutOfScope:
         assert get_default_see("") is None
 
 
-# ── Prefix fallback resolution ────────────────────────────────────────────────
+# Prefix fallback resolution
 
 class TestPrefixResolution:
     def test_8digit_match_returns_specific_entry(self):
@@ -356,7 +356,7 @@ class TestPrefixResolution:
         assert see.sector == "iron_steel"
 
 
-# ── compute_see_from_defaults ─────────────────────────────────────────────────
+# compute_see_from_defaults
 
 class TestComputeSEE:
     def test_cement_1000_kg(self):
@@ -398,7 +398,7 @@ class TestComputeSEE:
         assert compute_see_from_defaults("39011000", _D("1000")) is None
 
 
-# ── validate_against_defaults ─────────────────────────────────────────────────
+# validate_against_defaults
 # Grey Portland cement (25232900) has official default 0.810 tCO2e/t.
 
 class TestValidateAgainstDefaults:
@@ -418,7 +418,7 @@ class TestValidateAgainstDefaults:
         assert vr.computed_direct_kgco2e is not None
         assert vr.computed_direct_kgco2e > _D("100000")  # hundreds of tonnes, in kg
 
-    # ── method="default" ──────────────────────────────────────────────────────
+    # method="default"
 
     def test_default_method_no_deviation_no_warning(self):
         # Submit exact Annex VI value → no warning
@@ -480,7 +480,7 @@ class TestValidateAgainstDefaults:
         )
         assert len(vr.warnings) == 1
 
-    # ── method="actual" ───────────────────────────────────────────────────────
+    # method="actual"
 
     def test_actual_method_plausible_no_warning(self):
         # Within 5 %–1000 % of default → no warning
@@ -511,7 +511,7 @@ class TestValidateAgainstDefaults:
         assert len(vr.warnings) == 1
         assert "actual_implausibly_high" in vr.warnings[0]
 
-    # ── method="estimated" ────────────────────────────────────────────────────
+    # method="estimated"
 
     def test_estimated_method_no_factor_warning(self):
         # method="estimated" skips factor checks
@@ -522,7 +522,7 @@ class TestValidateAgainstDefaults:
         )
         assert vr.warnings == []
 
-    # ── ValidationResult fields ───────────────────────────────────────────────
+    # ValidationResult fields
 
     def test_result_deviation_pct_computed(self):
         # Submitted is 10 % above default (810 × 1.10 = 891 kg)

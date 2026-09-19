@@ -53,7 +53,7 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
       return t
     }
 
-    // ── Certificate expiry ──────────────────────────────────────────────────────
+    // Certificate expiry
     // Every expiry field on an accepted certificate is re-examined on every run,
     // not only the ones still unflagged. Filtering on flagged=false meant the
     // 30-day warning set the flag and thereby excluded the field for ever: a
@@ -165,7 +165,7 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
       }
     }
 
-    // ── Batch/mill record staleness — records past staleAfterDate, not yet flagged ──
+    // Batch/mill record staleness — records past staleAfterDate, not yet flagged
     const staleRecords = await step.run('find-stale-records', async () => {
       return prisma.dataRecord.findMany({
         where: {
@@ -195,7 +195,7 @@ export const checkCertificateExpiryFunction = inngest.createFunction(
       staleCount++
     }
 
-    // ── One notification per entity per category ─────────────────────────────────
+    // One notification per entity per category
     for (const [entityId, t] of tallies.entries()) {
       if (t.expiringCount > 0) {
         await step.run(`notify-expiring-${entityId}`, async () => {

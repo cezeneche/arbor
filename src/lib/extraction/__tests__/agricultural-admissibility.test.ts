@@ -18,7 +18,7 @@ function field(
   }
 }
 
-// ── FERTILISER RECORD ────────────────────────────────────────────────────────
+// FERTILISER RECORD
 
 function baseFertiliserFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
@@ -117,7 +117,7 @@ describe('evaluateAdmissibility  -  fertiliser record', () => {
   })
 })
 
-// ── CROP YIELD RECORD ────────────────────────────────────────────────────────
+// CROP YIELD RECORD
 
 function baseCropYieldFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
@@ -165,7 +165,7 @@ describe('evaluateAdmissibility  -  crop yield record', () => {
   })
 })
 
-// ── LIVESTOCK RECORD ─────────────────────────────────────────────────────────
+// LIVESTOCK RECORD
 
 function baseLivestockFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
@@ -229,7 +229,7 @@ describe('evaluateAdmissibility  -  livestock record', () => {
   })
 })
 
-// ── LAND USE CERTIFICATE ──────────────────────────────────────────────────────
+// LAND USE CERTIFICATE
 
 function fullLandUseCertFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
@@ -297,7 +297,7 @@ describe('evaluateAdmissibility  -  land use certificate', () => {
   })
 })
 
-// ── EXTRACTION PROMPTS  -  AGRICULTURAL TYPES ──────────────────────────────────
+// EXTRACTION PROMPTS  -  AGRICULTURAL TYPES
 
 describe('buildExtractionPrompt  -  agricultural document types', () => {
   it('FERTILISER_RECORD prompt includes nitrogen_content guidance', () => {

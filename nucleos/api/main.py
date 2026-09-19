@@ -31,7 +31,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from ledger_app.core.config import AppConfig, optional_startup_warnings, validate_startup_config
 
-# ── Standard Python logging → stdout (readable in Supabase logs + any cloud) ──
+# Standard Python logging → stdout (readable in Supabase logs + any cloud)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -53,10 +53,10 @@ validate_startup_config()
 _log = logging.getLogger("nucleos")
 
 
-# ── Supabase client lifespan ───────────────────────────────────────────────────
+# Supabase client lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup ────────────────────────────────────────────────────────────────
+    # Startup
     if AppConfig.supabase_enabled():
         try:
             from ledger_app.db.supabase_client import init_clients
@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         _log.warning("cbam_factors_seeder: startup seed failed (non-fatal): %s", exc)
 
-    # ── APScheduler — monthly registration threshold check ────────────────────
+    # APScheduler — monthly registration threshold check
     # Runs on day=1 of each month at 01:00 UTC.
     # Uses BackgroundScheduler (thread-based) so that the synchronous
     # SQLAlchemy engine calls do not block the asyncio event loop.
@@ -152,7 +152,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # ── Shutdown ───────────────────────────────────────────────────────────────
+    # Shutdown
     if _scheduler is not None:
         try:
             _scheduler.shutdown(wait=False)
@@ -170,16 +170,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="núcleo API", version="0.1.0", lifespan=lifespan)
 
-# ── OpenTelemetry distributed tracing (no-op when OTLP_ENDPOINT absent) ──────
+# OpenTelemetry distributed tracing (no-op when OTLP_ENDPOINT absent)
 from ledger_app.core.telemetry import setup_telemetry
 setup_telemetry(app)
 
-# ── HTTPS redirect (production) ───────────────────────────────────────────────
+# HTTPS redirect (production)
 if AppConfig.force_https():
     from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
     app.add_middleware(HTTPSRedirectMiddleware)
 
-# ── Tenant context middleware (sets app.current_tenant_id for RLS) ────────────
+# Tenant context middleware (sets app.current_tenant_id for RLS)
 if AppConfig.supabase_enabled():
     from ledger_app.middleware.tenant_context import TenantContextMiddleware
     app.add_middleware(TenantContextMiddleware)
@@ -229,12 +229,12 @@ async def db_error_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-# ── Routers (core + ledger + platform) ───────────────────────────────────────
+# Routers (core + ledger + platform)
 from app.routers import register_all as _register_all
 _register_all(app)
 
 
-# ── Static files + public tool page ───────────────────────────────────────────
+# Static files + public tool page
 _STATIC_DIR = Path(__file__).parent / "static"
 if _STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")

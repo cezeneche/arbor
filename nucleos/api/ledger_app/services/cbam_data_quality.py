@@ -22,7 +22,7 @@ def _to_float(value: object) -> float | None:
         return None
 
 
-# ── Risk-weighted scoring ─────────────────────────────────────────────────────
+# Risk-weighted scoring
 #
 # Each issue code is matched by substring (first match wins).  Weights reflect
 # regulatory severity:
@@ -115,7 +115,7 @@ def _risk_tier(score: float, blocking: bool) -> str:
     return "low"
 
 
-# ── Field checks ──────────────────────────────────────────────────────────────
+# Field checks
 
 def _check_case(case_row: dict[str, object], missing: list[str]) -> None:
     if not case_row.get("importer_eori"):

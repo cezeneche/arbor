@@ -52,7 +52,7 @@ _log = logging.getLogger("nucleos.registration")
 router = APIRouter(prefix="/cbam/registration", tags=["registration"])
 
 
-# ── Helpers ─────────────────────────────────────────────────────────────────────
+# Helpers
 
 def _tenant_id(request: Request) -> str:
     return getattr(getattr(request.state, "auth_context", None), "tenant_id", "") or ""
@@ -109,7 +109,7 @@ def _threshold_status_dict(ts: ThresholdStatus) -> dict:
     }
 
 
-# ── Response models ──────────────────────────────────────────────────────────────
+# Response models
 
 class RegistrationStatusResponse(BaseModel):
     """Response for GET /cbam/registration/status."""
@@ -120,7 +120,7 @@ class RegistrationStatusResponse(BaseModel):
     readiness_label: str      # "Not started" | "In progress" | … | "Confirmed"
 
 
-# ── Endpoints ────────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.get(
     "/status",

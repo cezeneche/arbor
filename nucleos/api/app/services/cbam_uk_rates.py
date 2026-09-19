@@ -107,7 +107,7 @@ class UKCBAMRateEntry:
         return self.source == "placeholder"
 
 
-# ── Sector → CN8 prefix mapping ────────────────────────────────────────────────
+# Sector → CN8 prefix mapping
 
 # Maps sector code → list of CN4 / CN6 prefixes (first N digits of CN8)
 # Source: UK CBAM (Finance No.2 Bill 2025-26) Schedule 1
@@ -139,7 +139,7 @@ def get_sector_for_cn8(cn8_code: str) -> str | None:
     return None
 
 
-# ── Placeholder rate derivation constants ──────────────────────────────────────
+# Placeholder rate derivation constants
 #
 # These named constants make the engineering-estimate basis traceable in code.
 # Formula: cbam_rate = uk_ets_price × (1 − free_allocation_factor)
@@ -170,7 +170,7 @@ def _placeholder_rate(sector: str) -> Decimal:
     return _PLACEHOLDER_UK_ETS_PRICE_2027 * (Decimal("1") - _PLACEHOLDER_FREE_ALLOC[sector])
 
 
-# ── Rate table ─────────────────────────────────────────────────────────────────
+# Rate table
 #
 # HMRC publishes rates quarterly via Government Gateway notices.
 # UK CBAM goes live 1 January 2027; first return is annual (due 31 May 2028).

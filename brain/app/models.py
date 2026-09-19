@@ -58,7 +58,7 @@ class CalibrationFitResponse(BaseModel):
     fitted_at: str
 
 
-# ── Bayesian fusion of self-consistency samples (Upgrade 1) ──────────────────
+# Bayesian fusion of self-consistency samples (Upgrade 1)
 
 
 class FieldSamples(BaseModel):
@@ -89,7 +89,7 @@ class FusionResponse(BaseModel):
     fields: list[FusedField]
 
 
-# ── Entity-resolution baseline scoring (Upgrade 5) ───────────────────────────
+# Entity-resolution baseline scoring (Upgrade 5)
 
 
 class EntityName(BaseModel):
@@ -124,7 +124,7 @@ class ResolutionScoreResponse(BaseModel):
     scores: list[ScoredPair]
 
 
-# ── Schema inference from field co-occurrence (Upgrade 2) ────────────────────
+# Schema inference from field co-occurrence (Upgrade 2)
 
 
 class SchemaInferRequest(BaseModel):
@@ -148,7 +148,7 @@ class SchemaInferResponse(BaseModel):
     pairs: list[SchemaFieldPair]
 
 
-# ── Algebraic constraints + MaxEnt completion (Upgrade 3) ────────────────────
+# Algebraic constraints + MaxEnt completion (Upgrade 3)
 
 
 class ConstraintRecord(BaseModel):
@@ -189,7 +189,7 @@ class ConstraintCheckResponse(BaseModel):
     results: list[ConstraintRecordResult]
 
 
-# ── Graph flow consistency (Upgrade 9) ───────────────────────────────────────
+# Graph flow consistency (Upgrade 9)
 
 
 class FlowNode(BaseModel):
@@ -240,7 +240,7 @@ class FlowCheckResponse(BaseModel):
     double_counting: list[DoubleCountAnomaly]
 
 
-# ── Differential privacy on cross-tenant aggregates (Upgrade 10) ─────────────
+# Differential privacy on cross-tenant aggregates (Upgrade 10)
 
 
 class DPGroup(BaseModel):

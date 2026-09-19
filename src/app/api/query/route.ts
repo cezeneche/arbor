@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ── ENTITY QUERY ──────────────────────────────────────────────────────────────
+// ENTITY QUERY
 
 async function handleEntityQuery(params: {
   entityId: string
@@ -119,7 +119,7 @@ async function handleEntityQuery(params: {
   return ok({ type: 'entity', count: records.length, records })
 }
 
-// ── SUPPLY CHAIN QUERY ────────────────────────────────────────────────────────
+// SUPPLY CHAIN QUERY
 
 async function handleSupplyChainQuery(params: {
   buyerEntityId: string
@@ -195,7 +195,7 @@ async function handleSupplyChainQuery(params: {
   return ok({ type: 'supply_chain', count: filteredRecords.length, supplierCount, records: filteredRecords })
 }
 
-// ── GAP QUERY ─────────────────────────────────────────────────────────────────
+// GAP QUERY
 
 async function handleGapQuery(params: {
   entityId: string
@@ -275,7 +275,7 @@ async function handleGapQuery(params: {
   return ok({ type: 'gap', ownMissingDomains: missingDomains, supplierGaps })
 }
 
-// ── HISTORICAL QUERY ──────────────────────────────────────────────────────────
+// HISTORICAL QUERY
 
 async function handleHistoricalQuery(params: {
   entityId: string

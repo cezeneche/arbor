@@ -142,7 +142,7 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                     _shared._require_case_tenant(conn, case_id, tenant_id)
             _shared._manual_fk_check(conn, "cbam_goods_lines", payload.goods_line_id, "goods_line_id")
 
-            # ── Production route validation (EU 2023/1773 Annex VI) ───────────
+            # Production route validation (EU 2023/1773 Annex VI)
             if payload.production_route:
                 gl_sector_row = conn.execute(
                     text(
@@ -195,7 +195,7 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                 )
                 raise HTTPException(status_code=500, detail="Internal server error")
 
-            # ── Annex VI factor + installation registry integration ────────────
+            # Annex VI factor + installation registry integration
             # Fetch goods_line for cn_code, net mass, and installation_id.
             gl_cols = _shared._table_columns(conn, "cbam_goods_lines")
             cn_col = _shared._pick_existing(gl_cols, ["cn_code"])
@@ -230,7 +230,7 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                         Decimal(str(raw_mass)) if raw_mass is not None else None
                     )
 
-                    # ── Installation registry check (EU 2023/956 Art. 10) ─────
+                    # Installation registry check (EU 2023/956 Art. 10)
                     # Missing/invalid installation_id is reported as a factor
                     # warning here (blocking enforcement is via data quality).
                     if install_col:

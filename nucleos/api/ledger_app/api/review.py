@@ -42,7 +42,7 @@ from shared_auth.models import AuthContext
 router = APIRouter(tags=["review"])
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _get_case_review_status(conn, case_id: str) -> str | None:
     """Fetch review_status from cbam.cbam_cases. Raises 404 if not found."""
@@ -55,7 +55,7 @@ def _get_case_review_status(conn, case_id: str) -> str | None:
     return row[0]
 
 
-# ── Notification helpers ──────────────────────────────────────────────────────
+# Notification helpers
 
 def _fetch_cbam_case_notification_data(case_id: str) -> dict:
     """Best-effort: return CBAM case details needed for the approval email.
@@ -129,7 +129,7 @@ def _schedule_report_notification(case_id: str, background_tasks: BackgroundTask
         log.debug("_schedule_report_notification: failed (non-fatal): %s", exc)
 
 
-# ── Internal endpoints (called by narrative pipeline, scope: cbam:write) ──────
+# Internal endpoints (called by narrative pipeline, scope: cbam:write)
 
 @router.post("/cases/{case_id}/review/flag", status_code=204)
 def flag_for_review(
@@ -192,7 +192,7 @@ def clear_review_flag(
     )
 
 
-# ── Reviewer endpoints (scope: review:write) ──────────────────────────────────
+# Reviewer endpoints (scope: review:write)
 
 class ReviewDecisionBody(BaseModel):
     reviewer_name: str
@@ -293,7 +293,7 @@ def reject_case(
     return {"case_id": case_id, "decision": "rejected"}
 
 
-# ── Read endpoint ─────────────────────────────────────────────────────────────
+# Read endpoint
 
 @router.get("/cases/{case_id}/review")
 def get_review_status(

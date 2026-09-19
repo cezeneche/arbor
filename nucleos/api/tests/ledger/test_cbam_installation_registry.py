@@ -25,7 +25,7 @@ from ledger_app.services.cbam_installation_registry import (
 )
 
 
-# ── INSTALLATION_ID_RE ────────────────────────────────────────────────────────
+# INSTALLATION_ID_RE
 
 class TestInstallationIDRegex:
     def test_valid_de_format(self):
@@ -58,7 +58,7 @@ class TestInstallationIDRegex:
         assert not INSTALLATION_ID_RE.match("DE 12345")
 
 
-# ── validate_installation_id ──────────────────────────────────────────────────
+# validate_installation_id
 
 class TestValidateInstallationID:
 
@@ -158,7 +158,7 @@ class TestValidateInstallationID:
         assert "not_in_allowlist" in warning_codes
 
 
-# ── Integration with data quality ─────────────────────────────────────────────
+# Integration with data quality
 
 class TestDataQualityIntegration:
     """Verify cbam_data_quality calls the registry check correctly."""

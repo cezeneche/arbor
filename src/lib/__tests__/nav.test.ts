@@ -77,7 +77,7 @@ describe('isLinkActive', () => {
   })
 })
 
-// ── CBAM (Phase 5) ───────────────────────────────────────────────────────────
+// CBAM
 //
 // CBAM is its own section. Its screens are views of that one section, reached by
 // the same quiet ?view= toggle Records uses for Trends and Benchmarks — so the

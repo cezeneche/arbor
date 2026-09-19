@@ -24,7 +24,7 @@ import ledger_app.services.cbam_extractor as cbam_extractor
 from ledger_app.services.cbam_extractor import ClaudeCBAMExtractor
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _invoice_text(
     cn_code: str = "72081000",
@@ -74,7 +74,7 @@ def _claude_json_str(
     )
 
 
-# ── _EXTRACTOR singleton ──────────────────────────────────────────────────────
+# _EXTRACTOR singleton
 
 class TestExtractorSingleton:
     def test_default_extractor_is_claude(self):
@@ -85,7 +85,7 @@ class TestExtractorSingleton:
         assert isinstance(cbam_extractor._EXTRACTOR.model, str)
 
 
-# ── Regex fallback (no API key) ───────────────────────────────────────────────
+# Regex fallback (no API key)
 
 class TestRegexFallback:
     def test_fallback_when_no_api_key(self, tmp_path: Path, monkeypatch):
@@ -139,7 +139,7 @@ class TestRegexFallback:
         assert result["status"] == "error"
 
 
-# ── Claude API path ───────────────────────────────────────────────────────────
+# Claude API path
 
 class TestClaudeAPIPath:
     """Tests that patch _call_claude to avoid live network calls."""
@@ -308,7 +308,7 @@ class TestClaudeAPIPath:
         assert "72193100" in cn_codes
 
 
-# ── _call_claude unit tests ───────────────────────────────────────────────────
+# _call_claude unit tests
 
 class TestCallClaude:
     def test_call_claude_sends_document_text_in_prompt(self, monkeypatch):
@@ -371,7 +371,7 @@ class TestCallClaude:
         assert len(sent) <= len(ClaudeCBAMExtractor._PROMPT) + 8100
 
 
-# ── Model configuration ────────────────────────────────────────────────────────
+# Model configuration
 
 class TestModelConfiguration:
     def test_default_model_is_haiku(self, monkeypatch):
@@ -409,7 +409,7 @@ class TestModelConfiguration:
         assert "estimated" in ClaudeCBAMExtractor._PROMPT
 
 
-# ── Public extract() wrapper unchanged ────────────────────────────────────────
+# Public extract() wrapper unchanged
 
 class TestPublicExtractWrapper:
     def test_extract_function_delegates_to_extractor(

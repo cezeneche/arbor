@@ -20,7 +20,7 @@ from decimal import Decimal
 
 import pytest
 
-# ── Skip marker ────────────────────────────────────────────────────────────────
+# Skip marker
 # DATABASE_URL is set by conftest.py before this module is imported,
 # so the check here reflects the active test database configuration.
 _DB_URL = os.environ.get("DATABASE_URL", "")
@@ -35,9 +35,7 @@ requires_supabase = pytest.mark.skipif(
 )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Test 1: Steel importer — clean actual data, email notification wiring
-# ─────────────────────────────────────────────────────────────────────────────
 
 @requires_supabase
 def test_steel_importer_clean_data_email_trigger(
@@ -64,7 +62,7 @@ def test_steel_importer_clean_data_email_trigger(
     Regulatory basis:
       UK CBAM Finance No.2 Bill 2025-26 | EU 2023/1773 Art. 4(1)(a) (Tier 1)
     """
-    # ── Step 1: Create CBAM case from structured invoice ─────────────────────
+    # Step 1: Create CBAM case from structured invoice
     # Steel: 500,000 kg from Germany, EAF route, 850,000 kgCO2e direct.
     # SEE = 850,000 / (500,000 / 1000) = 1,700 kgCO2e/t = 1.7 tCO2e/t
     payload = {
@@ -105,7 +103,7 @@ def test_steel_importer_clean_data_email_trigger(
     assert case_id, "case_id must be returned"
     assert len(goods_line_ids) == 1, f"Expected 1 goods line, got {len(goods_line_ids)}"
 
-    # ── Step 2: Fetch and validate report package ─────────────────────────────
+    # Step 2: Fetch and validate report package
     r = client.get(f"/api/cbam/cases/{case_id}/report-package")
     assert r.status_code == 200, f"Report package fetch failed ({r.status_code}): {r.text}"
     rp = r.json()
@@ -142,7 +140,7 @@ def test_steel_importer_clean_data_email_trigger(
         f"Expected ~850,000 kgCO2e direct emissions, got {total_direct_kg}"
     )
 
-    # ── Step 3: Run narrative pipeline ────────────────────────────────────────
+    # Step 3: Run narrative pipeline
     r = client.post(
         f"/api/cases/{case_id}/narrative/pipeline",
         params={"packet_kind": "cbam"},
@@ -171,14 +169,14 @@ def test_steel_importer_clean_data_email_trigger(
         f"Stage errors: {pipeline.get('stage_errors', [])}"
     )
 
-    # ── Step 4: Slack must NOT be called for a clean case ─────────────────────
+    # Step 4: Slack must NOT be called for a clean case
     # Slack fires only when the deterministic validator sets human_review_required=True.
     assert len(slack_mock.calls) == 0, (
         f"Slack webhook must not be called for a clean steel case. "
         f"Got {len(slack_mock.calls)} call(s)."
     )
 
-    # ── Step 5: Create compliance pack ────────────────────────────────────────
+    # Step 5: Create compliance pack
     r = client.post(f"/api/cbam/cases/{case_id}/compliance-pack")
     assert r.status_code == 200, f"Compliance pack creation failed ({r.status_code}): {r.text}"
     pack = r.json()
@@ -204,7 +202,7 @@ def test_steel_importer_clean_data_email_trigger(
         "registry_submission.declarant.eori must be present"
     )
 
-    # ── Step 6: Email notification service wiring ─────────────────────────────
+    # Step 6: Email notification service wiring
     # notify_report_ready is async (httpx.AsyncClient). Run synchronously in test
     # via asyncio.run() — respx intercepts the httpx call within the mock context.
     # This verifies the Resend wiring independently of the pipeline path; the email
@@ -243,9 +241,7 @@ def test_steel_importer_clean_data_email_trigger(
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Test 2: Cement importer — missing emissions data, Slack notification wiring
-# ─────────────────────────────────────────────────────────────────────────────
 
 @requires_supabase
 def test_cement_importer_missing_data_slack_review(
@@ -272,7 +268,7 @@ def test_cement_importer_missing_data_slack_review(
     Regulatory basis:
       EU 2023/1773 Art. 4(3) — default values fallback | UK Finance No.2 Bill 2025-26
     """
-    # ── Step 1: Create CBAM cement case — no emissions data supplied ──────────
+    # Step 1: Create CBAM cement case — no emissions data supplied
     # Cement from Turkey: 10,000 kg, no direct_embedded_kgco2e.
     # The system should flag missing emissions or apply Tier 3 defaults.
     payload = {
@@ -305,7 +301,7 @@ def test_cement_importer_missing_data_slack_review(
     case_id = body["case_id"]
     cleanup_cbam_cases.append(case_id)
 
-    # ── Step 2: Report package — data quality must surface gaps ───────────────
+    # Step 2: Report package — data quality must surface gaps
     r = client.get(f"/api/cbam/cases/{case_id}/report-package")
     assert r.status_code == 200, f"Report package fetch failed ({r.status_code}): {r.text}"
     rp = r.json()
@@ -320,7 +316,7 @@ def test_cement_importer_missing_data_slack_review(
         f"Got missing={missing}, warnings={warnings}"
     )
 
-    # ── Step 3: Pipeline endpoint — handle blocking or Tier 3 path ───────────
+    # Step 3: Pipeline endpoint — handle blocking or Tier 3 path
     r = client.post(
         f"/api/cases/{case_id}/narrative/pipeline",
         params={"packet_kind": "cbam"},
@@ -355,7 +351,7 @@ def test_cement_importer_missing_data_slack_review(
             "Tier 3 narrative must include executive_summary"
         )
 
-    # ── Step 4: Compliance pack — must be blocked for a missing-data case ─────
+    # Step 4: Compliance pack — must be blocked for a missing-data case
     r = client.post(f"/api/cbam/cases/{case_id}/compliance-pack")
     if data_quality.get("blocking"):
         assert r.status_code == 422, (
@@ -363,7 +359,7 @@ def test_cement_importer_missing_data_slack_review(
         )
         assert r.json().get("data_quality", {}).get("blocking") is True
 
-    # ── Step 5: Slack notification service — verify wiring directly ───────────
+    # Step 5: Slack notification service — verify wiring directly
     # In production, notify_review_required fires as a BackgroundTask after the
     # deterministic validator sets human_review_required=True.
     # We call it directly here to verify the Slack webhook mock is correctly wired,
@@ -404,7 +400,7 @@ def test_cement_importer_missing_data_slack_review(
         "The cement CN code or 'cement' must be referenced in the Slack flags"
     )
 
-    # ── Step 6: No Resend email for a blocked / unfinished cement case ────────
+    # Step 6: No Resend email for a blocked / unfinished cement case
     # Resend fires only after a case is formally approved — not for blocked cases.
     assert len(resend_mock.calls) == 0, (
         "Resend must not be called for a cement case with missing emissions data. "
@@ -412,9 +408,7 @@ def test_cement_importer_missing_data_slack_review(
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Test 3: Aluminium importer — CPR claim, UK jurisdiction indirect exclusion
-# ─────────────────────────────────────────────────────────────────────────────
 
 @requires_supabase
 def test_aluminium_importer_cpr_claim_uk_jurisdiction(
@@ -448,7 +442,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
       EU 2023/1773 Art. 4(1)(a) (Tier 1, actual method)
       Finance No.2 Bill 2025-26 CPR formula (secondary legislation Feb 2026)
     """
-    # ── Step 1: Create CBAM aluminium case ────────────────────────────────────
+    # Step 1: Create CBAM aluminium case
     # Norway (NO): direct 360,000 kgCO2e, indirect 520,000 kgCO2e (primary electrolysis)
     # NOK CO2 tax: 1155 NOK/tCO2e, exchange rate 0.074 GBP/NOK
     payload = {
@@ -488,7 +482,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     assert len(goods_line_ids) == 1, f"Expected 1 goods line, got {len(goods_line_ids)}"
     goods_line_id = goods_line_ids[0]
 
-    # ── Step 2: Report package — direct + indirect, UK indirect exclusion ─────
+    # Step 2: Report package — direct + indirect, UK indirect exclusion
     r = client.get(f"/api/cbam/cases/{case_id}/report-package")
     assert r.status_code == 200, f"Report package fetch failed ({r.status_code}): {r.text}"
     rp = r.json()
@@ -532,7 +526,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
                     f"Expected ≤ £19,116 (direct only at £53.10/tCO2e Q3 2027)."
                 )
 
-    # ── Step 3: Run narrative pipeline ────────────────────────────────────────
+    # Step 3: Run narrative pipeline
     r = client.post(
         f"/api/cases/{case_id}/narrative/pipeline",
         params={"packet_kind": "cbam"},
@@ -547,7 +541,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
         "results.total_direct_embedded_kgco2e must be overridden from report package"
     )
 
-    # ── Step 4: CPR calculation — Norwegian CO₂ tax (NOK 1155/tCO2e) ─────────
+    # Step 4: CPR calculation — Norwegian CO₂ tax (NOK 1155/tCO2e)
     #
     # Finance No.2 Bill 2025-26 CPR formula:
     #   effective_price_gbp = (carbon_price_local − free_allocations − rebates)
@@ -619,7 +613,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
             "Norway (NO) must be listed as CPR-claimable (EEA EU ETS participant)"
         )
 
-    # ── Step 5: Create CPR claim ──────────────────────────────────────────────
+    # Step 5: Create CPR claim
     # POST to /api/cbam/cpr/claims to persist the claim to cbam_cpr_claims.
     # The API re-runs the CPR formula server-side from the raw inputs.
     claim_request = {
@@ -661,7 +655,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
             f"Created CPR claim {claim_id} must appear in GET /cbam/cpr/claims/{goods_line_id}"
         )
 
-    # ── Step 6: Create compliance pack ────────────────────────────────────────
+    # Step 6: Create compliance pack
     r = client.post(f"/api/cbam/cases/{case_id}/compliance-pack")
     assert r.status_code == 200, f"Compliance pack failed ({r.status_code}): {r.text}"
     pack = r.json()
@@ -689,13 +683,13 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
                     f"(EU 2023/1773 Annex I) even when excluded from UK CBAM charge."
                 )
 
-    # ── Step 7: Audit trail — payload_hash must be present ───────────────────
+    # Step 7: Audit trail — payload_hash must be present
     pack_audit = pack.get("audit") or {}
     assert len(pack_audit.get("payload_hash", "")) == 64, (
         "compliance_pack_v1 audit.payload_hash must be a 64-char hex SHA-256"
     )
 
-    # ── Step 8: Slack and Resend not fired in the happy path ──────────────────
+    # Step 8: Slack and Resend not fired in the happy path
     # Slack fires only if human_review_required=True; Resend after formal approval.
     if not pipeline.get("human_review_required"):
         assert len(slack_mock.calls) == 0, (

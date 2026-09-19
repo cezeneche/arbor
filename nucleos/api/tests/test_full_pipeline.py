@@ -54,7 +54,7 @@ from uuid import uuid4, UUID
 
 import pytest
 
-# ── Skip markers ──────────────────────────────────────────────────────────────
+# Skip markers
 
 _DB_URL = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
 _HAS_POSTGRES = _DB_URL.startswith("postgresql") or _DB_URL.startswith("postgres")
@@ -73,7 +73,7 @@ requires_anthropic = pytest.mark.skipif(
     reason="ANTHROPIC_API_KEY not set — skipping narrative pipeline tests.",
 )
 
-# ── Application imports (env already set by conftest.py) ──────────────────────
+# Application imports (env already set by conftest.py)
 
 from shared_auth.testing import make_test_token  # noqa: E402
 
@@ -95,7 +95,7 @@ from app.services.cpr_calculator import (   # noqa: E402
     calculate_cpr,
 )
 
-# ── Domain constants ──────────────────────────────────────────────────────────
+# Domain constants
 
 # Q1 2027 HMRC reference UK ETS rate (per HMRC CBAM secondary legislation Feb 2026)
 _UK_ETS_RATE = Decimal("52.40")
@@ -123,7 +123,7 @@ _IMPORTER_ADDRESS = {
 }
 
 
-# ── Test data builders ────────────────────────────────────────────────────────
+# Test data builders
 
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
@@ -306,7 +306,7 @@ def _make_hmrc_input(
     )
 
 
-# ── Auth helpers ──────────────────────────────────────────────────────────────
+# Auth helpers
 
 def _auth_headers(
     tenant_id: str,
@@ -321,7 +321,7 @@ def _auth_headers(
     return {"Authorization": f"Bearer {token}"}
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# Fixtures
 
 @pytest.fixture()
 def tenant_id() -> str:
@@ -379,7 +379,7 @@ def cleanup_cases(api_client):
             )
 
 
-# ── API helper functions (used by API-backed tests) ───────────────────────────
+# API helper functions (used by API-backed tests)
 
 def _post_case(
     client,
@@ -493,9 +493,7 @@ def _get_report_package(client, auth_headers: dict, case_id: str) -> dict:
     return resp.json()
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 #  TEST 1 — Happy path: steel importer, actual data (Tier 1)
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestHappyPathSteelActual:
     """
@@ -506,7 +504,7 @@ class TestHappyPathSteelActual:
     CBAM rate: £52.40/tCO₂e  →  charge = 850 × £52.40 = £44,540.00
     """
 
-    # ── 1a: Report package structure ─────────────────────────────────────────
+    # 1a: Report package structure
 
     def test_report_package_has_correct_schema(self):
         """Report package conforms to cbam_report_package_v1 schema."""
@@ -522,7 +520,7 @@ class TestHappyPathSteelActual:
         assert em is not None
         assert em["method"] == "actual"
 
-    # ── 1b: Three-tier method selector ───────────────────────────────────────
+    # 1b: Three-tier method selector
 
     def test_actual_without_verif_ref_maps_to_actual_unverified(self):
         """method='actual', no verification_ref → HMRC category 'actual_unverified' (Tier 1)."""
@@ -544,7 +542,7 @@ class TestHappyPathSteelActual:
         assert gl.verification_reference == "VERIF-REF-2027-001"
         assert gl.default_value_used     is False
 
-    # ── 1c: HMRC return totals ────────────────────────────────────────────────
+    # 1c: HMRC return totals
 
     def test_hmrc_charge_equals_direct_tco2e_times_rate(self):
         """
@@ -586,7 +584,7 @@ class TestHappyPathSteelActual:
         assert gl.cn8_disambiguated  is True
         assert any("cn8_padded" in w for w in doc.warnings)
 
-    # ── 1d: Python assertion layer ────────────────────────────────────────────
+    # 1d: Python assertion layer
 
     def test_assertion_layer_passes_on_matching_narrative(self):
         """
@@ -616,7 +614,7 @@ class TestHappyPathSteelActual:
             f"Unexpected human-review-triggering failures: {human_review_failures}"
         )
 
-    # ── 1e: Audit chain integrity ─────────────────────────────────────────────
+    # 1e: Audit chain integrity
 
     def test_audit_chain_hash_is_64_char_lowercase_hex(self):
         """audit_chain_hash is an HMAC-SHA256 — 64 lowercase hex characters."""
@@ -641,7 +639,7 @@ class TestHappyPathSteelActual:
         doc2  = build_hmrc_return(pkg, _make_hmrc_input(cbam_rate=Decimal("60.00")))
         assert doc1.audit_chain_hash != doc2.audit_chain_hash
 
-    # ── 1f: return_to_json ────────────────────────────────────────────────────
+    # 1f: return_to_json
 
     def test_hmrc_return_json_is_valid_and_complete(self):
         """return_to_json produces parseable JSON with all required top-level keys."""
@@ -654,7 +652,7 @@ class TestHappyPathSteelActual:
         assert parsed["return_type"]          == "annual"
         assert parsed["accuracy_declaration"] is True
 
-    # ── 1g: End-to-end API test (PostgreSQL required) ─────────────────────────
+    # 1g: End-to-end API test (PostgreSQL required)
 
     @requires_postgres
     def test_full_pipeline_via_api(self, api_client, tenant_id, cleanup_cases):
@@ -665,18 +663,18 @@ class TestHappyPathSteelActual:
         """
         auth = _auth_headers(tenant_id)
 
-        # ── Step 1: Create CBAM case ──────────────────────────────────────────
+        # Step 1: Create CBAM case
         # UK, because this test builds an HMRC return. A case's regime defaults
         # to EU, and the HMRC builder rightly refuses an EU-only case.
         case    = _post_case(api_client, auth, jurisdiction="UK")
         case_id = case["id"]
         cleanup_cases.append(case_id)
 
-        # ── Step 2: Create shipment (German origin — EU ETS) ──────────────────
+        # Step 2: Create shipment (German origin — EU ETS)
         ship        = _post_shipment(api_client, auth, case_id, origin_country="DE")
         shipment_id = ship["id"]
 
-        # ── Step 3: Create goods line (CN 72081010, iron_steel sector) ────────
+        # Step 3: Create goods line (CN 72081010, iron_steel sector)
         gl           = _post_goods_line(api_client, auth, case_id, shipment_id)
         goods_line_id = gl["id"]
 
@@ -702,14 +700,14 @@ class TestHappyPathSteelActual:
                 {"id": goods_line_id},
             )
 
-        # ── Step 4: Record actual emissions (Tier 1) ──────────────────────────
+        # Step 4: Record actual emissions (Tier 1)
         em = _post_emissions(
             api_client, auth, goods_line_id,
             method="actual", direct_kgco2e=850_000, indirect_kgco2e=150_000,
         )
         assert em.get("method") == "actual" or em.get("version") is not None
 
-        # ── Step 5: Fetch report package ──────────────────────────────────────
+        # Step 5: Fetch report package
         pkg = _get_report_package(api_client, auth, case_id)
 
         # Verify report package assembles correctly
@@ -732,7 +730,7 @@ class TestHappyPathSteelActual:
         # use.
         assert Decimal(str(pkg["summary"]["total_net_mass_kg"])) == 500_000
 
-        # ── Step 6: Python assertion layer ────────────────────────────────────
+        # Step 6: Python assertion layer
         direct_kg   = Decimal(str(pkg["summary"]["total_direct_emissions_kgco2e"]))
         indirect_kg = Decimal(str(pkg["summary"]["total_indirect_emissions_kgco2e"]))
         narrative   = _make_narrative(
@@ -747,14 +745,14 @@ class TestHappyPathSteelActual:
         )
         assert validation.passed is True
 
-        # ── Step 7: Build HMRC return from live report package ────────────────
+        # Step 7: Build HMRC return from live report package
         doc             = build_hmrc_return(pkg, _make_hmrc_input())
         expected_charge = (Decimal("850") * _UK_ETS_RATE).quantize(Decimal("0.01"))
         assert doc.total_cbam_charge_gbp    == expected_charge
         assert doc.total_cbam_liability_gbp == expected_charge
         assert doc.return_type              == "annual"
 
-        # ── Step 8: Verify audit chain ────────────────────────────────────────
+        # Step 8: Verify audit chain
         assert len(doc.audit_chain_hash) == 64
         assert all(c in "0123456789abcdef" for c in doc.audit_chain_hash)
         assert doc.accuracy_declaration is True
@@ -789,9 +787,7 @@ class TestHappyPathSteelActual:
         assert body["human_review_required"] is False
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 #  TEST 2 — Default value fallback (Annex VI, Tier 3)
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestDefaultValueFallback:
     """
@@ -899,9 +895,7 @@ class TestDefaultValueFallback:
         assert gl_ret.default_value_used is True
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 #  TEST 3 — CPR claim (EU ETS carbon price recognition)
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestCPRClaim:
     """
@@ -1057,9 +1051,7 @@ class TestCPRClaim:
         assert doc.total_cbam_charge_gbp > Decimal("0")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 #  TEST 4 — Tenant isolation (PostgreSQL required)
-# ══════════════════════════════════════════════════════════════════════════════
 
 @requires_postgres
 class TestTenantIsolation:
@@ -1196,9 +1188,7 @@ class TestTenantIsolation:
         )
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 #  TEST 5 — Validation failure: missing calculation method
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestValidationFailure:
     """

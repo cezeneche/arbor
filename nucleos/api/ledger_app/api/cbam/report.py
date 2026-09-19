@@ -104,7 +104,7 @@ def get_cbam_report_package(
         shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
         data_quality = _shared.evaluate_cbam_data_quality(case_row, shipments_payload)
 
-        # ── Human review gate ─────────────────────────────────────────────────
+        # Human review gate
         # Block report generation when data quality is "blocking" (one or more
         # required fields are missing).  Rejection is written to the audit log so
         # the event is part of the immutable chain (EU 2023/1773 Art. 6).
@@ -246,7 +246,7 @@ def compute_case_liability(request: Request, case_id: UUID, payload: _shared.CBA
     with _shared.engine.begin() as conn:
         _shared._manual_fk_check(conn, "cbam_cases", case_id, "case_id")
 
-        # ── Human review gate ─────────────────────────────────────────────────
+        # Human review gate
         case_columns = _shared._table_columns(conn, "cbam_cases")
         tenant_filter = "AND tenant_id = :tenant_id" if "tenant_id" in case_columns else ""
         tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
@@ -554,13 +554,13 @@ def build_case_hmrc_return(
 
         case_row = dict(case_rows[0])
 
-        # ── CPR: sum claims per consignment ───────────────────────────────────
+        # CPR: sum claims per consignment
         cpr_by_consignment = get_cpr_by_consignment_db(conn, str(case_id), tenant_id)
 
-        # ── Build report package ──────────────────────────────────────────────
+        # Build report package
         shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
 
-    # ── Derive CBAM rate ──────────────────────────────────────────────────────
+    # Derive CBAM rate
     # Use the override when provided; otherwise resolve from the primary sector.
     if payload.cbam_rate_override is not None:
         cbam_rate = payload.cbam_rate_override

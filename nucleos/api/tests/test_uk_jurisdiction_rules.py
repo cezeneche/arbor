@@ -39,7 +39,7 @@ from app.services.hmrc_return_builder import (
 pytestmark = pytest.mark.regulatory
 
 
-# ── Shared fixtures ─────────────────────────────────────────────────────────────
+# Shared fixtures
 
 def _base_input(rate: Decimal = Decimal("10.00")) -> HMRCReturnInput:
     """Minimal valid HMRCReturnInput."""
@@ -99,7 +99,7 @@ def _base_package(*, origin_country: str = "DE") -> dict:
     }
 
 
-# ── Rule 1: UK indirect emissions exclusion ────────────────────────────────────
+# Rule 1: UK indirect emissions exclusion
 
 class TestUKIndirectEmissionsExclusion:
     """UK CBAM must only charge direct (Scope 1) embedded emissions."""
@@ -191,7 +191,7 @@ class TestUKIndirectEmissionsExclusion:
         assert gl.cbam_charge_gbp == Decimal("900.00")
 
 
-# ── Rule 2: UK precursor exclusion ────────────────────────────────────────────
+# Rule 2: UK precursor exclusion
 
 class TestUKPrecursorExclusion:
     """UK-origin (origin_country='GB') consignments must be excluded from the return."""

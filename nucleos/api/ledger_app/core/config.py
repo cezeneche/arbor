@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# ── Typed feature-flag registry ───────────────────────────────────────────────
+# Typed feature-flag registry
 
 class AppConfig:
     """
@@ -30,7 +30,7 @@ class AppConfig:
     os.environ without needing to reload this module.
     """
 
-    # ── Database / Supabase ───────────────────────────────────────────────────
+    # Database / Supabase
 
     @staticmethod
     def database_url() -> str:
@@ -48,7 +48,7 @@ class AppConfig:
     def supabase_enabled() -> bool:
         return bool((os.getenv("SUPABASE_URL") or "").strip())
 
-    # ── Auth / JWT ────────────────────────────────────────────────────────────
+    # Auth / JWT
 
     @staticmethod
     def jwt_secret() -> str:
@@ -70,7 +70,7 @@ class AppConfig:
     def dev_token_endpoint_enabled() -> bool:
         return os.getenv("AUTH_DEV_TOKEN_ENDPOINT", "").strip().lower() in ("1", "true", "yes")
 
-    # ── Security ──────────────────────────────────────────────────────────────
+    # Security
 
     @staticmethod
     def audit_signing_key() -> str:
@@ -92,7 +92,7 @@ class AppConfig:
     def is_production() -> bool:
         return AppConfig.environment() in ("production", "prod")
 
-    # ── LLM / AI ─────────────────────────────────────────────────────────────
+    # LLM / AI
 
     @staticmethod
     def anthropic_api_key() -> str:
@@ -106,7 +106,7 @@ class AppConfig:
     def narrative_enabled() -> bool:
         return bool((os.getenv("ANTHROPIC_API_KEY") or "").strip())
 
-    # ── Notifications ─────────────────────────────────────────────────────────
+    # Notifications
 
     @staticmethod
     def slack_webhook_url() -> str:
@@ -127,7 +127,7 @@ class AppConfig:
     def resend_from_address() -> str:
         return os.getenv("RESEND_FROM", "noreply@nucleos.app")
 
-    # ── Scheduler ────────────────────────────────────────────────────────────
+    # Scheduler
 
     @staticmethod
     def registration_scheduler_enabled() -> bool:
@@ -135,13 +135,13 @@ class AppConfig:
             "0", "false", "no"
         )
 
-    # ── Request limits ────────────────────────────────────────────────────────
+    # Request limits
 
     @staticmethod
     def max_request_size_bytes() -> int:
         return int(os.getenv("MAX_REQUEST_SIZE_BYTES", str(10 * 1024 * 1024)))
 
-    # ── CBAM external integrations ────────────────────────────────────────────
+    # CBAM external integrations
 
     @staticmethod
     def cbam_installation_registry_url() -> str:
@@ -156,7 +156,7 @@ class AppConfig:
         return (os.getenv("OTLP_ENDPOINT") or "").strip()
 
 
-# ── Startup validation ────────────────────────────────────────────────────────
+# Startup validation
 
 def validate_startup_config() -> None:
     """
@@ -202,7 +202,7 @@ def validate_startup_config() -> None:
         )
 
 
-# ── Optional startup warnings ─────────────────────────────────────────────────
+# Optional startup warnings
 
 def optional_startup_warnings() -> list[str]:
     """

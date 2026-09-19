@@ -67,7 +67,7 @@ describe('checkSupplierConnection', () => {
   })
 })
 
-// ── Audit package entitlement (PRD §22.4) ─────────────────────────────────────
+// Audit package entitlement (PRD §22.4)
 // Audit package generation is a paid service, not a free button on every screen.
 // Metered per-entity-per-period billing does not exist yet, so this is the
 // entitlement seam rather than a real paywall — see checkAuditPackageAllowed.

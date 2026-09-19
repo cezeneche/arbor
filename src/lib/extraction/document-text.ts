@@ -1,4 +1,4 @@
-// Document → text. Arbor owns this from Phase 2.
+// Document → text. Arbor owns this; Nucleos receives text, never files.
 //
 // Arbor never needed a transcription before: it sends the document to the model
 // and gets structured fields back in one step. Nucleos's contract carries text,

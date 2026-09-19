@@ -26,7 +26,7 @@ import os
 import re
 import sys
 
-# ── 1. Resolve DATABASE_URL ───────────────────────────────────────────────────
+# 1. Resolve DATABASE_URL
 database_url = os.getenv("DATABASE_URL", "").strip()
 if not database_url:
     print("ERROR: DATABASE_URL environment variable is not set.", file=sys.stderr)
@@ -43,7 +43,7 @@ except ImportError:
     print("ERROR: psycopg2 is not installed. Run: pip install psycopg2-binary", file=sys.stderr)
     sys.exit(1)
 
-# ── 2. Connect ────────────────────────────────────────────────────────────────
+# 2. Connect
 try:
     conn = psycopg2.connect(dsn)
 except Exception as exc:
@@ -53,7 +53,7 @@ except Exception as exc:
 conn.autocommit = False
 cur = conn.cursor()
 
-# ── 3. Ensure tracking table exists ──────────────────────────────────────────
+# 3. Ensure tracking table exists
 cur.execute(
     """
     CREATE TABLE IF NOT EXISTS public.schema_migrations (

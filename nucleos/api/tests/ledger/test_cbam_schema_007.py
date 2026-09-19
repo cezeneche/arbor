@@ -46,7 +46,7 @@ from ledger_app.services.cbam_emission_factors import (
 from ledger_app.testing import FakeConnection
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 class _FakeResult:
     def __init__(self, rowcount=1, rows=None):
@@ -84,7 +84,7 @@ def _make_engine(tables_present: bool = True, rowcount: int = 1):
     return mock_engine
 
 
-# ── Seeder tests ──────────────────────────────────────────────────────────────
+# Seeder tests
 
 class TestSeedEmissionFactors:
     def test_returns_dict(self):
@@ -214,7 +214,7 @@ class TestGetFactorFromDb:
         assert executed[0].get("table_version") == "2024"
 
 
-# ── Schema shape tests (via FakeConnection column list) ──────────────────────
+# Schema shape tests (via FakeConnection column list)
 
 class TestMigration007Schema:
     """Verify migration 007 columns are present in the FakeConnection schema.
@@ -288,7 +288,7 @@ class TestMigration007Schema:
         assert "production_route" in self._col_names("cbam_emissions")
 
 
-# ── Module constants ──────────────────────────────────────────────────────────
+# Module constants
 
 class TestFactorConstants:
     def test_table_version_is_string(self):

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const periodEnd = parsed.data.periodEnd ? new Date(parsed.data.periodEnd) : null
   const expiresAt = parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null
 
-  // Reuse the Gap-4 audit package to derive a verifiable integrity hash for the
+  // Reuse the audit package to derive a verifiable integrity hash for the
   // scope, and log it so the public verify endpoint will recognise it.
   // Scoped exactly as the share displays it — domain included — so the hash
   // covers the records the recipient sees at the moment the share is issued.

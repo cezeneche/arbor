@@ -334,7 +334,7 @@ def _parse_structured_response(
                                    source_text=source_text, match=match, group_index=0,
                                    pages=pages)
 
-    # ── CBAM-specific field extraction ────────────────────────────────────────
+    # CBAM-specific field extraction
     if not structured.get("operator_name"):
         match = re.search(
             r"(?:operator|supplier|exporter|seller)\s*(?:name)?\s*[:\-]\s*(.+)",

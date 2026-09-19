@@ -126,7 +126,7 @@ def _build_goods_lines_table(report_package: dict) -> list[dict[str, object]]:
     return rows
 
 
-# ── DG TAXUD registry schema constants ───────────────────────────────────────
+# DG TAXUD registry schema constants
 
 _REGISTRY_SCHEMA_VERSION = "1.0"
 _REGISTRY_SCHEMA_REF = (
@@ -190,7 +190,7 @@ def serialise_to_registry_schema(compliance_pack: dict) -> dict:
         _to_decimal(_cpp_raw) if _cpp_raw is not None and _to_decimal(_cpp_raw) > Decimal("0") else None
     )
 
-    # ── Import entries ────────────────────────────────────────────────────────
+    # Import entries
     import_entries: list[dict] = []
     for shipment_bundle in (rp.get("shipments") or []):
         shipment = shipment_bundle.get("shipment") or {}
@@ -248,7 +248,7 @@ def serialise_to_registry_schema(compliance_pack: dict) -> dict:
             "goods": goods_items,
         })
 
-    # ── Report totals (kgCO2e → tCO2e) ───────────────────────────────────────
+    # Report totals (kgCO2e → tCO2e)
     tables = compliance_pack.get("tables") or {}
     totals = tables.get("totals") or {}
 

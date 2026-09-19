@@ -459,7 +459,7 @@ def _create_cbam_draft_from_parsed_invoice_payload(
                     warnings.append(f"emissions_reused:{goods_line_id}")
                     continue
 
-                # ── Automated method selection (EU 2023/1773 Art. 4) ──────────
+                # Automated method selection (EU 2023/1773 Art. 4)
                 # Determines actual / estimated / default and computes direct +
                 # indirect kgCO2e values.  Always runs — even when the caller
                 # supplies a method and values, the selector validates them.

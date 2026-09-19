@@ -118,7 +118,7 @@ def _validate_token(row: object | None) -> None:
         raise HTTPException(status_code=410, detail="This link has expired.")
 
 
-# ── Protected: generate token ──────────────────────────────────────────────────
+# Protected: generate token
 
 class TokenRequest(BaseModel):
     supplier_email: str | None = None
@@ -213,7 +213,7 @@ def generate_supplier_token(
     )
 
 
-# ── Public: serve form context ─────────────────────────────────────────────────
+# Public: serve form context
 
 class FormContext(BaseModel):
     cn_code:            str
@@ -253,7 +253,7 @@ def get_supplier_form(token: str):
     )
 
 
-# ── Public: accept submission ──────────────────────────────────────────────────
+# Public: accept submission
 
 class FormSubmission(BaseModel):
     see_tco2e_per_t:   float = Field(..., gt=0, description="Direct specific embedded emissions in tCO₂e per tonne.")

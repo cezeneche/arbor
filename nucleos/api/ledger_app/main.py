@@ -10,7 +10,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from ledger_app.core.config import optional_startup_warnings, validate_startup_config
 from shared_auth import get_auth_context
 
-# ── Standard Python logging → stdout ──────────────────────────────────────────
+# Standard Python logging → stdout
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -20,7 +20,7 @@ logging.root.setLevel(logging.INFO)
 
 validate_startup_config()
 
-# ── Supabase client lifespan ───────────────────────────────────────────────────
+# Supabase client lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if os.getenv("SUPABASE_URL"):
@@ -56,16 +56,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="núcleo ledger", version="0.1.0", lifespan=lifespan)
 
-# ── OpenTelemetry distributed tracing (no-op when OTLP_ENDPOINT absent) ──────
+# OpenTelemetry distributed tracing (no-op when OTLP_ENDPOINT absent)
 from ledger_app.core.telemetry import setup_telemetry
 setup_telemetry(app)
 
-# ── HTTPS redirect (production) ───────────────────────────────────────────────
+# HTTPS redirect (production)
 if os.getenv("FORCE_HTTPS", "").strip().lower() in ("1", "true", "yes"):
     from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
     app.add_middleware(HTTPSRedirectMiddleware)
 
-# ── Tenant context middleware (sets app.current_tenant_id for RLS) ────────────
+# Tenant context middleware (sets app.current_tenant_id for RLS)
 if os.getenv("SUPABASE_URL"):
     from ledger_app.middleware.tenant_context import TenantContextMiddleware
     app.add_middleware(TenantContextMiddleware)

@@ -24,7 +24,7 @@ def register_all(app: FastAPI) -> None:
     _register_platform(app)
 
 
-# ── 1. Core (no auth) ─────────────────────────────────────────────────────────
+# 1. Core (no auth)
 
 def _register_core(app: FastAPI) -> None:
     from app.core.health import router as deep_health_router
@@ -35,7 +35,7 @@ def _register_core(app: FastAPI) -> None:
     app.include_router(health_router)          # root /health + /ready (no prefix)
 
 
-# ── 2. Ledger routers (17) ────────────────────────────────────────────────────
+# 2. Ledger routers (17)
 
 def _register_ledger(app: FastAPI) -> None:
     from ledger_app.api.audit import router as audit_router
@@ -84,7 +84,7 @@ def _register_ledger(app: FastAPI) -> None:
     app.include_router(review_router, prefix="/api", dependencies=_auth)
 
 
-# ── 3. Platform routers (consolidated app/) ───────────────────────────────────
+# 3. Platform routers (consolidated app/)
 
 def _register_platform(app: FastAPI) -> None:
     from app.api.cbam_compliance import router as cbam_compliance_router

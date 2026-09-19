@@ -57,7 +57,7 @@ __all__ = [
 
 _logger = logging.getLogger("ledger.cbam_scope")
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# Constants
 
 DE_MINIMIS_THRESHOLD_EUR: Decimal = Decimal("150")
 """Intrinsic-value threshold below which CBAM does not apply (Art. 2(3))."""
@@ -84,7 +84,7 @@ ANNEX_II_COUNTRIES: frozenset[str] = frozenset({
 _EORI_RE = re.compile(r"^[A-Z]{2}[A-Z0-9]{1,15}$")
 
 
-# ── Result types ──────────────────────────────────────────────────────────────
+# Result types
 
 class ScopeStatus(str, Enum):
     IN_SCOPE = "in_scope"
@@ -126,7 +126,7 @@ class ScopeDetermination:
     importer_eori: str | None
 
 
-# ── Authorised Declarant validation (EU 2023/956 Art. 5) ─────────────────────
+# Authorised Declarant validation (EU 2023/956 Art. 5)
 
 def _load_declarant_allowlist() -> frozenset[str]:
     """Return frozenset of authorised declarant EORIs from env, or empty set."""
@@ -227,7 +227,7 @@ def validate_declarant_registration(
     return DeclarantValidationResult(is_valid=not warnings, warnings=warnings)
 
 
-# ── Public function ───────────────────────────────────────────────────────────
+# Public function
 
 def determine_cbam_scope(
     cn_code: str,
@@ -266,7 +266,7 @@ def determine_cbam_scope(
     norm_origin = origin_country.strip().upper() if origin_country else None
     norm_eori = importer_eori.strip().upper() if importer_eori else None
 
-    # ── Step 1: Annex I — is the CN code covered? ─────────────────────────────
+    # Step 1: Annex I — is the CN code covered?
     sector = lookup_sector(norm_cn)
     if sector is None:
         reasons.append(
@@ -282,7 +282,7 @@ def determine_cbam_scope(
         )
         reg_refs.append("EU Regulation 2023/956, Annex I (covered goods and CN codes)")
 
-    # ── Step 2: Origin country — EU member state or Annex II territory? ───────
+    # Step 2: Origin country — EU member state or Annex II territory?
     if norm_origin is None:
         reasons.append(
             "origin:missing — origin country not provided; "
@@ -311,7 +311,7 @@ def determine_cbam_scope(
             f"third-country origin; CBAM applies unless another exclusion applies"
         )
 
-    # ── Step 3: De minimis — intrinsic value ≤ EUR 150? ──────────────────────
+    # Step 3: De minimis — intrinsic value ≤ EUR 150?
     if consignment_value_eur is not None:
         value = Decimal(str(consignment_value_eur))
         if value <= DE_MINIMIS_THRESHOLD_EUR:
@@ -337,7 +337,7 @@ def determine_cbam_scope(
             "consignment value not provided; de minimis check skipped"
         )
 
-    # ── Step 4: Importer EORI validation ─────────────────────────────────────
+    # Step 4: Importer EORI validation
     if norm_eori is None:
         reasons.append(
             "eori:missing — importer EORI not provided; "
@@ -364,7 +364,7 @@ def determine_cbam_scope(
             f"registration status must be verified with DG TAXUD registry"
         )
 
-    # ── Step 5: Authorised Declarant check (Art. 5) ───────────────────────────
+    # Step 5: Authorised Declarant check (Art. 5)
     if norm_eori and _EORI_RE.match(norm_eori):
         declarant_result = validate_declarant_registration(norm_eori)
         for w in declarant_result.warnings:
@@ -373,7 +373,7 @@ def determine_cbam_scope(
                 requires_review = True
         reg_refs.append(declarant_result.regulation_ref)
 
-    # ── Final determination ───────────────────────────────────────────────────
+    # Final determination
     if out_of_scope_definitive:
         final_status = ScopeStatus.OUT_OF_SCOPE
     elif requires_review:
