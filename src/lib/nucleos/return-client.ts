@@ -14,6 +14,7 @@
 // Returns bytes, not JSON, because both outputs are files a human files.
 
 import { NucleosUnavailableError, isNucleosConfigured } from './extraction-client'
+import { nucleosHeaders } from './service-auth'
 
 const DEFAULT_TIMEOUT_MS = 60_000
 
@@ -74,10 +75,7 @@ async function postForFile(
   try {
     const res = await doFetch(`${process.env.NUCLEOS_URL}${path}`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${process.env.NUCLEOS_INTERNAL_TOKEN as string}`,
-      },
+      headers: nucleosHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(body ?? {}),
       signal: controller.signal,
     })

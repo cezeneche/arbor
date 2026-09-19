@@ -13,6 +13,7 @@
 
 import { NucleosUnavailableError, isNucleosConfigured } from './extraction-client'
 import type { CalculationResult, DeclarationPayload } from './contract'
+import { nucleosHeaders } from './service-auth'
 
 const CALCULATE_ENDPOINT = '/api/internal/calculate'
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -49,10 +50,7 @@ export async function calculateDeclaration(
   try {
     const res = await doFetch(`${process.env.NUCLEOS_URL}${CALCULATE_ENDPOINT}`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${process.env.NUCLEOS_INTERNAL_TOKEN as string}`,
-      },
+      headers: nucleosHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(payload),
       signal: controller.signal,
     })

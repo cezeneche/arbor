@@ -1,33 +1,22 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from ledger_app.db.session import db_healthcheck
+from ledger_app.db.session import db_healthcheck, missing_required_tables
 
 router = APIRouter(tags=["health"])
+
 
 @router.get("/health")
 def health():
     return {"ok": True, "service": "nucleo-ledger"}
 
 
-@router.get("/ready")
-def ready():
+def _readiness():
+    """The one readiness contract: the database answers and has the tables a
+    case is written to. /ready and /health/ready both serve it, so a probe
+    configured with either path gets the same answer."""
     try:
-        db_state = db_healthcheck()
-        if bool(db_state.get("db_ok")):
-            return {
-                "ready": True,
-                "service": "nucleo-ledger",
-                "dependencies": {"db": "ok"},
-            }
-        return JSONResponse(
-            status_code=503,
-            content={
-                "ready": False,
-                "service": "nucleo-ledger",
-                "dependencies": {"db": "unhealthy"},
-            },
-        )
+        db_ok = bool(db_healthcheck().get("db_ok"))
     except Exception as exc:
         return JSONResponse(
             status_code=503,
@@ -38,7 +27,30 @@ def ready():
                 "detail": str(exc),
             },
         )
+    if not db_ok:
+        return JSONResponse(
+            status_code=503,
+            content={"ready": False, "service": "nucleo-ledger", "dependencies": {"db": "unhealthy"}},
+        )
+
+    missing = missing_required_tables()
+    if missing:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "ready": False,
+                "service": "nucleo-ledger",
+                "dependencies": {"db": "ok", "schema": {"missing": missing}},
+            },
+        )
+    return {"ready": True, "service": "nucleo-ledger", "dependencies": {"db": "ok", "schema": "ok"}}
+
+
+@router.get("/ready")
+def ready():
+    return _readiness()
+
 
 @router.get("/health/ready")
 def health_ready():
-    return {"ok": True, "service": "nucleo-ledger", "ready": True}
+    return _readiness()
