@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isStorableUnit } from '@/lib/layer2/canonical-measurement'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
@@ -17,7 +18,7 @@ const recordSchema = z.object({
   domain: domainSchema,
   fieldName: z.string().min(1).max(120),
   value: z.number().finite(),
-  unit: z.string().min(1).max(60),
+  unit: z.string().min(1).max(60).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
 })

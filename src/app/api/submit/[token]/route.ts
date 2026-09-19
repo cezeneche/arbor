@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isStorableUnit } from '@/lib/layer2/canonical-measurement'
 import { z } from 'zod'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
@@ -15,7 +16,7 @@ import { hashOpaqueToken } from '@/lib/tokens/opaque-token'
 const entrySchema = z.object({
   fieldName: z.string().min(1),
   value: z.number().finite(),
-  unit: z.string().min(1),
+  unit: z.string().min(1).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
   sourceText: z.string().optional(),
 })
 

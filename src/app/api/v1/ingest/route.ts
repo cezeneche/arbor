@@ -3,11 +3,17 @@
 // Records are written as Tier B / SYSTEM_INTEGRATION — no source document is attached.
 // A source document must be submitted separately to upgrade to Tier A.
 import { NextRequest, NextResponse } from 'next/server'
+import { isStorableUnit } from '@/lib/layer2/canonical-measurement'
 import { z } from 'zod'
 import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
-import type { AuditPayload } from '@/lib/layer2/audit-chain'
-import { appendAuditEntry } from '@/lib/layer2/audit-append'
+import {
+  claimItem,
+  completeIngestOperation,
+  releaseIngestOperation,
+  requestDigest,
+  reserveIngestOperation,
+} from '@/lib/layer2/ingest-operation'
 import { getSystemUser } from '@/lib/layer2/system-actor'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
 import { runSerializable } from '@/lib/layer2/serializable'
@@ -19,7 +25,7 @@ const recordSchema = z.object({
   domain: domainSchema,
   fieldName: z.string().min(1).max(120),
   value: z.number().finite(),
-  unit: z.string().min(1).max(60),
+  unit: z.string().min(1).max(60).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
   sourceSystem: z.string().max(120).optional(),
@@ -32,7 +38,7 @@ const bodySchema = z.object({
 
 type RecordResult =
   | { index: number; status: 'created'; recordId: string; domain: string; fieldName: string }
-  | { index: number; status: 'rejected'; reason: string; domain?: string; fieldName?: string }
+  | { index: number; status: 'rejected'; reason: string; domain?: string; fieldName?: string; retryable?: boolean }
 
 export async function POST(req: NextRequest) {
   const authResult = await authenticateApiKeyRequest(req)
@@ -63,19 +69,50 @@ export async function POST(req: NextRequest) {
 
   const { records, idempotencyKey } = parsed.data
 
-  const capacity = await assertRecordCapacity(entityId, records.length)
+  // Reserve the key before anything is written. A completed batch replays its
+  // original response — before the capacity check, so a batch that succeeded is
+  // never refused later because the plan has since filled. See ingest-operation.ts.
+  let operationId: string | null = null
+  const results: RecordResult[] = []
+  if (idempotencyKey) {
+    // A key used before reservations existed is recorded as an INGEST_BATCH
+    // audit entry. Honour it, or a late retry of an old batch duplicates it.
+    const legacy = await prisma.auditEntry.findFirst({
+      where: { entityId, eventType: 'INGEST_BATCH', recordId: `batch_${idempotencyKey}` },
+      select: { hash: true },
+    })
+    if (legacy) {
+      return NextResponse.json(
+        { idempotent: true, message: 'This batch was already processed.', batchAuditHash: legacy.hash },
+        { status: 200 },
+      )
+    }
+
+    const reservation = await reserveIngestOperation(prisma, entityId, idempotencyKey, requestDigest(records))
+    if (reservation.kind === 'replay') {
+      const replayed = Object.values(reservation.results).sort((a, b) => a.index - b.index) as RecordResult[]
+      return NextResponse.json({ idempotent: true, ...summarise(replayed, records.length) }, { status: 200 })
+    }
+    if (reservation.kind === 'conflict') {
+      return NextResponse.json({
+        error: 'This idempotency key was already used for a different request.',
+        code: 'IDEMPOTENCY_KEY_REUSED',
+      }, { status: 422 })
+    }
+    if (reservation.kind === 'in_progress') {
+      return NextResponse.json({
+        error: 'A request with this idempotency key is still being processed. Retry shortly.',
+        code: 'IN_PROGRESS',
+      }, { status: 409 })
+    }
+    operationId = reservation.id
+    results.push(...(Object.values(reservation.done) as RecordResult[]))
+  }
+  const done = new Set(results.map(r => r.index))
+
+  const capacity = await assertRecordCapacity(entityId, records.length - done.size)
   if (!capacity.allowed) {
     return NextResponse.json({ error: capacity.reason, code: 'PLAN_LIMIT' }, { status: 402 })
-  }
-
-  // Idempotency: if this key was already processed, return the previous result.
-  if (idempotencyKey) {
-    const previous = await prisma.auditEntry.findFirst({
-      where: { entityId, eventType: 'INGEST_BATCH', recordId: `batch_${idempotencyKey}` },
-    })
-    if (previous) {
-      return NextResponse.json({ idempotent: true, message: 'This batch was already processed.', batchAuditHash: previous.hash }, { status: 200 })
-    }
   }
 
   const entity = await prisma.entity.findUnique({ where: { id: entityId }, select: { id: true } })
@@ -84,23 +121,25 @@ export async function POST(req: NextRequest) {
   }
 
   const systemUser = await getSystemUser(entityId)
-  const results: RecordResult[] = []
 
   for (let i = 0; i < records.length; i++) {
+    if (done.has(i)) continue
     const r = records[i]
 
     if (new Date(r.periodEnd) <= new Date(r.periodStart)) {
-      results.push({ index: i, status: 'rejected', reason: 'periodEnd must be after periodStart', domain: r.domain, fieldName: r.fieldName })
+      const rejected: RecordResult = { index: i, status: 'rejected', reason: 'periodEnd must be after periodStart', domain: r.domain, fieldName: r.fieldName }
+      if (operationId) await claimItem(prisma, operationId, i, rejected)
+      results.push(rejected)
       continue
     }
 
     try {
-      const { recordId } = await runSerializable(async (tx) => {
+      const outcome = await runSerializable(async (tx) => {
         // Bound inside the transaction that writes, not just once for the batch:
         // otherwise two batches in flight can both fit against the same count.
         const room = await assertRecordCapacity(entityId, 1, tx)
         if (!room.allowed) throw new Error(room.reason)
-        return writeRecordWithAuditEntry(tx, {
+        const { recordId } = await writeRecordWithAuditEntry(tx, {
           entityId,
           domain: r.domain,
           fieldName: r.fieldName,
@@ -115,60 +154,56 @@ export async function POST(req: NextRequest) {
           extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
           submittedById: systemUser.id,
         })
+        const created: RecordResult = { index: i, status: 'created', recordId, domain: r.domain, fieldName: r.fieldName }
+        // Committed with the record, so a retry after a crash knows it landed.
+        // If another attempt already recorded this item, abort this write.
+        if (operationId) {
+          const claim = await claimItem(tx, operationId, i, created)
+          if (claim.alreadyDone) throw new AlreadyWritten(claim.result as RecordResult)
+        }
+        return created
       })
-      results.push({ index: i, status: 'created', recordId, domain: r.domain, fieldName: r.fieldName })
+      results.push(outcome)
     } catch (e) {
+      if (e instanceof AlreadyWritten) {
+        results.push(e.result)
+        continue
+      }
       // Report the plan limit as the plan limit rather than as an internal error:
       // the caller can act on the first and can do nothing about the second.
       const reason = (e as Error)?.message?.includes('plan')
         ? (e as Error).message
         : 'Internal error writing record'
-      results.push({ index: i, status: 'rejected', reason, domain: r.domain, fieldName: r.fieldName })
+      // Not recorded against the key: it may succeed on a retry of the same batch.
+      results.push({ index: i, status: 'rejected', reason, domain: r.domain, fieldName: r.fieldName, retryable: true })
     }
   }
 
-  const created = results.filter(r => r.status === 'created').length
-  const rejected = results.filter(r => r.status === 'rejected').length
-
-  // Batch audit tombstone for idempotency lookups.
-  // Must be awaited — if it fails we return 500 rather than silently breaking the audit chain.
-  if (idempotencyKey && created > 0) {
-    const batchNow = new Date().toISOString()
-    const batchPayload: AuditPayload = {
-      recordId: `batch_${idempotencyKey}`,
-      entityId,
-      domain: 'COMPLIANCE',
-      fieldName: 'ingest_batch',
-      value: created,
-      unit: 'records',
-      originalValue: created,
-      originalUnit: 'records',
-      periodStart: batchNow,
-      periodEnd: batchNow,
-      trustTier: 'B',
-      confidenceScore: 1.0,
-      sourceText: null,
-      documentId: null,
-      extractionMethod: 'SYSTEM_INTEGRATION',
-      submittedAt: batchNow,
-      submittedById: systemUser.id,
+  results.sort((a, b) => a.index - b.index)
+  if (operationId) {
+    if (results.some(r => r.status === 'rejected' && r.retryable)) {
+      await releaseIngestOperation(prisma, operationId)
+    } else {
+      await completeIngestOperation(prisma, operationId, Object.fromEntries(results.map(r => [String(r.index), r])))
     }
-    await runSerializable(tx =>
-      appendAuditEntry(tx, {
-        entityId,
-        recordId: batchPayload.recordId,
-        eventType: 'INGEST_BATCH',
-        payload: batchPayload,
-      }),
-    )
   }
 
-  return NextResponse.json({
-    created,
-    rejected,
-    total: records.length,
+  return NextResponse.json(summarise(results, records.length), { status: 201 })
+}
+
+class AlreadyWritten extends Error {
+  constructor(readonly result: RecordResult) {
+    super('already written')
+  }
+}
+
+function summarise(results: RecordResult[], total: number) {
+  return {
+    created: results.filter(r => r.status === 'created').length,
+    rejected: results.filter(r => r.status === 'rejected').length,
+    total,
     trustTier: 'B',
     note: 'Records created as Declared (Tier B). Submit supporting documents to upgrade to Verified (Tier A).',
     results,
-  }, { status: 201 })
+  }
 }

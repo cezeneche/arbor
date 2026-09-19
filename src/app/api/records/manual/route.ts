@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { isStorableUnit } from '@/lib/layer2/canonical-measurement'
 import { getSessionUser } from '@/lib/session'
 import { z } from 'zod'
 import { requireWriteAccess } from '@/lib/auth-helpers'
@@ -13,7 +14,7 @@ const bodySchema = z.object({
   domain: domainSchema,
   fieldName: z.string().min(1),
   value: z.number().finite(),
-  unit: z.string().min(1),
+  unit: z.string().min(1).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
   sourceText: z.string().optional(),
