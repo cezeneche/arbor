@@ -28,7 +28,11 @@ import {
   parseGoodsLineFieldName,
 } from '@/lib/nucleos/cbam-fields'
 import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
-import { handOffCbamCase } from '@/lib/layer2/cbam-handoff'
+import {
+  enqueueCbamHandoff,
+  runCbamHandoff,
+  type CbamHandoffOutcome,
+} from '@/lib/layer2/cbam-handoff'
 
 const fieldSchema = z.object({
   fieldName: z.string(),
@@ -273,6 +277,30 @@ export async function POST(
     constructor(readonly detail: string) { super(detail) }
   }
 
+  // The CBAM handoff is recorded inside the transaction below, so a confirmed
+  // CBAM document can never exist without its handoff on record — and can be
+  // resumed from that record if everything after the commit fails.
+  const cbamHandoff = cbamDocument
+    ? {
+        documentId,
+        entityId,
+        documentType: document.documentType,
+        jurisdiction: resolveJurisdiction(
+          (await prisma.entity.findUnique({
+            where: { id: entityId },
+            select: { cbamJurisdiction: true },
+          }))?.cbamJurisdiction,
+        ),
+        confirmed: confirmedValues,
+        // Every prepared field shares the derived period, so the latest end is
+        // the period the case covers.
+        reportingPeriodEnd: preparedFields.reduce(
+          (latest, f) => (f.periodEnd > latest ? f.periodEnd : latest),
+          preparedFields[0].periodEnd,
+        ),
+      }
+    : null
+
   let createdRecords: string[]
   try {
     createdRecords = await runSerializable(async (tx) => {
@@ -348,6 +376,8 @@ export async function POST(
 
       recordIds.push(result.recordId)
     }
+
+    if (cbamHandoff) await enqueueCbamHandoff(tx, cbamHandoff)
 
     return recordIds
     })
@@ -506,33 +536,21 @@ export async function POST(
   // a boundary that is down must not undo that. What it must not do either is
   // stay quiet, so the outcome travels back in the response and the failure is
   // written to the link row where the CBAM screens can show it.
-  let cbam: Awaited<ReturnType<typeof handOffCbamCase>> | null = null
-  if (cbamDocument) {
+  //
+  // Run straight away, so the common case opens the case within this request.
+  // A failure here leaves the row FAILED or PARTIAL with its progress recorded,
+  // and Resume on the CBAM page — or the sweep — finishes it.
+  let cbam: CbamHandoffOutcome | null = null
+  if (cbamHandoff) {
     try {
-      const entity = await prisma.entity.findUnique({
-        where: { id: entityId },
-        select: { cbamJurisdiction: true },
-      })
-      cbam = await handOffCbamCase({
-        documentId,
-        entityId,
-        documentType: document.documentType,
-        jurisdiction: resolveJurisdiction(entity?.cbamJurisdiction),
-        confirmed: confirmedValues,
-        // Every prepared field shares the derived period, so the latest end is
-        // the period the case covers.
-        reportingPeriodEnd: preparedFields.reduce(
-          (latest, f) => (f.periodEnd > latest ? f.periodEnd : latest),
-          preparedFields[0].periodEnd,
-        ),
-      })
+      cbam = await runCbamHandoff(documentId)
     } catch (e) {
       console.error('[confirm] CBAM case handoff failed:', e)
       cbam = {
         attempted: true,
         caseId: null,
-        status: 'FAILED',
-        problems: ['The case could not be opened. Your figures are saved.'],
+        status: 'PENDING',
+        problems: ['The case has not been opened yet. Your figures are saved, and Arbor will retry.'],
       }
     }
   }
@@ -540,8 +558,6 @@ export async function POST(
   return ok({
     recordIds: createdRecords,
     documentStatus: 'ACCEPTED',
-    ...(cbam?.attempted
-      ? { cbam: { caseId: cbam.caseId, status: cbam.status, problems: cbam.problems } }
-      : {}),
+    ...(cbam ? { cbam: { caseId: cbam.caseId, status: cbam.status, problems: cbam.problems } } : {}),
   })
 }

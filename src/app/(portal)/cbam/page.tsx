@@ -5,6 +5,7 @@ import { CBAM_VIEWS, resolveCbamView, type CbamView } from '@/lib/nucleos/cbam-v
 import { listCbamCases } from '@/lib/nucleos/cases-client'
 import { ownedCaseIds } from '@/lib/nucleos/case-ownership'
 import { CbamCaseList } from '@/components/CbamCaseList'
+import { CbamUnfinishedHandoffs, type UnfinishedHandoff } from '@/components/CbamUnfinishedHandoffs'
 import { CbamScopeChecker } from '@/components/CbamScopeChecker'
 import { CbamStartCase } from '@/components/CbamStartCase'
 import { CbamRequestData } from '@/components/CbamRequestData'
@@ -54,6 +55,30 @@ export default async function CbamPage({
         hasCbamFields: Boolean(d.extractionJobs[0]?.extractorVersion?.includes('nucleos')),
       })),
     )
+  }
+
+  // Handoffs that did not finish, kept in front of the user until they do.
+  let unfinished: UnfinishedHandoff[] = []
+  if (view === 'cases' && entityId) {
+    const links = await prisma.cbamCaseLink.findMany({
+      where: { entityId, status: { not: 'CREATED' } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        documentId: true,
+        nucleosCaseId: true,
+        status: true,
+        problems: true,
+        document: { select: { fileName: true } },
+      },
+    })
+    unfinished = links.map(l => ({
+      documentId: l.documentId,
+      fileName: l.document.fileName,
+      caseId: l.nucleosCaseId,
+      status: l.status,
+      problems: l.problems,
+    }))
   }
 
   const NEEDS_CASES: CbamView[] = ['cases', 'request', 'relief']
@@ -122,6 +147,7 @@ export default async function CbamPage({
           </div>
         ) : view === 'cases' && cases ? (
           <>
+            <CbamUnfinishedHandoffs handoffs={unfinished} />
             <CbamStartCase documents={reusable} />
             <CbamCaseList cases={cases} />
           </>

@@ -1,5 +1,9 @@
 'use client'
 
+import { CbamResumeHandoff } from './CbamResumeHandoff'
+import { certifyTier } from '@/lib/layer2/certification-policy'
+import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
+import { cbamCompulsoryFieldsPresent } from '@/lib/nucleos/cbam-fields'
 import { useState } from 'react'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { useRouter } from 'next/navigation'
@@ -96,7 +100,21 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const criticalFlags = fields.filter(
     f => f.admissibility === 'COMPULSORY' && (f.rawValue === null || f.rawValue === '')
   )
-  const trustTier = criticalFlags.length > 0 ? 'B' : 'A'
+  // The tier this would be saved at, by the same policy the confirm route
+  // applies — so an estimated read or a document with no spec is not shown as
+  // Verified here and saved as Declared. A CBAM document is judged on its goods
+  // lines instead, as the route does.
+  const trustTier = isCbamRelevant(document.documentType)
+    ? job && cbamCompulsoryFieldsPresent(new Map(Object.entries(values)))
+      ? 'A'
+      : 'B'
+    : certifyTier({
+        documentType: document.documentType,
+        extracted: new Map(fields.map(f => [f.fieldName, f.rawValue])),
+        confirmed: new Map(Object.entries(values)),
+        hasExtraction: Boolean(job),
+        entityName: '',
+      }).tier
 
   // One grid over every field, ordered compulsory → conditional → optional and
   // by information gain within each. Three separate grids left a hole beside the
@@ -580,6 +598,16 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
             ))}
           </ul>
           <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
+            <CbamResumeHandoff
+              documentId={document.id}
+              onResult={next => {
+                if (next.problems.length === 0 && next.caseId) {
+                  router.push(`/cbam/${encodeURIComponent(next.caseId)}`)
+                  return
+                }
+                setHandoff(next)
+              }}
+            />
             {handoff.caseId && (
               <a
                 href={`/cbam/${encodeURIComponent(handoff.caseId)}`}
