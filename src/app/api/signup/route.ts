@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { hash } from 'bcryptjs'
-import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
+import { createAccount, EmailTakenError } from '@/lib/auth/create-account'
 
 const signupSchema = z.object({
   companyName: z.string().min(1).max(200),
@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
   // Normalise email casing so it matches login and password-reset lookups.
   const email = parsed.data.email.toLowerCase()
 
+  // A fast answer for the common case. The binding check is the unique
+  // constraint inside createAccount, which a concurrent signup cannot slip past.
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
     return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 })
@@ -41,20 +43,14 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hash(password, 12)
 
-  const entity = await prisma.entity.create({
-    data: {
-      legalName: companyName,
-      sector,
-      country,
-      entityType,
-      // email-to-upload token: upload-<token>@arbor.io
-      uploadEmailToken: randomBytes(8).toString('hex'),
-    },
-  })
-
-  await prisma.user.create({
-    data: { email, name, passwordHash, entityId: entity.id, role: 'ADMIN' },
-  })
+  try {
+    await createAccount(prisma, { companyName, sector, country, entityType, name, email, passwordHash })
+  } catch (e) {
+    if (e instanceof EmailTakenError) {
+      return NextResponse.json({ error: e.message }, { status: 409 })
+    }
+    throw e
+  }
 
   return NextResponse.json({ ok: true })
 }
