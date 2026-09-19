@@ -1,6 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { rateLimitKey } from '@/lib/rate-limit-pure'
+import { redisCredentials } from '@/lib/redis-credentials'
 
 // Sliding-window rate limiting backed by Upstash Redis.
 // The client is instantiated lazily so `next build` never needs the secrets,
@@ -42,10 +43,9 @@ export const RATE_LIMITS = {
 
 let _redis: Redis | null = null
 function getRedis(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  if (!url || !token) return null
-  if (!_redis) _redis = new Redis({ url, token })
+  const credentials = redisCredentials(process.env)
+  if (!credentials) return null
+  if (!_redis) _redis = new Redis(credentials)
   return _redis
 }
 
