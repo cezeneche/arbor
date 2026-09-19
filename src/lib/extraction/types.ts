@@ -50,5 +50,3 @@ export interface QualityAssessmentResult {
 
 /** Below this score, extraction is not attempted — the user is asked to re-upload. */
 export const MIN_EXTRACTABLE_QUALITY = 2
-/** At or below this score, a degraded-image warning is surfaced in the review UI. */
-export const DEGRADED_QUALITY_THRESHOLD = 4

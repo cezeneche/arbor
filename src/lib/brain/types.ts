@@ -108,10 +108,6 @@ export interface ConstraintRecordResult {
   completions: ConstraintCompletion[]
 }
 
-export interface ConstraintCheckResponse {
-  results: ConstraintRecordResult[]
-}
-
 // Graph flow consistency
 
 export interface FlowNodeInput {
@@ -176,6 +172,3 @@ export interface DPRelease {
   reason?: string | null
 }
 
-export interface DPBenchmarkResponse {
-  releases: DPRelease[]
-}

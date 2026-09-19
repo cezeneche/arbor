@@ -131,15 +131,6 @@ export async function checkDestination(
   return { url: verdict.url, pin: addresses[0] }
 }
 
-/** @deprecated Use checkDestination — kept so callers wanting only the URL still
- *  get the full check rather than reaching for validateOutboundUrl alone. */
-export async function assertPublicUrl(
-  raw: string,
-  resolver: HostResolver = systemResolver,
-): Promise<URL> {
-  return (await checkDestination(raw, resolver)).url
-}
-
 export interface SafeFetchResponse {
   status: number
   ok: boolean

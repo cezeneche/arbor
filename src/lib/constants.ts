@@ -75,11 +75,9 @@ export type DocumentType = (typeof DocumentType)[keyof typeof DocumentType]
 
 export const domainSchema = z.nativeEnum(DataDomain)
 export const tierSchema = z.nativeEnum(TrustTier)
-export const extractionMethodSchema = z.nativeEnum(ExtractionMethod)
 export const documentTypeSchema = z.nativeEnum(DocumentType)
 
 export const ALL_DOMAINS = Object.values(DataDomain)
-export const ALL_TIERS = Object.values(TrustTier)
 
 export const DOCUMENT_MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 

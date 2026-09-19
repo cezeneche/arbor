@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto'
 import { getSupabaseAdmin, DOCUMENTS_BUCKET } from './supabase-admin'
-import { toStoragePath } from './storage-path'
 import type { SniffedType } from './upload/sniff'
 import { extensionForType } from './upload/sniff'
 
@@ -44,8 +43,3 @@ export async function storeDocumentBytes(
   return { url: pathname, pathname }
 }
 
-export async function deleteDocument(pathname: string): Promise<void> {
-  const supabase = getSupabaseAdmin()
-  const { error } = await supabase.storage.from(DOCUMENTS_BUCKET).remove([toStoragePath(pathname)])
-  if (error) throw new Error(`Storage delete failed: ${error.message}`)
-}
