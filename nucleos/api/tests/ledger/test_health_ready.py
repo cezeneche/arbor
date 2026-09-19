@@ -70,3 +70,16 @@ def test_ready_reports_schema_ok_when_tables_exist(monkeypatch):
     body = client.get("/health/ready").json()
     assert body["ready"] is True
     assert body["dependencies"] == {"db": "ok", "schema": "ok"}
+
+
+def test_ready_does_not_publish_the_database_error(monkeypatch):
+    # /ready is unauthenticated. The driver's error names the database host and
+    # the Supabase project; it goes to the log, not to whoever asked.
+    def _raise_error():
+        raise RuntimeError('connection to server at "db.example.supabase.com" failed: tenant/user postgres.abc not found')
+
+    monkeypatch.setattr(health_api, "db_healthcheck", _raise_error)
+    response = client.get("/ready")
+    assert response.status_code == 503
+    assert "supabase" not in response.text
+    assert "detail" not in response.json()
