@@ -89,7 +89,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
         <div style={{ marginBottom: spacing[4], padding: spacing[3], backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px' }}>
           <p style={{ margin: `0 0 ${spacing[2]}`, fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary }}>
-            This data set is backed by a cryptographic audit chain. You can confirm it has not been altered — no account needed.
+            Every record here is part of a cryptographic audit chain. You can check that the chain is intact and that Arbor issued this share — no account needed. The records shown are the current ones: a figure corrected since the share was created appears as corrected, with the correction on the chain.
           </p>
           <ShareVerifyButton entityId={share.entityId} packageHash={share.packageHash} />
         </div>
