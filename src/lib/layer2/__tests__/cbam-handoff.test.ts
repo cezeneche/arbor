@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test doubles stand in for Prisma's generic argument types */
 import { enqueueCbamHandoff, runCbamHandoff, LEASE_MS } from '../cbam-handoff'
 import type { CaseWriteProgress } from '@/lib/nucleos/case-writer'
 

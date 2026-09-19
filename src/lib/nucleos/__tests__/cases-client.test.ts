@@ -6,7 +6,7 @@ import { listCbamCases } from '../cases-client'
 // every case under the shared service token.
 
 function respond(body: unknown) {
-  return jest.fn(async (_url: string) => new Response(JSON.stringify(body), { status: 200 }))
+  return jest.fn<Promise<Response>, [string]>(async () => new Response(JSON.stringify(body), { status: 200 }))
 }
 
 const row = (id: string) => ({ id, importer_name: `Importer ${id}` })
