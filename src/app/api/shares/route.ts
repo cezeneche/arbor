@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
       periodStart,
       periodEnd,
       packageHash: pkg.packageIntegrityHash,
+      // Frozen: the share shows exactly the records its hash covers.
+      recordIds: pkg.dataRecords.map(r => r.id),
       createdById,
       expiresAt,
     },

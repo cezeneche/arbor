@@ -15,6 +15,8 @@ export interface UnitCheckRecord {
   domain: string
   fieldName: string
   unit: string
+  /** How many records this row stands for, when the database grouped them. */
+  count?: number
 }
 
 export interface UnitConflict {
@@ -25,6 +27,8 @@ export interface UnitConflict {
   unit: string
   /** What its type declares. */
   expected: string
+  /** How many records share this conflict, when grouped. */
+  count?: number
 }
 
 /** `DOMAIN::field_name` → canonical unit, or null where the type declares none. */
@@ -60,6 +64,7 @@ export function findUnitConflicts(
       fieldName: record.fieldName,
       unit: record.unit,
       expected,
+      ...(record.count !== undefined ? { count: record.count } : {}),
     })
   }
   return conflicts

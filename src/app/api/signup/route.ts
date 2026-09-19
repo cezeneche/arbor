@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
 import { createAccount, EmailTakenError } from '@/lib/auth/create-account'
+import { checkSignupAccess } from '@/lib/signup-access'
+import { sendEmailVerification } from '@/lib/auth/verify-email-send'
 
 const signupSchema = z.object({
   companyName: z.string().min(1).max(200),
@@ -14,6 +16,7 @@ const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   entityType: z.enum(['SUPPLIER', 'BUYER']).default('SUPPLIER'),
+  inviteCode: z.string().max(100).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -30,6 +33,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
+  const access = checkSignupAccess(parsed.data.inviteCode, process.env)
+  if (!access.allowed) {
+    return NextResponse.json(
+      {
+        error:
+          access.reason === 'closed'
+            ? 'arbor is in a private pilot and is not taking new sign-ups. Email hello@arbor.io to ask for access.'
+            : 'That invite code is not valid. Email hello@arbor.io if you need one.',
+        code: access.reason === 'closed' ? 'SIGNUP_CLOSED' : 'INVITE_REQUIRED',
+      },
+      { status: 403 },
+    )
+  }
+
   const { companyName, sector, country, name, password, entityType } = parsed.data
   // Normalise email casing so it matches login and password-reset lookups.
   const email = parsed.data.email.toLowerCase()
@@ -43,14 +60,18 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hash(password, 12)
 
+  let userId: string
   try {
-    await createAccount(prisma, { companyName, sector, country, entityType, name, email, passwordHash })
+    ;({ userId } = await createAccount(prisma, { companyName, sector, country, entityType, name, email, passwordHash }))
   } catch (e) {
     if (e instanceof EmailTakenError) {
       return NextResponse.json({ error: e.message }, { status: 409 })
     }
     throw e
   }
+
+  // Best-effort: the account works whether or not this arrives.
+  await sendEmailVerification({ id: userId, email, name })
 
   return NextResponse.json({ ok: true })
 }

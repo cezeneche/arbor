@@ -63,3 +63,13 @@ describe('findUnitConflicts', () => {
     expect(conflicts.map(c => c.recordId)).toEqual(['a', 'b'])
   })
 })
+
+describe('findUnitConflicts — grouped input', () => {
+  it('carries a group count through to the conflict', () => {
+    const [c] = findUnitConflicts(
+      [{ id: 'r1', domain: 'ENERGY', fieldName: 'f', unit: 'kwh', count: 4 }],
+      { 'ENERGY::f': 'mj' },
+    )
+    expect(c).toMatchObject({ unit: 'kwh', expected: 'mj', count: 4 })
+  })
+})
