@@ -15,6 +15,7 @@ import type {
   CbamExtractionRequest,
   CbamExtractionResult,
 } from './contract'
+import { nucleosHeaders } from './service-auth'
 
 export class NucleosUnavailableError extends Error {
   constructor(message: string) {
@@ -62,10 +63,7 @@ export async function extractCbamFields(
   try {
     const res = await doFetch(`${process.env.NUCLEOS_URL}${EXTRACT_ENDPOINT}`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${process.env.NUCLEOS_INTERNAL_TOKEN as string}`,
-      },
+      headers: nucleosHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(request),
       signal: controller.signal,
     })

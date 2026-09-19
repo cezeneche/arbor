@@ -3,6 +3,7 @@ import { requireWriteAccess } from '@/lib/auth-helpers'
 import { getSessionUser } from '@/lib/session'
 import { NucleosUnavailableError, isNucleosConfigured } from '@/lib/nucleos/extraction-client'
 import { resolveGoodsLineAccess } from '@/lib/nucleos/goods-line-access'
+import { nucleosHeaders } from '@/lib/nucleos/service-auth'
 
 // Records a carbon price relief claim. This one writes, against a goods line the
 // browser names — so the line is checked to be on a case the caller owns first.
@@ -29,10 +30,7 @@ export async function POST(request: Request) {
     if (!isNucleosConfigured()) throw new NucleosUnavailableError('not configured')
     const res = await fetch(`${process.env.NUCLEOS_URL}/api/cbam/cpr/claims`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${process.env.NUCLEOS_INTERNAL_TOKEN as string}`,
-      },
+      headers: nucleosHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(claim),
       cache: 'no-store',
       signal: AbortSignal.timeout(20_000),

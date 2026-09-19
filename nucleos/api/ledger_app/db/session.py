@@ -27,3 +27,26 @@ def db_healthcheck() -> dict:
     with engine.connect() as conn:
         result = conn.execute(text("SELECT 1 as ok")).mappings().one()
         return {"db_ok": bool(result["ok"] == 1)}
+
+
+# The tables a CBAM case is written to. A database missing any of them answers
+# SELECT 1 and still cannot open a case.
+REQUIRED_TABLES = (
+    "cbam.cbam_cases",
+    "cbam.cbam_shipments",
+    "cbam.cbam_goods_lines",
+    "cbam.cbam_emissions",
+    "cbam.cbam_snapshots",
+    "cbam.audit_log",
+)
+
+
+def missing_required_tables() -> list[str]:
+    """The required tables this database does not have. Empty on SQLite."""
+    if engine.dialect.name == "sqlite":
+        return []
+    with engine.connect() as conn:
+        return [
+            t for t in REQUIRED_TABLES
+            if conn.execute(text("SELECT to_regclass(:t) IS NULL"), {"t": t}).scalar()
+        ]
