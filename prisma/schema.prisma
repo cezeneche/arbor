@@ -140,6 +140,9 @@ model User {
   // the swap happens only when /2fa/enable verifies a code from the new device.
   twoFactorPendingSecret String?
   twoFactorEnabled Boolean  @default(false)
+  // When the user proved they control this address. Null until then; not a
+  // sign-in gate (see src/lib/auth/email-verification.ts).
+  emailVerifiedAt  DateTime?
   // Single-use proof (SHA-256 hash) that a 2FA challenge was passed server-side.
   // The jwt callback consumes this to upgrade a pending2fa session — the client
   // can no longer self-assert verification. Nulled on consume; short-lived.
@@ -162,6 +165,7 @@ model User {
   submissions             DataRecord[]
   requests                DataRequest[]
   passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
   totpRecoveryCodes       TotpRecoveryCode[]
   verificationAssignments VerificationAssignment[]
   auditorAccess           AuditorAccess[]
@@ -187,6 +191,18 @@ model TotpRecoveryCode {
 }
 
 // ── PASSWORD RESET ────────────────────────────────────────────────────────────
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique // SHA-256 of the high-entropy token sent by email
+  expiresAt DateTime
+  usedAt    DateTime? // single-use
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
 
 model PasswordResetToken {
   id        String    @id @default(cuid())

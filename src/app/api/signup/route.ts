@@ -6,6 +6,7 @@ import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
 import { createAccount, EmailTakenError } from '@/lib/auth/create-account'
 import { checkSignupAccess } from '@/lib/signup-access'
+import { sendEmailVerification } from '@/lib/auth/verify-email-send'
 
 const signupSchema = z.object({
   companyName: z.string().min(1).max(200),
@@ -59,14 +60,18 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hash(password, 12)
 
+  let userId: string
   try {
-    await createAccount(prisma, { companyName, sector, country, entityType, name, email, passwordHash })
+    ;({ userId } = await createAccount(prisma, { companyName, sector, country, entityType, name, email, passwordHash }))
   } catch (e) {
     if (e instanceof EmailTakenError) {
       return NextResponse.json({ error: e.message }, { status: 409 })
     }
     throw e
   }
+
+  // Best-effort: the account works whether or not this arrives.
+  await sendEmailVerification({ id: userId, email, name })
 
   return NextResponse.json({ ok: true })
 }
