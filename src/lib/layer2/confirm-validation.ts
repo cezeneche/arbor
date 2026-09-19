@@ -86,31 +86,3 @@ export function validateConfirmFields(
 
   return errors
 }
-
-/** Tier A requires every compulsory field for the document type to be present
- *  (admissibility spec §Tier Summary).
- *
- *  Presence is judged on the effective document — what the extraction found, with
- *  the reviewer's corrections applied on top — not on the raw extraction alone.
- *  Deriving it from the extraction only meant a reviewer could blank a compulsory
- *  field and the records still came out Verified.
- */
-export function deriveTrustTier(input: {
-  /** null/'' means the extraction did not find the field. */
-  extracted: ReadonlyMap<string, string | null>
-  /** Field name → the value the reviewer confirmed. */
-  confirmed: ReadonlyMap<string, string>
-  compulsory: ReadonlySet<string>
-  /** No extraction job at all — nothing was read from a document. */
-  hasExtraction: boolean
-}): 'A' | 'B' {
-  if (!input.hasExtraction) return 'B'
-
-  for (const name of input.compulsory) {
-    const corrected = input.confirmed.get(name)
-    const effective = corrected !== undefined ? corrected : input.extracted.get(name)
-    if (effective === null || effective === undefined || effective.trim() === '') return 'B'
-  }
-
-  return 'A'
-}

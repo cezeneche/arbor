@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/session'
-import { requirePageSession } from '@/lib/page-auth'
+import { requireAuth } from '@/lib/auth-helpers'
 import { calculateCase } from '@/lib/nucleos/case-calculation'
 
 // What a case's goods lines actually declare.
@@ -13,7 +13,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ caseId: string }> },
 ) {
-  const session = await requirePageSession()
+  const { session, response } = await requireAuth()
+  if (!session) return response!
+
   const entityId = getSessionUser(session).entityId as string
   const { caseId } = await params
 
@@ -21,8 +23,8 @@ export async function GET(
 
   if (result.forbidden) {
     return NextResponse.json(
-      { error: 'This case belongs to another organisation.', code: 'FORBIDDEN' },
-      { status: 403 },
+      { error: 'This case could not be found.', code: 'NOT_FOUND' },
+      { status: 404 },
     )
   }
   if (result.loadError) {

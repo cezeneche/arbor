@@ -258,13 +258,31 @@ model CbamCaseLink {
   // Plain English, one line per thing that did not land. Never summarised.
   problems      String[]
   goodsLineCount Int      @default(0)
+  // What the handoff was asked to do, written in the confirmation's own
+  // transaction: the reviewer's confirmed values, the regime and the period.
+  // It is what lets a failed or interrupted handoff be resumed later without
+  // the original request — the non-measurement values in it (EORI, CN codes)
+  // are not stored anywhere else.
+  handoffInput   Json?
+  // Which Nucleos rows already exist for this case: the case, the shipment,
+  // and each goods line and its emissions figure. Written after every step, so
+  // a resume adds only what is missing and never re-posts what landed.
+  progress       Json?
+  // Set while an attempt is running. A second attempt waits until this is
+  // stale rather than racing the first into opening two cases.
+  attemptStartedAt DateTime?
+  attempts       Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([entityId, createdAt])
+  @@index([status, updatedAt])
 }
 
 enum CbamHandoffStatus {
+  // Recorded with the confirmation; the case has not been attempted yet, or an
+  // attempt was interrupted before it could record an outcome.
+  PENDING
   // The case exists and everything on it landed.
   CREATED
   // The case exists but something on it is missing. `problems` says what.

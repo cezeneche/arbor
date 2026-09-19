@@ -60,7 +60,7 @@ export default async function CbamCasePage({
         </Link>
         <h1 style={{ ...textStyles.pageTitle, marginTop: spacing[2] }}>CBAM case</h1>
         <p style={{ ...textStyles.sectionSubtitle, marginTop: spacing[2] }}>
-          This case belongs to another organisation.
+          This case could not be found.
         </p>
       </div>
     )

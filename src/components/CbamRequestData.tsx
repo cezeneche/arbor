@@ -145,7 +145,7 @@ function CaseRequest({ caseId }: { caseId: string }) {
       const res = await fetch('/api/cbam/supplier-token', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ goods_line_id: target }),
+        body: JSON.stringify({ case_id: caseId, goods_line_id: target }),
       })
       const body = await res.json()
       if (!res.ok) {

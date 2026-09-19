@@ -1107,6 +1107,39 @@ class TestTenantIsolation:
         assert case_a["id"] in ids,     "Tenant A's own case must be listed"
         assert case_b["id"] not in ids, "Tenant B's case must not appear in Tenant A's list"
 
+    def test_case_list_ids_filter_narrows_within_tenant(self, api_client, cleanup_cases):
+        """
+        GET /api/cbam/cases?ids=... returns only the named cases.
+
+        Every Arbor organisation shares one service token, so within one Nucleos
+        tenant Arbor asks for exactly the cases an organisation owns. The filter
+        narrows inside the tenant and never widens past it: a foreign tenant's id
+        named in the filter is still not returned.
+        """
+        tenant_a = str(uuid4())
+        tenant_b = str(uuid4())
+        auth_a   = _auth_headers(tenant_a)
+        auth_b   = _auth_headers(tenant_b)
+
+        owned    = _post_case(api_client, auth_a)
+        other    = _post_case(api_client, auth_a)
+        foreign  = _post_case(api_client, auth_b)
+        cleanup_cases.extend([owned["id"], other["id"], foreign["id"]])
+
+        resp = api_client.get(
+            f"/api/cbam/cases?ids={owned['id']},{foreign['id']}", headers=auth_a
+        )
+        assert resp.status_code == 200
+        ids = {c["id"] for c in resp.json()["items"]}
+        assert ids == {owned["id"]}
+
+    def test_case_list_rejects_malformed_ids(self, api_client):
+        """A non-UUID in the ids filter is a 422, not a query error."""
+        resp = api_client.get(
+            "/api/cbam/cases?ids=not-a-uuid", headers=_auth_headers(str(uuid4()))
+        )
+        assert resp.status_code == 422
+
     def test_emissions_write_blocked_across_tenants(self, api_client, cleanup_cases):
         """
         POST emissions to a goods line that belongs to a different tenant

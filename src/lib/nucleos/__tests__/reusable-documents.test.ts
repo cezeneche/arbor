@@ -9,15 +9,22 @@ function doc(over: Partial<Parameters<typeof selectReusableDocuments>[0][number]
     id: 'doc-1',
     fileName: 'customs-entry.pdf',
     documentType: 'CUSTOMS_DECLARATION',
-    status: 'ACCEPTED',
+    status: 'REVIEW_REQUIRED',
     submittedAt: new Date('2026-07-14T10:00:00Z'),
     ...over,
   }
 }
 
 describe('selectReusableDocuments', () => {
-  it('offers a CBAM-relevant accepted document', () => {
+  it('offers a CBAM-relevant document awaiting review', () => {
     expect(selectReusableDocuments([doc()])).toHaveLength(1)
+  })
+
+  // An accepted document cannot be confirmed again, so offering it sent the user
+  // into a confirmation the route refuses. Its case — or its unfinished
+  // handoff, with Resume — is already on the CBAM page.
+  it('excludes an accepted document', () => {
+    expect(selectReusableDocuments([doc({ status: 'ACCEPTED' })])).toHaveLength(0)
   })
 
   it('offers all three CBAM-relevant types', () => {
@@ -59,7 +66,7 @@ describe('selectReusableDocuments', () => {
 
   it('is case-insensitive about type and status', () => {
     expect(
-      selectReusableDocuments([doc({ documentType: 'customs_declaration', status: 'accepted' })]),
+      selectReusableDocuments([doc({ documentType: 'customs_declaration', status: 'review_required' })]),
     ).toHaveLength(1)
   })
 })

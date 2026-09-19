@@ -1,4 +1,4 @@
-import { createCbamCase } from '../case-writer'
+import { createCbamCase, writeCbamCase, emptyProgress, type CaseWriteProgress } from '../case-writer'
 import { NucleosUnavailableError } from '../extraction-client'
 import type { CasePayload } from '../case-payload'
 
@@ -234,5 +234,132 @@ describe('createCbamCase', () => {
       NucleosUnavailableError,
     )
     expect(impl).not.toHaveBeenCalled()
+  })
+})
+
+// Resuming. A handoff interrupted after some rows landed is finished by adding
+// only what is missing. Re-posting a case or a goods line that already exists
+// would file the same goods twice, and nothing downstream could tell.
+describe('writeCbamCase — resuming from recorded progress', () => {
+  const ORIGINAL = { ...process.env }
+
+  beforeEach(() => {
+    process.env.NUCLEOS_URL = 'https://nucleos.test'
+    process.env.NUCLEOS_INTERNAL_TOKEN = 'token'
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL }
+  })
+
+  const twoLines = () =>
+    payload({
+      lines: [
+        { ...payload().lines[0], lineIndex: 0 },
+        { ...payload().lines[0], lineIndex: 1, cn_code: '76011000', emissions: null },
+      ],
+    })
+
+  it('records progress after every step, in order', async () => {
+    const { impl } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-1' }],
+      '/api/cbam/shipments': [{ id: 'ship-1' }],
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }, { id: 'gl-1' }],
+      '/api/cbam/emissions': [{ id: 'em-0' }],
+    })
+    const seen: CaseWriteProgress[] = []
+    await writeCbamCase(twoLines(), emptyProgress(), {
+      fetchImpl: impl as never,
+      onProgress: async p => {
+        seen.push(JSON.parse(JSON.stringify(p)))
+      },
+    })
+    expect(seen.map(p => [p.caseId, p.shipmentId, Object.keys(p.lines).length])).toEqual([
+      ['case-1', null, 0],
+      ['case-1', 'ship-1', 0],
+      ['case-1', 'ship-1', 1],
+      ['case-1', 'ship-1', 1],
+      ['case-1', 'ship-1', 2],
+    ])
+    expect(seen[3].lines['0']).toEqual({ goodsLineId: 'gl-0', emissionsRecorded: true })
+  })
+
+  it('does not re-create a case or shipment that already exists', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }, { id: 'gl-1' }],
+      '/api/cbam/emissions': [{ id: 'em-0' }],
+    })
+    const result = await writeCbamCase(
+      twoLines(),
+      { caseId: 'case-1', shipmentId: 'ship-1', lines: {} },
+      { fetchImpl: impl as never },
+    )
+    expect(calls.map(c => c.path)).not.toContain('/api/cbam/cases')
+    expect(calls.map(c => c.path)).not.toContain('/api/cbam/shipments')
+    expect(calls.filter(c => c.path === '/api/cbam/goods-lines')[0].body).toMatchObject({
+      shipment_id: 'ship-1',
+    })
+    expect(result).toMatchObject({ caseId: 'case-1', goodsLineIds: ['gl-0', 'gl-1'], problems: [] })
+  })
+
+  it('adds only the goods lines that are missing', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/goods-lines': [{ id: 'gl-1' }],
+    })
+    const result = await writeCbamCase(
+      twoLines(),
+      {
+        caseId: 'case-1',
+        shipmentId: 'ship-1',
+        lines: { '0': { goodsLineId: 'gl-0', emissionsRecorded: true } },
+      },
+      { fetchImpl: impl as never },
+    )
+    const lineCalls = calls.filter(c => c.path === '/api/cbam/goods-lines')
+    expect(lineCalls).toHaveLength(1)
+    expect(lineCalls[0].body).toMatchObject({ cn_code: '76011000' })
+    expect(calls.map(c => c.path)).not.toContain('/api/cbam/emissions')
+    expect(result.goodsLineIds).toEqual(['gl-0', 'gl-1'])
+    expect(result.problems).toEqual([])
+  })
+
+  it('records a missing emissions figure on a line that is already on the case', async () => {
+    const { impl, calls } = routedFetch({ '/api/cbam/emissions': [{ id: 'em-0' }] })
+    const result = await writeCbamCase(
+      payload(),
+      {
+        caseId: 'case-1',
+        shipmentId: 'ship-1',
+        lines: { '0': { goodsLineId: 'gl-0', emissionsRecorded: false } },
+      },
+      { fetchImpl: impl as never },
+    )
+    expect(calls.map(c => c.path)).toEqual(['/api/cbam/emissions'])
+    expect(calls[0].body).toMatchObject({ goods_line_id: 'gl-0' })
+    expect(result.problems).toEqual([])
+  })
+
+  it('does nothing at all when every step has already landed', async () => {
+    const { impl, calls } = routedFetch({})
+    const result = await writeCbamCase(
+      payload(),
+      {
+        caseId: 'case-1',
+        shipmentId: 'ship-1',
+        lines: { '0': { goodsLineId: 'gl-0', emissionsRecorded: true } },
+      },
+      { fetchImpl: impl as never },
+    )
+    expect(calls).toHaveLength(0)
+    expect(result).toEqual({
+      caseId: 'case-1',
+      goodsLineIds: ['gl-0'],
+      problems: [],
+      progress: {
+        caseId: 'case-1',
+        shipmentId: 'ship-1',
+        lines: { '0': { goodsLineId: 'gl-0', emissionsRecorded: true } },
+      },
+    })
   })
 })

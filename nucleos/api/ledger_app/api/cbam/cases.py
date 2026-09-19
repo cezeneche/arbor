@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
@@ -618,8 +618,26 @@ def list_cbam_cases(
     reporting_quarter: int | None = Query(default=None, ge=1, le=4),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
+    ids: str | None = Query(default=None, max_length=20000),
 ):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
+
+    # Narrows the list to named cases, inside the caller's tenant. Arbor's
+    # organisations share one service token, so Arbor asks for exactly the cases
+    # an organisation owns; the tenant filter below still applies, so naming a
+    # foreign tenant's id returns nothing for it.
+    id_filter: list[str] | None = None
+    if ids is not None:
+        try:
+            id_filter = [str(UUID(part.strip())) for part in ids.split(",") if part.strip()]
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="ids must be a comma-separated list of case UUIDs",
+            )
+        if not id_filter:
+            return {"items": [], "offset": offset, "limit": limit, "count": 0}
+
     with _shared.engine.begin() as conn:
         columns = _shared._table_columns(conn, "cbam_cases")
         _shared._enforce_tenant_id(columns, tenant_id)
@@ -639,6 +657,9 @@ def list_cbam_cases(
         if "status" in columns:
             # Withdrawn cases are retained for the audit chain, not listed.
             filters.append("status <> 'deleted'")
+        if id_filter is not None:
+            filters.append("CAST(id AS text) = ANY(:ids)")
+            params["ids"] = id_filter
         if reporting_year is not None:
             filters.append("reporting_year = :reporting_year")
             params["reporting_year"] = reporting_year
