@@ -146,3 +146,56 @@ describe('certifyTier', () => {
     expect(result.tier).toBe('B')
   })
 })
+
+// Verified is a claim that a record can be confirmed against the document it
+// came from. The policy built its fields with an empty sourceText and asked the
+// admissibility spec, which does not look at source text at all — so a document
+// whose values arrived with nothing to confirm them against was certified
+// Verified, which is the one thing this tier must never mean.
+describe('what each value can be confirmed against', () => {
+  const sourceText = (over: Record<string, string> = {}) =>
+    new Map<string, string | null>([
+      ...Object.keys(BILL).map(k => [k, `…${BILL[k]}…`] as [string, string | null]),
+      ...Object.entries(over),
+    ])
+
+  it('is Verified when every compulsory value carries the text it was read from', () => {
+    const result = certifyTier({
+      ...base,
+      extracted: new Map(Object.entries(BILL)),
+      confirmed: new Map(),
+      sourceText: sourceText(),
+    })
+    expect(result.tier).toBe('A')
+  })
+
+  it('is Declared when a compulsory value has no source text', () => {
+    const result = certifyTier({
+      ...base,
+      extracted: new Map(Object.entries(BILL)),
+      confirmed: new Map(),
+      sourceText: sourceText({ total_consumption_kwh: '' }),
+    })
+    expect(result.tier).toBe('B')
+    expect(result.reasons.join(' ')).toMatch(/confirm/i)
+  })
+
+  it('says which value could not be confirmed, in plain English', () => {
+    const result = certifyTier({
+      ...base,
+      extracted: new Map(Object.entries(BILL)),
+      confirmed: new Map(),
+      sourceText: sourceText({ meter_reference: '' }),
+    })
+    expect(result.reasons.join(' ')).toContain('meter reference')
+  })
+
+  it('is unchanged when the caller supplies no source text at all', () => {
+    const result = certifyTier({
+      ...base,
+      extracted: new Map(Object.entries(BILL)),
+      confirmed: new Map(),
+    })
+    expect(result.tier).toBe('A')
+  })
+})

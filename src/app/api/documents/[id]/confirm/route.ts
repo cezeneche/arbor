@@ -162,9 +162,16 @@ export async function POST(
   // admissibility spec extraction applied — so review can supply what was
   // missing but cannot turn an estimate, an expired certificate or a document
   // with no spec into Verified evidence.
+  // What each extracted value was read from. Verified asserts a record can be
+  // confirmed against its document, so a value with no text behind it cannot
+  // carry the tier — whichever policy decides it.
+  const sourceTextByField = new Map<string, string | null>(
+    (job?.extractedFields ?? []).map(f => [f.fieldName, f.sourceText]),
+  )
+
   let tierIsA: boolean
   if (cbamDocument) {
-    tierIsA = Boolean(job) && cbamCompulsoryFieldsPresent(confirmedValues)
+    tierIsA = Boolean(job) && cbamCompulsoryFieldsPresent(confirmedValues, sourceTextByField)
   } else {
     const entity = await prisma.entity.findUnique({
       where: { id: entityId },
@@ -178,6 +185,7 @@ export async function POST(
       hasExtraction: Boolean(job),
       entityName: entity?.legalName ?? '',
       reportingPeriodEnd: periodEnds.length ? new Date(Math.max(...periodEnds)) : undefined,
+      sourceText: sourceTextByField,
     }).tier === 'A'
   }
 

@@ -17,45 +17,81 @@
       },
       "evidence": [
         {
+          "bbox": null,
           "confidence": 0.88,
           "field": "importer.eori",
-          "snippet": null,
+          "page": null,
+          "snippet": "STOCKHOLDERS LTD\n       Consignee EORI: GB123456789000\nBox 14 Declarant EORI: GB987654321000\nB",
           "source": "customs_parser",
+          "span": {
+            "end": 237,
+            "start": 223
+          },
           "value": "GB123456789000"
         },
         {
+          "bbox": null,
           "confidence": 0.9,
           "field": "invoice.origin_country",
-          "snippet": null,
+          "page": null,
+          "snippet": "ode: 72071111\nBox 34 Country of origin: TR\nBox 35 Net mass: 24,500.00 kg\nBox 37 Pr",
           "source": "customs_parser",
+          "span": {
+            "end": 367,
+            "start": 365
+          },
           "value": "TR"
         },
         {
+          "bbox": null,
           "confidence": 0.95,
           "field": "invoice.entry_reference",
-          "snippet": null,
+          "page": null,
+          "snippet": "x 1  Declaration type: IM A\nBox 7  MRN: 24GB12345678901234\nBox 8  Consignee: NORTHERN STEEL STOCKH",
           "source": "customs_parser",
+          "span": {
+            "end": 149,
+            "start": 131
+          },
           "value": "24GB12345678901234"
         },
         {
+          "bbox": null,
           "confidence": 0.8,
           "field": "invoice.invoice_number",
-          "snippet": null,
+          "page": null,
+          "snippet": "information\n       Commercial invoice: INV-2027-0042\n       Incoterm: CIF Immingham\n\nCustoms",
           "source": "customs_parser",
+          "span": {
+            "end": 523,
+            "start": 510
+          },
           "value": "INV-2027-0042"
         },
         {
+          "bbox": null,
           "confidence": 0.92,
           "field": "lines[0].cn_code",
-          "snippet": null,
+          "page": null,
+          "snippet": "of dispatch: TR\nBox 33 Commodity code: 72071111\nBox 34 Country of origin: TR\nBox 35 Net",
           "source": "customs_parser",
+          "span": {
+            "end": 338,
+            "start": 330
+          },
           "value": "72071111"
         },
         {
+          "bbox": null,
           "confidence": 0.88,
           "field": "lines[0].net_mass_kg",
-          "snippet": null,
+          "page": null,
+          "snippet": "Country of origin: TR\nBox 35 Net mass: 24,500.00 kg\nBox 37 Procedure: 4000\nBox 38 Gross",
           "source": "customs_parser",
+          "span": {
+            "end": 394,
+            "start": 385
+          },
           "value": 24500.0
         }
       ],

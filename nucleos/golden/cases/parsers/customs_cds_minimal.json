@@ -17,24 +17,42 @@
       },
       "evidence": [
         {
+          "bbox": null,
           "confidence": 0.88,
           "field": "importer.eori",
-          "snippet": null,
+          "page": null,
+          "snippet": "er: 24GB9876543210987B2\nConsignee EORI: GB555666777000\nCountry of origin: IN\nNet mass: 8100 kg",
           "source": "customs_parser",
+          "span": {
+            "end": 124,
+            "start": 110
+          },
           "value": "GB555666777000"
         },
         {
+          "bbox": null,
           "confidence": 0.9,
           "field": "invoice.origin_country",
-          "snippet": null,
+          "page": null,
+          "snippet": "EORI: GB555666777000\nCountry of origin: IN\nNet mass: 8100 kg\nProcedure: 4071\nGoods",
           "source": "customs_parser",
+          "span": {
+            "end": 146,
+            "start": 144
+          },
           "value": "IN"
         },
         {
+          "bbox": null,
           "confidence": 0.88,
           "field": "lines[0].net_mass_kg",
-          "snippet": null,
+          "page": null,
+          "snippet": "6777000\nCountry of origin: IN\nNet mass: 8100 kg\nProcedure: 4071\nGoods description: f",
           "source": "customs_parser",
+          "span": {
+            "end": 161,
+            "start": 157
+          },
           "value": 8100.0
         }
       ],

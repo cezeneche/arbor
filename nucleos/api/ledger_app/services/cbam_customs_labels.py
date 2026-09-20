@@ -104,26 +104,34 @@ def _field_for(label: str) -> tuple[str | None, float]:
     return (best_field, best_score) if best_score >= SIMILARITY_THRESHOLD else (None, best_score)
 
 
-def labelled_values(text: str) -> dict[str, list[str]]:
-    """Every value whose label resembles one we know, by field, in page order.
+def labelled_values(text: str) -> dict[str, list[tuple[str, int]]]:
+    """Every value whose label resembles one we know, with where it was read.
 
     The value is taken from the rest of the label's line, or from the line below
-    when the label stands alone — the two ways a form prints one.
+    when the label stands alone — the two ways a form prints one. The offset
+    travels with it because a reviewer confirms a value against the text it came
+    from, and a value with no position has no text to show.
     """
-    found: dict[str, list[str]] = {}
-    lines = text.splitlines()
-    for index, line in enumerate(lines):
+    found: dict[str, list[tuple[str, int]]] = {}
+    offset = 0
+    lines = text.splitlines(keepends=True)
+    stripped = [line.rstrip("\r\n") for line in lines]
+    for index, line in enumerate(stripped):
+        line_start = offset
+        offset += len(lines[index])
         if not line.strip():
             continue
         label, inline_value = _split_label_and_value(line)
         field, _ = _field_for(label)
         if not field:
             continue
-        value = inline_value.strip()
-        if not value and index + 1 < len(lines):
-            value = lines[index + 1].strip()
+        value, at = inline_value.strip(), line_start + line.find(inline_value.strip())
+        if not value and index + 1 < len(stripped):
+            following = stripped[index + 1]
+            value = following.strip()
+            at = offset + following.find(value)
         if value:
-            found.setdefault(field, []).append(value)
+            found.setdefault(field, []).append((value, max(at, 0)))
     return found
 
 

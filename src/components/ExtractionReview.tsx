@@ -104,8 +104,13 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   // applies — so an estimated read or a document with no spec is not shown as
   // Verified here and saved as Declared. A CBAM document is judged on its goods
   // lines instead, as the route does.
+  // The same source text the confirm route weighs, so the badge here is the
+  // tier that will be saved rather than an optimistic one.
+  const sourceTextByField = new Map<string, string | null>(
+    fields.map(f => [f.fieldName, f.sourceText]),
+  )
   const trustTier = isCbamRelevant(document.documentType)
-    ? job && cbamCompulsoryFieldsPresent(new Map(Object.entries(values)))
+    ? job && cbamCompulsoryFieldsPresent(new Map(Object.entries(values)), sourceTextByField)
       ? 'A'
       : 'B'
     : certifyTier({
@@ -114,6 +119,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         confirmed: new Map(Object.entries(values)),
         hasExtraction: Boolean(job),
         entityName: '',
+        sourceText: sourceTextByField,
       }).tier
 
   // One grid over every field, ordered compulsory → conditional → optional and

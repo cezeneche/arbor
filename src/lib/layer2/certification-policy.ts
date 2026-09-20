@@ -16,6 +16,8 @@
 // Confidence plays no part here. Low confidence routes a field to review, and
 // review is what this runs after.
 import { evaluateAdmissibility } from '@/lib/extraction/admissibility'
+import { DOCUMENT_FIELD_DEFINITIONS } from '@/lib/extraction/field-definitions'
+import { fieldLabel } from '@/lib/layer3/field-label'
 import type { ExtractedFieldResult } from '@/lib/extraction/types'
 
 export interface CertificationInput {
@@ -29,12 +31,35 @@ export interface CertificationInput {
   entityName: string
   /** End of the period the confirmed records cover. */
   reportingPeriodEnd?: Date
+  /**
+   * Field name → the text each value was read from. Verified claims a record
+   * can be confirmed against its document, and the admissibility spec does not
+   * look at source text, so without this a document whose values arrived with
+   * nothing to confirm them against was certified Verified. Omitted by callers
+   * that have no extraction to judge.
+   */
+  sourceText?: ReadonlyMap<string, string | null>
 }
 
 export interface CertificationResult {
   tier: 'A' | 'B'
   /** Why the document is not Verified. Empty when it is. */
   reasons: string[]
+}
+
+/**
+ * The compulsory fields this document is certified on that have no text behind
+ * them. A value the reviewer supplied is theirs to stand behind and is not
+ * asked for source text; a value the extraction produced must carry the text it
+ * came from, or Verified would assert something nobody can check.
+ */
+function unconfirmableCompulsoryFields(input: CertificationInput): string[] {
+  if (!input.sourceText) return []
+  return (DOCUMENT_FIELD_DEFINITIONS[input.documentType] ?? [])
+    .filter(def => def.admissibility === 'compulsory')
+    .filter(def => !input.confirmed.has(def.name))
+    .filter(def => !(input.sourceText!.get(def.name) ?? '').trim())
+    .map(def => def.name)
 }
 
 export function certifyTier(input: CertificationInput): CertificationResult {
@@ -65,7 +90,18 @@ export function certifyTier(input: CertificationInput): CertificationResult {
     input.reportingPeriodEnd,
   )
 
-  if (result.tier === 'A') return { tier: 'A', reasons: [] }
+  if (result.tier === 'A') {
+    const unconfirmable = unconfirmableCompulsoryFields(input)
+    if (unconfirmable.length === 0) return { tier: 'A', reasons: [] }
+    return {
+      tier: 'B',
+      reasons: unconfirmable.map(
+        name =>
+          `We could not show the text ${fieldLabel(name).toLowerCase()} was read from, ` +
+          'so it cannot be confirmed against the document.',
+      ),
+    }
+  }
 
   const reasons = result.flags.filter(f => f.severity === 'CRITICAL').map(f => f.message)
   if (reasons.length === 0) {
