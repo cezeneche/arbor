@@ -43,7 +43,11 @@ function hasValue(raw: string | null): boolean {
  * scanning six identical flags nothing about any of them. Extracting the name
  * lets the flag land where it belongs.
  */
-const FIELD_NAMING_FLAG = /^(repair_failed|arbiter_conflict):(.+)$/
+// The field name runs to the next colon, never to the end: an arbiter conflict
+// spells out who disagreed after it — `arbiter_conflict:invoice_number:
+// customs_parser!=rule` — and taking all of that as the name put
+// "INVOICE NUMBER:CUSTOMS PARSER!=RULE" on the reviewer's screen as a field.
+const FIELD_NAMING_FLAG = /^(repair_failed|arbiter_conflict):([^:]+)/
 
 function fieldNamedBy(flag: string): string | null {
   const m = flag.match(FIELD_NAMING_FLAG)

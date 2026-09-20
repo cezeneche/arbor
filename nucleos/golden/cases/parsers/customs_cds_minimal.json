@@ -31,13 +31,6 @@
           "value": "IN"
         },
         {
-          "confidence": 0.8,
-          "field": "invoice.invoice_number",
-          "snippet": null,
-          "source": "customs_parser",
-          "value": "number"
-        },
-        {
           "confidence": 0.88,
           "field": "lines[0].net_mass_kg",
           "snippet": null,
@@ -53,7 +46,7 @@
         "entry_reference": null,
         "incoterm": null,
         "invoice_date": null,
-        "invoice_number": "number",
+        "invoice_number": null,
         "origin_country": "IN"
       },
       "lines": [],
