@@ -160,3 +160,67 @@ class TestFailsClosed:
             assert not body["fields"] or body["flags"]
         else:
             assert res.status_code == 422
+
+
+# A customs declaration, in the layout Arbor's transcription produces: label
+# lines above their values, and the goods section as a pipe-separated table.
+DECLARATION_TEXT = """IMPORT DECLARATION
+Customs Declaration Service (CDS) — entry summary
+
+DECLARATION REFERENCE (MRN)
+26GB52TESTDOC04177
+
+IMPORTER / DECLARANT
+Acme Steel Ltd
+
+IMPORTER EORI
+GB247188003000
+
+COUNTRY OF ORIGIN
+TR — Turkiye
+
+Goods item
+Commodity code (CN) | 7208 3900
+Goods description | Hot-rolled coil, non-alloy steel, grade S235JR
+Net mass | 24 500 kg
+Supplier invoice | CMS-2026-4417
+"""
+
+
+class TestSpecialistParserValues:
+    """A specialist parser's values must reach the drafts, not only the evidence.
+
+    Scalars are read from the flat `structured` dict the generic extractor
+    produces. A specialist returns a nested shape and no `structured` at all,
+    and arbitration starts from the specialist — so every scalar came back null
+    while the evidence beside it carried the value. The reviewer saw "not found"
+    next to a snippet containing the answer.
+    """
+
+    def _fields(self, client, auth_headers) -> dict[str, str | None]:
+        res = client.post(
+            "/api/internal/cbam/extract",
+            json=_request(text=DECLARATION_TEXT, document_type="CUSTOMS_DECLARATION"),
+            headers=auth_headers,
+        )
+        assert res.status_code == 200, res.text
+        return {f["field_name"]: f["raw_value"] for f in res.json()["fields"]}
+
+    def test_the_importer_eori_reaches_the_draft(self, client, auth_headers):
+        assert self._fields(client, auth_headers).get("importer_eori") == "GB247188003000"
+
+    def test_the_entry_reference_reaches_the_draft(self, client, auth_headers):
+        assert self._fields(client, auth_headers).get("entry_reference") == "26GB52TESTDOC04177"
+
+    def test_the_origin_country_reaches_the_draft(self, client, auth_headers):
+        assert self._fields(client, auth_headers).get("origin_country") == "TR"
+
+    def test_a_pipe_separated_goods_table_still_yields_a_mass(self, client, auth_headers):
+        res = client.post(
+            "/api/internal/cbam/extract",
+            json=_request(text=DECLARATION_TEXT, document_type="CUSTOMS_DECLARATION"),
+            headers=auth_headers,
+        )
+        line = res.json()["lines"][0]
+        assert line["cn_code"] == "72083900"
+        assert line["net_mass_kg"] == 24500

@@ -82,8 +82,21 @@ _DECLARES_ANOTHER_TYPE = re.compile(
 )
 
 
+# Arbor's transcription renders a form's table as pipe-separated columns —
+# "Net mass | 24 500 kg" — and a pipe between a label and its value defeats
+# every pattern that expects whitespace there. Two spaces is what the same
+# table looks like from a PDF text layer, which is what the patterns are
+# written for.
+_TABLE_PIPE = re.compile(r"[ \t]*\|[ \t]*")
+
+
+def _without_table_pipes(text: str) -> str:
+    return _TABLE_PIPE.sub("  ", text)
+
+
 def is_customs_declaration(text: str) -> bool:
     """Return True if text looks like a customs declaration form."""
+    text = _without_table_pipes(text)
     if sum(1 for s in _CUSTOMS_SIGNALS if s.search(text)) >= _MIN_SIGNALS:
         return True
     if _DECLARES_ANOTHER_TYPE.search(text):
@@ -412,6 +425,7 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
     If no CN code is found, ``lines`` will be empty.  The caller should merge
     shipment-level fields (MRN, origin, consignee) with an existing case.
     """
+    text = _without_table_pipes(text)
     items = _table_items(text) or [
         {
             "cn_code": code,
