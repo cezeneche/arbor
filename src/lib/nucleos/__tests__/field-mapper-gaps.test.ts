@@ -124,3 +124,29 @@ describe('CN code length', () => {
     expect(withCode('n/a').flagReason).toContain('cn_code_not_8_digit')
   })
 })
+
+describe('a flag that names both a field and the extractors that disagreed', () => {
+  // `arbiter_conflict:<field>:<source>!=<source>` carries two colons. Taking
+  // everything after the first one produced a row labelled
+  // "INVOICE NUMBER:CUSTOMS PARSER!=RULE" on the reviewer's screen.
+  const flag = 'arbiter_conflict:invoice_number:customs_parser!=rule'
+
+  it('routes the flag to the field it names', () => {
+    const rows = toExtractedFieldRows(
+      base({ fields: [field('invoice_number', 'INV-1', 0.9)], flags: [flag] }),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].fieldName).toBe('invoice_number')
+    expect(rows[0].flagReason).toContain(flag)
+  })
+
+  it('names the field, not the conflict, when no row exists for it', () => {
+    const rows = toExtractedFieldRows(base({ flags: [flag] }))
+    expect(rows.map(r => r.fieldName)).toEqual(['invoice_number'])
+  })
+
+  it('still carries the whole flag, so the reviewer sees who disagreed', () => {
+    const rows = toExtractedFieldRows(base({ flags: [flag] }))
+    expect(rows[0].flagReason).toContain('customs_parser!=rule')
+  })
+})

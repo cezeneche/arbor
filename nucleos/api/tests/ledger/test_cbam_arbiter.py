@@ -60,3 +60,35 @@ def test_arbiter_prefers_body_lines_over_header_noise():
     cn_codes = {line["cn_code"] for line in result["lines"]}
     assert cn_codes == {"720711", "730890"}
     assert any(warning.startswith("arbiter_conflict:lines") for warning in warnings)
+
+
+def _candidate(source: str, eori: str | None) -> dict:
+    return {
+        "source": source,
+        "full_text": "IMPORTER / DECLARANT\nAcme Steel Ltd\nIMPORTER EORI\nGB247188003000",
+        "importer": {"name": "Acme Steel Ltd", "eori": eori},
+        "invoice": {"invoice_number": "INV-1", "invoice_date": "2026-09-04",
+                    "origin_country": "TR", "incoterm": "FOB"},
+        "lines": [{"cn_code": "72083900", "quantity": 24.5, "net_mass_kg": 24500}],
+    }
+
+
+def test_arbiter_prefers_an_eori_shaped_value_over_a_word():
+    # A specialist parser read the label "IMPORTER / DECLARANT" as an EORI. The
+    # importer was previously copied wholesale from the first candidate, so the
+    # word travelled into the case while a correct identifier sat in another
+    # candidate. An EORI is a country prefix followed by digits; a word is not.
+    for order in ([_candidate("customs_parser", "DECLARANT"), _candidate("rule", "GB247188003000")],
+                  [_candidate("rule", "GB247188003000"), _candidate("customs_parser", "DECLARANT")]):
+        result, _ = arbitrate_parsed_invoice(order)
+        assert result["importer"]["eori"] == "GB247188003000"
+
+
+def test_arbiter_keeps_the_only_eori_offered():
+    result, _ = arbitrate_parsed_invoice([_candidate("rule", None), _candidate("customs_parser", "GB247188003000")])
+    assert result["importer"]["eori"] == "GB247188003000"
+
+
+def test_arbiter_leaves_the_eori_empty_when_nobody_found_one():
+    result, _ = arbitrate_parsed_invoice([_candidate("rule", None), _candidate("customs_parser", "")])
+    assert not result["importer"]["eori"]

@@ -62,9 +62,14 @@ def is_customs_declaration(text: str) -> bool:
 # Field extractors
 
 # SAD Box 33 / CDS commodity code: 8-digit CN code
+# Declarations group the digits of a CN code — "7208 3900", "7208 39 00" — and
+# the label may sit on its own line above the value. Requiring eight consecutive
+# digits matched none of that, and without a CN code there is no goods line and
+# so no case at all. Spaces and dots are admitted between digits but newlines are
+# not, or the code would be assembled from two different fields.
 _CN_CODE_RE = re.compile(
     r"(?:box\s*33|commodity\s+code|cn\s+code|tariff\s+code|hs\s+code)"
-    r"[:\s]*([0-9]{8})(?:\s*[0-9]{2})?",  # allow 10-digit TARIC, capture 8
+    r"[^0-9]{0,30}([0-9][0-9 .]{6,14}[0-9])",
     re.I,
 )
 _CN_CODE_BARE_RE = re.compile(r"\b([0-9]{8})\b")  # fallback: 8-digit standalone
@@ -73,23 +78,37 @@ _CN_CODE_BARE_RE = re.compile(r"\b([0-9]{8})\b")  # fallback: 8-digit standalone
 def _extract_cn_code(text: str) -> str | None:
     m = _CN_CODE_RE.search(text)
     if m:
-        return m.group(1)
+        digits = re.sub(r"\D", "", m.group(1))
+        if len(digits) >= 8:
+            return digits[:8]  # 10-digit TARIC carries the CN code in its first 8
     m = _CN_CODE_BARE_RE.search(text)
     return m.group(1) if m else None
 
 
-# Box 8 / consignee EORI
+# Box 8 / consignee EORI.
+#
+# The country prefix must start a word and be followed by a digit. Without both,
+# "IMPORTER / DECLARANT" parses as an EORI: DE is a country code and CLARANT
+# satisfies a letters-allowed tail, so the label is recorded as the importer's
+# identifier. The value may also sit on the line below its label.
+_EORI_COUNTRY = (
+    r"AT|BE|BG|CY|CZ|DE|DK|EE|ES|FI|FR|GB|GR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK"
+)
+_EORI_BODY = rf"(?:{_EORI_COUNTRY})\s?[0-9][0-9A-Z\- ]{{4,16}}"
 _CONSIGNEE_RE = re.compile(
-    r"(?:box\s*8|consignee|importer)[:\s]*(?:.*?)?"
-    r"((?:AT|BE|BG|CY|CZ|DE|DK|EE|ES|FI|FR|GB|GR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK)"
-    r"\s*[0-9A-Z\-]{5,17})",
+    rf"(?:box\s*8|consignee|importer|declarant)(?:\s*eori)?[:\s]*(?:[^\n]*\n)?\s*\b({_EORI_BODY})",
     re.I,
 )
+_EORI_BARE_RE = re.compile(rf"\b({_EORI_BODY})", re.I)
+
+
+def _clean_eori(raw: str) -> str:
+    return raw.strip().replace(" ", "").replace("-", "").upper()
 
 
 def _extract_consignee_eori(text: str) -> str | None:
-    m = _CONSIGNEE_RE.search(text)
-    return m.group(1).strip().replace(" ", "") if m else None
+    m = _CONSIGNEE_RE.search(text) or _EORI_BARE_RE.search(text)
+    return _clean_eori(m.group(1)) if m else None
 
 
 # Box 34 / country of origin (ISO 2-letter)
@@ -154,15 +173,29 @@ def _extract_mrn(text: str) -> str | None:
 
 
 # Box 44 / additional information (often has invoice reference)
+# The keyword must be a whole word. Without the trailing boundary, "REF" matches
+# inside "DECLARATION REFERENCE" and the capture takes what is left of the word:
+# an invoice number of ERENCE, plausible enough to travel unquestioned.
+#
+# "Invoice" also opens the labels of neighbouring fields — invoice value,
+# invoice amount, invoice date — whose label word or money figure would
+# otherwise be recorded as the number.
+_NEIGHBOURING_LABEL = r"(?!\s*(?:value|amount|total|sum|price|currency|date)\b)"
 _INVOICE_RE = re.compile(
-    r"(?:invoice|commercial\s+invoice|ref(?:erence)?)[:\s#\-]*([A-Z0-9\-/]{3,30})",
+    rf"\b(?:commercial\s+invoice|invoice|ref(?:erence)?)\b{_NEIGHBOURING_LABEL}"
+    r"[:\s#\-]*([A-Z0-9][A-Z0-9\-/]{2,29})\b",
     re.I,
 )
 
 
 def _extract_invoice_number(text: str) -> str | None:
-    m = _INVOICE_RE.search(text)
-    return m.group(1).strip() if m else None
+    # An invoice number carries a digit; a word that happens to follow the
+    # keyword does not.
+    for m in _INVOICE_RE.finditer(text):
+        candidate = m.group(1).strip()
+        if any(ch.isdigit() for ch in candidate):
+            return candidate
+    return None
 
 
 # Customs procedure code (4-digit SAC)

@@ -121,6 +121,32 @@ def _score_field_value(field: str, value: Any, candidate: dict[str, Any]) -> flo
     return score
 
 
+# An EORI is a country prefix followed by digits. A specialist parser once read
+# the label "IMPORTER / DECLARANT" as one, and because the importer was copied
+# wholesale from the first candidate, that word reached the case while a correct
+# identifier sat unused in another candidate.
+_EORI_SHAPE = re.compile(r"[A-Za-z]{2}[0-9][A-Za-z0-9]{3,}")
+
+
+def _score_eori(value: Any) -> float:
+    text = str(value or "").strip().replace(" ", "")
+    if not text:
+        return 0.0
+    return 3.0 if _EORI_SHAPE.fullmatch(text) else 1.0
+
+
+def _pick_importer_eori(candidates: list[dict[str, Any]]) -> Any:
+    best_value: Any = None
+    best_score = 0.0
+    for candidate in candidates:
+        importer = candidate.get("importer")
+        value = importer.get("eori") if isinstance(importer, dict) else None
+        score = _score_eori(value)
+        if score > best_score:
+            best_value, best_score = value, score
+    return best_value
+
+
 def _normalize_lines(lines: Any) -> list[dict[str, Any]]:
     if not isinstance(lines, list):
         return []
@@ -275,6 +301,12 @@ def arbitrate_parsed_invoice(candidates: list[dict]) -> tuple[dict, list[str]]:
 
     for field in ("invoice_number", "invoice_date", "origin_country", "incoterm"):
         invoice[field] = _pick_field(field, normalized_candidates, warnings)
+
+    importer = merged.get("importer")
+    if not isinstance(importer, dict):
+        importer = {}
+        merged["importer"] = importer
+    importer["eori"] = _pick_importer_eori(normalized_candidates)
 
     merged["lines"] = _pick_lines(normalized_candidates, warnings)
     merged["evidence"] = _merge_candidate_evidence(normalized_candidates)
