@@ -75,12 +75,16 @@ _CN_CODE_RE = re.compile(
 _CN_CODE_BARE_RE = re.compile(r"\b([0-9]{8})\b")  # fallback: 8-digit standalone
 
 
+def _cn_from_match(m: re.Match[str]) -> str | None:
+    digits = re.sub(r"\D", "", m.group(1))
+    return digits[:8] if len(digits) >= 8 else None  # 10-digit TARIC: CN is the first 8
+
+
 def _extract_cn_code(text: str) -> str | None:
-    m = _CN_CODE_RE.search(text)
-    if m:
-        digits = re.sub(r"\D", "", m.group(1))
-        if len(digits) >= 8:
-            return digits[:8]  # 10-digit TARIC carries the CN code in its first 8
+    for m in _CN_CODE_RE.finditer(text):
+        code = _cn_from_match(m)
+        if code:
+            return code
     m = _CN_CODE_BARE_RE.search(text)
     return m.group(1) if m else None
 
@@ -94,7 +98,16 @@ def _extract_cn_code(text: str) -> str | None:
 _EORI_COUNTRY = (
     r"AT|BE|BG|CY|CZ|DE|DK|EE|ES|FI|FR|GB|GR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK"
 )
-_EORI_BODY = rf"(?:{_EORI_COUNTRY})\s?[0-9][0-9A-Z\- ]{{4,16}}"
+# The tail is digits, optionally spaced as the form prints them. Admitting
+# letters let "Box 8 Consignee GB247188003000 Acme Steel Ltd" run the company
+# name into the identifier: GB247188003000ACM.
+_EORI_BODY = rf"(?:{_EORI_COUNTRY})\s?[0-9](?:[0-9 ]{{3,16}}[0-9])?"
+#
+# A VAT number sits beside the EORI on the same form and wears the same country
+# prefix — "Importer VAT GB 247 1880 03" against "Importer EORI GB247188003000".
+# Read as the EORI it files the entry under an identifier the importer does not
+# trade under, so any label mentioning VAT disqualifies what follows it.
+_VAT_LABEL_RE = re.compile(r"\b(?:vat|tva|ust|btw|tax)\b", re.I)
 _CONSIGNEE_RE = re.compile(
     rf"(?:box\s*8|consignee|importer|declarant)(?:\s*eori)?[:\s]*(?:[^\n]*\n)?\s*\b({_EORI_BODY})",
     re.I,
@@ -102,19 +115,32 @@ _CONSIGNEE_RE = re.compile(
 _EORI_BARE_RE = re.compile(rf"\b({_EORI_BODY})", re.I)
 
 
+def _labelled_vat(text: str, start: int) -> bool:
+    """Whether the identifier starting at `start` is introduced as a VAT number."""
+    line_start = text.rfind("\n", 0, start) + 1
+    preceding_line_start = text.rfind("\n", 0, max(line_start - 1, 0)) + 1
+    return bool(_VAT_LABEL_RE.search(text[preceding_line_start:start]))
+
+
 def _clean_eori(raw: str) -> str:
     return raw.strip().replace(" ", "").replace("-", "").upper()
 
 
 def _extract_consignee_eori(text: str) -> str | None:
-    m = _CONSIGNEE_RE.search(text) or _EORI_BARE_RE.search(text)
-    return _clean_eori(m.group(1)) if m else None
+    for pattern in (_CONSIGNEE_RE, _EORI_BARE_RE):
+        for m in pattern.finditer(text):
+            if not _labelled_vat(text, m.start(1)):
+                return _clean_eori(m.group(1))
+    return None
 
 
 # Box 34 / country of origin (ISO 2-letter)
+# Forms suffix the label ("Country of origin code") and abbreviate it to
+# "Origin:" in column headings; both left origin_country null, and origin decides
+# CBAM scope and the electricity factor.
 _ORIGIN_RE = re.compile(
-    r"(?:box\s*34|country\s+of\s+origin|origin\s+country|country\s+code)"
-    r"[:\s]*([A-Z]{2})\b",
+    r"(?:box\s*34|country\s+of\s+origin|origin\s+country|country\s+code|origin)"
+    r"(?:\s+code)?[:\s]*([A-Z]{2})\b(?![A-Za-z])",
     re.I,
 )
 
@@ -128,10 +154,83 @@ def _extract_origin_country(text: str) -> str | None:
 # The capture must begin and end with a digit. Allowing the class to match
 # whitespace alone let "Box 35 Net mass: 24,500.00 kg" satisfy the pattern on
 # the Box-35 keyword with a single space as the value, so the mass was never read.
+#
+# The unit is often printed as part of the label — "Net mass (kg) 24 500" — and
+# a parenthesis between label and value left the mass unread.
 _MASS_RE = re.compile(
-    r"(?:box\s*35|net\s+mass|net\s+weight|nett\s+weight|nett\s+mass)"
+    r"(?:box\s*3[58]|net\s+mass|net\s+weight|nett\s+weight|nett\s+mass)"
+    r"\s*(?:\((?:kg|kgs|kilograms?)\))?"
     r"[:\s]*([0-9][0-9.,\s ]*[0-9]|[0-9])\s*(?:kg|kgs|kilogram)?",
     re.I,
+)
+
+
+_DESCRIPTION_RE = re.compile(
+    r"(?:goods\s+description|description\s+of\s+goods|box\s*31|description)[:\s]*([^\n]{3,200})",
+    re.I,
+)
+
+# A total at the foot of the page describes the whole entry, not an item. Read as
+# an item's mass it would double the declaration.
+_TOTAL_MASS_RE = re.compile(r"total\s+net\s+(?:mass|weight)", re.I)
+
+
+def _extract_description(text: str) -> str | None:
+    m = _DESCRIPTION_RE.search(text)
+    return m.group(1).strip() or None if m else None
+
+
+# A goods table prints one item per row: an optional item number, the code, a
+# description, and the mass in the last column. There is no label beside any of
+# it, so the label-driven patterns find a heading and nothing under it.
+_TABLE_ROW_RE = re.compile(
+    r"^[ \t]*(?:[0-9]{1,3}[ \t]+)?"
+    r"([0-9]{8}|[0-9]{4}[ \t][0-9]{4})[ \t]+"
+    r"(\S.*?)[ \t]+"
+    r"([0-9][0-9., ]*[0-9])[ \t]*$",
+    re.M,
+)
+
+
+def _table_items(text: str) -> list[dict[str, Any]]:
+    from ledger_app.services.cbam_extraction._validators import (  # noqa: PLC0415
+        parse_quantity,
+    )
+
+    items: list[dict[str, Any]] = []
+    for m in _TABLE_ROW_RE.finditer(text):
+        mass = m.group(3).strip()
+        if not _WELL_FORMED_NUMBER.fullmatch(mass):
+            continue
+        items.append({
+            "cn_code": re.sub(r"\D", "", m.group(1)),
+            "net_mass_kg": parse_quantity(mass)[0],
+            "description": m.group(2).strip() or None,
+        })
+    return items
+
+
+def _goods_blocks(text: str) -> list[str]:
+    """The text of each goods item: from its commodity code to the next one.
+
+    A declaration routinely covers several commodity codes. Reading the whole
+    document for one code and one mass produced a single line, so every item
+    after the first was dropped and the case understated the import — without
+    looking incomplete, which is what made it dangerous.
+    """
+    starts = [m.start() for m in _CN_CODE_RE.finditer(text) if _cn_from_match(m)]
+    if len(starts) < 2:
+        return [text]
+    bounds = [*starts, len(text)]
+    return [text[bounds[i]:bounds[i + 1]] for i in range(len(starts))]
+
+
+# A separator inside a number groups thousands: one character, between groups of
+# exactly three digits, in whichever of the conventions the form uses — 24 500,
+# 24,500.00, 24.500,50. Anything looser reads two values that happen to sit next
+# to each other as one. parse_quantity still decides which separator is decimal.
+_WELL_FORMED_NUMBER = re.compile(
+    r"[0-9]{1,3}(?:[., ][0-9]{3})*(?:[.,][0-9]{1,3})?|[0-9]+(?:[.,][0-9]+)?"
 )
 
 
@@ -145,10 +244,17 @@ def _extract_net_mass_kg(text: str) -> float | None:
         parse_quantity,
     )
 
-    m = _MASS_RE.search(text)
-    if not m:
-        return None
-    return parse_quantity(m.group(1))[0]
+    for m in _MASS_RE.finditer(text):
+        preceding = text[max(0, m.start() - 12):m.start()]
+        if _TOTAL_MASS_RE.search(preceding + m.group(0)):
+            continue
+        if not _WELL_FORMED_NUMBER.fullmatch(m.group(1).strip()):
+            # Under a column heading — "Net mass (kg)" then a row below — the
+            # capture ran across the newline and took the item number with the
+            # code: 172083900 kg, from an item of 24 500.
+            continue
+        return parse_quantity(m.group(1))[0]
+    return None
 
 
 # Box 7 / MRN (Movement Reference Number) — 18 characters:
@@ -229,10 +335,18 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
     If no CN code is found, ``lines`` will be empty.  The caller should merge
     shipment-level fields (MRN, origin, consignee) with an existing case.
     """
-    cn_code = _extract_cn_code(text)
+    items = _table_items(text) or [
+        {
+            "cn_code": code,
+            "net_mass_kg": _extract_net_mass_kg(block),
+            "description": _extract_description(block),
+        }
+        for block in _goods_blocks(text)
+        if (code := _extract_cn_code(block))
+    ]
+
     eori = _extract_consignee_eori(text)
     origin = _extract_origin_country(text)
-    mass_kg = _extract_net_mass_kg(text)
     mrn = _extract_mrn(text)
     invoice_number = _extract_invoice_number(text)
     customs_procedure = _extract_customs_procedure(text)
@@ -248,16 +362,23 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
     _ev("invoice.origin_country", origin, 0.90)
     _ev("invoice.entry_reference", mrn, 0.95)
     _ev("invoice.invoice_number", invoice_number, 0.80)
-    if cn_code:
-        _ev("lines[0].cn_code", cn_code, 0.92)
-    if mass_kg:
-        _ev("lines[0].net_mass_kg", mass_kg, 0.88)
+    for index, item in enumerate(items):
+        _ev(f"lines[{index}].cn_code", item["cn_code"], 0.92)
+        if item["net_mass_kg"]:
+            _ev(f"lines[{index}].net_mass_kg", item["net_mass_kg"], 0.88)
+
+    if not items:
+        # No CN code, so no goods line — but a declared mass is still shipment
+        # evidence the caller merges into an existing case, and dropping it
+        # would lose the one figure the document did carry.
+        _ev("lines[0].net_mass_kg", _extract_net_mass_kg(text), 0.88)
 
     lines = []
-    if cn_code:
+    for item in items:
+        mass_kg = item["net_mass_kg"]
         lines.append({
-            "cn_code": cn_code,
-            "description": None,
+            "cn_code": item["cn_code"],
+            "description": item["description"],
             "quantity": mass_kg / 1000.0 if mass_kg else None,
             "quantity_unit": "t",
             "net_mass_kg": mass_kg,
