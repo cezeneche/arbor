@@ -152,6 +152,43 @@ def _specialist_candidates(
     return candidates, supplementary, applied, flags, authoritative
 
 
+# Scalars are served to the boundary from the flat `structured` dict the generic
+# extractor produces. A specialist parser returns a nested shape and no
+# `structured` at all, and arbitration builds on the specialist — so on any
+# document a specialist recognised, every scalar reached the reviewer as null
+# while the evidence beside it carried the value. The screen said "not found"
+# next to a snippet containing the answer.
+_STRUCTURED_FROM_NESTED: dict[str, tuple[str, str]] = {
+    "importer_name": ("importer", "name"),
+    "importer_eori": ("importer", "eori"),
+    "invoice_number": ("invoice", "invoice_number"),
+    "invoice_date": ("invoice", "invoice_date"),
+    "import_date": ("invoice", "import_date"),
+    "origin_country": ("invoice", "origin_country"),
+    "incoterm": ("invoice", "incoterm"),
+    "entry_reference": ("invoice", "entry_reference"),
+}
+
+
+def _restate_as_structured(
+    candidate: dict[str, Any],
+    fallback: dict[str, Any] | None,
+) -> None:
+    """Restate the arbitrated nested values as the flat dict the boundary reads.
+
+    The arbitrated values win; the generic extractor's own structured dict fills
+    what arbitration had nothing to say about.
+    """
+    structured: dict[str, Any] = dict(fallback or {})
+    for key, (section, name) in _STRUCTURED_FROM_NESTED.items():
+        source = candidate.get(section)
+        if isinstance(source, dict):
+            value = source.get(name)
+            if value not in (None, ""):
+                structured[key] = value
+    candidate["structured"] = structured
+
+
 def run_text_ingest(
     raw_text: str,
     pages: list[dict[str, Any]] | None = None,
@@ -215,6 +252,7 @@ def run_text_ingest(
     to_arbitrate = specialist if authoritative else [*specialist, candidate]
     arbitrated, arbiter_warnings = arbitrate_parsed_invoice(to_arbitrate)
     repaired, repair_warnings = repair_parsed_invoice(arbitrated)
+    _restate_as_structured(repaired, candidate.get("structured"))
 
     return IngestedText(
         {
