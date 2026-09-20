@@ -69,11 +69,25 @@ _MIN_SIGNALS = 2
 # of them in passing.
 _MIN_RECOGNISED_LABELS = 3
 
+# A document that names itself is taken at its word. An invoice for an import
+# carries everything a declaration does — EORI, CN code, net mass, origin — and
+# labels all of it, so counting labels alone made it a declaration and put the
+# customs parser in competition for fields it should not claim. Inference is for
+# documents that say nothing about what they are.
+_DECLARES_ANOTHER_TYPE = re.compile(
+    r"^\W*(?:commercial\s+invoice|proforma\s+invoice|packing\s+list|bill\s+of\s+lading"
+    r"|delivery\s+note|consignment\s+note|inspection\s+certificate|test\s+certificate"
+    r"|electricity\s+bill|gas\s+bill|purchase\s+order)\b",
+    re.I | re.M,
+)
+
 
 def is_customs_declaration(text: str) -> bool:
     """Return True if text looks like a customs declaration form."""
     if sum(1 for s in _CUSTOMS_SIGNALS if s.search(text)) >= _MIN_SIGNALS:
         return True
+    if _DECLARES_ANOTHER_TYPE.search(text):
+        return False
     return recognised_field_count(text) >= _MIN_RECOGNISED_LABELS
 
 

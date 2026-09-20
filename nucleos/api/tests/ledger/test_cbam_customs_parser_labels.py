@@ -106,3 +106,33 @@ def test_an_unrelated_document_is_not_dragged_in_by_a_loose_match():
 )
 def test_another_document_type_is_not_read_as_a_declaration(kind, text):
     assert not is_customs_declaration(text), kind
+
+
+# A commercial invoice for an import carries the same data a declaration does —
+# EORI, CN code, net mass, country of origin — and labels all of them. Counting
+# labels alone made it a declaration, which put the customs parser in
+# competition for fields it should not claim: its evidence carries no source
+# text, and without source text Arbor cannot mark a field Verified.
+INVOICE_WITH_CUSTOMS_DATA = """COMMERCIAL INVOICE
+
+Seller: Borusan Mannesmann Boru Sanayi ve Ticaret A.S.
+Buyer:  Northern Steel Stockholders Ltd
+        EORI: GB123456789000
+
+Invoice number: INV-2027-0042
+Invoice date: 2027-02-14
+Country of origin: TR
+Incoterm: CIF Immingham
+Customs entry reference: 24GB12345678901234
+
+CN code: 72071111
+Net mass: 24,500.00 kg
+Direct embedded emissions: 44100 kgCO2e
+Method: actual
+"""
+
+
+def test_a_document_that_names_itself_something_else_is_taken_at_its_word():
+    # The label evidence is strong here — five fields — and still loses to the
+    # document saying what it is on its first line.
+    assert not is_customs_declaration(INVOICE_WITH_CUSTOMS_DATA)
