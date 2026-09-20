@@ -124,12 +124,23 @@ export function isCbamNumericFieldName(name: string): boolean {
  */
 export function cbamCompulsoryFieldsPresent(
   confirmed: ReadonlyMap<string, string>,
+  /**
+   * The text each value was read from, when the caller is deciding a trust
+   * tier. Verified means a record can be confirmed against its document, so a
+   * value with nothing to confirm it against cannot carry the tier — the rule
+   * read presence alone, and certified documents Verified whose every value
+   * arrived with no source text. Omitted by callers asking only whether the
+   * fields are there.
+   */
+  sourceText?: ReadonlyMap<string, string | null>,
 ): boolean {
   const value = (key: string): string | null => {
     const raw = confirmed.get(key)
     if (raw === undefined || raw === null) return null
     const trimmed = String(raw).trim()
-    return trimmed === '' ? null : trimmed
+    if (trimmed === '') return null
+    if (sourceText && !(sourceText.get(key) ?? '').trim()) return null
+    return trimmed
   }
 
   if (!value('importer_eori') && !value('importer_name')) return false
@@ -138,6 +149,7 @@ export function cbamCompulsoryFieldsPresent(
   for (const [name, raw] of confirmed) {
     const ref = parseGoodsLineFieldName(name)
     if (!ref) continue
+    if (sourceText && !(sourceText.get(name) ?? '').trim()) continue
     const line = byLine.get(ref.lineIndex) ?? new Map<string, string>()
     line.set(ref.field, raw)
     byLine.set(ref.lineIndex, line)

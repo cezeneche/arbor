@@ -288,3 +288,51 @@ def test_a_column_layout_still_reads_the_shipment_fields():
     parsed = parse_customs_declaration(TABULAR)
     assert parsed["importer"]["eori"] == "GB247188003000"
     assert parsed["invoice"]["origin_country"] == "TR"
+
+
+# Every value must carry the text it was read from.
+#
+# A reviewer confirms a value against its source text, and Arbor cannot certify
+# a record Verified without it. The parser recorded values with snippet=None, so
+# everything it found arrived unconfirmable: the review screen showed the value
+# and, beside it, "no source text came with this value".
+def _atoms(parsed: dict, field: str) -> list[dict]:
+    return [e for e in parsed["evidence"] if e["field"] == field]
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["importer.eori", "invoice.origin_country", "invoice.entry_reference",
+     "invoice.invoice_number", "lines[0].cn_code", "lines[0].net_mass_kg"],
+)
+def test_every_value_carries_the_text_it_was_read_from(parsed, field):
+    atoms = _atoms(parsed, field)
+    assert atoms, f"no evidence recorded for {field}"
+    assert atoms[0]["snippet"], f"{field} has no source text"
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        ("importer.eori", "GB247188003000"),
+        ("invoice.entry_reference", "26GB52TESTDOC04177"),
+        ("lines[0].cn_code", "7208 3900"),
+    ],
+)
+def test_the_snippet_contains_the_value_as_the_document_prints_it(parsed, field, expected):
+    # The snippet is what a reviewer reads to decide. It has to show the value
+    # in its own words — spaced as the form spaces it — not the cleaned version.
+    assert expected in _atoms(parsed, field)[0]["snippet"]
+
+
+def test_a_span_locates_the_value_in_the_document(parsed):
+    span = _atoms(parsed, "importer.eori")[0]["span"]
+    assert span and span["end"] > span["start"]
+    assert CDS_ENTRY[span["start"]:span["end"]].strip() == "GB247188003000"
+
+
+def test_each_goods_line_points_at_its_own_text(multi):
+    first = [e for e in multi["evidence"] if e["field"] == "lines[0].cn_code"][0]
+    second = [e for e in multi["evidence"] if e["field"] == "lines[1].cn_code"][0]
+    assert "7208 3900" in first["snippet"]
+    assert "7213 1000" in second["snippet"]

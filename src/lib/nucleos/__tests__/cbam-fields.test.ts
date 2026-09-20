@@ -150,3 +150,45 @@ describe('CBAM field names', () => {
     })
   })
 })
+
+// Tier A means the record can be confirmed against the document it came from.
+// The rule read presence only, so a CBAM document whose every value arrived
+// without the text it was read from was certified Verified — the one claim
+// Arbor makes, asserted about values nobody can check.
+describe('cbamCompulsoryFieldsPresent, given what each value can be confirmed against', () => {
+  const values = () =>
+    new Map([
+      ['importer_eori', 'GB123456789000'],
+      ['origin_country', 'IN'],
+      ['lines[0].cn_code', '72081000'],
+      ['lines[0].net_mass_kg', '24000'],
+    ])
+
+  const sourceText = (over: Record<string, string> = {}) =>
+    new Map<string, string | null>([
+      ['importer_eori', 'Importer EORI GB123456789000'],
+      ['origin_country', 'Country of origin IN'],
+      ['lines[0].cn_code', 'Commodity code 7208 1000'],
+      ['lines[0].net_mass_kg', 'Net mass 24 000 kg'],
+      ...Object.entries(over),
+    ])
+
+  it('still passes when every value carries the text it was read from', () => {
+    expect(cbamCompulsoryFieldsPresent(values(), sourceText())).toBe(true)
+  })
+
+  it('fails when a value has no source text at all', () => {
+    expect(cbamCompulsoryFieldsPresent(values(), sourceText({ 'lines[0].net_mass_kg': '' }))).toBe(false)
+  })
+
+  it('fails when the source text map knows nothing of a value', () => {
+    const partial = new Map<string, string | null>([['importer_eori', 'Importer EORI GB123456789000']])
+    expect(cbamCompulsoryFieldsPresent(values(), partial)).toBe(false)
+  })
+
+  it('is unchanged when no source text is supplied at all', () => {
+    // The extraction-time caller has no reviewer corrections to judge and asks
+    // only whether the fields are there.
+    expect(cbamCompulsoryFieldsPresent(values())).toBe(true)
+  })
+})

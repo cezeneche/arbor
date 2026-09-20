@@ -35,8 +35,9 @@ UPU S10 / CN22 / CN23 — postal customs forms
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, NamedTuple
 
+from ledger_app.services.cbam_extraction._evidence import _append_evidence_atom
 from ledger_app.services.cbam_customs_labels import (
     as_country,
     as_cn_code,
@@ -120,18 +121,47 @@ _CN_CODE_RE = re.compile(
 _CN_CODE_BARE_RE = re.compile(r"\b([0-9]{8})\b")  # fallback: 8-digit standalone
 
 
+class Found(NamedTuple):
+    """A value and where it was read from.
+
+    A reviewer confirms a value against the text it came from, and Arbor cannot
+    certify a record Verified without it. Returning the value alone meant
+    everything this parser found arrived unconfirmable.
+    """
+
+    value: Any
+    start: int
+    end: int
+
+
+def _found(value: Any, m: re.Match[str], group: int = 1) -> Found | None:
+    if value in (None, ""):
+        return None
+    try:
+        return Found(value, m.start(group), m.end(group))
+    except IndexError:
+        return Found(value, m.start(0), m.end(0))
+
+
+def _shift(found: Found | None, offset: int) -> Found | None:
+    """A block-relative position restated against the whole document."""
+    if found is None or offset == 0:
+        return found
+    return Found(found.value, found.start + offset, found.end + offset)
+
+
 def _cn_from_match(m: re.Match[str]) -> str | None:
     digits = re.sub(r"\D", "", m.group(1))
     return digits[:8] if len(digits) >= 8 else None  # 10-digit TARIC: CN is the first 8
 
 
-def _extract_cn_code(text: str) -> str | None:
+def _extract_cn_code(text: str) -> Found | None:
     for m in _CN_CODE_RE.finditer(text):
         code = _cn_from_match(m)
         if code:
-            return code
+            return _found(code, m)
     m = _CN_CODE_BARE_RE.search(text)
-    return m.group(1) if m else None
+    return _found(m.group(1), m) if m else None
 
 
 # Box 8 / consignee EORI.
@@ -171,11 +201,11 @@ def _clean_eori(raw: str) -> str:
     return raw.strip().replace(" ", "").replace("-", "").upper()
 
 
-def _extract_consignee_eori(text: str) -> str | None:
+def _extract_consignee_eori(text: str) -> Found | None:
     for pattern in (_CONSIGNEE_RE, _EORI_BARE_RE):
         for m in pattern.finditer(text):
             if not _labelled_vat(text, m.start(1)):
-                return _clean_eori(m.group(1))
+                return _found(_clean_eori(m.group(1)), m)
     return None
 
 
@@ -190,9 +220,9 @@ _ORIGIN_RE = re.compile(
 )
 
 
-def _extract_origin_country(text: str) -> str | None:
+def _extract_origin_country(text: str) -> Found | None:
     m = _ORIGIN_RE.search(text)
-    return m.group(1).upper() if m else None
+    return _found(m.group(1).upper(), m) if m else None
 
 
 # Box 35 / net mass (kg)
@@ -220,9 +250,9 @@ _DESCRIPTION_RE = re.compile(
 _TOTAL_MASS_RE = re.compile(r"total\s+net\s+(?:mass|weight)", re.I)
 
 
-def _extract_description(text: str) -> str | None:
+def _extract_description(text: str) -> Found | None:
     m = _DESCRIPTION_RE.search(text)
-    return m.group(1).strip() or None if m else None
+    return _found(m.group(1).strip(), m) if m else None
 
 
 # A goods table prints one item per row: an optional item number, the code, a
@@ -248,14 +278,14 @@ def _table_items(text: str) -> list[dict[str, Any]]:
         if not _WELL_FORMED_NUMBER.fullmatch(mass):
             continue
         items.append({
-            "cn_code": re.sub(r"\D", "", m.group(1)),
-            "net_mass_kg": parse_quantity(mass)[0],
-            "description": m.group(2).strip() or None,
+            "cn_code": _found(re.sub(r"\D", "", m.group(1)), m, 1),
+            "net_mass_kg": _found(parse_quantity(mass)[0], m, 3),
+            "description": _found(m.group(2).strip(), m, 2),
         })
     return items
 
 
-def _goods_blocks(text: str) -> list[str]:
+def _goods_blocks(text: str) -> list[tuple[str, int]]:
     """The text of each goods item: from its commodity code to the next one.
 
     A declaration routinely covers several commodity codes. Reading the whole
@@ -265,9 +295,9 @@ def _goods_blocks(text: str) -> list[str]:
     """
     starts = [m.start() for m in _CN_CODE_RE.finditer(text) if _cn_from_match(m)]
     if len(starts) < 2:
-        return [text]
+        return [(text, 0)]
     bounds = [*starts, len(text)]
-    return [text[bounds[i]:bounds[i + 1]] for i in range(len(starts))]
+    return [(text[bounds[i]:bounds[i + 1]], bounds[i]) for i in range(len(starts))]
 
 
 # A separator inside a number groups thousands: one character, between groups of
@@ -279,7 +309,7 @@ _WELL_FORMED_NUMBER = re.compile(
 )
 
 
-def _extract_net_mass_kg(text: str) -> float | None:
+def _extract_net_mass_kg(text: str) -> Found | None:
     """Net mass in kilograms, in whichever separator convention the form uses.
 
     Stripping every comma unconditionally turned the European "24,5" into 245.
@@ -298,7 +328,7 @@ def _extract_net_mass_kg(text: str) -> float | None:
             # capture ran across the newline and took the item number with the
             # code: 172083900 kg, from an item of 24 500.
             continue
-        return parse_quantity(m.group(1))[0]
+        return _found(parse_quantity(m.group(1))[0], m)
     return None
 
 
@@ -315,12 +345,12 @@ _MRN_RE = re.compile(
 _MRN_BARE_RE = re.compile(rf"\b({_MRN_BODY})\b", re.I)
 
 
-def _extract_mrn(text: str) -> str | None:
+def _extract_mrn(text: str) -> Found | None:
     m = _MRN_RE.search(text)
     if m:
-        return m.group(1).upper()
+        return _found(m.group(1).upper(), m)
     m = _MRN_BARE_RE.search(text)
-    return m.group(1).upper() if m else None
+    return _found(m.group(1).upper(), m) if m else None
 
 
 # Box 44 / additional information (often has invoice reference)
@@ -339,13 +369,13 @@ _INVOICE_RE = re.compile(
 )
 
 
-def _extract_invoice_number(text: str) -> str | None:
+def _extract_invoice_number(text: str) -> Found | None:
     # An invoice number carries a digit; a word that happens to follow the
     # keyword does not.
     for m in _INVOICE_RE.finditer(text):
         candidate = m.group(1).strip()
         if any(ch.isdigit() for ch in candidate):
-            return candidate
+            return _found(candidate, m)
     return None
 
 
@@ -356,9 +386,9 @@ _CPC_RE = re.compile(
 )
 
 
-def _extract_customs_procedure(text: str) -> str | None:
+def _extract_customs_procedure(text: str) -> Found | None:
     m = _CPC_RE.search(text)
-    return m.group(1) if m else None
+    return _found(m.group(1), m) if m else None
 
 
 # Public API
@@ -366,20 +396,31 @@ def _extract_customs_procedure(text: str) -> str | None:
 def _fill_from_labels(
     text: str,
     items: list[dict[str, Any]],
-    origin: str | None,
-    eori: str | None,
-) -> tuple[list[dict[str, Any]], str | None, str | None]:
+    origin: Found | None,
+    eori: Found | None,
+) -> tuple[list[dict[str, Any]], Found | None, Found | None]:
     from ledger_app.services.cbam_extraction._validators import (  # noqa: PLC0415
         parse_quantity,
     )
 
     labelled = labelled_values(text)
 
+    def _first(field: str, convert: Any) -> Found | None:
+        for value, at in labelled.get(field, []):
+            converted = convert(value)
+            if converted not in (None, ""):
+                return Found(converted, at, at + len(value))
+        return None
+
     if not items:
-        codes = [code for value in labelled.get("cn_code", []) if (code := as_cn_code(value))]
+        codes = [
+            Found(code, at, at + len(value))
+            for value, at in labelled.get("cn_code", [])
+            if (code := as_cn_code(value))
+        ]
         masses = [
-            mass
-            for value in labelled.get("net_mass", [])
+            Found(mass, at, at + len(value))
+            for value, at in labelled.get("net_mass", [])
             if (mass := as_mass_kg(value, _WELL_FORMED_NUMBER, parse_quantity)) is not None
         ]
         items = [
@@ -394,16 +435,10 @@ def _fill_from_labels(
         ]
 
     if origin is None:
-        for value in labelled.get("origin_country", []):
-            if country := as_country(value):
-                origin = country
-                break
+        origin = _first("origin_country", as_country)
 
     if not eori:
-        for value in labelled.get("importer_eori", []):
-            if identifier := as_eori(value, _EORI_COUNTRY):
-                eori = identifier
-                break
+        eori = _first("importer_eori", lambda value: as_eori(value, _EORI_COUNTRY))
 
     return items, origin, eori
 
@@ -428,11 +463,11 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
     text = _without_table_pipes(text)
     items = _table_items(text) or [
         {
-            "cn_code": code,
-            "net_mass_kg": _extract_net_mass_kg(block),
-            "description": _extract_description(block),
+            "cn_code": _shift(code, offset),
+            "net_mass_kg": _shift(_extract_net_mass_kg(block), offset),
+            "description": _shift(_extract_description(block), offset),
         }
-        for block in _goods_blocks(text)
+        for block, offset in _goods_blocks(text)
         if (code := _extract_cn_code(block))
     ]
 
@@ -450,10 +485,25 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
 
     evidence: list[dict] = []
 
-    def _ev(field, value, conf=0.85):
-        if value:
-            evidence.append({"field": field, "value": value,
-                              "source": "customs_parser", "confidence": conf, "snippet": None})
+    def _ev(field: str, found: Found | None, conf: float = 0.85) -> None:
+        """Record a value with the text it was read from.
+
+        Every atom carries a snippet and a span: a reviewer confirms the value
+        against the document, and without that text Arbor cannot certify the
+        record Verified however sure the parser was.
+        """
+        if found is None or found.value in (None, ""):
+            return
+        _append_evidence_atom(
+            evidence,
+            field=field,
+            value=found.value,
+            source="customs_parser",
+            text=text,
+            start=found.start,
+            end=found.end,
+            confidence=conf,
+        )
 
     _ev("importer.eori", eori, 0.88)
     _ev("invoice.origin_country", origin, 0.90)
@@ -461,8 +511,7 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
     _ev("invoice.invoice_number", invoice_number, 0.80)
     for index, item in enumerate(items):
         _ev(f"lines[{index}].cn_code", item["cn_code"], 0.92)
-        if item["net_mass_kg"]:
-            _ev(f"lines[{index}].net_mass_kg", item["net_mass_kg"], 0.88)
+        _ev(f"lines[{index}].net_mass_kg", item["net_mass_kg"], 0.88)
 
     if not items:
         # No CN code, so no goods line — but a declared mass is still shipment
@@ -472,10 +521,11 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
 
     lines = []
     for item in items:
-        mass_kg = item["net_mass_kg"]
+        mass = item["net_mass_kg"]
+        mass_kg = mass.value if mass else None
         lines.append({
-            "cn_code": item["cn_code"],
-            "description": item["description"],
+            "cn_code": item["cn_code"].value,
+            "description": item["description"].value if item["description"] else None,
             "quantity": mass_kg / 1000.0 if mass_kg else None,
             "quantity_unit": "t",
             "net_mass_kg": mass_kg,
@@ -487,14 +537,14 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
     return {
         "importer": {
             "name": None,
-            "eori": eori or "",
+            "eori": eori.value if eori else "",
         },
         "invoice": {
-            "invoice_number": invoice_number,
+            "invoice_number": invoice_number.value if invoice_number else None,
             "invoice_date": None,
-            "origin_country": origin,
+            "origin_country": origin.value if origin else None,
             "incoterm": None,
-            "entry_reference": mrn,
+            "entry_reference": mrn.value if mrn else None,
         },
         "lines": lines,
         "emissions": {
@@ -503,7 +553,7 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
             "indirect_embedded_kgco2e": 0.0,
         },
         "document_type": "customs_declaration",
-        "customs_procedure": customs_procedure,
+        "customs_procedure": customs_procedure.value if customs_procedure else None,
         "reporting_year": None,
         "reporting_quarter": None,
         "evidence": evidence,
