@@ -37,6 +37,15 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from ledger_app.services.cbam_customs_labels import (
+    as_country,
+    as_cn_code,
+    as_eori,
+    as_mass_kg,
+    labelled_values,
+    recognised_field_count,
+)
+
 # Detection signals
 
 _CUSTOMS_SIGNALS = [
@@ -53,10 +62,19 @@ _CUSTOMS_SIGNALS = [
 
 _MIN_SIGNALS = 2
 
+# A declaration in German, or an English one scanned badly, matches none of the
+# signals above and was never read at all. Labelling three of the fields a
+# declaration carries is the same evidence in another form; three rather than
+# two because these are matched by closeness, and an invoice labels one or two
+# of them in passing.
+_MIN_RECOGNISED_LABELS = 3
+
 
 def is_customs_declaration(text: str) -> bool:
     """Return True if text looks like a customs declaration form."""
-    return sum(1 for s in _CUSTOMS_SIGNALS if s.search(text)) >= _MIN_SIGNALS
+    if sum(1 for s in _CUSTOMS_SIGNALS if s.search(text)) >= _MIN_SIGNALS:
+        return True
+    return recognised_field_count(text) >= _MIN_RECOGNISED_LABELS
 
 
 # Field extractors
@@ -318,6 +336,51 @@ def _extract_customs_procedure(text: str) -> str | None:
 
 # Public API
 
+def _fill_from_labels(
+    text: str,
+    items: list[dict[str, Any]],
+    origin: str | None,
+    eori: str | None,
+) -> tuple[list[dict[str, Any]], str | None, str | None]:
+    from ledger_app.services.cbam_extraction._validators import (  # noqa: PLC0415
+        parse_quantity,
+    )
+
+    labelled = labelled_values(text)
+
+    if not items:
+        codes = [code for value in labelled.get("cn_code", []) if (code := as_cn_code(value))]
+        masses = [
+            mass
+            for value in labelled.get("net_mass", [])
+            if (mass := as_mass_kg(value, _WELL_FORMED_NUMBER, parse_quantity)) is not None
+        ]
+        items = [
+            {
+                "cn_code": code,
+                # Positional: the nth code goes with the nth mass, which is how a
+                # form lists them. A mass with no code of its own stays unclaimed.
+                "net_mass_kg": masses[index] if index < len(masses) else None,
+                "description": None,
+            }
+            for index, code in enumerate(codes)
+        ]
+
+    if origin is None:
+        for value in labelled.get("origin_country", []):
+            if country := as_country(value):
+                origin = country
+                break
+
+    if not eori:
+        for value in labelled.get("importer_eori", []):
+            if identifier := as_eori(value, _EORI_COUNTRY):
+                eori = identifier
+                break
+
+    return items, origin, eori
+
+
 def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str, Any]:
     """Extract CBAM-relevant fields from a customs declaration document.
 
@@ -348,6 +411,12 @@ def parse_customs_declaration(text: str, layout: dict | None = None) -> dict[str
     eori = _extract_consignee_eori(text)
     origin = _extract_origin_country(text)
     mrn = _extract_mrn(text)
+
+    # Whatever the exact patterns did not find, look for under a label that
+    # merely resembles one we know — another language, or OCR damage. The value
+    # still has to prove its shape, so this recovers a reading, never invents one.
+    if not items or origin is None or not eori:
+        items, origin, eori = _fill_from_labels(text, items, origin, eori)
     invoice_number = _extract_invoice_number(text)
     customs_procedure = _extract_customs_procedure(text)
 
