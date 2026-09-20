@@ -188,16 +188,18 @@ export function toExtractedFieldRows(result: CbamExtractionResult): ExtractedFie
         if (flag) extra.push(flag)
       }
 
+      // The text this value was read from, when the line carries it. Without it
+      // the field cannot honestly become Verified, so a line whose evidence is
+      // missing still says so rather than borrowing another value's.
+      const atom = (line.evidence ?? []).find(e => e.field === `${prefix}.${name}`)
+
       rows.push(
         buildRow(
           `${prefix}.${name}`,
           String(value),
           unit,
-          // Goods-line values arrive without a per-value snippet; the line's own
-          // flags and the document flags still travel, and the reviewer sees the
-          // source document alongside.
-          null,
-          1,
+          atom?.snippet ?? null,
+          atom?.confidence ?? 1,
           extra,
           generalFlags,
         ),

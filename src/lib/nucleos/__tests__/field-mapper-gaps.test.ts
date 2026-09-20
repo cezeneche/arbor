@@ -150,3 +150,49 @@ describe('a flag that names both a field and the extractors that disagreed', () 
     expect(rows[0].flagReason).toContain('customs_parser!=rule')
   })
 })
+
+describe('a goods line that carries the text its values were read from', () => {
+  const line = {
+    line_index: 0,
+    cn_code: '72083900',
+    net_mass_kg: 24500,
+    flags: [],
+    evidence: [
+      {
+        field: 'lines[0].cn_code',
+        value: '72083900',
+        source: 'customs_parser',
+        confidence: 0.92,
+        snippet: 'Commodity code (CN)\n7208 3900',
+      },
+      {
+        field: 'lines[0].net_mass_kg',
+        value: 24500,
+        source: 'customs_parser',
+        confidence: 0.88,
+        snippet: 'Net mass\n24 500 kg',
+      },
+    ],
+  }
+
+  it('shows the reviewer the text behind each value', () => {
+    const rows = toExtractedFieldRows(base({ lines: [line] } as never))
+    const cn = rows.find(r => r.fieldName === 'lines[0].cn_code')!
+    expect(cn.sourceText).toContain('7208 3900')
+  })
+
+  it('no longer says the value cannot be confirmed', () => {
+    const rows = toExtractedFieldRows(base({ lines: [line] } as never))
+    const mass = rows.find(r => r.fieldName === 'lines[0].net_mass_kg')!
+    expect(mass.sourceText).toContain('24 500')
+    expect(mass.flagReason ?? '').not.toContain('no_source_text')
+  })
+
+  it('still says so for a value the line has no evidence for', () => {
+    const rows = toExtractedFieldRows(
+      base({ lines: [{ ...line, description: 'Hot-rolled coil' }] } as never),
+    )
+    const description = rows.find(r => r.fieldName === 'lines[0].description')!
+    expect(description.flagReason ?? '').toContain('no_source_text')
+  })
+})

@@ -73,6 +73,15 @@ def _evidence_for(evidence: list[dict], field: str) -> list[EvidenceAtom]:
     return atoms
 
 
+def _evidence_under(evidence: list[dict], prefix: str) -> list[EvidenceAtom]:
+    """Every atom belonging to one goods line, by its dotted field name."""
+    atoms: list[EvidenceAtom] = []
+    for raw in evidence or []:
+        if isinstance(raw, dict) and str(raw.get("field") or "").startswith(prefix):
+            atoms.extend(_evidence_for([raw], str(raw["field"])))
+    return atoms
+
+
 def _confidence_of(atoms: list[EvidenceAtom]) -> float:
     return max((a.confidence for a in atoms), default=0.0)
 
@@ -162,6 +171,7 @@ def extract_cbam_from_text(payload: CbamExtractionRequest) -> CbamExtractionResu
                 indirect_embedded_kgco2e=line.get("indirect_embedded_kgco2e"),
                 emissions_method=str(method).upper() if method else None,
                 flags=[],
+                evidence=_evidence_under(evidence, f"lines[{index}]."),
             )
         )
 

@@ -249,6 +249,8 @@ class GoodsLineDraft(BaseModel):
     # What the document declared, when it declared one. A draft like every other field — the selector decides the operative method at calculation time.
     emissions_method: EmissionsMethod | None = None
     flags: list[str] = Field(default_factory=list)
+    # The text each of this line's values was read from. A reviewer confirms a value against its source, and Arbor cannot certify a record Verified without it — a goods line with nowhere to carry evidence could never be anything but Declared, however well the document had been read.
+    evidence: list[EvidenceAtom] = Field(default_factory=list)
 
 
 class CbamExtractionResult(BaseModel):

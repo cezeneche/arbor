@@ -224,3 +224,37 @@ class TestSpecialistParserValues:
         line = res.json()["lines"][0]
         assert line["cn_code"] == "72083900"
         assert line["net_mass_kg"] == 24500
+
+
+class TestGoodsLineEvidence:
+    """A goods line's values must carry the text they were read from.
+
+    The draft had nowhere to put it, so a CN code and a net mass reached Review
+    with no source text by construction — and those are the fields a customs
+    declaration's trust tier rests on, which left every such document Declared
+    however well it had been read.
+    """
+
+    def _line(self, client, auth_headers) -> dict:
+        res = client.post(
+            "/api/internal/cbam/extract",
+            json=_request(text=DECLARATION_TEXT, document_type="CUSTOMS_DECLARATION"),
+            headers=auth_headers,
+        )
+        assert res.status_code == 200, res.text
+        return res.json()["lines"][0]
+
+    def test_the_line_carries_evidence(self, client, auth_headers):
+        assert self._line(client, auth_headers)["evidence"]
+
+    def test_the_commodity_code_shows_the_text_it_was_read_from(self, client, auth_headers):
+        atoms = {a["field"]: a for a in self._line(client, auth_headers)["evidence"]}
+        assert "7208 3900" in atoms["lines[0].cn_code"]["snippet"]
+
+    def test_the_mass_shows_the_text_it_was_read_from(self, client, auth_headers):
+        atoms = {a["field"]: a for a in self._line(client, auth_headers)["evidence"]}
+        assert "24 500" in atoms["lines[0].net_mass_kg"]["snippet"]
+
+    def test_a_line_carries_only_its_own_evidence(self, client, auth_headers):
+        line = self._line(client, auth_headers)
+        assert all(a["field"].startswith("lines[0].") for a in line["evidence"])
