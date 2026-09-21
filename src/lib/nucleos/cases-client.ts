@@ -36,7 +36,14 @@ export interface CbamCaseListPage {
   total: number
 }
 
-const DEFAULT_TIMEOUT_MS = 20_000
+// Nucleos runs on a serverless function that boots its database clients, seeds
+// its factor tables and starts a scheduler before it answers. Twenty seconds
+// was short enough that the first case after an idle spell timed out on the
+// cold start — while the case was in fact created, which the reviewer then saw
+// as a failure. Retrying is safe now that creating the same case twice returns
+// the first one, but a first attempt should not be abandoned before Nucleos
+// has had a fair chance to answer.
+const DEFAULT_TIMEOUT_MS = 45_000
 
 export interface CasesRequestOptions {
   timeoutMs?: number

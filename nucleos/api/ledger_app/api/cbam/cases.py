@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import bindparam, text
 
+from ledger_app.core.crypto import field_fingerprint
 from ledger_app.services.cbam_data_quality import evaluate_cbam_data_quality
 from shared_auth import require_scopes
 from . import _shared
@@ -302,6 +303,39 @@ def list_carbon_pricing_schemes():
     }
 
 
+def _existing_case(
+    conn,
+    *,
+    tenant_id: str,
+    fingerprint: str | None,
+    reporting_year: int,
+    reporting_quarter: int,
+) -> dict | None:
+    """The case this tenant already has for this importer and period, if any."""
+    if not fingerprint:
+        return None
+    row = conn.execute(
+        text(
+            """
+            SELECT *
+            FROM cbam.cbam_cases
+            WHERE tenant_id = :tenant_id
+              AND importer_eori_hash = :fingerprint
+              AND reporting_year = :reporting_year
+              AND reporting_quarter = :reporting_quarter
+            LIMIT 1
+            """
+        ),
+        {
+            "tenant_id": tenant_id,
+            "fingerprint": fingerprint,
+            "reporting_year": reporting_year,
+            "reporting_quarter": reporting_quarter,
+        },
+    ).mappings().first()
+    return dict(row) if row else None
+
+
 @router.post("/cases", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_scopes(["cbam:write"]))])
 def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
     tenant_id: str = getattr(getattr(request.state, "auth_context", None), "tenant_id", "")
@@ -310,12 +344,31 @@ def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
         columns = _shared._table_columns(conn, "cbam_cases")
         _shared.set_tenant_context(conn, tenant_id)
 
+        # A case is one importer's return for one period, so posting the same
+        # one twice must give back the first. Arbor retries a case creation
+        # whose request timed out, and the attempt it is retrying may have
+        # succeeded — a cold start answering after the client gave up — which
+        # would otherwise open a second case for the same import.
+        fingerprint = field_fingerprint(payload.importer_eori)
+        if "importer_eori_hash" in columns:
+            existing = _existing_case(
+                conn,
+                tenant_id=tenant_id,
+                fingerprint=fingerprint,
+                reporting_year=payload.reporting_year,
+                reporting_quarter=payload.reporting_quarter,
+            )
+            if existing is not None:
+                return existing
+
         insert_payload: dict[str, object] = {
             "id": str(uuid4()),
             "importer_eori": _shared.encrypt_field(payload.importer_eori),
             "reporting_year": payload.reporting_year,
             "reporting_quarter": payload.reporting_quarter,
         }
+        if "importer_eori_hash" in columns:
+            insert_payload["importer_eori_hash"] = fingerprint
 
         if "importer_name" in columns:
             insert_payload["importer_name"] = payload.importer_name
