@@ -239,6 +239,10 @@ export interface GoodsLineDraft {
    */
   emissions_method?: EmissionsMethod | null
   flags?: string[]
+  /**
+   * The text each of this line's values was read from. A reviewer confirms a value against its source, and Arbor cannot certify a record Verified without it — a goods line with nowhere to carry evidence could never be anything but Declared, however well the document had been read.
+   */
+  evidence?: EvidenceAtom[]
 }
 
 /**
