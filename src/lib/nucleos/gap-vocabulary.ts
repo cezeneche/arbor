@@ -113,7 +113,7 @@ export function presentGaps(raw: unknown): CaseGaps {
   if (blocksReturn) {
     summary =
       `${blocking.length} thing${blocking.length === 1 ? '' : 's'} still missing. ` +
-      'Your return cannot be produced until they are filled in.'
+      `Your return cannot be produced until ${blocking.length === 1 ? 'it is' : 'they are'} filled in.`
   } else if (advisory.length > 0) {
     summary =
       `${advisory.length} thing${advisory.length === 1 ? '' : 's'} worth checking. ` +

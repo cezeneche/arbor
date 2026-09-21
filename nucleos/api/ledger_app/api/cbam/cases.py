@@ -428,6 +428,12 @@ def get_cbam_case(request: Request, case_id: str):
         if "importer_eori" in result:
             result["importer_eori"] = _shared.decrypt_field(result["importer_eori"])
 
+        # Origin, total mass and exposure are derived from the case's shipments
+        # and goods lines, and only the list endpoint asked for them. The detail
+        # page therefore showed a dash for each while the goods table beneath it
+        # showed the same figures.
+        _enrich_cases_with_liability(conn, [result])
+
         # Include shipments + goods lines so the case detail page can render them
         try:
             case_uuid = _UUID(str(case_id))

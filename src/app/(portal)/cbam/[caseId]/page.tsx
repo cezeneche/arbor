@@ -306,7 +306,7 @@ export default async function CbamCasePage({
                     lineHeight: '1.7',
                   }}
                 >
-                  {[...gaps.blocking, ...gaps.advisory].map(gap => (
+                  {gaps.blocking.map(gap => (
                     <li key={gap.raw}>
                       {gap.where} is missing {gap.what}.{' '}
                       <span style={{ ...textStyles.caption, color: colours.textTertiary }}>
@@ -315,6 +315,42 @@ export default async function CbamCasePage({
                     </li>
                   ))}
                 </ul>
+
+                {/* Apart, because the actions differ. Listed together beneath a
+                    count of the blocking ones, three bullets sat under "1 thing
+                    still missing" and nothing said which one stopped the return. */}
+                {gaps.advisory.length > 0 && (
+                  <>
+                    <p
+                      style={{
+                        ...textStyles.sectionSubtitle,
+                        color: colours.textSecondary,
+                        margin: `${spacing[3]} 0 ${spacing[1]}`,
+                      }}
+                    >
+                      {gaps.advisory.length} worth checking. None of them stops your return.
+                    </p>
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: '18px',
+                        fontSize: typography.sizes.sm,
+                        fontWeight: typography.weights.light,
+                        color: colours.textSecondary,
+                        lineHeight: '1.7',
+                      }}
+                    >
+                      {gaps.advisory.map(gap => (
+                        <li key={gap.raw}>
+                          {gap.where} is missing {gap.what}.{' '}
+                          <span style={{ ...textStyles.caption, color: colours.textTertiary }}>
+                            {gap.raw}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
 

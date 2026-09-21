@@ -215,3 +215,63 @@ def _value_in_text(value: Any, text: str) -> bool:
     except (TypeError, ValueError):
         pass
     return False
+
+
+# What the unit beside a mass means in kilograms. net_mass_kg is kilograms by
+# its name, and the unit was never read: "Net mass 24.5 t" was stored as 24.5,
+# understating a steel import a thousandfold on the figure the CBAM charge is
+# computed from.
+_MASS_UNITS_IN_KG: dict[str, float] = {
+    "kg": 1.0, "kgs": 1.0, "kilo": 1.0, "kilos": 1.0,
+    "kilogram": 1.0, "kilograms": 1.0, "kilogramme": 1.0, "kilogrammes": 1.0,
+    "t": 1000.0, "mt": 1000.0, "ton": 1000.0, "tons": 1000.0,
+    "tonne": 1000.0, "tonnes": 1000.0,
+    "metricton": 1000.0, "metrictons": 1000.0,
+    "metrictonne": 1000.0, "metrictonnes": 1000.0,
+    "g": 0.001, "gram": 0.001, "grams": 0.001, "gramme": 0.001, "grammes": 0.001,
+}
+
+
+# Half a million tonnes: above any consignment that has ever moved, and well
+# clear of the largest real one, so nothing legitimate is refused.
+_LARGEST_PLAUSIBLE_CONSIGNMENT_KG = 500_000_000.0
+
+
+def mass_in_kg(text: str | None, unit: str | None) -> tuple[float | None, bool]:
+    """A declared mass in kilograms, in whatever unit the document stated it.
+
+    Returns ``(kilograms, ambiguous)``, carrying parse_quantity's ambiguity
+    flag through the conversion.
+
+    A unit that is not a mass — boxes, coils, pallets — returns None rather
+    than a number in the wrong dimension: a missing mass is visible to a
+    reviewer, a wrong one is not. No unit at all is read as kilograms, which is
+    what customs Box 38 and the field's own name mean.
+
+    A negative mass is refused. Goods cannot weigh less than nothing, so the
+    sign is a misread of the document rather than a value.
+    """
+    value, ambiguous = parse_quantity(text)
+    if value is None:
+        return None, ambiguous
+    if value <= 0:
+        # Goods that weigh nothing are not goods, and nothing weighs less than
+        # nothing. Both are misreads of the document, and a zero would reach
+        # the charge as zero embedded emissions.
+        return None, ambiguous
+
+    if unit is None or not str(unit).strip():
+        return value, ambiguous
+
+    key = re.sub(r"[^a-z]", "", str(unit).lower())
+    factor = _MASS_UNITS_IN_KG.get(key)
+    if factor is None:
+        return None, ambiguous
+
+    kilograms = value * factor
+    if kilograms > _LARGEST_PLAUSIBLE_CONSIGNMENT_KG:
+        # The largest bulk carrier afloat moves about 400,000 tonnes, so a
+        # figure past half a million is digits run together rather than a
+        # cargo — and it would carry a CBAM liability to match.
+        return None, ambiguous
+    return kilograms, ambiguous

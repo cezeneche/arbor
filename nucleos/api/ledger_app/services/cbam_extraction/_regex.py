@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from ._validators import _normalize_method, _parse_number
+from ._validators import _normalize_method, _parse_number, mass_in_kg
 from ._evidence import (
     _append_evidence_atom,
     _append_regex_evidence,
@@ -53,13 +53,20 @@ def _extract_lines_from_text(
             quantity_unit = quantity_match.group(2).lower()
 
         net_mass_kg = None
+        # The unit beside the number decides the figure: "24.5 t" is 24 500 kg,
+        # and reading the number alone understated an import a thousandfold.
+        # A leading minus is admitted so it can be refused rather than dropped.
         net_mass_match = re.search(
-            r"net\s*mass(?:\s*kg)?\s*([0-9][0-9.,\s ]*[0-9]|[0-9])",
+            r"net\s*mass(?:\s*\(?(?P<label_unit>[A-Za-z]{1,12})\)?)?[:\s]*"
+            r"(?P<number>-?[0-9][0-9.,\s ]*[0-9]|-?[0-9])[ \t]*(?P<unit>[A-Za-z]{1,12})?",
             payload,
             flags=re.IGNORECASE,
         )
         if net_mass_match:
-            net_mass_kg = _parse_number(net_mass_match.group(1))
+            net_mass_kg, _ = mass_in_kg(
+                net_mass_match.group("number"),
+                net_mass_match.group("unit") or net_mass_match.group("label_unit"),
+            )
 
         direct = None
         direct_match = re.search(
@@ -225,14 +232,20 @@ def _parse_structured_response(
         # read "24,500.00 kg" as 24 — a thousand-fold under-declaration that no
         # downstream check catches, because 24 kg is a plausible quantity.
         match = re.search(
-            r"(?:net\s*mass(?:\s*kg)?|quantity)\D*([0-9][0-9.,\s ]*[0-9]|[0-9])",
+            r"(?:net\s*mass(?:\s*\(?(?P<label_unit>[A-Za-z]{1,12})\)?)?|quantity)[^0-9+-]*"
+            r"(?P<number>-?[0-9][0-9.,\s ]*[0-9]|-?[0-9])[ \t]*(?P<unit>[A-Za-z]{1,12})?",
             full_text, flags=re.IGNORECASE,
         )
         if match:
-            structured["net_mass_kg"] = _parse_number(match.group(1))
-            _append_regex_evidence(evidence, field="lines[0].net_mass_kg",
-                                   value=structured["net_mass_kg"],
-                                   source_text=full_text, match=match, pages=pages)
+            kilograms, _ = mass_in_kg(
+                match.group("number"), match.group("unit") or match.group("label_unit")
+            )
+            structured["net_mass_kg"] = kilograms
+            if kilograms is not None:
+                _append_regex_evidence(evidence, field="lines[0].net_mass_kg",
+                                       value=structured["net_mass_kg"],
+                                       source_text=full_text, match=match,
+                                       group_index="number", pages=pages)
     if not structured.get("origin_country"):
         # "country of origin" is the phrasing on commercial invoices and on
         # customs Box 34; matching only "origin country" missed both. The code

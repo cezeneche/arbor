@@ -71,3 +71,29 @@ describe('presentGaps', () => {
     expect(presentGaps(undefined).blocking).toEqual([])
   })
 })
+
+// The summary counts the blocking gaps, and the case page listed blocking and
+// advisory together beneath it: "1 thing still missing" above three bullets,
+// which reads as a miscount and hides which one actually stops the return.
+describe('the summary and the lists agree', () => {
+  const mixed = presentGaps({
+    missing: ['goods_line:abc:missing_emissions'],
+    warnings: ['shipment:def:incoterm_missing', 'goods_line:abc:installation_id_missing'],
+  })
+
+  it('counts only what stops the return', () => {
+    expect(mixed.blocking).toHaveLength(1)
+    expect(mixed.advisory).toHaveLength(2)
+    expect(mixed.summary).toContain('1 thing still missing')
+  })
+
+  it('says "it" when one thing is missing, not "they"', () => {
+    expect(mixed.summary).toContain('until it is filled in')
+  })
+
+  it('says "they" when more than one is', () => {
+    const several = presentGaps({ missing: ['a:b:missing_emissions', 'c:d:missing_emissions'] })
+    expect(several.summary).toContain('2 things still missing')
+    expect(several.summary).toContain('until they are filled in')
+  })
+})
