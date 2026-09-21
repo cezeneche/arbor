@@ -53,3 +53,20 @@ export function resolveCbamView(raw: string | undefined | null): CbamView {
   const match = CBAM_VIEWS.find(v => v.id === raw)
   return match ? match.id : DEFAULT_VIEW
 }
+
+export const CASES_PAGE_SIZE = 50
+
+/**
+ * Which page of the case list a `?page=` parameter asks for. Like `?view=`, it
+ * is a navigation hint: nonsense reads as the first page, and a page past the
+ * end as the last, so a stale link never shows an empty list.
+ */
+export function casesPage(
+  raw: string | undefined | null,
+  total: number,
+): { page: number; totalPages: number; offset: number; limit: number } {
+  const totalPages = Math.max(1, Math.ceil(total / CASES_PAGE_SIZE))
+  const asked = Number(raw)
+  const page = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, totalPages) : 1
+  return { page, totalPages, offset: (page - 1) * CASES_PAGE_SIZE, limit: CASES_PAGE_SIZE }
+}
