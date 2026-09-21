@@ -1,6 +1,6 @@
 # Product Requirements Document
 ## Arbor — Operational Data Infrastructure Platform
-**Version:** 1.3
+**Version:** 1.4
 **Status:** Foundation Draft
 **Principle:** Every requirement traces to a first principle. No feature exists without a reason rooted in the core problem.
 
@@ -33,6 +33,7 @@
 23. [Data Liability](#23-data-liability)
 24. [Phased Execution](#24-phased-execution)
 25. [Non-Requirements](#25-non-requirements)
+26. [CBAM Cases](#26-cbam-cases)
 
 ---
 
@@ -96,7 +97,9 @@ When any authorised party — a customer, a supplier, an auditor, a regulator �
 3. **Stores** every record permanently in a relational database, queryable across entities, periods, and domains
 4. **Shares** structured data on demand to authorised parties in the format they need, with a unit conversion engine that makes data usable across different measurement systems
 
-Arbor does not perform sustainability calculations. It does not produce CBAM returns, Scope 3 inventories, or ESG disclosures. It holds the verified operational data that those calculations and disclosures require. The calculations happen elsewhere — in the customer's tools, their accountant's models, or regulatory systems. Arbor is the data source, not the processing engine.
+Arbor does not perform sustainability calculations. It does not produce Scope 3 inventories or ESG disclosures. It holds the verified operational data that those calculations and disclosures require. The calculations happen elsewhere — in the customer's tools, their accountant's models, or regulatory systems. Arbor is the data source, not the processing engine.
+
+**The one exception is CBAM.** From a confirmed customs declaration, Arbor opens a CBAM case and produces the UK HMRC return or the EU CBAM declaration. That calculation runs in Nucleos, a separate, versioned engine that reads what Arbor has certified and never writes back to it. The certified store itself still performs no calculation. See Section 26.
 
 ---
 
@@ -226,7 +229,9 @@ The relational database. Every confirmed record is written with its full attribu
 The query engine, unit conversion layer, and export formatter. Authorised parties query the database for the records they need. The unit conversion engine converts stored values to the unit requested by the recipient. The export formatter structures the output for the receiving system — CSV, JSON, XML, or a structured data share within the platform.
 
 **What is not in the architecture:**
-There is no calculation engine. Arbor does not compute sustainability metrics, compliance figures, or emissions inventories. It stores the operational facts that others use to compute those things. The distinction is absolute and enforced at the architecture level.
+There is no calculation engine in the three layers. They do not compute sustainability metrics, compliance figures, or emissions inventories. They store the operational facts that others use to compute those things. The distinction is absolute and enforced at the architecture level.
+
+CBAM calculation sits outside the three layers, in Nucleos (Section 26). Nucleos reads certified records over a service boundary and holds its own case state. It never writes to Arbor's database, and none of its logic runs inside Layers 1–3.
 
 ---
 
@@ -677,7 +682,7 @@ Every export includes trust tier labels and provenance references on every recor
 ### 21.3 What Arbor does not produce
 
 Arbor does not produce:
-- CBAM returns or regulatory submission files
+- Regulatory submission files other than the CBAM return and declaration (Section 26)
 - Scope 3 inventories or GHG Protocol outputs
 - ESG disclosure documents
 - Carbon footprint calculations
@@ -747,6 +752,7 @@ Arbor does not certify that:
 - The figures in any submitted document are correct
 - Any output produced by a third party using Arbor data is accurate or compliant
 - The entity has met any regulatory requirement
+- A CBAM return or declaration produced through Section 26 is complete or correct for filing. The importer or their declarant reviews and files it, and remains responsible for it
 
 The entity remains solely responsible for the accuracy of whatever they submit. The party using Arbor data for any calculation, compliance submission, or disclosure is solely responsible for the correctness of that output. Arbor provides certified data provenance — nothing more.
 
@@ -835,13 +841,63 @@ The ingestion pipeline and relational database are built once. The go-to-market 
 
 *(Note: Section 25 was truncated in the source document. The following is the partial content received.)*
 
-**A calculation engine.** Arbor does not calculate sustainability metrics, emissions figures, compliance liabilities, or any derived output. It holds the operational data that others calculate from. This is not a limitation — it is the architecture.
+**A calculation engine in the three layers.** Arbor's own layers do not calculate sustainability metrics, emissions figures, compliance liabilities, or any derived output. Arbor holds the operational data that others calculate from. This is not a limitation — it is the architecture.
 
-**CBAM returns, Scope 3 inventories, or ESG reports.** Arbor does not produce regulatory or disclosure outputs. It provides the certified data those outputs require. The output is the responsibility of the entity or advisor producing it.
+**Scope 3 inventories or ESG reports.** Arbor does not produce disclosure outputs. It provides the certified data those outputs require. The output is the responsibility of the entity or advisor producing it. CBAM is the single regulatory output Arbor produces, and only through Nucleos (Section 26).
 
 ---
 
 *This document is a living specification. Every addition requires a stated first principle. Every removal requires a stated reason.*
 
-**Document version:** 1.3
-**Last updated:** June 2026
+---
+
+## 26. CBAM Cases
+
+### 26.1 Why it exists
+
+UK and EU importers of iron and steel, aluminium, cement, fertilisers and hydrogen must account for the embedded emissions of those goods. The EU also covers electricity; the UK does not. The customs declarations, supplier invoices and supplier emissions figures that report needs are exactly the documents Arbor already certifies. Producing the return from them serves the first principle directly: the same certified records answer the regulator, with no reconstruction.
+
+### 26.2 How it is divided
+
+| Arbor | Nucleos |
+|---|---|
+| Login, documents, text extraction, review, provenance, trust tiers, the audit chain | Customs-declaration parsing, CBAM scope, emissions method selection, carbon price relief, free allocation, the return and declaration builders |
+| Writes every certified record | Never writes to Arbor's database; results return over the boundary and Arbor writes them |
+| Decides who may see a case: every case is owned by the Arbor organisation whose confirmed document opened it | Holds case state Arbor has no model for: cases, goods lines, emissions selections |
+
+Nucleos is versioned. A published golden set freezes what it calculates, and a change to a result is a deliberate, reviewed release.
+
+### 26.3 The flow
+
+1. **Scope check.** Before any document, the user can ask whether a commodity code falls within CBAM, with a default emissions estimate where one exists.
+2. **Case.** Confirming a customs declaration opens a case, or returns the existing case for the same importer and quarter. A goods line is created for each commodity code. If the handoff fails, the document stays certified and the user can resume the case from where it stopped; it is never recertified.
+3. **Supplier emissions.** For each goods line, the importer can send the overseas supplier a link to a plain English form. The supplier needs no account.
+4. **Carbon price relief.** Where a carbon price was paid in the country of origin, the importer records a claim against the goods line.
+5. **Return.** The case produces the HMRC return (JSON or PDF) for the UK regime, or the EU registry XML declaration for the EU regime, never both.
+
+### 26.4 Two axes, never conflated
+
+Every goods line carries two separate facts:
+
+- **Trust tier** (Verified / Declared / Estimated), from Section 12: how far the record's origin can be trusted.
+- **Emissions method** (Actual / Estimated / Default), from Nucleos: which emissions value entered the calculation.
+
+Neither is derived from the other. The emissions method is never called a tier, in code, schema or copy.
+
+### 26.5 Rules
+
+- A case, goods line, claim or supplier link is visible only to the organisation that owns the case.
+- Human confirmation of a figure does not make an estimated source actual. A goods line reaches Verified only by the rules of Section 12 and the admissibility spec, including recorded source text.
+- A confirmed document is not a complete case, and a complete case is not a fileable return. The interface shows document state, handoff state and return readiness separately.
+- A return lists the gaps that block it separately from advisory ones.
+
+---
+
+## Change log
+
+**1.4 (September 2026).** CBAM added as the one regulatory output, produced by Nucleos outside the three layers (Sections 3, 8, 21.3, 23.2, 25, 26). Moved into the repository as `docs/PRD.md`.
+
+**1.3 (June 2026).** Foundation draft.
+
+**Document version:** 1.4
+**Last updated:** September 2026

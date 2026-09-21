@@ -1,12 +1,12 @@
 # Arbor — Claude Code Instructions
 
 ## On every initialisation, read this file first:
-`/Users/chisom/.claude/projects/-Users-chisom-Documents-Chisom-AI---Technology-arbor-arbor/memory/project_arbor_prd.md`
+`docs/PRD.md` (v1.4 — Section 26 covers CBAM and Nucleos)
 
 Then read the admissibility spec:
 `/Users/chisom/.claude/projects/-Users-chisom-Documents-Chisom-AI---Technology-arbor-arbor/memory/project_arbor_admissibility.md`
 
-Do not begin any task until you have read both files. If either file is unavailable, ask the user to re-paste the PRD before proceeding.
+Do not begin any task until you have read both files. If the admissibility spec is unavailable, ask the user to re-paste it before proceeding.
 
 ---
 
@@ -92,3 +92,4 @@ When determining trust tier from an extraction result, apply these rules (from a
 - PRD Section 10 — mandatory attributes for every DataRecord written to the database
 - PRD Section 14 — unit conversion supported dimensions and constraints
 - PRD Section 12 — trust tier determination and upgrade pathway rules
+- PRD Section 26 — CBAM cases: the Arbor/Nucleos split, the case flow, and the two axes (trust tier vs emissions method)
