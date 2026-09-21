@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { requirePageSession } from '@/lib/page-auth'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
-import { CBAM_VIEWS, resolveCbamView, type CbamView } from '@/lib/nucleos/cbam-views'
+import { CBAM_VIEWS, casesPage, resolveCbamView, type CbamView } from '@/lib/nucleos/cbam-views'
 import { listCbamCases } from '@/lib/nucleos/cases-client'
 import { ownedCaseIds } from '@/lib/nucleos/case-ownership'
 import { CbamCaseList } from '@/components/CbamCaseList'
+import { Pagination } from '@/components/Pagination'
 import { CbamUnfinishedHandoffs, type UnfinishedHandoff } from '@/components/CbamUnfinishedHandoffs'
 import { CbamScopeChecker } from '@/components/CbamScopeChecker'
 import { CbamStartCase } from '@/components/CbamStartCase'
@@ -21,11 +22,11 @@ import { prisma } from '@/lib/prisma'
 export default async function CbamPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>
+  searchParams: Promise<{ view?: string; page?: string }>
 }) {
   const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
-  const { view: raw } = await searchParams
+  const { view: raw, page: rawPage } = await searchParams
   const view: CbamView = resolveCbamView(raw)
 
   // Read through the boundary rather than from a local copy: cases are Nucleos's
@@ -84,9 +85,18 @@ export default async function CbamPage({
   const NEEDS_CASES: CbamView[] = ['cases', 'request', 'relief']
   let cases = null
   let casesError: string | null = null
+  let paging = casesPage(null, 0)
   if (NEEDS_CASES.includes(view)) {
     try {
-      cases = (await listCbamCases({ ids: await ownedCaseIds(entityId) })).items
+      const ids = await ownedCaseIds(entityId)
+      // The case list pages. Request data and relief pick a case from a list, so
+      // they are offered every case the organisation owns.
+      paging = casesPage(rawPage, ids.length)
+      cases = (
+        await listCbamCases(
+          view === 'cases' ? { ids, offset: paging.offset, limit: paging.limit } : { ids, limit: ids.length },
+        )
+      ).items
     } catch (err) {
       casesError = (err as Error).message
     }
@@ -150,6 +160,11 @@ export default async function CbamPage({
             <CbamUnfinishedHandoffs handoffs={unfinished} />
             <CbamStartCase documents={reusable} />
             <CbamCaseList cases={cases} />
+            <Pagination
+              page={paging.page}
+              totalPages={paging.totalPages}
+              buildUrl={p => (p > 1 ? `/cbam?view=cases&page=${p}` : '/cbam?view=cases')}
+            />
           </>
         ) : view === 'request' && cases ? (
           <CbamRequestData cases={cases} />

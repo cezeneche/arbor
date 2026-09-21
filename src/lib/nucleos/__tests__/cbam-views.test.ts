@@ -1,4 +1,4 @@
-import { CBAM_VIEWS, resolveCbamView } from '../cbam-views'
+import { CASES_PAGE_SIZE, CBAM_VIEWS, casesPage, resolveCbamView } from '../cbam-views'
 
 // CBAM's screens are views of one section, reached by the same quiet ?view=
 // toggle Records uses for Trends and Benchmarks.
@@ -50,5 +50,29 @@ describe('CBAM views', () => {
             'relief',
       'request',
     ])
+  })
+})
+
+describe('casesPage', () => {
+  // The case list used to show the first 100 owned cases and drop the rest,
+  // with nothing to say more existed.
+  it('reads the first page when none is asked for', () => {
+    expect(casesPage(undefined, 120)).toEqual({ page: 1, totalPages: 3, offset: 0, limit: CASES_PAGE_SIZE })
+  })
+
+  it('offsets later pages by the page size', () => {
+    expect(casesPage('3', 120)).toMatchObject({ page: 3, offset: 2 * CASES_PAGE_SIZE })
+  })
+
+  it('clamps a page past the end to the last page, rather than showing an empty list', () => {
+    expect(casesPage('9', 120)).toMatchObject({ page: 3, offset: 2 * CASES_PAGE_SIZE })
+  })
+
+  it('treats a nonsense page as the first', () => {
+    for (const raw of ['0', '-2', 'abc', '1.5']) expect(casesPage(raw, 120).page).toBe(1)
+  })
+
+  it('has one page when there are no cases', () => {
+    expect(casesPage(undefined, 0)).toMatchObject({ page: 1, totalPages: 1, offset: 0 })
   })
 })
