@@ -286,6 +286,53 @@ class FakeConnection:
                 })
             return _Result(rows=rows)
 
+        # Two queries open with the same CTE. The enrichment one reports a row
+        # per sector and names its own case; the totals one reports a single
+        # row for one case. Telling them apart by the CTE alone served the
+        # wrong shape to whichever asked second.
+        if "sector_kgco2e" in sql:
+            case_ids = [str(c) for c in params.get("case_ids", [])]
+            rows = []
+            for case_id in case_ids:
+                shipment_ids = [
+                    s["id"] for s in self.shipments.values() if s.get("case_id") == case_id
+                ]
+                goods = [
+                    g for g in self.goods_lines.values() if g.get("shipment_id") in shipment_ids
+                ]
+                by_sector: dict[str, tuple[Decimal, Decimal]] = {}
+                for g in goods:
+                    sector = str(g.get("sector") or "")
+                    kgco2e, mass = by_sector.get(sector, (Decimal("0"), Decimal("0")))
+                    goods_em = [
+                        e for e in self.emissions.values() if e.get("goods_line_id") == g["id"]
+                    ]
+                    if goods_em:
+                        latest = sorted(
+                            goods_em, key=lambda x: int(x.get("version") or 0), reverse=True
+                        )[0]
+                        kgco2e += Decimal(latest.get("direct_embedded_kgco2e") or 0)
+                    mass += Decimal(g.get("quantity") or 0)
+                    by_sector[sector] = (kgco2e, mass)
+                for sector, (kgco2e, mass) in by_sector.items():
+                    rows.append({
+                        "case_id": case_id,
+                        "sector": sector,
+                        "sector_kgco2e": kgco2e,
+                        "sector_net_mass_kg": mass,
+                    })
+            return _Result(rows=rows)
+
+        if "DISTINCT ON" in sql and "origin_country" in sql:
+            case_ids = [str(c) for c in params.get("case_ids", [])]
+            rows = []
+            for case_id in case_ids:
+                for s in self.shipments.values():
+                    if s.get("case_id") == case_id and s.get("origin_country"):
+                        rows.append({"case_id": case_id, "origin_country": s["origin_country"]})
+                        break
+            return _Result(rows=rows)
+
         if "WITH latest_emissions AS" in sql:
             case_id = params["case_id"]
             shipment_ids = [s["id"] for s in self.shipments.values() if s.get("case_id") == case_id]

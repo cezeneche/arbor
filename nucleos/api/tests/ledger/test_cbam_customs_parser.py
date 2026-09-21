@@ -336,3 +336,31 @@ def test_each_goods_line_points_at_its_own_text(multi):
     second = [e for e in multi["evidence"] if e["field"] == "lines[1].cn_code"][0]
     assert "7208 3900" in first["snippet"]
     assert "7213 1000" in second["snippet"]
+
+
+# The unit beside the mass. "Net mass 24.5 t" was read as 24.5 kg, which
+# understates a steel import by a thousand times on the one figure the CBAM
+# charge is computed from.
+@pytest.mark.parametrize(
+    ("printed", "expected_kg"),
+    [
+        ("Commodity code 72083900\nNet mass 24 500 kg", 24500),
+        ("Commodity code 72083900\nNet mass 24.5 t", 24500),
+        ("Commodity code 72083900\nNet mass 24.5 tonnes", 24500),
+        ("Commodity code 72083900\nNet mass (kg) 24 500", 24500),
+        ("Commodity code 72083900\nNet mass 24.5 MT", 24500),
+    ],
+)
+def test_a_mass_is_converted_from_the_unit_the_document_states(printed, expected_kg):
+    assert parse_customs_declaration(printed)["lines"][0]["net_mass_kg"] == pytest.approx(expected_kg)
+
+
+def test_a_mass_in_a_unit_that_is_not_a_mass_is_not_recorded():
+    parsed = parse_customs_declaration("Commodity code 72083900\nNet mass 14 pallets")
+    assert parsed["lines"][0]["net_mass_kg"] is None
+
+
+def test_the_tonnage_on_the_line_follows_the_converted_mass():
+    line = parse_customs_declaration("Commodity code 72083900\nNet mass 24.5 t")["lines"][0]
+    assert line["quantity"] == pytest.approx(24.5)  # tonnes
+    assert line["net_mass_kg"] == pytest.approx(24500)

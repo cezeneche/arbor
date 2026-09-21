@@ -234,8 +234,8 @@ def _extract_origin_country(text: str) -> Found | None:
 # a parenthesis between label and value left the mass unread.
 _MASS_RE = re.compile(
     r"(?:box\s*3[58]|net\s+mass|net\s+weight|nett\s+weight|nett\s+mass)"
-    r"\s*(?:\((?:kg|kgs|kilograms?)\))?"
-    r"[:\s]*([0-9][0-9.,\s ]*[0-9]|[0-9])\s*(?:kg|kgs|kilogram)?",
+    r"\s*(?:\((?P<label_unit>[A-Za-z]{1,12})\))?"
+    r"[:\s]*(?P<number>[0-9][0-9.,\s ]*[0-9]|[0-9])[ \t]*(?P<unit>[A-Za-z]{1,12})?",
     re.I,
 )
 
@@ -310,25 +310,30 @@ _WELL_FORMED_NUMBER = re.compile(
 
 
 def _extract_net_mass_kg(text: str) -> Found | None:
-    """Net mass in kilograms, in whichever separator convention the form uses.
+    """Net mass in kilograms, in whichever unit and convention the form uses.
 
     Stripping every comma unconditionally turned the European "24,5" into 245.
     parse_quantity decides which separator is the decimal point.
     """
     from ledger_app.services.cbam_extraction._validators import (  # noqa: PLC0415
-        parse_quantity,
+        mass_in_kg,
     )
 
     for m in _MASS_RE.finditer(text):
         preceding = text[max(0, m.start() - 12):m.start()]
         if _TOTAL_MASS_RE.search(preceding + m.group(0)):
             continue
-        if not _WELL_FORMED_NUMBER.fullmatch(m.group(1).strip()):
+        if not _WELL_FORMED_NUMBER.fullmatch(m.group("number").strip()):
             # Under a column heading — "Net mass (kg)" then a row below — the
             # capture ran across the newline and took the item number with the
             # code: 172083900 kg, from an item of 24 500.
             continue
-        return _found(parse_quantity(m.group(1))[0], m)
+        # The unit stated beside the number, or the one the label carries in
+        # brackets. Reading the number alone stored "24.5 t" as 24.5 kg.
+        kilograms, _ = mass_in_kg(m.group("number"), m.group("unit") or m.group("label_unit"))
+        if kilograms is None:
+            continue
+        return _found(kilograms, m, "number")
     return None
 
 
