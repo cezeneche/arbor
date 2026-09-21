@@ -13,6 +13,11 @@ jest.mock('@/lib/prisma', () => ({ prisma: { $queryRaw: (...a: unknown[]) => que
 const rateLimiterHealth = jest.fn(async () => ({ ok: true }) as { ok: boolean; detail?: string })
 jest.mock('@/lib/rate-limit', () => ({ rateLimiterHealth: () => rateLimiterHealth() }))
 
+const sendTokenExpiryAlert = jest.fn(async () => ({ sent: 0 }) as { sent: number; failed?: number })
+jest.mock('@/lib/nucleos/token-expiry-alert', () => ({
+  sendTokenExpiryAlert: (...a: unknown[]) => sendTokenExpiryAlert(...(a as [])),
+}))
+
 import { NextRequest } from 'next/server'
 
 import { GET } from '../keepalive/route'
@@ -58,5 +63,20 @@ describe('GET /api/cron/keepalive', () => {
       database: 'ok',
       rateLimiter: 'Upstash did not answer, so nobody can sign in.',
     })
+  })
+
+  // Arbor cannot renew the Nucleos token itself, so the daily job is where
+  // someone gets told before it runs out.
+  it('checks the Nucleos service token and reports what it sent', async () => {
+    const exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 + 60
+    const payload = Buffer.from(JSON.stringify({ exp })).toString('base64url')
+    process.env.NUCLEOS_INTERNAL_TOKEN = `h.${payload}.s`
+    sendTokenExpiryAlert.mockResolvedValueOnce({ sent: 1 })
+
+    const res = await GET(request('Bearer secret'))
+
+    expect(res.status).toBe(200)
+    expect(sendTokenExpiryAlert).toHaveBeenCalledWith(expect.objectContaining({ daysLeft: 7, expired: false }))
+    expect(await res.json()).toMatchObject({ serviceToken: { daysLeft: 7, alertsSent: 1 } })
   })
 })

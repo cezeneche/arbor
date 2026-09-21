@@ -5,11 +5,16 @@
 // an unreachable Redis fails the login gate closed, taking sign-in down with it.
 // Reads and writes nothing of substance.
 //
+// It is also the daily check on the Nucleos service token, which Arbor cannot
+// renew itself: the platform admins are emailed as its expiry approaches.
+//
 // Auth: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Fail closed if the
 // secret is unset. Scheduled in vercel.json.
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { rateLimiterHealth } from '@/lib/rate-limit'
+import { serviceTokenExpiry } from '@/lib/nucleos/service-auth'
+import { sendTokenExpiryAlert } from '@/lib/nucleos/token-expiry-alert'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,12 +40,16 @@ export async function GET(req: NextRequest) {
   const limiter = await rateLimiterHealth()
   if (!limiter.ok) console.error('[cron/keepalive] rate limiter unreachable:', limiter.detail)
 
+  const token = serviceTokenExpiry(process.env.NUCLEOS_INTERNAL_TOKEN ?? '')
+  const alert = await sendTokenExpiryAlert(token)
+
   const ok = database === 'ok' && limiter.ok
   return Response.json(
     {
       status: ok ? 'ok' : 'error',
       database,
       rateLimiter: limiter.ok ? 'ok' : (limiter.detail ?? 'unreachable'),
+      serviceToken: { expiresAt: token.expiresAt, daysLeft: token.daysLeft, alertsSent: alert.sent },
       pingedAt: new Date().toISOString(),
     },
     { status: ok ? 200 : 500 },
