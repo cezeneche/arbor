@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { CbamSectionToggle } from './CbamSectionToggle'
 import { getSessionUser } from '@/lib/session'
 import Link from 'next/link'
 import { requirePageSession } from '@/lib/page-auth'
@@ -33,9 +34,14 @@ export default async function SettingsPage() {
         entityType: true,
         allowBenchmarkAggregation: true,
         cbamJurisdiction: true,
+        cbamEnabled: true,
+        _count: { select: { cbamCaseLinks: true } },
       },
     }),
   ])
+  const cbamDocuments = await prisma.document.count({
+    where: { entityId, documentType: { in: ['CUSTOMS_DECLARATION', 'CBAM_DECLARATION'] } },
+  })
 
   if (!user || !entity) redirect('/login')
 
@@ -81,8 +87,13 @@ export default async function SettingsPage() {
           />
         </div>
 
-        {/* Imports — the regime every CBAM document is read under. */}
+        {/* Imports — whether CBAM is shown, and the regime every CBAM document is read under. */}
         <div style={sectionStyle}>
+          <CbamSectionToggle
+            initialValue={entity.cbamEnabled}
+            hasActivity={cbamDocuments > 0 || entity._count.cbamCaseLinks > 0}
+            isAdmin={sessionRole === 'ADMIN'}
+          />
           <JurisdictionSelector
             initialValue={resolveJurisdiction(entity.cbamJurisdiction)}
             isAdmin={sessionRole === 'ADMIN'}
