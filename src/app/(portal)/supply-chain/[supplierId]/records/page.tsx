@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/session'
 import { notFound } from 'next/navigation'
 import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
+import { anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
 import { TierBadge } from '@/components/TierBadge'
@@ -44,15 +45,11 @@ export default async function SupplierRecordsPage({
     orderBy: [{ domain: 'asc' }, { periodStart: 'desc' }],
   })
 
-  // Enforce union of all grant scopes (domain + period) for this supplier
-  const records = candidateRecords.filter(record =>
-    grants.some(grant => {
-      const domainMatch = !grant.domain || grant.domain === record.domain
-      const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
-      const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
-      return domainMatch && startMatch && endMatch
-    })
-  )
+  // Only what this supplier's grants cover — domain, period and fields — by the
+  // one shared rule. The inline copy it replaces ignored field-scoped grants
+  // and showed every field.
+  const scopes = grants.map(toGrantScope)
+  const records = candidateRecords.filter(record => anyGrantCoversRecord(scopes, record))
 
   // log this buyer's view of the supplier's records (PORTAL access).
   await logRecordAccess(records.map((r) => r.id), buyerEntityId, 'PORTAL')

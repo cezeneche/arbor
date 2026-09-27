@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { prisma } from '@/lib/prisma'
+import { GRANT_SCOPE_SELECT, anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 // buyer API: list suppliers that have granted the caller access, with
@@ -19,15 +20,13 @@ export async function GET(req: NextRequest) {
     where: { granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },
     select: {
       grantorEntityId: true,
-      domain: true,
-      periodStart: true,
-      periodEnd: true,
+      ...GRANT_SCOPE_SELECT,
       grantorEntity: {
         select: {
           legalName: true,
           dataRecords: {
             where: { isActive: true },
-            select: { domain: true, trustTier: true, periodStart: true, periodEnd: true },
+            select: { domain: true, fieldName: true, trustTier: true, periodStart: true, periodEnd: true },
           },
         },
       },
@@ -43,14 +42,9 @@ export async function GET(req: NextRequest) {
 
   const suppliers = [...bySupplier.entries()].map(([supplierId, supplierGrants]) => {
     const first = supplierGrants[0]
-    const records = first.grantorEntity.dataRecords.filter((record) =>
-      supplierGrants.some((grant) => {
-        const domainMatch = !grant.domain || grant.domain === record.domain
-        const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
-        const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
-        return domainMatch && startMatch && endMatch
-      }),
-    )
+    // The one shared rule, field restriction included.
+    const scopes = supplierGrants.map(toGrantScope)
+    const records = first.grantorEntity.dataRecords.filter((record) => anyGrantCoversRecord(scopes, record))
     const domains = [...new Set(records.map((r) => r.domain))]
     return {
       supplierId,

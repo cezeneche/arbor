@@ -86,6 +86,10 @@ model Entity {
   // behaviour was a hardcoded 'EU' in the extraction pipeline, which put every
   // UK importer under the wrong regime with no way to see or change it.
   cbamJurisdiction          CbamJurisdiction @default(UK)
+  // Shows the CBAM section in the navigation before there is any CBAM activity
+  // (the scope check is useful before a document exists). Activity — a customs
+  // or CBAM declaration, or a case — shows it regardless.
+  cbamEnabled               Boolean          @default(false)
   allowBenchmarkAggregation Boolean          @default(false)
   // Unique token for the entity's email-to-upload address.
   uploadEmailToken          String?          @unique

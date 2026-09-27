@@ -1,67 +1,59 @@
-// Layer 2  -  pure function. No DB reads. No API calls. No side effects.
-// Supplier Data Readiness Score: percentage of active DataRecords at Tier A, by domain.
+// Supplier Data Readiness (PRD §16.2, §18.2). Pure: no DB, no side effects.
+//
+// Readiness is measured against what the buyer asked this supplier for. It used
+// to be the share of the supplier's records that were Verified, which is a
+// statement about quality, not completeness: a supplier with one Verified
+// record and nothing else scored 100% and showed green. Now each requested
+// figure is counted once, as supplied or not, and verification is reported
+// beside that count rather than blended into it. With nothing requested there
+// is nothing to be ready for, and no score.
 
-export type ReadinessInterpretation = 'HIGH' | 'MEDIUM' | 'LOW'
-
-export interface ReadinessInput {
-  records: Array<{
-    id: string
-    domain: string
-    trustTier: 'A' | 'B' | 'C'
-  }>
-}
-
-export interface DomainReadiness {
+export interface ReadinessRequest {
   domain: string
-  totalRecords: number
-  tierACount: number
-  score: number
-  interpretation: ReadinessInterpretation
+  periodStart: Date
+  periodEnd: Date
+  /** Empty means anything in the domain answers it. */
+  requiredFields: readonly string[]
 }
 
-export interface ReadinessResult {
-  overallScore: number
-  interpretation: ReadinessInterpretation
-  totalRecords: number
-  tierACount: number
-  byDomain: DomainReadiness[]
+export interface ReadinessRecord {
+  domain: string
+  fieldName: string
+  periodStart: Date
+  periodEnd: Date
+  trustTier: 'A' | 'B' | 'C'
 }
 
-function interpret(score: number): ReadinessInterpretation {
-  if (score >= 75) return 'HIGH'
-  if (score >= 40) return 'MEDIUM'
-  return 'LOW'
+export interface SupplierReadiness {
+  /** Figures asked for: one per required field per request. */
+  requested: number
+  /** Of those, how many a shared record answers. */
+  supplied: number
+  /** Of those supplied, how many a Verified record answers. */
+  verified: number
 }
 
-export function computeReadinessScore(input: ReadinessInput): ReadinessResult {
-  const total = input.records.length
-  const tierATotal = input.records.filter((r) => r.trustTier === 'A').length
-  const overallScore = total === 0 ? 0 : Math.round((tierATotal / total) * 100)
+export function supplierReadiness(input: {
+  requests: readonly ReadinessRequest[]
+  records: readonly ReadinessRecord[]
+}): SupplierReadiness | null {
+  if (input.requests.length === 0) return null
 
-  const domainMap = new Map<string, { total: number; tierA: number }>()
-  for (const record of input.records) {
-    if (!domainMap.has(record.domain)) domainMap.set(record.domain, { total: 0, tierA: 0 })
-    const entry = domainMap.get(record.domain)!
-    entry.total++
-    if (record.trustTier === 'A') entry.tierA++
-  }
-
-  const byDomain: DomainReadiness[] = Array.from(domainMap.entries()).map(([domain, counts]) => {
-    const score = counts.total === 0 ? 0 : Math.round((counts.tierA / counts.total) * 100)
-    return {
-      domain,
-      totalRecords: counts.total,
-      tierACount: counts.tierA,
-      score,
-      interpretation: interpret(score),
+  let requested = 0
+  let supplied = 0
+  let verified = 0
+  for (const req of input.requests) {
+    const inScope = input.records.filter(
+      r => r.domain === req.domain && r.periodStart <= req.periodEnd && r.periodEnd >= req.periodStart,
+    )
+    const asks: (string | null)[] = req.requiredFields.length > 0 ? [...req.requiredFields] : [null]
+    for (const field of asks) {
+      requested++
+      const answering = field === null ? inScope : inScope.filter(r => r.fieldName === field)
+      if (answering.length === 0) continue
+      supplied++
+      if (answering.some(r => r.trustTier === 'A')) verified++
     }
-  })
-
-  return {
-    overallScore,
-    interpretation: interpret(overallScore),
-    totalRecords: total,
-    tierACount: tierATotal,
-    byDomain,
   }
+  return { requested, supplied, verified }
 }

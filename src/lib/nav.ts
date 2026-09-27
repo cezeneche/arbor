@@ -38,30 +38,46 @@ const RECORDS_GROUP = ['/definitions']
 // record model.
 const CBAM: NavLink = { href: '/cbam', label: 'CBAM' }
 
-const SUPPLIER_LINKS: NavLink[] = [
-  { href: '/dashboard', label: 'Overview' },
-  { href: '/upload', label: 'Upload' },
-  { href: '/review', label: 'Review' },
-  { href: '/records', label: 'Records', match: RECORDS_GROUP },
-  { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
-  CBAM,
-  { href: '/settings', label: 'Settings' },
-]
+function supplierLinks(showCbam: boolean): NavLink[] {
+  return [
+    { href: '/dashboard', label: 'Overview' },
+    { href: '/upload', label: 'Upload' },
+    { href: '/review', label: 'Review' },
+    { href: '/records', label: 'Records', match: RECORDS_GROUP },
+    { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
+    ...(showCbam ? [CBAM] : []),
+    { href: '/settings', label: 'Settings' },
+  ]
+}
 
-const BUYER_LINKS: NavLink[] = [
-  { href: '/dashboard', label: 'Overview' },
-  { href: '/upload', label: 'Ingest' },
-  { href: '/review', label: 'Review' },
-  { href: '/records', label: 'Records', match: RECORDS_GROUP },
-  { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
-  { href: '/supply-chain', label: 'Entity network' },
-  CBAM,
-  { href: '/export', label: 'Export' },
-  { href: '/settings', label: 'Settings' },
-]
+function buyerLinks(showCbam: boolean): NavLink[] {
+  return [
+    { href: '/dashboard', label: 'Overview' },
+    { href: '/upload', label: 'Ingest' },
+    { href: '/review', label: 'Review' },
+    { href: '/records', label: 'Records', match: RECORDS_GROUP },
+    { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
+    { href: '/supply-chain', label: 'Entity network' },
+    ...(showCbam ? [CBAM] : []),
+    { href: '/export', label: 'Export' },
+    { href: '/settings', label: 'Settings' },
+  ]
+}
 
-export function getNavLinks(entityType: EntityType): NavLink[] {
-  return entityType === 'BUYER' ? BUYER_LINKS : SUPPLIER_LINKS
+/**
+ * Whether CBAM belongs in this organisation's navigation. Most suppliers never
+ * import CBAM goods, and a section that means nothing to them is exactly what
+ * the simplicity rule (PRD §7) keeps out. It appears once the organisation
+ * switches it on — the scope check is useful before any document exists — or
+ * as soon as there is CBAM activity: a customs or CBAM declaration, or a case.
+ */
+export function showsCbam(org: { enabled: boolean; cbamDocuments: number; caseLinks: number }): boolean {
+  return org.enabled || org.cbamDocuments > 0 || org.caseLinks > 0
+}
+
+export function getNavLinks(entityType: EntityType, opts: { showCbam?: boolean } = {}): NavLink[] {
+  const showCbam = opts.showCbam ?? false
+  return entityType === 'BUYER' ? buyerLinks(showCbam) : supplierLinks(showCbam)
 }
 
 export function isLinkActive(link: NavLink, pathname: string): boolean {

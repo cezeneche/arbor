@@ -65,7 +65,9 @@ export function toGrantScope(row: {
   domain: DataDomain | null
   periodStart: Date | null
   periodEnd: Date | null
-  fieldNames?: unknown
+  // Required, though it may hold null: a query that forgot to select it would
+  // otherwise read as "no field restriction" and disclose every field.
+  fieldNames: unknown
 }): GrantScope {
   return {
     domain: row.domain,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { QueryGapResult, type QueryGapResultData } from './QueryGapResult'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { colours, typography, spacing, layout } from '@/lib/design-system'
@@ -28,6 +29,7 @@ type QueryResult = {
   /** What was actually searched, from the filters that ran. */
   scope?: string
   queryType?: string
+  gapResult?: QueryGapResultData
   /** Claude's plain English answer, grounded only in the records below it. */
   answer?: string
   summary: string
@@ -355,7 +357,11 @@ export function RecordsQueryPanel({
                 )}
               </div>
 
-              {result.records.length === 0 ? (
+              {result.gapResult ? (
+                <div style={{ padding: spacing[2] }}>
+                  <QueryGapResult gapResult={result.gapResult} />
+                </div>
+              ) : result.records.length === 0 ? (
                 <div style={{ padding: `${spacing[2]} ${spacing[2]}` }}>
                   <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
                     No records matched this query.

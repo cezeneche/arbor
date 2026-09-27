@@ -1,4 +1,4 @@
-import { getNavLinks, isLinkActive } from '@/lib/nav'
+import { getNavLinks, isLinkActive, showsCbam } from '@/lib/nav'
 
 // The Jobs restructure: the portal collapses to a spine the user actually walks.
 // Supplier verbs: Upload → Review → Records → Requests, plus Overview + Settings.
@@ -11,8 +11,14 @@ describe('getNavLinks — supplier spine', () => {
   const labels = links.map(l => l.label)
   const hrefs = links.map(l => l.href)
 
-  it('is the four-verb spine plus Overview, CBAM and Settings, in order', () => {
-    expect(labels).toEqual(['Overview', 'Upload', 'Review', 'Records', 'Requests', 'CBAM', 'Settings'])
+  it('is the four-verb spine plus Overview and Settings, in order', () => {
+    expect(labels).toEqual(['Overview', 'Upload', 'Review', 'Records', 'Requests', 'Settings'])
+  })
+
+  it('adds CBAM after Requests when it is relevant to the organisation', () => {
+    expect(getNavLinks('SUPPLIER', { showCbam: true }).map(l => l.label)).toEqual([
+      'Overview', 'Upload', 'Review', 'Records', 'Requests', 'CBAM', 'Settings',
+    ])
   })
 
   it('does not surface reads-not-fills tools in primary nav', () => {
@@ -32,7 +38,13 @@ describe('getNavLinks — buyer spine', () => {
   const hrefs = links.map(l => l.href)
 
   it('relabels upload as Ingest and keeps the buyer-only surfaces', () => {
-    expect(labels).toEqual(['Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'CBAM', 'Export', 'Settings'])
+    expect(labels).toEqual(['Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'Export', 'Settings'])
+  })
+
+  it('adds CBAM after Entity network when it is relevant to the organisation', () => {
+    expect(getNavLinks('BUYER', { showCbam: true }).map(l => l.label)).toEqual([
+      'Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'CBAM', 'Export', 'Settings',
+    ])
   })
 
   it('moves reads-not-fills tools (Benchmarks, Activity, Access) under Settings', () => {
@@ -84,38 +96,59 @@ describe('isLinkActive', () => {
 // nav link stays active across them and no sub-navigation is introduced.
 
 describe('CBAM section', () => {
-  it('appears for both entity types', () => {
+  it('appears for both entity types when relevant', () => {
     for (const type of ['SUPPLIER', 'BUYER'] as const) {
-      expect(getNavLinks(type).map(l => l.label)).toContain('CBAM')
+      expect(getNavLinks(type, { showCbam: true }).map(l => l.label)).toContain('CBAM')
     }
   })
 
   it('sits between Requests and Settings, not at the end', () => {
-    const labels = getNavLinks('SUPPLIER').map(l => l.label)
+    const labels = getNavLinks('SUPPLIER', { showCbam: true }).map(l => l.label)
     expect(labels.indexOf('CBAM')).toBeGreaterThan(labels.indexOf('Requests'))
     expect(labels.indexOf('CBAM')).toBeLessThan(labels.indexOf('Settings'))
   })
 
   it('is a top-level section, not nested under another', () => {
-    const cbam = getNavLinks('SUPPLIER').find(l => l.label === 'CBAM')
+    const cbam = getNavLinks('SUPPLIER', { showCbam: true }).find(l => l.label === 'CBAM')
     expect(cbam?.href).toBe('/cbam')
   })
 
   it('stays active across its views and its case pages', () => {
-    const cbam = getNavLinks('SUPPLIER').find(l => l.label === 'CBAM')!
+    const cbam = getNavLinks('SUPPLIER', { showCbam: true }).find(l => l.label === 'CBAM')!
     expect(isLinkActive(cbam, '/cbam')).toBe(true)
     expect(isLinkActive(cbam, '/cbam/case-123')).toBe(true)
   })
 
   it('is not activated by an unrelated route that shares a prefix', () => {
-    const cbam = getNavLinks('SUPPLIER').find(l => l.label === 'CBAM')!
+    const cbam = getNavLinks('SUPPLIER', { showCbam: true }).find(l => l.label === 'CBAM')!
     expect(isLinkActive(cbam, '/cbam-guide')).toBe(false)
   })
 
   it('does not claim Records', () => {
     // CBAM cases, consignments and goods lines are not records and must not be
     // pushed into Arbor's record model.
-    const records = getNavLinks('SUPPLIER').find(l => l.label === 'Records')!
+    const records = getNavLinks('SUPPLIER', { showCbam: true }).find(l => l.label === 'Records')!
     expect(isLinkActive(records, '/cbam')).toBe(false)
+  })
+})
+
+// CBAM sat in every organisation's navigation, though most suppliers never
+// import CBAM goods — a section the simplicity rule (PRD §7) says should not be
+// there until it means something to them.
+describe('showsCbam', () => {
+  it('is hidden for an organisation with no CBAM activity that has not asked for it', () => {
+    expect(showsCbam({ enabled: false, cbamDocuments: 0, caseLinks: 0 })).toBe(false)
+  })
+
+  it('shows once the organisation switches it on, before any document', () => {
+    expect(showsCbam({ enabled: true, cbamDocuments: 0, caseLinks: 0 })).toBe(true)
+  })
+
+  it('shows once a customs or CBAM declaration has been uploaded', () => {
+    expect(showsCbam({ enabled: false, cbamDocuments: 1, caseLinks: 0 })).toBe(true)
+  })
+
+  it('shows while the organisation has a case', () => {
+    expect(showsCbam({ enabled: false, cbamDocuments: 0, caseLinks: 1 })).toBe(true)
   })
 })
