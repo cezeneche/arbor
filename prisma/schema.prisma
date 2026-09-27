@@ -123,6 +123,7 @@ model Entity {
   supplierAgreements      DefinitionAgreement[]    @relation("AgreementSupplier")
   buyerAgreements         DefinitionAgreement[]    @relation("AgreementBuyer")
   cbamCaseLinks           CbamCaseLink[]
+  cbamVerificationStatements CbamVerificationStatement[]
   ingestOperations        IngestOperation[]
 }
 
@@ -268,6 +269,54 @@ model Document {
 // real case with pieces missing, and the only place that fact can live is here.
 // Without it the user confirms a document, the case is short a goods line, and
 // nothing anywhere says so.
+// An accredited verifier's statement about a goods line's emissions figure (or,
+// from the relief screens, a carbon price relief claim).
+//
+// A supplier's figure goes on a CBAM return as actual, verified data only once
+// such a statement has been accepted. The statement is evidence about a figure,
+// not activity data, so it is not a Document: it runs no extraction and writes
+// no records. The file lives in the private documents bucket; Nucleos records a
+// reference to this row and the file's SHA-256, and owns the status the returns
+// read. Kept for good — UK CBAM requires six years — and never hard-deleted.
+model CbamVerificationStatement {
+  id                    String                  @id @default(cuid())
+  entityId              String
+  entity                Entity                  @relation(fields: [entityId], references: [id])
+  nucleosCaseId         String
+  goodsLineId           String
+  subject               CbamVerificationSubject @default(EMISSIONS)
+  storagePath           String
+  fileName              String
+  fileSize              Int
+  sha256                String
+  verifierName          String
+  verifierAccreditation String
+  uploadedById          String
+  uploadedAt            DateTime                @default(now())
+  status                CbamVerificationStatus  @default(SUBMITTED)
+  // When Nucleos recorded the reference. Null means the file is stored and
+  // Nucleos has not been told yet; the statement can be retried.
+  syncedAt              DateTime?
+  syncError             String?
+  decidedById           String?
+  decidedAt             DateTime?
+  rejectionReason       String?
+
+  @@index([entityId, nucleosCaseId])
+  @@index([goodsLineId])
+}
+
+enum CbamVerificationSubject {
+  EMISSIONS
+  RELIEF
+}
+
+enum CbamVerificationStatus {
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+}
+
 // One idempotent /api/v1/ingest batch. Reserved before any record is written;
 // each item's outcome is committed with its record, so a retry after a crash
 // writes only what did not land, and a completed batch replays its response.

@@ -22,3 +22,11 @@ export async function fetchDocumentAsBase64(storedPath: string): Promise<{
 
   return { base64, mediaType }
 }
+
+/** A stored file's bytes, for serving it back to its owner. */
+export async function fetchDocumentBytes(storedPath: string): Promise<Buffer> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(toStoragePath(storedPath))
+  if (error || !data) throw new Error(`Failed to fetch document: ${error?.message ?? 'empty response'}`)
+  return Buffer.from(await data.arrayBuffer())
+}
