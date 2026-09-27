@@ -203,9 +203,12 @@ Recorded here so the next person does not have to re-derive it.
   can be honoured by any host; new links go to `WEB_BASE_URL`, which points at
   Arbor's `/supplier/[token]`. The `nucleos-web` Vercel project keeps serving its
   last deployment until it is deleted, so nothing goes dark with the code.
-  Remaining: confirm `WEB_BASE_URL` on `nucleos-api` is Arbor's address, then
-  delete the `nucleos-web` project (its builds now fail for want of a root
-  directory). Proving Arbor's form against a real token is still step 6b.
+  Confirmed 27 September: a supplier link created from a real CBAM case in
+  production points at Arbor's `/supplier/[token]`, and the form loads for that
+  token — so `WEB_BASE_URL` is Arbor's address, and step 6b's form check is done
+  (a submission has not yet been made through it). Remaining: delete the
+  `nucleos-web` Vercel project, whose builds now fail for want of a root
+  directory.
 
 - **Migration lineage — resolved (19 September).** The base lineage
   (`supabase/migration.sql` + `nucleos/db/migrations/`) is canonical. `008` and
