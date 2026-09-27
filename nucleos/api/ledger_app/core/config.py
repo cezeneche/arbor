@@ -143,9 +143,9 @@ class AppConfig:
 
     @staticmethod
     def registration_scheduler_enabled() -> bool:
-        return os.getenv("CBAM_REGISTRATION_SCHEDULER", "true").strip().lower() not in (
-            "0", "false", "no"
-        )
+        # Off unless asked for: nothing surfaces the threshold alerts yet, and
+        # UK CBAM starts in January 2027.
+        return os.getenv("CBAM_REGISTRATION_SCHEDULER", "").strip().lower() in ("1", "true", "yes")
 
     # Request limits
 

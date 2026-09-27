@@ -19,14 +19,13 @@ Regulatory basis: Finance No.2 Bill 2025-26, HMRC Secondary Legislation Feb 2026
 
 from __future__ import annotations
 
-import hashlib
 import logging
-from datetime import date, datetime, timezone
+from datetime import date
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -98,6 +97,17 @@ class CPRCalculateRequest(BaseModel):
     )
 
 
+class CPRVerificationReference(BaseModel):
+    document_ref: str = Field(
+        ..., min_length=1, max_length=500,
+        description="Arbor's reference for the stored verification statement.",
+    )
+    document_sha256: str = Field(
+        ..., pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 of the statement, computed by Arbor when it was stored.",
+    )
+
+
 class CPRClaimCreate(BaseModel):
     """Input for creating a persisted CPR claim in cbam_cpr_claims."""
 
@@ -155,21 +165,7 @@ class CPRClaimCreate(BaseModel):
     )
 
 
-class ExchangeRateOverrideRequest(BaseModel):
-    """Optional override rate for a specific import date."""
-    from_currency: str = Field(..., min_length=3, max_length=3)
-    target_date: date
-    to_currency: str = Field(default="GBP", min_length=3, max_length=3)
-
-
 # Helpers
-
-def _decimal_default(obj: Any) -> Any:
-    if isinstance(obj, Decimal):
-        return str(obj)
-    if isinstance(obj, date):
-        return obj.isoformat()
-    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serialisable")
 
 
 def _tenant_id(request: Request) -> str:
@@ -247,64 +243,6 @@ def list_qualifying_schemes(
             "note": "Pre-seeded with EU ETS participants (indicative). "
                     "Update when HMRC publishes the official UK qualifying list.",
         }
-
-
-@router.get("/exchange-rates")
-def list_exchange_rates(
-    currency: str | None = Query(
-        default=None,
-        description="Filter by ISO 4217 from-currency (e.g. 'EUR').",
-    ),
-    target_date: date | None = Query(
-        default=None,
-        description="Return the rate effective on or before this date. "
-                    "Defaults to today.",
-    ),
-):
-    """Return HMRC reference exchange rates for CPR GBP conversion.
-
-    Rates are seeded from the HMRC Customs Declarants Reference Manual (CDRM)
-    periodic rate table.  Importers must use the rate prevailing on the import
-    date; use the ``exchange_rate_date`` field in the CPR claim record.
-
-    **Important:** placeholder rates are seeded in migration 010.  Replace
-    with official HMRC CDRM rates before production use.
-    """
-    params: dict[str, Any] = {}
-    filters = ["to_currency = 'GBP'"]
-
-    if currency:
-        filters.append("from_currency = :currency")
-        params["currency"] = currency.upper().strip()
-
-    if target_date:
-        filters.append("effective_date <= :target_date")
-        params["target_date"] = target_date
-
-    where = "WHERE " + " AND ".join(filters) if filters else ""
-
-    with engine.begin() as conn:
-        rows = conn.execute(
-            text(
-                f"""
-                SELECT DISTINCT ON (from_currency)
-                       from_currency, to_currency, rate, effective_date, source
-                FROM   cbam.cbam_exchange_rates
-                {where}
-                ORDER  BY from_currency, effective_date DESC
-                """
-            ),
-            params,
-        ).mappings().all()
-
-    return {
-        "rates": [dict(r) for r in rows],
-        "count": len(rows),
-        "note": (
-            "HMRC CDRM placeholder rates — update monthly from "
-            "https://www.gov.uk/guidance/exchange-rates-for-customs-and-vat"
-        ),
-    }
 
 
 @router.post("/calculate")
@@ -461,81 +399,21 @@ def list_cpr_claims(
 
 
 @router.post("/upload-verification/{goods_line_id}", status_code=status.HTTP_200_OK)
-async def upload_verification_document(
+def record_verification_document(
     request: Request,
     goods_line_id: str,
-    file: UploadFile = File(..., description="PDF verification report from the accredited verifier."),
+    payload: CPRVerificationReference,
     auth: AuthContext = Depends(_require_cbam_write),
 ):
-    """Upload an accredited verifier's PDF to Supabase Storage and record its hash.
+    """Record the verifier's statement for a goods line's relief claims.
 
-    The document is stored at:
-        ``{tenant_id}/cpr/{goods_line_id}/verification_{timestamp}.pdf``
-
-    The SHA-256 hash is computed locally before upload and recorded in
-    ``cbam_cpr_claims.verification_document_hash``.  All CPR claims for this
-    goods line that have no verification document are updated.
-
-    Requires scope: ``cbam:write``.
-    Accepted content type: ``application/pdf`` (enforced).
+    The statement is an Arbor document: Arbor stores the file and computes its
+    SHA-256; this records the reference and hash on every claim for the line
+    that has none yet. Nucleos holds no documents (integration rule 4).
     """
     tenant_id = _tenant_id(request)
-
-    if not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No filename supplied.",
-        )
-
-    content_type = file.content_type or ""
-    if content_type not in ("application/pdf", "application/octet-stream"):
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=(
-                "Verification documents must be PDF files "
-                f"(received content-type: {content_type!r}). "
-                "Only ISO-accredited verifier reports in PDF format are accepted."
-            ),
-        )
-
-    data = await file.read()
-    if not data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded file is empty.",
-        )
-
-    # Compute SHA-256 before upload (tamper-evidence)
-    sha256_hex = hashlib.sha256(data).hexdigest()
-
-    # Upload to Supabase Storage
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    filename = f"verification_{ts}.pdf"
-
-    try:
-        from ledger_app.services.storage import upload_document_async
-
-        upload_result = await upload_document_async(
-            tenant_id=tenant_id,
-            document_id=f"cpr/{goods_line_id}",
-            filename=filename,
-            data=data,
-        )
-        storage_path = upload_result.storage_path
-        storage_uri  = upload_result.storage_uri
-        _log.info(
-            "CPR verification uploaded: path=%s sha256=%s size=%d",
-            storage_path, sha256_hex, len(data),
-        )
-    except Exception as exc:
-        _log.error("Supabase Storage upload failed: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Verification document could not be stored — Supabase Storage is "
-                "unavailable. Please retry. No record was created."
-            ),
-        ) from exc
+    storage_path = payload.document_ref
+    sha256_hex = payload.document_sha256
 
     # Update all CPR claims for this goods line that lack a verification document
     with engine.begin() as conn:
@@ -582,11 +460,9 @@ async def upload_verification_document(
         )
 
     return {
-        "message": f"Verification document recorded for {len(updated_rows)} CPR claim(s).",
+        "message": f"Verification statement recorded for {len(updated_rows)} CPR claim(s).",
         "goods_line_id":             goods_line_id,
-        "storage_path":              storage_path,
-        "storage_uri":               storage_uri,
+        "document_ref":              storage_path,
         "verification_document_hash": sha256_hex,
-        "file_size_bytes":           len(data),
         "updated_claims":            [dict(r) for r in updated_rows],
     }

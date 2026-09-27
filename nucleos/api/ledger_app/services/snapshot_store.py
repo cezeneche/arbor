@@ -287,6 +287,17 @@ class FileSystemSnapshotStore:
 
 def _row_to_snapshot(row: Any) -> SnapshotRecord:
     d = dict(row)
+    # Postgres returns uuid, timestamptz and jsonb as UUID, datetime and dict;
+    # the record holds strings. Without this every read on the SQL store
+    # raised, so nothing that reads a snapshot back had ever worked on it.
+    for field in ("id", "case_id"):
+        if d.get(field) is not None and not isinstance(d[field], str):
+            d[field] = str(d[field])
+    if isinstance(d.get("created_at"), datetime):
+        d["created_at"] = d["created_at"].isoformat()
+    if d.get("payload_json") is not None and not isinstance(d["payload_json"], str):
+        # The same canonical form the hash was taken over, so verify_chain holds.
+        d["payload_json"] = canonical_json(d["payload_json"])
     for field in ("algo_versions", "model_versions"):
         v = d.get(field)
         if isinstance(v, str):

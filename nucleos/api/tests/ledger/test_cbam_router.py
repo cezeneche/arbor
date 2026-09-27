@@ -276,15 +276,18 @@ def test_cbam_flow_and_summary():
     )
     assert em_res.status_code == 201
 
-    summary_res = client.get(f"/api/cbam/cases/{case_id}/summary")
-    assert summary_res.status_code == 200
-    body = summary_res.json()
+    # The totals travel in the report package's summary block (the standalone
+    # summary route was removed on 27 September 2026).
+    report_res = client.get(f"/api/cbam/cases/{case_id}/report-package")
+    assert report_res.status_code == 200, report_res.text
+    body = report_res.json()["summary"]
     assert body["case_id"] == case_id
     assert body["total_goods_lines"] == 1
-    assert body["total_net_mass_kg"] == 10000
-    assert body["total_direct_emissions_kgco2e"] == 50000
-    assert body["total_indirect_emissions_kgco2e"] == 10000
-    assert body["total_embedded_emissions_kgco2e"] == 60000
+    # Serialised as strings in the package, so exact decimals survive JSON.
+    assert Decimal(str(body["total_net_mass_kg"])) == 10000
+    assert Decimal(str(body["total_direct_emissions_kgco2e"])) == 50000
+    assert Decimal(str(body["total_indirect_emissions_kgco2e"])) == 10000
+    assert Decimal(str(body["total_embedded_emissions_kgco2e"])) == 60000
 
 
 def test_emission_records_factor_table_version_and_route():
@@ -364,8 +367,6 @@ def test_invalid_fk_returns_400():
     )
     assert missing_goods_line.status_code == 400
 
-    missing_summary = client.get("/api/cbam/cases/00000000-0000-0000-0000-000000000004/summary")
-    assert missing_summary.status_code == 400
 
 
 def test_invalid_emissions_method_validation_or_db_error():
@@ -531,9 +532,10 @@ def test_data_quality_blocking_when_emissions_missing():
     )
     assert goods_res.status_code == 201
 
-    summary_res = client.get(f"/api/cbam/cases/{case_id}/summary")
-    assert summary_res.status_code == 200
-    dq = summary_res.json()["data_quality"]
+    # The case itself carries the data quality assessment, as open_gaps.
+    case_view = client.get(f"/api/cbam/cases/{case_id}")
+    assert case_view.status_code == 200, case_view.text
+    dq = case_view.json()["open_gaps"]
     assert dq["blocking"] is True
     assert any("missing_emissions" in entry for entry in dq["missing"])
     assert isinstance(dq["score"], float)

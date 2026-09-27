@@ -5,7 +5,8 @@ Route prefix: /api/cbam  (registered in main.py with prefix="/api")
 Endpoints
 ---------
 POST /cbam/goods-lines/{id}/upload-verification
-    Upload a PDF verification report from a GACI-accredited verifier.
+    Record the verifier's statement: a reference to the document Arbor stored,
+    with its SHA-256. Nucleos holds no documents.
     Sets verification_status → 'submitted'.
 
 POST /cbam/goods-lines/{id}/request-verification
@@ -36,12 +37,11 @@ Mutations require the ``cbam:write`` scope.
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -73,6 +73,25 @@ class RejectionRequest(BaseModel):
     reason: str = Field(
         ..., min_length=1, max_length=1000,
         description="Mandatory reason for rejection — communicated to the importer.",
+    )
+
+
+class VerificationReference(BaseModel):
+    verifier_name: str = Field(
+        ..., min_length=1, max_length=200,
+        description="Name of the GACI-accredited verifier organisation.",
+    )
+    verifier_accreditation: str = Field(
+        ..., min_length=1, max_length=200,
+        description="Accreditation body and reference (e.g. 'UKAS ref 9876').",
+    )
+    document_ref: str = Field(
+        ..., min_length=1, max_length=500,
+        description="Arbor's reference for the stored statement.",
+    )
+    document_sha256: str = Field(
+        ..., pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 of the statement, computed by Arbor when it was stored.",
     )
 
 
@@ -253,75 +272,26 @@ def request_verification(
     "/goods-lines/{goods_line_id}/upload-verification",
     status_code=status.HTTP_200_OK,
 )
-async def upload_verification_report(
+def record_verification_report(
     request: Request,
     goods_line_id: str,
-    verifier_name: str = Form(..., description="Name of the GACI-accredited verifier organisation."),
-    verifier_accreditation: str = Form(
-        ...,
-        description=(
-            "Accreditation body and reference (e.g. 'UKAS ref 9876'). "
-            "Must be ISO 17029 / ISO 14064-3 / ISO 14065 / ISO 14066 accredited."
-        ),
-    ),
-    file: UploadFile = File(..., description="PDF verification report from the accredited verifier."),
+    payload: VerificationReference,
     auth: AuthContext = Depends(_require_write),
 ):
-    """Upload the verifier's signed PDF report (pending → submitted).
+    """Record the verifier's statement for a goods line (pending → submitted).
 
-    Storage path: ``{tenant_id}/verification/{goods_line_id}/report_{timestamp}.pdf``
+    The statement is an Arbor document: Arbor stores the file and computes its
+    SHA-256, and this records which document it was, who verified, and the hash
+    that detects a later change. Nucleos holds no documents (integration rule 4).
+    A compliance reviewer then calls POST .../verify or .../reject-verification.
 
-    Records the SHA-256 hash of the document for tamper detection.
-    A compliance reviewer must subsequently call POST .../verify or
-    .../reject-verification to complete the workflow.
-
-    Accepted content type: ``application/pdf``.
     Requires scope: ``cbam:write``.
     """
     tenant_id = _tenant_id(request)
-
-    content_type = (file.content_type or "").lower()
-    if content_type not in ("application/pdf", "application/octet-stream", ""):
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=(
-                f"Verification reports must be PDF files (received: {content_type!r}). "
-                "Only PDF documents from ISO-accredited verifiers are accepted."
-            ),
-        )
-
-    data = await file.read()
-    if not data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded file is empty.",
-        )
-
-    sha256_hex = hashlib.sha256(data).hexdigest()
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    storage_path = f"{tenant_id}/verification/{goods_line_id}/report_{ts}.pdf"
-    storage_uri: str | None = None
-
-    # Upload to Supabase Storage
-    try:
-        from ledger_app.services.storage import upload_document_async
-
-        result = await upload_document_async(
-            tenant_id=tenant_id,
-            document_id=f"verification/{goods_line_id}",
-            filename=f"report_{ts}.pdf",
-            data=data,
-        )
-        storage_path = result.storage_path
-        storage_uri  = result.storage_uri
-        _log.info(
-            "Verification report uploaded: goods_line=%s path=%s sha256=%s size=%d",
-            goods_line_id, storage_path, sha256_hex, len(data),
-        )
-    except Exception as exc:
-        _log.warning(
-            "Supabase Storage upload failed (non-fatal — hash still recorded): %s", exc
-        )
+    verifier_name = payload.verifier_name
+    verifier_accreditation = payload.verifier_accreditation
+    storage_path = payload.document_ref
+    sha256_hex = payload.document_sha256
 
     with engine.begin() as conn:
         gl = _fetch_goods_line_with_tenant_check(conn, goods_line_id, tenant_id)
@@ -358,9 +328,8 @@ async def upload_verification_report(
             "cn_code":                gl.get("cn_code"),
             "verifier_name":          verifier_name,
             "verifier_accreditation": verifier_accreditation,
-            "storage_path":           storage_path,
+            "document_ref":           storage_path,
             "sha256":                 sha256_hex,
-            "file_size_bytes":        len(data),
         },
     )
 
@@ -371,10 +340,8 @@ async def upload_verification_report(
         "verifier_accreditation":     updated.get("verifier_accreditation"),
         "verification_report_path":   updated.get("verification_report_path"),
         "verification_report_hash":   updated.get("verification_report_hash"),
-        "storage_uri":                storage_uri,
-        "file_size_bytes":            len(data),
         "message": (
-            "Verification report uploaded and status set to 'submitted'. "
+            "Verification report recorded and status set to 'submitted'. "
             "A compliance reviewer must approve via POST "
             "/api/cbam/goods-lines/{id}/verify before 'actual_verified' "
             "status can be claimed in the HMRC return."

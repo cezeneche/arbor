@@ -133,28 +133,6 @@ class CBAMCaseSummaryRead(BaseModel):
 
 # Liability calculation schemas
 
-class CBAMLiabilityRequest(BaseModel):
-    """Input for CBAM liability calculation (EU 2023/956 Arts. 9 and 21)."""
-    eu_ets_price_eur: Decimal = Field(
-        ..., gt=0,
-        description="EU ETS allowance price for the reporting period (EUR/tCO2e).",
-    )
-    carbon_price_paid_eur: Decimal = Field(
-        default=Decimal("0"), ge=0,
-        description=(
-            "Effective carbon price already paid in the origin country (EUR/tCO2e). "
-            "0 when no recognised equivalent carbon pricing scheme applies "
-            "(EU 2023/956 Art. 9)."
-        ),
-    )
-    origin_country: str | None = Field(
-        default=None,
-        description=(
-            "ISO 3166-1 alpha-2 origin country code. When supplied, the system "
-            "auto-detects whether a recognised Art. 9 carbon pricing scheme applies."
-        ),
-    )
-
 
 class GoodsLineSEERead(BaseModel):
     """SEE breakdown for a single goods line."""
