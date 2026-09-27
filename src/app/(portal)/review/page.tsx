@@ -3,7 +3,7 @@ import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { DOMAIN_BY_DOCUMENT_TYPE, DataDomain } from '@/lib/constants'
-import { derivePeriod, summariseReviewQueue } from '@/lib/review/review-policy'
+import { derivePeriod, missingCbamDocumentDate, summariseReviewQueue } from '@/lib/review/review-policy'
 import { selectReviewableFields } from '@/lib/review/reviewable-fields'
 import { ReviewQueue, type ReviewDoc } from '@/components/ReviewQueue'
 
@@ -55,6 +55,7 @@ export default async function ReviewPage() {
       periodStart: periodStart.toISOString(),
       periodEnd: periodEnd.toISOString(),
       autoAccepted: doc.autoAcceptedAt !== null,
+      needsImportDate: missingCbamDocumentDate(doc.documentType, values),
       fields: numeric.map((f) => ({
         fieldName: f.fieldName,
         value: f.rawValue ?? '',

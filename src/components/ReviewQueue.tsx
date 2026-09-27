@@ -24,6 +24,8 @@ export interface ReviewDoc {
   periodEnd: string
   /** Already saved as Declared without a check; confirming makes it Verified. */
   autoAccepted?: boolean
+  /** A CBAM document with no date to file its case by; dated on its own screen. */
+  needsImportDate?: boolean
   fields: ReviewField[]
 }
 
@@ -123,13 +125,17 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
     setError(null)
     const remaining: ReviewDoc[] = []
     for (const doc of docs) {
+      if (doc.needsImportDate) {
+        remaining.push(doc)
+        continue
+      }
       const ok = await confirmDoc(doc)
       if (!ok) remaining.push(doc)
     }
     setBusy(null)
     setDocs(remaining)
     router.refresh()
-    if (remaining.length > 0) setError('Some documents could not be confirmed automatically - check their values below.')
+    if (remaining.some((d) => !d.needsImportDate)) setError('Some documents could not be confirmed automatically - check their values below.')
   }
 
   // Survives the row leaving the queue. Once a document is confirmed it is gone
@@ -211,14 +217,23 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
                   {doc.autoAccepted ? ' · saved without a check — confirm to make it Verified' : ''}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => handleConfirm(doc)}
-                disabled={busy !== null}
-                style={{ padding: '7px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '4px', cursor: busy ? 'default' : 'pointer' }}
-              >
-                {busy === doc.documentId ? 'Saving…' : 'Confirm'}
-              </button>
+              {doc.needsImportDate ? (
+                <a
+                  href={`/upload/${encodeURIComponent(doc.documentId)}/review`}
+                  style={{ padding: '7px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '4px', textDecoration: 'none' }}
+                >
+                  Add the import date
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleConfirm(doc)}
+                  disabled={busy !== null}
+                  style={{ padding: '7px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '4px', cursor: busy ? 'default' : 'pointer' }}
+                >
+                  {busy === doc.documentId ? 'Saving…' : 'Confirm'}
+                </button>
+              )}
             </div>
             <div style={{ padding: spacing[2] }}>
               {doc.fields.map((f) => {

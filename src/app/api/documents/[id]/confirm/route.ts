@@ -14,7 +14,8 @@ import { runCrossValidation } from '@/lib/validation/cross-validation'
 import { assertRecordCapacity } from '@/lib/plan-guard'
 import { runConstraintValidation } from '@/lib/constraints/run-constraint-validation'
 import { buildReviewLabels } from '@/lib/confidence/review-capture'
-import { validateConfirmFields } from '@/lib/layer2/confirm-validation'
+import { confirmFieldMessage, validateConfirmFields } from '@/lib/layer2/confirm-validation'
+import { documentPeriod, missingCbamDocumentDate } from '@/lib/review/review-policy'
 import { certifyTier } from '@/lib/layer2/certification-policy'
 import { parseNumericValue } from '@/lib/parse-numeric'
 import { ExtractionMethod, TrustTier, type DataDomain, type GroundTruthSource } from '@prisma/client'
@@ -156,6 +157,28 @@ export async function POST(
     // these are the ones that were validated and written.
     ...parsed.data.fields.map(f => [f.fieldName, f.confirmedValue] as const),
   ])
+
+  // A CBAM case is filed for the quarter its period ends in, so a CBAM document
+  // must date itself. Without a date the period fell back to the day of review
+  // and the case to that quarter, silently. Refused here so the records and the
+  // case get the same, right period, rather than the case being corrected later
+  // under records that stay wrong.
+  if (cbamDocument && missingCbamDocumentDate(document.documentType, Object.fromEntries(confirmedValues))) {
+    return NextResponse.json(
+      {
+        error: 'Add the import date before saving.',
+        code: 'FIELD_VALIDATION_ERROR',
+        fields: [
+          {
+            fieldName: 'import_date',
+            problem: 'missing_document_date',
+            message: confirmFieldMessage('missing_document_date'),
+          },
+        ],
+      },
+      { status: 400 },
+    )
+  }
 
   // Trust tier is re-derived server-side, and from the effective document — the
   // extraction with the reviewer's corrections applied — so clearing a compulsory
@@ -311,12 +334,12 @@ export async function POST(
           }))?.cbamJurisdiction,
         ),
         confirmed: confirmedValues,
-        // Every prepared field shares the derived period, so the latest end is
-        // the period the case covers.
-        reportingPeriodEnd: preparedFields.reduce(
-          (latest, f) => (f.periodEnd > latest ? f.periodEnd : latest),
-          preparedFields[0].periodEnd,
-        ),
+        // From the confirmed document date, checked above, rather than the
+        // periods the client sent: the quarter is the one fact about a case
+        // that must come from the document.
+        reportingPeriodEnd: documentPeriod(Object.fromEntries(confirmedValues), {
+          documentType: document.documentType,
+        })!.periodEnd,
       }
     : null
 

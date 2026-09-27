@@ -13,7 +13,7 @@ import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
 import { layoutReviewFields } from '@/lib/review/review-layout'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
-import { derivePeriod } from '@/lib/review/review-policy'
+import { derivePeriod, documentPeriod, missingCbamDocumentDate } from '@/lib/review/review-policy'
 import { clearedFieldEntries, isRecordProducingField } from '@/lib/review/confirm-split'
 
 // The requirement level used to be a section heading. Three headings meant three
@@ -94,6 +94,18 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   // auto-accepted document is written but unchecked, so it keeps its Confirm.
   const isSaved = confirmed || (document.status === 'ACCEPTED' && !document.autoAccepted)
   const hasRecords = isSaved || Boolean(document.autoAccepted)
+
+  // A CBAM document the extraction could not date. Its case is filed for the
+  // quarter of its import, so the date is asked for here, before anything is
+  // saved. Decided from what was read, so the field stays while it is typed in.
+  const readsNoImportDate = !fields.some(f => f.fieldName === 'import_date')
+  const askForImportDate =
+    isCbamRelevant(document.documentType) &&
+    readsNoImportDate &&
+    documentPeriod(Object.fromEntries(fields.map(f => [f.fieldName, f.rawValue])), {
+      documentType: document.documentType,
+    }) === null
+  const missingDate = missingCbamDocumentDate(document.documentType, values)
   // Saved, then removed. Its records are out of the active set and the chain
   // holds a WITHDRAWN entry for each; there is nothing left to do to it.
   const isWithdrawn = document.status === 'WITHDRAWN'
@@ -148,6 +160,11 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     const periodStart = derived.periodStart.toISOString()
     const periodEnd = derived.periodEnd.toISOString()
 
+    if (missingDate) {
+      setError('Add the import date before saving. The import case is filed for the quarter that date falls in.')
+      return
+    }
+
     const withValues = fields.filter(f => values[f.fieldName])
 
     const numericFieldEntries = withValues
@@ -175,6 +192,10 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         .filter(f => !isRecordProducingField(f.fieldName))
         .map(f => ({ fieldName: f.fieldName, confirmedValue: values[f.fieldName] })),
       ...clearedFieldEntries(fields, values),
+      // Typed in above because the document gave none; not an extracted field.
+      ...(askForImportDate && values.import_date
+        ? [{ fieldName: 'import_date', confirmedValue: values.import_date }]
+        : []),
     ]
 
     if (numericFieldEntries.length === 0) {
@@ -576,6 +597,43 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         >
           {error}
         </p>
+      )}
+
+      {askForImportDate && !isSaved && !isWithdrawn && (
+        <div
+          style={{
+            border: `1px solid ${colours.border}`,
+            borderLeft: `3px solid ${colours.amber}`,
+            borderRadius: '6px',
+            padding: spacing[3],
+            marginBottom: spacing[3],
+            backgroundColor: colours.amberBg,
+          }}
+        >
+          <label style={{ display: 'block' }}>
+            <span style={textStyles.rowTitle}>Import date</span>
+            <span
+              style={{ ...textStyles.caption, display: 'block', color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[2]}` }}
+            >
+              We could not find a date on this document. Enter the date the goods were imported: the import
+              case is filed for the quarter it falls in.
+            </span>
+            <input
+              type="date"
+              value={values.import_date ?? ''}
+              onChange={e => setValues(v => ({ ...v, import_date: e.target.value }))}
+              style={{
+                padding: '7px 10px',
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textPrimary,
+                border: `1px solid ${missingDate ? colours.amber : colours.border}`,
+                borderRadius: '4px',
+                backgroundColor: colours.surface,
+              }}
+            />
+          </label>
+        </div>
       )}
 
       {document.autoAccepted && !confirmed && (
