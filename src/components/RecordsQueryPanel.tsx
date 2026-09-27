@@ -25,6 +25,9 @@ type NlRecord = {
 
 type QueryResult = {
   interpretation: string
+  /** What was actually searched, from the filters that ran. */
+  scope?: string
+  queryType?: string
   /** Claude's plain English answer, grounded only in the records below it. */
   answer?: string
   summary: string
@@ -90,6 +93,12 @@ export function RecordsQueryPanel({
       setLoading(false)
     }
   }
+
+  // Whose record each row is, whenever the answer spans more than the caller's
+  // own: a supplier's figure without the supplier's name cannot be used.
+  const showSupplier =
+    result !== null &&
+    (result.queryType === 'supply_chain' || new Set(result.records.map(r => r.entityName)).size > 1)
 
   return (
     <>
@@ -337,7 +346,7 @@ export function RecordsQueryPanel({
                   {result.summary}
                 </span>
                 <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>
-                  · {result.interpretation}
+                  · Searched: {result.scope ?? result.interpretation}
                 </span>
                 {result.hasMore && (
                   <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.amber, marginLeft: 'auto' }}>
@@ -356,7 +365,10 @@ export function RecordsQueryPanel({
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: colours.background }}>
-                      {['Field', 'Value', 'Period', 'Domain', 'Tier'].map(col => (
+                      {[
+                        ...(showSupplier ? ['Supplier'] : []),
+                        'Field', 'Value', 'Period', 'Domain', 'Tier', 'From the document',
+                      ].map(col => (
                         <th
                           key={col}
                           style={{
@@ -382,6 +394,11 @@ export function RecordsQueryPanel({
                         key={r.id}
                         style={{ borderBottom: i < result.records.length - 1 ? `1px solid ${colours.border}` : 'none' }}
                       >
+                        {showSupplier && (
+                          <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textPrimary, whiteSpace: 'nowrap' }}>
+                            {r.entityName}
+                          </td>
+                        )}
                         <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textPrimary, whiteSpace: 'nowrap' }}>
                           {fieldLabel(r.fieldName, r.domain)}
                         </td>
@@ -398,6 +415,12 @@ export function RecordsQueryPanel({
                         </td>
                         <td style={{ padding: '7px 14px' }}>
                           <TierBadge tier={r.trustTier} plain={plainTiers} />
+                        </td>
+                        <td
+                          title={r.sourceText ?? undefined}
+                          style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >
+                          {r.sourceText ? `“${r.sourceText}”` : '—'}
                         </td>
                       </tr>
                     ))}
