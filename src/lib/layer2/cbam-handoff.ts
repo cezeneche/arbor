@@ -20,6 +20,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { prisma as defaultPrisma } from '@/lib/prisma'
 import { buildCasePayload } from '@/lib/nucleos/case-payload'
+import type { ReadField } from '@/lib/nucleos/case-evidence'
 import {
   amendCaseIdentifiers,
   missingCaseIdentifiers,
@@ -46,6 +47,8 @@ export interface CbamHandoffInput {
   confirmed: ReadonlyMap<string, string>
   /** The period the confirmed records cover; sets the case's year and quarter. */
   reportingPeriodEnd: Date
+  /** What extraction read, sent as evidence once the goods lines exist. */
+  readFields?: ReadField[]
 }
 
 export interface CbamHandoffOutcome {
@@ -66,6 +69,8 @@ interface StoredInput {
   /** Identifiers supplied after confirmation, and by whom — `confirmed` holds
    *  them too, so this is their provenance rather than a second copy to read. */
   amendments?: { fieldName: string; value: string; byId: string; at: string }[]
+  /** What extraction read; absent on handoffs recorded before it was kept. */
+  readFields?: ReadField[]
 }
 
 /** What a handoff's stored input is missing that the user can supply. */
@@ -104,6 +109,7 @@ export async function enqueueCbamHandoff(tx: Db, input: CbamHandoffInput): Promi
     documentType: input.documentType,
     confirmed: Object.fromEntries(input.confirmed),
     reportingPeriodEnd: input.reportingPeriodEnd.toISOString(),
+    ...(input.readFields && input.readFields.length > 0 ? { readFields: input.readFields } : {}),
   }
   await (tx as PrismaClient).cbamCaseLink.upsert({
     where: { documentId: input.documentId },
@@ -196,6 +202,7 @@ export async function runCbamHandoff(
     reportingPeriodEnd: new Date(stored.reportingPeriodEnd),
     ownerRef: row.entityId,
     ref: documentId,
+    ...(stored.readFields ? { readFields: stored.readFields } : {}),
   })
   // Nothing to post, and retrying the same input cannot change that: the case
   // lacks an identifier only a person can supply. Wait for it rather than fail
