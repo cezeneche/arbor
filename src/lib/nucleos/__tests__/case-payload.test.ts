@@ -26,6 +26,18 @@ function confirmed(overrides: Record<string, string> = {}): Map<string, string> 
 const PERIOD_END = new Date('2027-03-31T00:00:00Z')
 
 describe('buildCasePayload', () => {
+  it('carries the owning organisation and the document the case was opened from', () => {
+    const p = buildCasePayload({
+      confirmed: confirmed(),
+      jurisdiction: 'UK',
+      reportingPeriodEnd: PERIOD_END,
+      ownerRef: 'ent-1',
+      ref: 'doc-1',
+    }).payload!
+    expect(p.case.owner_ref).toBe('ent-1')
+    expect(p.ref).toBe('doc-1')
+  })
+
   it('builds a case, one shipment and one goods line per confirmed line', () => {
     const result = buildCasePayload({
       confirmed: confirmed(),

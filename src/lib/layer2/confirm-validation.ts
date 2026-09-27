@@ -23,6 +23,7 @@ export type ConfirmFieldProblem =
   | 'unknown_field'
   | 'unsupported_unit'
   | 'duplicate_field_period'
+  | 'missing_document_date'
 
 export interface ConfirmFieldError {
   fieldName: string
@@ -36,6 +37,12 @@ const MESSAGES: Record<ConfirmFieldProblem, string> = {
   unknown_field: 'This is not a field Arbor reads from this kind of document.',
   unsupported_unit: 'Arbor does not recognise this unit, so it could not convert the figure later.',
   duplicate_field_period: 'The same field is given twice for the same period.',
+  missing_document_date:
+    'Add the date the goods were imported. The import case is filed for the quarter that date falls in.',
+}
+
+export function confirmFieldMessage(problem: ConfirmFieldProblem): string {
+  return MESSAGES[problem]
 }
 
 export interface ValidateConfirmOptions {

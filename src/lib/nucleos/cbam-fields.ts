@@ -117,10 +117,14 @@ export function isCbamNumericFieldName(name: string): boolean {
  * travelled onto every calculated line as DECLARED provenance.
  *
  * The rules applied are the admissibility spec's, for a customs declaration:
- * the importer must be identified, the origin must be stated, and there must be
- * at least one goods line carrying a full 8-digit CN code and a weight. A
+ * the importer must be identified, and every goods line must carry a full
+ * 8-digit CN code, a weight and a stated origin (its own or the document's). A
  * 6-digit HS heading is a critical flag — it carries no sector and no default
  * value — so it does not qualify.
+ *
+ * Every line, not any line. The tier is the document's and every record the
+ * document writes carries it, so one complete line used to certify a half-read
+ * second line's records as Verified on the strength of the first.
  */
 export function cbamCompulsoryFieldsPresent(
   confirmed: ReadonlyMap<string, string>,
@@ -145,28 +149,27 @@ export function cbamCompulsoryFieldsPresent(
 
   if (!value('importer_eori') && !value('importer_name')) return false
 
-  const byLine = new Map<number, Map<string, string>>()
+  // A line the reviewer cleared entirely is not on the document any more; one
+  // with anything left on it is, and has to qualify.
+  const lineIndexes = new Set<number>()
   for (const [name, raw] of confirmed) {
     const ref = parseGoodsLineFieldName(name)
-    if (!ref) continue
-    if (sourceText && !(sourceText.get(name) ?? '').trim()) continue
-    const line = byLine.get(ref.lineIndex) ?? new Map<string, string>()
-    line.set(ref.field, raw)
-    byLine.set(ref.lineIndex, line)
+    if (ref && String(raw ?? '').trim() !== '') lineIndexes.add(ref.lineIndex)
   }
+  if (lineIndexes.size === 0) return false
 
   const documentOrigin = value('origin_country')
 
-  for (const line of byLine.values()) {
-    const cnCode = line.get('cn_code')?.trim()
-    const mass = line.get('net_mass_kg')?.trim()
-    const origin = line.get('origin_country')?.trim() || documentOrigin
+  for (const i of lineIndexes) {
+    const cnCode = value(goodsLineFieldName(i, 'cn_code'))
+    const massRaw = value(goodsLineFieldName(i, 'net_mass_kg'))
+    const mass = massRaw === null ? null : Number(massRaw)
+    const origin = value(goodsLineFieldName(i, 'origin_country')) ?? documentOrigin
 
-    if (!cnCode || cnCode.replace(/\D/g, '').length !== 8) continue
-    if (!mass || !Number.isFinite(Number(mass)) || Number(mass) <= 0) continue
-    if (!origin) continue
-    return true
+    if (!cnCode || cnCode.replace(/\D/g, '').length !== 8) return false
+    if (mass === null || !Number.isFinite(mass) || mass <= 0) return false
+    if (!origin) return false
   }
 
-  return false
+  return true
 }

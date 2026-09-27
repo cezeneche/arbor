@@ -20,6 +20,12 @@
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { prisma as defaultPrisma } from '@/lib/prisma'
 import { buildCasePayload } from '@/lib/nucleos/case-payload'
+import {
+  amendCaseIdentifiers,
+  missingCaseIdentifiers,
+  type CaseIdentifierAmendment,
+  type CaseIdentifierNeed,
+} from '@/lib/nucleos/case-identifiers'
 import { emptyProgress, writeCbamCase, type CaseWriteProgress } from '@/lib/nucleos/case-writer'
 import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
 import { resolveJurisdiction, type CbamJurisdiction } from '@/lib/nucleos/jurisdiction'
@@ -46,8 +52,10 @@ export interface CbamHandoffOutcome {
   /** False when nothing was attempted: no handoff, finished, or already running. */
   attempted: boolean
   caseId: string | null
-  status: 'PENDING' | 'CREATED' | 'PARTIAL' | 'FAILED' | 'SKIPPED'
+  status: 'PENDING' | 'CREATED' | 'PARTIAL' | 'FAILED' | 'NEEDS_INPUT' | 'SKIPPED'
   problems: string[]
+  /** What the user can supply to let a NEEDS_INPUT handoff continue. */
+  needs?: CaseIdentifierNeed[]
 }
 
 /** What is stored on the row so a resume does not need the original request. */
@@ -55,6 +63,15 @@ interface StoredInput {
   documentType: string
   confirmed: Record<string, string>
   reportingPeriodEnd: string
+  /** Identifiers supplied after confirmation, and by whom — `confirmed` holds
+   *  them too, so this is their provenance rather than a second copy to read. */
+  amendments?: { fieldName: string; value: string; byId: string; at: string }[]
+}
+
+/** What a handoff's stored input is missing that the user can supply. */
+export function handoffNeeds(handoffInput: unknown): CaseIdentifierNeed[] {
+  const stored = handoffInput as StoredInput | null
+  return stored?.confirmed ? missingCaseIdentifiers(new Map(Object.entries(stored.confirmed))) : []
 }
 
 type Db = PrismaClient | Prisma.TransactionClient
@@ -62,6 +79,15 @@ type Db = PrismaClient | Prisma.TransactionClient
 type Deps = {
   db?: Db
   writeCase?: typeof writeCbamCase
+}
+
+class ForeignCaseError extends Error {
+  constructor() {
+    super(
+      'Nucleos returned a case that belongs to another organisation, so it was not opened here. ' +
+        'Nothing was added to it. Contact support to open this case.',
+    )
+  }
 }
 
 const RESUME_HINT = 'Your figures are saved. Use Resume on the CBAM page to finish opening the case.'
@@ -129,17 +155,19 @@ export async function runCbamHandoff(
   if (!row) return { attempted: false, caseId: null, status: 'SKIPPED', problems: [] }
   if (claimed.count === 0) {
     // Finished, or someone else is on it. Either way this is the state.
+    const status = row.attemptStartedAt ? 'PENDING' : (row.status as CbamHandoffOutcome['status'])
     return {
       attempted: false,
       caseId: row.nucleosCaseId,
-      status: row.attemptStartedAt ? 'PENDING' : (row.status as CbamHandoffOutcome['status']),
+      status,
       problems: row.problems,
+      ...(status === 'NEEDS_INPUT' ? { needs: handoffNeeds(row.handoffInput) } : {}),
     }
   }
 
   const finish = async (
     caseId: string | null,
-    status: 'CREATED' | 'PARTIAL' | 'FAILED',
+    status: 'CREATED' | 'PARTIAL' | 'FAILED' | 'NEEDS_INPUT',
     problems: string[],
     goodsLineCount: number,
   ): Promise<CbamHandoffOutcome> => {
@@ -166,8 +194,15 @@ export async function runCbamHandoff(
     confirmed: new Map(Object.entries(stored.confirmed)),
     jurisdiction: resolveJurisdiction(row.jurisdiction),
     reportingPeriodEnd: new Date(stored.reportingPeriodEnd),
+    ownerRef: row.entityId,
+    ref: documentId,
   })
-  if (!payload) return finish(null, 'FAILED', mappingProblems, 0)
+  // Nothing to post, and retrying the same input cannot change that: the case
+  // lacks an identifier only a person can supply. Wait for it rather than fail
+  // and be retried until the sweep gives up.
+  if (!payload) {
+    return { ...(await finish(null, 'NEEDS_INPUT', mappingProblems, 0)), needs: handoffNeeds(stored) }
+  }
 
   const start = (row.progress as CaseWriteProgress | null) ?? {
     ...emptyProgress(),
@@ -178,6 +213,17 @@ export async function runCbamHandoff(
   try {
     const written = await writeCase(payload, start, {
       onProgress: async progress => {
+        // A case already linked to another organisation is theirs, whatever
+        // Nucleos handed back. Refused before it is recorded here and before
+        // anything is posted to it, so neither organisation sees the other's
+        // goods.
+        if (progress.caseId && progress.caseId !== latest.caseId) {
+          const foreign = await db.cbamCaseLink.findFirst({
+            where: { nucleosCaseId: progress.caseId, entityId: { not: row.entityId } },
+            select: { documentId: true },
+          })
+          if (foreign) throw new ForeignCaseError()
+        }
         latest = progress
         await db.cbamCaseLink.update({
           where: { documentId },
@@ -192,6 +238,7 @@ export async function runCbamHandoff(
     const status = written.caseId === null ? 'FAILED' : problems.length > 0 ? 'PARTIAL' : 'CREATED'
     return finish(written.caseId, status, problems, written.goodsLineIds.length)
   } catch (err) {
+    if (err instanceof ForeignCaseError) return finish(null, 'FAILED', [...mappingProblems, err.message], 0)
     const caseId = latest.caseId
     const problem = caseId
       ? `The case was opened but could not be finished: ${(err as Error).message}. ${RESUME_HINT}`
@@ -203,4 +250,60 @@ export async function runCbamHandoff(
       Object.keys(latest.lines).length,
     )
   }
+}
+
+export type SupplyIdentifiersResult =
+  | { ok: true; outcome: CbamHandoffOutcome }
+  | { ok: false; code: 'NOT_FOUND' | 'NOT_WAITING'; message: string }
+  | { ok: false; code: 'INVALID'; message: string; errors: { fieldName: string; message: string }[] }
+
+/**
+ * Supplies identifiers a waiting handoff lacks, then runs it.
+ *
+ * Only for a handoff waiting for input, only for the organisation that owns it,
+ * and only to fill gaps — see `amendCaseIdentifiers`. The row is claimed by its
+ * NEEDS_INPUT status so two submissions cannot both apply.
+ */
+export async function supplyCbamHandoffIdentifiers(
+  input: { documentId: string; entityId: string; userId: string; amendments: CaseIdentifierAmendment[] },
+  deps: Deps = {},
+): Promise<SupplyIdentifiersResult> {
+  const db = (deps.db ?? defaultPrisma) as PrismaClient
+  const row = await db.cbamCaseLink.findUnique({ where: { documentId: input.documentId } })
+  if (!row || row.entityId !== input.entityId) {
+    return { ok: false, code: 'NOT_FOUND', message: 'There is no case waiting for this document.' }
+  }
+  const stored = row.handoffInput as StoredInput | null
+  if (row.status !== 'NEEDS_INPUT' || !stored?.confirmed) {
+    return { ok: false, code: 'NOT_WAITING', message: 'This case is not waiting for anything from you.' }
+  }
+
+  const amended = amendCaseIdentifiers(new Map(Object.entries(stored.confirmed)), input.amendments)
+  if (!amended.confirmed) {
+    return { ok: false, code: 'INVALID', message: 'Some of these could not be used.', errors: amended.errors }
+  }
+
+  const at = new Date().toISOString()
+  const next: StoredInput = {
+    ...stored,
+    confirmed: Object.fromEntries(amended.confirmed),
+    amendments: [
+      ...(stored.amendments ?? []),
+      ...input.amendments.map(a => ({
+        fieldName: a.fieldName,
+        value: amended.confirmed!.get(a.fieldName)!,
+        byId: input.userId,
+        at,
+      })),
+    ],
+  }
+  const claimed = await db.cbamCaseLink.updateMany({
+    where: { documentId: input.documentId, status: { in: ['NEEDS_INPUT'] } },
+    data: { handoffInput: next as unknown as Prisma.InputJsonValue, status: 'PENDING', problems: [] },
+  })
+  if (claimed.count === 0) {
+    return { ok: false, code: 'NOT_WAITING', message: 'This case is not waiting for anything from you.' }
+  }
+
+  return { ok: true, outcome: await runCbamHandoff(input.documentId, deps) }
 }

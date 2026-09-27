@@ -47,12 +47,18 @@ export interface CasePayloadLine {
 }
 
 export interface CasePayload {
+  /** The document the case is opened from. Keys every shipment and goods line
+   *  posted for it, so a retried post is recognised rather than added twice. */
+  ref?: string | null
   case: {
     importer_eori: string
     importer_name: string | null
     reporting_year: number
     reporting_quarter: number
     jurisdiction: CbamJurisdiction
+    /** The Arbor organisation that owns the case. Every organisation reaches
+     *  Nucleos as one service tenant, so reuse is keyed on this. */
+    owner_ref?: string | null
   }
   shipment: {
     origin_country: string | null
@@ -71,6 +77,10 @@ export interface BuildCasePayloadInput {
   jurisdiction: CbamJurisdiction
   /** The document's reporting period end; sets the year and quarter. */
   reportingPeriodEnd: Date
+  /** The owning organisation; see CasePayload.case.owner_ref. */
+  ownerRef?: string
+  /** The source document; see CasePayload.ref. */
+  ref?: string
 }
 
 export interface BuildCasePayloadResult {
@@ -127,7 +137,7 @@ export function buildCasePayload(input: BuildCasePayloadInput): BuildCasePayload
     return {
       payload: null,
       problems: [
-        'No importer EORI was confirmed, so no case was opened. Add the EORI to the document and confirm again.',
+        'No importer EORI was confirmed, so no case was opened. Add the importer’s EORI to open it.',
       ],
     }
   }
@@ -203,12 +213,14 @@ export function buildCasePayload(input: BuildCasePayloadInput): BuildCasePayload
 
   return {
     payload: {
+      ref: input.ref ?? null,
       case: {
         importer_eori: importerEori,
         importer_name: text(confirmed, 'importer_name'),
         reporting_year: reportingPeriodEnd.getUTCFullYear(),
         reporting_quarter: quarterOf(reportingPeriodEnd),
         jurisdiction,
+        owner_ref: input.ownerRef ?? null,
       },
       shipment: {
         origin_country: documentOrigin,

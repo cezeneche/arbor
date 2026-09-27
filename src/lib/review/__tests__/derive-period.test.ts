@@ -11,7 +11,7 @@
 // 12 of the 20 record-producing document types have no period fields, so this
 // was the majority case, not an edge case.
 
-import { derivePeriod } from '../review-policy'
+import { derivePeriod, documentPeriod, missingCbamDocumentDate } from '../review-policy'
 
 const at = (iso: string) => new Date(iso)
 
@@ -159,5 +159,102 @@ describe('derivePeriod — last resort', () => {
   it('works with no document type at all', () => {
     const { periodEnd } = derivePeriod({}, { now: at('2026-07-01T06:00:00.000Z') })
     expect(periodEnd.toISOString()).toBe('2026-07-01T23:59:59.999Z')
+  })
+})
+
+// A customs declaration extracted by Nucleos speaks the CBAM vocabulary, which
+// has no declaration_date: the import is dated by import_date, and failing that
+// the invoice. Anchoring only on declaration_date let every one fall through to
+// the review date, so a March import reviewed in September landed in Q3 — and the
+// CBAM case, whose quarter is this period's end, was opened for the wrong quarter.
+describe('derivePeriod — CBAM-extracted customs declarations', () => {
+  const september = at('2026-09-20T10:00:00.000Z')
+
+  it('anchors on import_date', () => {
+    const { periodStart, periodEnd } = derivePeriod(
+      { import_date: '2026-03-14' },
+      { now: september, documentType: 'CUSTOMS_DECLARATION' },
+    )
+    expect(periodStart.toISOString()).toBe('2026-03-14T00:00:00.000Z')
+    expect(periodEnd.toISOString()).toBe('2026-03-14T23:59:59.999Z')
+  })
+
+  it('falls back to invoice_date when there is no import date', () => {
+    const { periodEnd } = derivePeriod(
+      { invoice_date: '2026-03-10' },
+      { now: september, documentType: 'CUSTOMS_DECLARATION' },
+    )
+    expect(periodEnd.toISOString()).toBe('2026-03-10T23:59:59.999Z')
+  })
+
+  it('prefers the import date over the invoice date', () => {
+    const { periodEnd } = derivePeriod(
+      { invoice_date: '2026-02-27', import_date: '2026-04-02' },
+      { now: september, documentType: 'CUSTOMS_DECLARATION' },
+    )
+    expect(periodEnd.toISOString().slice(0, 10)).toBe('2026-04-02')
+  })
+
+  it('still honours declaration_date where the generic extractor supplied one', () => {
+    const { periodEnd } = derivePeriod(
+      { declaration_date: '2026-01-05', import_date: '2026-01-07' },
+      { now: september, documentType: 'CUSTOMS_DECLARATION' },
+    )
+    expect(periodEnd.toISOString().slice(0, 10)).toBe('2026-01-05')
+  })
+
+  it('anchors a CBAM supplier invoice on its import date before its invoice date', () => {
+    const { periodEnd } = derivePeriod(
+      { invoice_date: '2026-03-28', import_date: '2026-04-03' },
+      { now: september, documentType: 'SUPPLIER_INVOICE' },
+    )
+    expect(periodEnd.toISOString().slice(0, 10)).toBe('2026-04-03')
+  })
+})
+
+// derivePeriod always answers, falling back to the day of review. That is fine
+// for a record, but a CBAM case is filed for the quarter its period ends in, so
+// an undated CBAM document was silently filed for the quarter it was reviewed
+// in. documentPeriod answers only from the document; a CBAM document with no
+// such answer must be given its import date before it is confirmed.
+describe('documentPeriod', () => {
+  it('is null when the document dates nothing', () => {
+    expect(documentPeriod({ invoice_number: 'INV-1' }, { documentType: 'CUSTOMS_DECLARATION' })).toBeNull()
+  })
+
+  it('answers from an anchor date', () => {
+    expect(
+      documentPeriod({ import_date: '2026-03-14' }, { documentType: 'CUSTOMS_DECLARATION' })?.periodEnd.toISOString(),
+    ).toBe('2026-03-14T23:59:59.999Z')
+  })
+
+  it('agrees with derivePeriod whenever it answers', () => {
+    const values = { period_start: '2026-01-01', period_end: '2026-03-31' }
+    expect(documentPeriod(values, { documentType: 'ELECTRICITY_BILL' })).toEqual(
+      derivePeriod(values, { documentType: 'ELECTRICITY_BILL', now: new Date('2026-09-01') }),
+    )
+  })
+
+  // A Nucleos-extracted CBAM declaration carries no production_period_*, only
+  // the CBAM vocabulary's dates.
+  it('dates a CBAM declaration by its import date', () => {
+    expect(
+      documentPeriod({ import_date: '2026-02-02' }, { documentType: 'CBAM_DECLARATION' })?.periodEnd.toISOString(),
+    ).toBe('2026-02-02T23:59:59.999Z')
+  })
+})
+
+describe('missingCbamDocumentDate', () => {
+  it('is true for an undated customs declaration', () => {
+    expect(missingCbamDocumentDate('CUSTOMS_DECLARATION', { invoice_date: '' })).toBe(true)
+  })
+
+  it('is false once any date the period is read from is there', () => {
+    expect(missingCbamDocumentDate('CUSTOMS_DECLARATION', { invoice_date: '2026-03-01' })).toBe(false)
+    expect(missingCbamDocumentDate('SUPPLIER_INVOICE', { import_date: '2026-03-01' })).toBe(false)
+  })
+
+  it('does not apply to a document that opens no case', () => {
+    expect(missingCbamDocumentDate('ELECTRICITY_BILL', {})).toBe(false)
   })
 })

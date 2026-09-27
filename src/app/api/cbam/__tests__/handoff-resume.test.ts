@@ -34,12 +34,15 @@ const runCbamHandoff = jest.fn(async (documentId: string) => ({
   status: 'CREATED',
   problems: [],
 }))
+const supply = jest.fn()
 jest.mock('@/lib/layer2/cbam-handoff', () => ({
   runCbamHandoff: (id: string) => runCbamHandoff(id),
+  supplyCbamHandoffIdentifiers: (input: unknown) => supply(input),
   SWEEP_MAX_ATTEMPTS: 5,
 }))
 
 import { POST as resume } from '../handoffs/[documentId]/resume/route'
+import { POST as identifiers } from '../handoffs/[documentId]/identifiers/route'
 import { GET as sweep } from '../../cron/cbam-handoffs/route'
 
 const params = (documentId: string) => ({ params: Promise.resolve({ documentId }) })
@@ -99,5 +102,58 @@ describe('GET /api/cron/cbam-handoffs', () => {
     const res = await sweep(req('Bearer cron-secret') as never)
     expect(runCbamHandoff).toHaveBeenCalledTimes(2)
     expect(await res.json()).toMatchObject({ resumed: 2, errors: 1 })
+  })
+})
+
+// A handoff waiting for an identifier the document did not give. The route only
+// carries the request to supplyCbamHandoffIdentifiers, which decides; what it
+// must get right is whose request it is and what the answer means.
+describe('POST /api/cbam/handoffs/[documentId]/identifiers', () => {
+  const post = (body: unknown) =>
+    identifiers(
+      new Request('http://arbor.test', { method: 'POST', body: JSON.stringify(body) }),
+      params('doc-A'),
+    )
+  const eori = { fields: [{ fieldName: 'importer_eori', value: 'GB123456789000' }] }
+
+  it("supplies them as the caller's organisation and user", async () => {
+    supply.mockResolvedValue({ ok: true, outcome: { caseId: 'case-1', status: 'CREATED', problems: [] } })
+    const res = await post(eori)
+    expect(res.status).toBe(200)
+    expect(supply).toHaveBeenCalledWith({
+      documentId: 'doc-A',
+      entityId: 'entity-A',
+      userId: 'user-A',
+      amendments: eori.fields,
+    })
+    expect(await res.json()).toMatchObject({ caseId: 'case-1', status: 'CREATED' })
+  })
+
+  it('refuses a malformed body without supplying anything', async () => {
+    const res = await post({ fields: 'GB123' })
+    expect(res.status).toBe(400)
+    expect(supply).not.toHaveBeenCalled()
+  })
+
+  it('answers 404 for a handoff the caller does not own', async () => {
+    supply.mockResolvedValue({ ok: false, code: 'NOT_FOUND', message: 'none' })
+    expect((await post(eori)).status).toBe(404)
+  })
+
+  it('answers 409 for a handoff that is not waiting', async () => {
+    supply.mockResolvedValue({ ok: false, code: 'NOT_WAITING', message: 'not waiting' })
+    expect((await post(eori)).status).toBe(409)
+  })
+
+  it('names the values it could not use', async () => {
+    supply.mockResolvedValue({
+      ok: false,
+      code: 'INVALID',
+      message: 'Some of these could not be used.',
+      errors: [{ fieldName: 'importer_eori', message: 'bad' }],
+    })
+    const res = await post(eori)
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ fields: [{ fieldName: 'importer_eori', message: 'bad' }] })
   })
 })

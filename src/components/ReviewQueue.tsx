@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing, confidenceThreshold, textStyles } from '@/lib/design-system'
-import { splitConfirmFields } from '@/lib/review/confirm-split'
+import { clearedFieldEntries, splitConfirmFields } from '@/lib/review/confirm-split'
 
 export interface ReviewField {
   fieldName: string
@@ -22,6 +22,10 @@ export interface ReviewDoc {
   domain: string
   periodStart: string
   periodEnd: string
+  /** Already saved as Declared without a check; confirming makes it Verified. */
+  autoAccepted?: boolean
+  /** A CBAM document with no date to file its case by; dated on its own screen. */
+  needsImportDate?: boolean
   fields: ReviewField[]
 }
 
@@ -53,6 +57,12 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
     // refusal was reported as "check that each value is a number", the reason
     // pointed at the wrong thing.
     const { records, context } = splitConfirmFields(filled)
+    // A cleared field is sent as a clear; left out, the route would certify it
+    // from the extraction as though it had never been cleared.
+    const cleared = clearedFieldEntries(
+      doc.fields.map((f) => ({ fieldName: f.fieldName, rawValue: f.value })),
+      docValues,
+    )
 
     const fields = records.map((f) => ({
       fieldName: f.fieldName,
@@ -71,12 +81,15 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fields,
-        ...(context.length > 0
+        ...(context.length + cleared.length > 0
           ? {
-              context: context.map((f) => ({
-                fieldName: f.fieldName,
-                confirmedValue: docValues[f.fieldName],
-              })),
+              context: [
+                ...context.map((f) => ({
+                  fieldName: f.fieldName,
+                  confirmedValue: docValues[f.fieldName],
+                })),
+                ...cleared,
+              ],
             }
           : {}),
       }),
@@ -112,13 +125,17 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
     setError(null)
     const remaining: ReviewDoc[] = []
     for (const doc of docs) {
+      if (doc.needsImportDate) {
+        remaining.push(doc)
+        continue
+      }
       const ok = await confirmDoc(doc)
       if (!ok) remaining.push(doc)
     }
     setBusy(null)
     setDocs(remaining)
     router.refresh()
-    if (remaining.length > 0) setError('Some documents could not be confirmed automatically - check their values below.')
+    if (remaining.some((d) => !d.needsImportDate)) setError('Some documents could not be confirmed automatically - check their values below.')
   }
 
   // Survives the row leaving the queue. Once a document is confirmed it is gone
@@ -197,16 +214,26 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
                 <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>{doc.fileName}</span>
                 <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, marginLeft: spacing[2] }}>
                   {readable(doc.documentType.toLowerCase())} · {new Date(doc.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} – {new Date(doc.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                  {doc.autoAccepted ? ' · saved without a check — confirm to make it Verified' : ''}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => handleConfirm(doc)}
-                disabled={busy !== null}
-                style={{ padding: '7px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '4px', cursor: busy ? 'default' : 'pointer' }}
-              >
-                {busy === doc.documentId ? 'Saving…' : 'Confirm'}
-              </button>
+              {doc.needsImportDate ? (
+                <a
+                  href={`/upload/${encodeURIComponent(doc.documentId)}/review`}
+                  style={{ padding: '7px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '4px', textDecoration: 'none' }}
+                >
+                  Add the import date
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleConfirm(doc)}
+                  disabled={busy !== null}
+                  style={{ padding: '7px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '4px', cursor: busy ? 'default' : 'pointer' }}
+                >
+                  {busy === doc.documentId ? 'Saving…' : 'Confirm'}
+                </button>
+              )}
             </div>
             <div style={{ padding: spacing[2] }}>
               {doc.fields.map((f) => {

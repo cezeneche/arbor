@@ -3,6 +3,8 @@
 // still block on per-document review (high-stakes), and the maths behind the
 // weekly review digest.
 
+import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
+
 // High-stakes types always route to per-document review and are never silently
 // declared — a wrong CBAM/customs/certificate record carries real liability.
 export const CRITICAL_DOCUMENT_TYPES = new Set([
@@ -38,6 +40,22 @@ export const NUMERIC_FIELDS = new Set([
   'total_value', 'factor_value', 'total_co2e', 'quantity_m3', 'nitrogen_content_percent',
   'energy_consumption', 'energy_consumption_total', 'average_herd_size',
 ])
+
+/**
+ * How many values a document adds to the weekly digest. A document awaiting
+ * review counts the fields it was unsure of. An auto-accepted one counts every
+ * figure it saved: none was checked, and checking them is what makes them
+ * Verified. It has no flags by construction, so counting flags left it out.
+ */
+export function digestFieldCount(doc: {
+  autoAccepted: boolean
+  fields: readonly { fieldName: string; rawValue: string | null; flagged: boolean }[]
+}): number {
+  if (doc.autoAccepted) {
+    return doc.fields.filter(f => NUMERIC_FIELDS.has(f.fieldName) && (f.rawValue ?? '').trim() !== '').length
+  }
+  return doc.fields.filter(f => f.flagged).length
+}
 
 export interface ReviewQueueSummary {
   fieldCount: number
@@ -80,9 +98,13 @@ const PERIOD_ANCHOR_FIELDS: Record<string, string[]> = {
   FUEL_RECEIPT: ['purchase_date'],
   MATERIAL_INTAKE: ['delivery_date'],
   DELIVERY_NOTE: ['delivery_date'],
-  CUSTOMS_DECLARATION: ['declaration_date'],
+  // declaration_date is the generic extractor's name; a Nucleos (CBAM)
+  // extraction has none and dates the import instead. Without the CBAM names a
+  // customs declaration fell through to the review date, and its case to the
+  // quarter it happened to be reviewed in.
+  CUSTOMS_DECLARATION: ['declaration_date', 'import_date', 'invoice_date'],
   BILL_OF_LADING: ['date_of_issue'],
-  SUPPLIER_INVOICE: ['invoice_date'],
+  SUPPLIER_INVOICE: ['import_date', 'invoice_date'],
   PURCHASE_ORDER: ['po_date'],
   FREIGHT_INVOICE: ['shipment_date', 'invoice_date'],
   CROP_YIELD_RECORD: ['harvest_date'],
@@ -91,6 +113,9 @@ const PERIOD_ANCHOR_FIELDS: Record<string, string[]> = {
   PRODUCT_CERTIFICATE: ['issue_date'],
   ENVIRONMENTAL_CERTIFICATE: ['issue_date'],
   BILL_OF_MATERIALS: ['effective_date'],
+  // After production_period_*: a Nucleos extraction of a CBAM declaration
+  // carries the CBAM vocabulary's dates instead.
+  CBAM_DECLARATION: ['import_date', 'invoice_date'],
 }
 
 /** Year-valued fields naming the period the document's figures describe. */
@@ -122,21 +147,16 @@ export interface DerivePeriodOptions {
 }
 
 /**
- * Derive a record's period from extracted field values. Pure and deterministic:
- * given the same document, it returns the same period no matter when it runs,
- * which is what lets a re-upload supersede rather than duplicate.
+ * The period the document itself states or dates, or null when it does
+ * neither. Steps 1-3 of the resolution order, with no fallback.
  */
-export function derivePeriod(
+export function documentPeriod(
   values: Record<string, string | null | undefined>,
-  opts: DerivePeriodOptions = {},
-): { periodStart: Date; periodEnd: Date } {
-  const now = opts.now ?? new Date()
-
+  opts: Pick<DerivePeriodOptions, 'documentType'> = {},
+): { periodStart: Date; periodEnd: Date } | null {
   // 1. The document states its own period.
-  const startRaw = values['period_start'] ?? values['production_period_start']
-  const endRaw = values['period_end'] ?? values['production_period_end']
-  const statedStart = parseDate(startRaw)
-  const statedEnd = parseDate(endRaw)
+  const statedStart = parseDate(values['period_start'] ?? values['production_period_start'])
+  const statedEnd = parseDate(values['period_end'] ?? values['production_period_end'])
   if (statedStart && statedEnd) return { periodStart: statedStart, periodEnd: statedEnd }
 
   // 2. A single activity date — the record covers that day.
@@ -158,6 +178,42 @@ export function derivePeriod(
       periodEnd: new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999)),
     }
   }
+
+  return null
+}
+
+/**
+ * Whether a CBAM document still needs its import date before it is confirmed.
+ *
+ * A CBAM case is filed for the quarter its period ends in. derivePeriod's last
+ * resort is the day of review, so an undated declaration was filed, silently,
+ * for the quarter someone happened to review it in — and its records carried
+ * that period too. The date is asked for at review, where the document is in
+ * front of the person, rather than after the records are certified.
+ */
+export function missingCbamDocumentDate(
+  documentType: string,
+  values: Record<string, string | null | undefined>,
+): boolean {
+  return isCbamRelevant(documentType) && documentPeriod(values, { documentType }) === null
+}
+
+/**
+ * Derive a record's period from extracted field values. Pure and deterministic:
+ * given the same document, it returns the same period no matter when it runs,
+ * which is what lets a re-upload supersede rather than duplicate.
+ */
+export function derivePeriod(
+  values: Record<string, string | null | undefined>,
+  opts: DerivePeriodOptions = {},
+): { periodStart: Date; periodEnd: Date } {
+  const now = opts.now ?? new Date()
+
+  const stated = documentPeriod(values, opts)
+  if (stated) return stated
+
+  const statedStart = parseDate(values['period_start'] ?? values['production_period_start'])
+  const statedEnd = parseDate(values['period_end'] ?? values['production_period_end'])
 
   // 4. Half a period is not enough to trust, so a lone stated bound falls through
   //    to the day-truncated window rather than being paired with a guess.

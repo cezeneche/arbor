@@ -3,20 +3,23 @@
 // A share is a frozen submission: the records it was issued with, which its
 // integrity hash covers. A figure corrected afterwards is superseded, not
 // edited, so the issued record is still there to show, marked as corrected.
-// Shares issued before snapshots existed carry no record list and keep the
-// live scope they were created with.
+// Shares issued before snapshots existed are marked as such and keep the live
+// scope they were created with. The mark is explicit because an empty record
+// list cannot tell the two apart: a snapshot of an empty scope read as legacy
+// began showing every record added to that scope afterwards.
 import type { DataDomain, Prisma } from '@prisma/client'
 
 export interface ShareScope {
   entityId: string
+  isSnapshot: boolean
   recordIds: string[]
   domain: DataDomain | null
   periodStart: Date | null
   periodEnd: Date | null
 }
 
-export function isFrozenShare(share: Pick<ShareScope, 'recordIds'>): boolean {
-  return share.recordIds.length > 0
+export function isFrozenShare(share: Pick<ShareScope, 'isSnapshot' | 'recordIds'>): boolean {
+  return share.isSnapshot
 }
 
 export function shareRecordWhere(share: ShareScope): Prisma.DataRecordWhereInput {

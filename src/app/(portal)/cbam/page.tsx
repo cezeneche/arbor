@@ -7,6 +7,7 @@ import { ownedCaseIds } from '@/lib/nucleos/case-ownership'
 import { CbamCaseList } from '@/components/CbamCaseList'
 import { Pagination } from '@/components/Pagination'
 import { CbamUnfinishedHandoffs, type UnfinishedHandoff } from '@/components/CbamUnfinishedHandoffs'
+import { handoffNeeds } from '@/lib/layer2/cbam-handoff'
 import { CbamScopeChecker } from '@/components/CbamScopeChecker'
 import { CbamStartCase } from '@/components/CbamStartCase'
 import { CbamRequestData } from '@/components/CbamRequestData'
@@ -70,6 +71,7 @@ export default async function CbamPage({
         nucleosCaseId: true,
         status: true,
         problems: true,
+        handoffInput: true,
         document: { select: { fileName: true } },
       },
     })
@@ -79,6 +81,7 @@ export default async function CbamPage({
       caseId: l.nucleosCaseId,
       status: l.status,
       problems: l.problems,
+      ...(l.status === 'NEEDS_INPUT' ? { needs: handoffNeeds(l.handoffInput) } : {}),
     }))
   }
 

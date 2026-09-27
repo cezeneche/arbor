@@ -3,7 +3,7 @@ import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { DOMAIN_BY_DOCUMENT_TYPE, DataDomain } from '@/lib/constants'
-import { derivePeriod, summariseReviewQueue } from '@/lib/review/review-policy'
+import { derivePeriod, missingCbamDocumentDate, summariseReviewQueue } from '@/lib/review/review-policy'
 import { selectReviewableFields } from '@/lib/review/reviewable-fields'
 import { ReviewQueue, type ReviewDoc } from '@/components/ReviewQueue'
 
@@ -12,10 +12,16 @@ export default async function ReviewPage() {
   const entityId = getSessionUser(session).entityId as string
 
   const documents = await prisma.document.findMany({
-    where: { entityId, status: 'REVIEW_REQUIRED' },
+    // Auto-accepted documents too: saved Declared with nobody checking them,
+    // and this queue is where the check that makes them Verified happens.
+    where: {
+      entityId,
+      OR: [{ status: 'REVIEW_REQUIRED' }, { status: 'ACCEPTED', autoAcceptedAt: { not: null } }],
+    },
     orderBy: { submittedAt: 'desc' },
     select: {
       id: true,
+      autoAcceptedAt: true,
       fileName: true,
       documentType: true,
       extractionJobs: {
@@ -48,6 +54,8 @@ export default async function ReviewPage() {
       domain: (DOMAIN_BY_DOCUMENT_TYPE[doc.documentType] ?? DataDomain.COMPLIANCE) as string,
       periodStart: periodStart.toISOString(),
       periodEnd: periodEnd.toISOString(),
+      autoAccepted: doc.autoAcceptedAt !== null,
+      needsImportDate: missingCbamDocumentDate(doc.documentType, values),
       fields: numeric.map((f) => ({
         fieldName: f.fieldName,
         value: f.rawValue ?? '',

@@ -43,16 +43,28 @@ export interface RemovalPlan {
 }
 
 /**
- * Acceptance is the point of no return: an accepted document, or one holding
- * records however it got them, is withdrawn rather than deleted. Everything else
- * — still in review, or rejected because it could not be read — never reached
- * the chain, so deleting it removes nothing anyone can audit.
+ * Acceptance is the point of no return: an accepted or withdrawn document, or
+ * one that has ever held records however it got them, is withdrawn rather than
+ * deleted. Everything else — still in review, or rejected because it could not
+ * be read — never reached the chain, so deleting it removes nothing anyone can
+ * audit.
+ *
+ * `records` are the active ones, which are what a withdrawal deactivates. They
+ * cannot also answer whether the document is certified: once withdrawn it has
+ * none, and a second delete used to read that as "never saved" and hard-delete
+ * the evidence its chain entries still name.
  */
 export function planDocumentRemoval(input: {
   status: string
   records: WithdrawableRecord[]
+  /** Whether the document has any records at all, active or not. */
+  hasRecordHistory?: boolean
 }): RemovalPlan {
-  const certified = input.status === 'ACCEPTED' || input.records.length > 0
+  const certified =
+    input.status === 'ACCEPTED' ||
+    input.status === 'WITHDRAWN' ||
+    input.records.length > 0 ||
+    input.hasRecordHistory === true
   return certified
     ? { mode: 'WITHDRAW', recordIds: input.records.map(r => r.id) }
     : { mode: 'HARD_DELETE', recordIds: [] }

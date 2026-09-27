@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- test doubles stand in for Prisma's generic argument types */
-import { enqueueCbamHandoff, runCbamHandoff, LEASE_MS } from '../cbam-handoff'
+import { enqueueCbamHandoff, runCbamHandoff, supplyCbamHandoffIdentifiers, LEASE_MS } from '../cbam-handoff'
 import type { CaseWriteProgress } from '@/lib/nucleos/case-writer'
 
 // The handoff is the join between a certified Arbor confirmation and a Nucleos
@@ -97,6 +97,14 @@ function fakeDb(seed: Partial<Row>[] = []) {
         return row
       }),
       findUnique: jest.fn(async ({ where }: any) => rows.get(where.documentId) ?? null),
+      findFirst: jest.fn(async ({ where }: any) => {
+        for (const row of rows.values()) {
+          if (where.nucleosCaseId && row.nucleosCaseId !== where.nucleosCaseId) continue
+          if (where.entityId?.not && row.entityId === where.entityId.not) continue
+          return row
+        }
+        return null
+      }),
     },
   }
 }
@@ -186,6 +194,30 @@ describe('runCbamHandoff', () => {
       attemptStartedAt: null,
       attempts: 1,
     })
+  })
+
+  // Nucleos reuses a case for the same importer and quarter, and every Arbor
+  // organisation shares one service identity — so without an owner in the key a
+  // second organisation declaring the same EORI got the first one's case back.
+  it('names the owning organisation and the document on the case it opens', async () => {
+    const db = await enqueued()
+    const writeCase = landingWriter()
+    await runCbamHandoff('doc-1', { db: db as never, writeCase })
+    expect(writeCase.mock.calls[0][0].case.owner_ref).toBe('ent-1')
+    expect(writeCase.mock.calls[0][0].ref).toBe('doc-1')
+  })
+
+  it('refuses a case another organisation already holds, and links nothing', async () => {
+    const db = fakeDb([{ documentId: 'doc-other', entityId: 'ent-2', nucleosCaseId: 'case-1', status: 'CREATED' }])
+    await enqueueCbamHandoff(db as never, input())
+    const writeCase = landingWriter('case-1')
+
+    const out = await runCbamHandoff('doc-1', { db: db as never, writeCase })
+
+    expect(out.status).toBe('FAILED')
+    expect(out.caseId).toBeNull()
+    expect(out.problems.join(' ')).toMatch(/another organisation/i)
+    expect(db.rows.get('doc-1')!.nucleosCaseId).toBeNull()
   })
 
   it('stamps the recorded jurisdiction on the case', async () => {
@@ -288,14 +320,25 @@ describe('runCbamHandoff', () => {
     expect(db.rows.get('doc-1')).toMatchObject({ nucleosCaseId: 'case-1', attemptStartedAt: null })
   })
 
-  it('records a payload that cannot be assembled, and never calls the boundary', async () => {
-    const db = await enqueued({ confirmed: new Map([['lines[0].cn_code', '72081000']]) })
+  // Retrying the same stored input cannot supply an identifier it lacks. The
+  // handoff used to be FAILED and retried until the sweep gave up; it now waits
+  // for the person who can supply it, and says what it is waiting for.
+  it('waits for input when no case can be built, and never calls the boundary', async () => {
+    const db = await enqueued({ confirmed: new Map([['lines[0].cn_code', '72081000'], ['lines[0].net_mass_kg', '24000']]) })
     const writeCase = landingWriter()
     const out = await runCbamHandoff('doc-1', { db: db as never, writeCase })
-    expect(out.status).toBe('FAILED')
+    expect(out.status).toBe('NEEDS_INPUT')
+    expect(out.needs).toEqual([{ fieldName: 'importer_eori', label: 'Importer EORI' }])
     expect(writeCase).not.toHaveBeenCalled()
     expect(out.problems.join(' ')).toMatch(/importer/i)
-    expect(db.rows.get('doc-1')).toMatchObject({ status: 'FAILED', nucleosCaseId: null })
+    expect(db.rows.get('doc-1')).toMatchObject({ status: 'NEEDS_INPUT', nucleosCaseId: null })
+  })
+
+  it('is not retried while it waits for input', async () => {
+    const db = await enqueued({ confirmed: new Map([['lines[0].cn_code', '72081000']]) })
+    await runCbamHandoff('doc-1', { db: db as never, writeCase: landingWriter() })
+    const again = await runCbamHandoff('doc-1', { db: db as never, writeCase: landingWriter() })
+    expect(again).toMatchObject({ attempted: false, status: 'NEEDS_INPUT' })
   })
 
   it('says plainly when a row carries no recorded input to resume from', async () => {
@@ -310,5 +353,61 @@ describe('runCbamHandoff', () => {
   it('reports nothing to do for a document with no handoff', async () => {
     const out = await runCbamHandoff('doc-x', { db: fakeDb() as never, writeCase: landingWriter() })
     expect(out).toMatchObject({ attempted: false, status: 'SKIPPED' })
+  })
+})
+
+describe('supplyCbamHandoffIdentifiers', () => {
+  const withoutEori = new Map([...CONFIRMED].filter(([k]) => k !== 'importer_eori'))
+
+  async function waiting() {
+    const db = await enqueued({ confirmed: withoutEori })
+    await runCbamHandoff('doc-1', { db: db as never, writeCase: landingWriter() })
+    return db
+  }
+
+  it('adds the missing EORI, records who supplied it, and opens the case', async () => {
+    const db = await waiting()
+    const writeCase = landingWriter()
+    const out = await supplyCbamHandoffIdentifiers(
+      { documentId: 'doc-1', entityId: 'ent-1', userId: 'usr-1', amendments: [{ fieldName: 'importer_eori', value: 'gb123456789000' }] },
+      { db: db as never, writeCase },
+    )
+    expect(out).toMatchObject({ ok: true, outcome: { status: 'CREATED', caseId: 'case-1' } })
+    expect(writeCase.mock.calls[0][0].case.importer_eori).toBe('GB123456789000')
+    const stored = db.rows.get('doc-1')!.handoffInput as any
+    expect(stored.confirmed.importer_eori).toBe('GB123456789000')
+    expect(stored.amendments).toEqual([
+      expect.objectContaining({ fieldName: 'importer_eori', value: 'GB123456789000', byId: 'usr-1' }),
+    ])
+  })
+
+  it("refuses another organisation's handoff", async () => {
+    const db = await waiting()
+    const out = await supplyCbamHandoffIdentifiers(
+      { documentId: 'doc-1', entityId: 'ent-2', userId: 'usr-9', amendments: [{ fieldName: 'importer_eori', value: 'GB123456789000' }] },
+      { db: db as never, writeCase: landingWriter() },
+    )
+    expect(out).toMatchObject({ ok: false, code: 'NOT_FOUND' })
+  })
+
+  it('refuses a handoff that is not waiting for input', async () => {
+    const db = await enqueued()
+    const out = await supplyCbamHandoffIdentifiers(
+      { documentId: 'doc-1', entityId: 'ent-1', userId: 'usr-1', amendments: [{ fieldName: 'importer_eori', value: 'GB123456789000' }] },
+      { db: db as never, writeCase: landingWriter() },
+    )
+    expect(out).toMatchObject({ ok: false, code: 'NOT_WAITING' })
+  })
+
+  it('writes nothing when a value is refused', async () => {
+    const db = await waiting()
+    const before = JSON.stringify(db.rows.get('doc-1')!.handoffInput)
+    const out = await supplyCbamHandoffIdentifiers(
+      { documentId: 'doc-1', entityId: 'ent-1', userId: 'usr-1', amendments: [{ fieldName: 'importer_eori', value: '12' }] },
+      { db: db as never, writeCase: landingWriter() },
+    )
+    expect(out).toMatchObject({ ok: false, code: 'INVALID' })
+    expect(JSON.stringify(db.rows.get('doc-1')!.handoffInput)).toBe(before)
+    expect(db.rows.get('doc-1')!.status).toBe('NEEDS_INPUT')
   })
 })

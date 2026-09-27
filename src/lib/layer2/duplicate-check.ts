@@ -68,3 +68,18 @@ export function findDuplicates(
 
   return matches
 }
+
+/**
+ * The prior records "replace" retires, per field.
+ *
+ * Each new record supersedes the prior records for its own field and no other.
+ * Flattened into one set, the first record written superseded every duplicate —
+ * the correction lineage then named the wrong record for all but one field.
+ */
+export function replacementsByField(matches: DuplicateMatch[]): Map<string, string[]> {
+  const byField = new Map<string, string[]>()
+  for (const m of matches) {
+    byField.set(m.fieldName, [...(byField.get(m.fieldName) ?? []), ...m.priorIds])
+  }
+  return byField
+}

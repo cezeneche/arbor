@@ -137,12 +137,44 @@ describe('CBAM field names', () => {
       expect(cbamCompulsoryFieldsPresent(m)).toBe(true)
     })
 
-    // One complete line is enough. A declaration with a good line and a
-    // half-read one is still evidenced for the goods it did read.
-    it('is true when one line qualifies and another does not', () => {
+    // The tier is the document's, and every record the document writes carries
+    // it — including the half-read line's. One good line used to be enough, so a
+    // 6-digit heading on a second line was saved Verified on the strength of the
+    // first. The spec makes a short code a critical flag on the document.
+    it('is false when one line qualifies and another has a 6-digit code', () => {
       const m = complete()
       m.set('lines[1].cn_code', '760110')
+      m.set('lines[1].net_mass_kg', '5000')
+      expect(cbamCompulsoryFieldsPresent(m)).toBe(false)
+    })
+
+    it('is false when a second line has no weight', () => {
+      const m = complete()
+      m.set('lines[1].cn_code', '76011000')
+      expect(cbamCompulsoryFieldsPresent(m)).toBe(false)
+    })
+
+    it('ignores a line the reviewer cleared entirely', () => {
+      const m = complete()
+      m.set('lines[1].cn_code', '')
+      m.set('lines[1].net_mass_kg', '')
       expect(cbamCompulsoryFieldsPresent(m)).toBe(true)
+    })
+
+    it('is true when every line qualifies', () => {
+      const m = complete()
+      m.set('lines[1].cn_code', '7601 1000')
+      m.set('lines[1].net_mass_kg', '5000')
+      expect(cbamCompulsoryFieldsPresent(m)).toBe(true)
+    })
+
+    it('is false when a second line has neither a stated nor a document origin', () => {
+      const m = complete()
+      m.delete('origin_country')
+      m.set('lines[0].origin_country', 'TR')
+      m.set('lines[1].cn_code', '76011000')
+      m.set('lines[1].net_mass_kg', '5000')
+      expect(cbamCompulsoryFieldsPresent(m)).toBe(false)
     })
 
     it('is false for an empty confirmation', () => {
@@ -184,6 +216,15 @@ describe('cbamCompulsoryFieldsPresent, given what each value can be confirmed ag
   it('fails when the source text map knows nothing of a value', () => {
     const partial = new Map<string, string | null>([['importer_eori', 'Importer EORI GB123456789000']])
     expect(cbamCompulsoryFieldsPresent(values(), partial)).toBe(false)
+  })
+
+  it('fails when a second line was read without source text', () => {
+    const m = values()
+    m.set('lines[1].cn_code', '76011000')
+    m.set('lines[1].net_mass_kg', '5000')
+    expect(
+      cbamCompulsoryFieldsPresent(m, sourceText({ 'lines[1].cn_code': 'Commodity code 7601 1000' })),
+    ).toBe(false)
   })
 
   it('is unchanged when no source text is supplied at all', () => {

@@ -1,4 +1,4 @@
-import { isRecordProducingField, splitConfirmFields } from '../confirm-split'
+import { isRecordProducingField, splitConfirmFields, clearedFieldEntries } from '../confirm-split'
 
 describe('isRecordProducingField', () => {
   it('is true for the measured fields of an ordinary document', () => {
@@ -47,5 +47,42 @@ describe('splitConfirmFields', () => {
     const { records, context } = splitConfirmFields([{ fieldName: 'importer_eori', value: 'X' }])
     expect(records).toEqual([])
     expect(context).toHaveLength(1)
+  })
+})
+
+// The confirm route certifies the extraction with the reviewer's values laid
+// over it, so a field left out of the request keeps its extracted value. Both
+// review screens sent only fields that still had a value, which made clearing a
+// compulsory field a no-op: the value reappeared at certification and the
+// document was saved Verified. A clear has to be sent as a clear.
+describe('clearedFieldEntries', () => {
+  const fields = [
+    { fieldName: 'meter_reference', rawValue: 'MPAN 12 3456 7890' },
+    { fieldName: 'supplier_name', rawValue: 'Octopus Energy' },
+    { fieldName: 'tariff_name', rawValue: null },
+    { fieldName: 'total_consumption_kwh', rawValue: '12400' },
+  ]
+
+  it('sends an explicit empty value for each field the reviewer cleared', () => {
+    expect(
+      clearedFieldEntries(fields, {
+        meter_reference: '',
+        supplier_name: 'Octopus Energy',
+        tariff_name: '',
+        total_consumption_kwh: '  ',
+      }),
+    ).toEqual([
+      { fieldName: 'meter_reference', confirmedValue: '' },
+      { fieldName: 'total_consumption_kwh', confirmedValue: '' },
+    ])
+  })
+
+  it('does not report a field the extraction never found', () => {
+    expect(clearedFieldEntries(fields, { tariff_name: '' })).toEqual([])
+  })
+
+  it('does not report a field the screen never showed', () => {
+    // No entry in values means the reviewer had no way to clear it.
+    expect(clearedFieldEntries(fields, {})).toEqual([])
   })
 })

@@ -7,6 +7,8 @@ export interface HandoffState {
   caseId: string | null
   status: string
   problems: string[]
+  /** What a NEEDS_INPUT handoff is waiting for. */
+  needs?: { fieldName: string; label: string }[]
 }
 
 // Resume opening the CBAM case for a confirmed document. The figures are

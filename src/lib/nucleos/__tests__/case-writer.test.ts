@@ -358,8 +358,162 @@ describe('writeCbamCase — resuming from recorded progress', () => {
       progress: {
         caseId: 'case-1',
         shipmentId: 'ship-1',
+        // Progress recorded before shipments were kept per origin is read as
+        // the one shipment it was: the document's origin.
+        shipments: { IN: 'ship-1' },
         lines: { '0': { goodsLineId: 'gl-0', emissionsRecorded: true } },
       },
     })
+  })
+})
+
+// A post whose row committed in Nucleos but whose response was lost records no
+// progress, so the resume posts it again. Each row carries a key derived from
+// the document, and Nucleos returns the first row for a repeated key instead of
+// adding the goods twice.
+describe('writeCbamCase — retries are recognisable', () => {
+  const ORIGINAL = { ...process.env }
+  beforeEach(() => {
+    process.env.NUCLEOS_URL = 'https://nucleos.test'
+    process.env.NUCLEOS_INTERNAL_TOKEN = 'token'
+  })
+  afterEach(() => {
+    process.env = { ...ORIGINAL }
+  })
+
+  it('keys every shipment and goods line to the document it came from', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-1' }],
+      '/api/cbam/shipments': [{ id: 'ship-1' }],
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }],
+      '/api/cbam/emissions': [{ id: 'em-0' }],
+    })
+
+    await writeCbamCase(payload({ ref: 'doc-1' }), emptyProgress(), { fetchImpl: impl as never })
+
+    expect(calls[1].body).toMatchObject({ client_ref: 'doc-1:shipment:IN' })
+    expect(calls[2].body).toMatchObject({ client_ref: 'doc-1:line:0' })
+  })
+
+  it('sends the owning organisation with the case', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-1' }],
+      '/api/cbam/shipments': [{ id: 'ship-1' }],
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }],
+      '/api/cbam/emissions': [{ id: 'em-0' }],
+    })
+    const p = payload()
+    await writeCbamCase({ ...p, case: { ...p.case, owner_ref: 'ent-1' } }, emptyProgress(), {
+      fetchImpl: impl as never,
+    })
+    expect(calls[0].body).toMatchObject({ owner_ref: 'ent-1' })
+  })
+
+  it('refuses a case Nucleos returns for another regime', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-eu', jurisdiction: 'EU' }],
+    })
+    await expect(writeCbamCase(payload(), emptyProgress(), { fetchImpl: impl as never })).rejects.toThrow(
+      /another regime/i,
+    )
+    expect(calls.map(c => c.path)).toEqual(['/api/cbam/cases'])
+  })
+
+  it('refuses a case Nucleos returns for another organisation', async () => {
+    const { impl } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-x', jurisdiction: 'UK', owner_ref: 'ent-2' }],
+    })
+    const p = payload()
+    await expect(
+      writeCbamCase({ ...p, case: { ...p.case, owner_ref: 'ent-1' } }, emptyProgress(), {
+        fetchImpl: impl as never,
+      }),
+    ).rejects.toThrow(/another organisation/i)
+  })
+})
+
+// Nucleos keeps a goods line's country of origin on its shipment, not on the
+// line. One shipment carrying the document-level origin gave every line that
+// origin, so a declaration of Indian coil and Turkish aluminium was calculated
+// as all Indian — the wrong default values, the wrong carbon price relief.
+describe('writeCbamCase — goods of different origins', () => {
+  const ORIGINAL = { ...process.env }
+  beforeEach(() => {
+    process.env.NUCLEOS_URL = 'https://nucleos.test'
+    process.env.NUCLEOS_INTERNAL_TOKEN = 'token'
+  })
+  afterEach(() => {
+    process.env = { ...ORIGINAL }
+  })
+
+  const mixed = () =>
+    payload({
+      lines: [
+        { ...payload().lines[0], lineIndex: 0, origin_country: 'IN', emissions: null },
+        { ...payload().lines[0], lineIndex: 1, cn_code: '76011000', origin_country: 'TR', emissions: null },
+        { ...payload().lines[0], lineIndex: 2, cn_code: '72082500', origin_country: 'IN', emissions: null },
+      ],
+    })
+
+  it('puts each line on a shipment from its own country of origin', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-1' }],
+      '/api/cbam/shipments': [{ id: 'ship-in' }, { id: 'ship-tr' }],
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }, { id: 'gl-1' }, { id: 'gl-2' }],
+    })
+
+    const result = await writeCbamCase(mixed(), emptyProgress(), { fetchImpl: impl as never })
+
+    const shipments = calls.filter(c => c.path === '/api/cbam/shipments')
+    expect(shipments.map(c => (c.body as { origin_country: string }).origin_country)).toEqual(['IN', 'TR'])
+    const lines = calls.filter(c => c.path === '/api/cbam/goods-lines')
+    expect(lines.map(c => (c.body as { shipment_id: string }).shipment_id)).toEqual([
+      'ship-in',
+      'ship-tr',
+      'ship-in',
+    ])
+    expect(result.progress.shipments).toEqual({ IN: 'ship-in', TR: 'ship-tr' })
+    expect(result.problems).toEqual([])
+  })
+
+  it('adds only the shipment a resumed legacy handoff is missing', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/shipments': [{ id: 'ship-tr' }],
+      '/api/cbam/goods-lines': [{ id: 'gl-1' }],
+    })
+
+    const result = await writeCbamCase(
+      mixed(),
+      {
+        caseId: 'case-1',
+        shipmentId: 'ship-in',
+        lines: {
+          '0': { goodsLineId: 'gl-0', emissionsRecorded: false },
+          '2': { goodsLineId: 'gl-2', emissionsRecorded: false },
+        },
+      },
+      { fetchImpl: impl as never },
+    )
+
+    expect(calls.map(c => c.path)).toEqual(['/api/cbam/shipments', '/api/cbam/goods-lines'])
+    expect(calls[0].body).toMatchObject({ cbam_case_id: 'case-1', origin_country: 'TR' })
+    expect(calls[1].body).toMatchObject({ shipment_id: 'ship-tr', cn_code: '76011000' })
+    expect(result.goodsLineIds).toEqual(['gl-0', 'gl-1', 'gl-2'])
+  })
+
+  it('still lands the other origins when one shipment cannot be added', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-1' }],
+      '/api/cbam/shipments': [{ id: 'ship-in' }, 500],
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }, { id: 'gl-2' }],
+    })
+
+    const result = await writeCbamCase(mixed(), emptyProgress(), { fetchImpl: impl as never })
+
+    expect(calls.filter(c => c.path === '/api/cbam/shipments')).toHaveLength(2)
+    expect(result.goodsLineIds).toEqual(['gl-0', 'gl-2'])
+    expect(result.problems).toHaveLength(1)
+    expect(result.problems[0]).toMatch(/TR/)
+    expect(result.problems[0]).toMatch(/goods line 2\b/i)
   })
 })

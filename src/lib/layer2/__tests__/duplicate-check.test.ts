@@ -12,7 +12,7 @@
 // field, overlapping period. It exists to raise a question with the user, not to
 // decide anything on its own.
 
-import { findDuplicates, type CandidateField, type PriorRecord } from '../duplicate-check'
+import { findDuplicates, type CandidateField, type PriorRecord, replacementsByField } from '../duplicate-check'
 
 const candidate = (o: Partial<CandidateField> = {}): CandidateField => ({
   fieldName: 'declared_weight',
@@ -84,5 +84,34 @@ describe('findDuplicates', () => {
   it('returns one entry per field, not one per prior record', () => {
     const matches = findDuplicates([candidate()], [prior({ id: 'a' }), prior({ id: 'b' })])
     expect(matches).toHaveLength(1)
+  })
+})
+
+// "Replace" supersedes each prior record with the new record for the SAME field.
+// The route used to OR every duplicate id into every field's supersession query,
+// so the first new record written superseded all of them — the electricity total
+// was recorded as corrected by the gas total. Values looked right; lineage did not.
+describe('replacementsByField', () => {
+  const at = (iso: string) => new Date(iso)
+  const q1 = { periodStart: at('2026-01-01'), periodEnd: at('2026-03-31') }
+
+  it('keeps each field’s prior records with that field only', () => {
+    const matches = findDuplicates(
+      [
+        { fieldName: 'total_consumption_kwh', domain: 'ENERGY', ...q1 },
+        { fieldName: 'total_consumption_m3', domain: 'ENERGY', ...q1 },
+      ],
+      [
+        { id: 'kwh-old', fieldName: 'total_consumption_kwh', domain: 'ENERGY', value: 1, unit: 'MJ', ...q1 },
+        { id: 'm3-old', fieldName: 'total_consumption_m3', domain: 'ENERGY', value: 2, unit: 'm3', ...q1 },
+      ],
+    )
+    const byField = replacementsByField(matches)
+    expect(byField.get('total_consumption_kwh')).toEqual(['kwh-old'])
+    expect(byField.get('total_consumption_m3')).toEqual(['m3-old'])
+  })
+
+  it('has nothing for a field that duplicated nothing', () => {
+    expect(replacementsByField([]).get('total_consumption_kwh')).toBeUndefined()
   })
 })

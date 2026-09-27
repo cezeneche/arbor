@@ -36,5 +36,6 @@ export async function POST(
     caseId: outcome.caseId,
     status: outcome.status,
     problems: outcome.problems,
+    needs: outcome.needs ?? [],
   })
 }

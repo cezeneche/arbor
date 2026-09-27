@@ -1,6 +1,7 @@
 'use client'
 
-import { CbamResumeHandoff } from './CbamResumeHandoff'
+import { CbamResumeHandoff, type HandoffState } from './CbamResumeHandoff'
+import { CbamHandoffInputs } from './CbamHandoffInputs'
 import { certifyTier } from '@/lib/layer2/certification-policy'
 import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
 import { cbamCompulsoryFieldsPresent } from '@/lib/nucleos/cbam-fields'
@@ -12,8 +13,8 @@ import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { TierBadge } from './TierBadge'
 import { layoutReviewFields } from '@/lib/review/review-layout'
 import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
-import { derivePeriod } from '@/lib/review/review-policy'
-import { isRecordProducingField } from '@/lib/review/confirm-split'
+import { derivePeriod, documentPeriod, missingCbamDocumentDate } from '@/lib/review/review-policy'
+import { clearedFieldEntries, isRecordProducingField } from '@/lib/review/confirm-split'
 
 // The requirement level used to be a section heading. Three headings meant three
 // grids and three ragged last rows, so it travels on the card instead — in the
@@ -48,6 +49,8 @@ interface Document {
   fileName: string
   documentType: string
   status: string
+  /** Saved Declared with nobody checking it; confirming here upgrades it. */
+  autoAccepted?: boolean
   extractionJobs: ExtractionJob[]
 }
 
@@ -84,15 +87,25 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   // Set when the figures were saved but the CBAM case they should have produced
   // came out incomplete. Shown inline rather than swallowed: a case short a
   // goods line looks exactly like a complete one.
-  const [handoff, setHandoff] = useState<{
-    caseId: string | null
-    status: string
-    problems: string[]
-  } | null>(null)
+  const [handoff, setHandoff] = useState<HandoffState | null>(null)
 
   const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
-  // Already written to the store, either just now or on an earlier visit.
-  const isSaved = confirmed || document.status === 'ACCEPTED'
+  // Already written to the store, either just now or on an earlier visit. An
+  // auto-accepted document is written but unchecked, so it keeps its Confirm.
+  const isSaved = confirmed || (document.status === 'ACCEPTED' && !document.autoAccepted)
+  const hasRecords = isSaved || Boolean(document.autoAccepted)
+
+  // A CBAM document the extraction could not date. Its case is filed for the
+  // quarter of its import, so the date is asked for here, before anything is
+  // saved. Decided from what was read, so the field stays while it is typed in.
+  const readsNoImportDate = !fields.some(f => f.fieldName === 'import_date')
+  const askForImportDate =
+    isCbamRelevant(document.documentType) &&
+    readsNoImportDate &&
+    documentPeriod(Object.fromEntries(fields.map(f => [f.fieldName, f.rawValue])), {
+      documentType: document.documentType,
+    }) === null
+  const missingDate = missingCbamDocumentDate(document.documentType, values)
   // Saved, then removed. Its records are out of the active set and the chain
   // holds a WITHDRAWN entry for each; there is nothing left to do to it.
   const isWithdrawn = document.status === 'WITHDRAWN'
@@ -147,6 +160,11 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     const periodStart = derived.periodStart.toISOString()
     const periodEnd = derived.periodEnd.toISOString()
 
+    if (missingDate) {
+      setError('Add the import date before saving. The import case is filed for the quarter that date falls in.')
+      return
+    }
+
     const withValues = fields.filter(f => values[f.fieldName])
 
     const numericFieldEntries = withValues
@@ -166,9 +184,19 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     // period — but a CBAM case cannot be opened without them, and a correction
     // the reviewer made to one has to reach it rather than being read back off
     // the extraction.
-    const contextEntries = withValues
-      .filter(f => !isRecordProducingField(f.fieldName))
-      .map(f => ({ fieldName: f.fieldName, confirmedValue: values[f.fieldName] }))
+    //
+    // A field the reviewer cleared is sent as a clear. Left out, the route would
+    // certify it from the extraction and the clear would never have happened.
+    const contextEntries = [
+      ...withValues
+        .filter(f => !isRecordProducingField(f.fieldName))
+        .map(f => ({ fieldName: f.fieldName, confirmedValue: values[f.fieldName] })),
+      ...clearedFieldEntries(fields, values),
+      // Typed in above because the document gave none; not an extracted field.
+      ...(askForImportDate && values.import_date
+        ? [{ fieldName: 'import_date', confirmedValue: values.import_date }]
+        : []),
+    ]
 
     if (numericFieldEntries.length === 0) {
       setError('No numeric fields with values to confirm. At least one numeric field is required.')
@@ -205,9 +233,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
       // the case is what the user came here to get. When part of it did not
       // land, that is said and the user is left on this screen to read it,
       // rather than being sent to a case that is quietly short a goods line.
-      const cbam = data.cbam as
-        | { caseId: string | null; status: string; problems: string[] }
-        | undefined
+      const cbam = data.cbam as HandoffState | undefined
 
       if (cbam && cbam.problems.length > 0) {
         setHandoff(cbam)
@@ -573,6 +599,61 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
         </p>
       )}
 
+      {askForImportDate && !isSaved && !isWithdrawn && (
+        <div
+          style={{
+            border: `1px solid ${colours.border}`,
+            borderLeft: `3px solid ${colours.amber}`,
+            borderRadius: '6px',
+            padding: spacing[3],
+            marginBottom: spacing[3],
+            backgroundColor: colours.amberBg,
+          }}
+        >
+          <label style={{ display: 'block' }}>
+            <span style={textStyles.rowTitle}>Import date</span>
+            <span
+              style={{ ...textStyles.caption, display: 'block', color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[2]}` }}
+            >
+              We could not find a date on this document. Enter the date the goods were imported: the import
+              case is filed for the quarter it falls in.
+            </span>
+            <input
+              type="date"
+              value={values.import_date ?? ''}
+              onChange={e => setValues(v => ({ ...v, import_date: e.target.value }))}
+              style={{
+                padding: '7px 10px',
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textPrimary,
+                border: `1px solid ${missingDate ? colours.amber : colours.border}`,
+                borderRadius: '4px',
+                backgroundColor: colours.surface,
+              }}
+            />
+          </label>
+        </div>
+      )}
+
+      {document.autoAccepted && !confirmed && (
+        <div
+          style={{
+            border: `1px solid ${colours.border}`,
+            borderLeft: `3px solid ${colours.amber}`,
+            borderRadius: '6px',
+            padding: spacing[3],
+            marginBottom: spacing[3],
+            backgroundColor: colours.amberBg,
+          }}
+        >
+          <p style={textStyles.rowTitle}>These figures were saved without a check</p>
+          <p style={{ ...textStyles.caption, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
+            They are in your records as Declared. Check them below and confirm to save them as Verified.
+          </p>
+        </div>
+      )}
+
       {handoff && (
         <div
           style={{
@@ -585,9 +666,11 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
           }}
         >
           <p style={textStyles.rowTitle}>
-            {handoff.caseId
-              ? 'Your figures are saved, but the import case is not complete'
-              : 'Your figures are saved, but no import case was opened'}
+            {handoff.status === 'NEEDS_INPUT'
+              ? 'Your figures are saved. The import case needs a detail the document did not give'
+              : handoff.caseId
+                ? 'Your figures are saved, but the import case is not complete'
+                : 'Your figures are saved, but no import case was opened'}
           </p>
           <ul
             style={{
@@ -603,9 +686,10 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
               <li key={i}>{p}</li>
             ))}
           </ul>
-          <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
-            <CbamResumeHandoff
+          {handoff.status === 'NEEDS_INPUT' && (handoff.needs?.length ?? 0) > 0 && (
+            <CbamHandoffInputs
               documentId={document.id}
+              needs={handoff.needs!}
               onResult={next => {
                 if (next.problems.length === 0 && next.caseId) {
                   router.push(`/cbam/${encodeURIComponent(next.caseId)}`)
@@ -614,6 +698,20 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
                 setHandoff(next)
               }}
             />
+          )}
+          <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
+            {handoff.status !== 'NEEDS_INPUT' && (
+              <CbamResumeHandoff
+                documentId={document.id}
+                onResult={next => {
+                  if (next.problems.length === 0 && next.caseId) {
+                    router.push(`/cbam/${encodeURIComponent(next.caseId)}`)
+                    return
+                  }
+                  setHandoff(next)
+                }}
+              />
+            )}
             {handoff.caseId && (
               <a
                 href={`/cbam/${encodeURIComponent(handoff.caseId)}`}
@@ -765,7 +863,7 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
                 lineHeight: typography.lineHeight.body,
               }}
             >
-              {isSaved
+              {hasRecords
                 ? `Delete ${document.fileName}? Its figures come out of your records, totals and
                    exports. The audit trail keeps an entry saying they were withdrawn, as it must —
                    nothing certified is ever erased.`

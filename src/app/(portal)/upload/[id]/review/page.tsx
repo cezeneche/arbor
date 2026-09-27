@@ -175,6 +175,7 @@ export default async function ReviewPage({
               fileName: document.fileName,
               documentType: document.documentType,
               status: document.status,
+              autoAccepted: document.autoAcceptedAt !== null,
               extractionJobs: document.extractionJobs.map(j => ({
                 id: j.id,
                 status: j.status,
