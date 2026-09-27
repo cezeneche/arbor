@@ -69,7 +69,7 @@ Two Vercel projects, both on this repository:
 | Project | Root directory | What it is |
 |---|---|---|
 | `nucleos-api` | `nucleos` | the FastAPI service |
-| `nucleos-web` | `nucleos/web` | the tokenised supplier form |
+| `nucleos-web` | `nucleos/web` (removed 27 September) | the tokenised supplier form, now served by Arbor |
 
 `nucleos/vercel.json` names `api/index.py` as the only build target rather than
 letting the runtime discover functions — Nucleos's packages live inside `api/`,
@@ -197,11 +197,15 @@ Recorded here so the next person does not have to re-derive it.
   refuses to overwrite a seal with a different final state, so it is safe to run
   as soon as someone has the credentials in front of them.
 
-- **The `nucleos-web` Vercel project is still live**, deliberately. Step 5's own
-  condition for retiring it — Arbor's `/supplier/[token]` proven against real
-  tokens — depends on step 6b, which has not happened. Unexpired supplier links
-  still point at the old host and Arbor cannot serve those. Retire it after 6b,
-  not before.
+- **`nucleos/web` and `nucleos/marketing` removed from the repository (27
+  September).** The condition above was about links pointing at the old host.
+  Those tokens lived in the Nucleos database lost in September, so no old link
+  can be honoured by any host; new links go to `WEB_BASE_URL`, which points at
+  Arbor's `/supplier/[token]`. The `nucleos-web` Vercel project keeps serving its
+  last deployment until it is deleted, so nothing goes dark with the code.
+  Remaining: confirm `WEB_BASE_URL` on `nucleos-api` is Arbor's address, then
+  delete the `nucleos-web` project (its builds now fail for want of a root
+  directory). Proving Arbor's form against a real token is still step 6b.
 
 - **Migration lineage — resolved (19 September).** The base lineage
   (`supabase/migration.sql` + `nucleos/db/migrations/`) is canonical. `008` and
