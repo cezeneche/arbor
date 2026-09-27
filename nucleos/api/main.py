@@ -168,7 +168,7 @@ async def lifespan(app: FastAPI):
             pass
 
 
-app = FastAPI(title="núcleo API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="núcleo API", version="0.1.0", lifespan=lifespan, **AppConfig.api_docs_urls())
 
 # OpenTelemetry distributed tracing (no-op when OTLP_ENDPOINT absent)
 from ledger_app.core.telemetry import setup_telemetry

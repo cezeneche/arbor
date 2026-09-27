@@ -92,6 +92,18 @@ class AppConfig:
     def is_production() -> bool:
         return AppConfig.environment() in ("production", "prod")
 
+    @staticmethod
+    def api_docs_urls() -> dict[str, str | None]:
+        """Where FastAPI serves its docs: nowhere unless ENABLE_API_DOCS is set.
+
+        The docs publish every route, including ones only a service token should
+        know about. Arbor does not use them, so they are opt-in for local work
+        rather than on by default in production.
+        """
+        if os.getenv("ENABLE_API_DOCS", "").strip().lower() in ("1", "true", "yes"):
+            return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
     # LLM / AI
 
     @staticmethod
