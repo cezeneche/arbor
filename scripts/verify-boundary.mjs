@@ -125,6 +125,8 @@ try {
       'src/lib/nucleos/supplier-form-client.ts',
       'src/lib/nucleos/scope-client.ts',
       'src/lib/nucleos/verification-client.ts',
+      'src/lib/nucleos/case-evidence.ts',
+      'src/lib/nucleos/explain-client.ts',
       '--outDir', outDir, '--rootDir', 'src/lib/nucleos',
       '--module', 'commonjs', '--target', 'es2020',
       '--esModuleInterop', '--skipLibCheck',
@@ -138,6 +140,8 @@ try {
   const { getSupplierFormContext } = require(path.join(compiled, 'supplier-form-client.js'))
   const { checkCbamScope } = require(path.join(compiled, 'scope-client.js'))
   const verification = require(path.join(compiled, 'verification-client.js'))
+  const { buildCaseEvidence } = require(path.join(compiled, 'case-evidence.js'))
+  const { explainGoodsLineField } = require(path.join(compiled, 'explain-client.js'))
 
   console.log('── Extraction boundary ──')
   const result = await extractCbamFields({
@@ -246,6 +250,50 @@ try {
       message !== 'Not Found' && !/ 422 /.test(message),
       message.slice(0, 100))
   }
+
+  console.log('\n── Why this number? ──')
+  // The evidence Arbor files when it opens a case, built by the real builder,
+  // must be accepted as Nucleos's EvidenceAtom: a 422 here means "Why this
+  // number?" would have nothing to show for every case. The body wrapper
+  // mirrors case-writer.ts's sendEvidence.
+  const aCase = '00000000-0000-0000-0000-00000000cafe'
+  const atoms = buildCaseEvidence({
+    readFields: [{ fieldName: 'lines[0].net_mass_kg', extractedValue: '24 500', sourceText: 'Net mass | 24 500 kg', confidence: 0.9 }],
+    confirmed: { 'lines[0].net_mass_kg': '24500' },
+    lineIds: { '0': aLine },
+  })
+  const evRes = await fetch(`${BASE}/api/cbam/cases/${aCase}/evidence`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ source_ref: 'arbor:document:boundary', evidence: atoms }),
+  })
+  const evBody = await evRes.text()
+  check('the evidence builder produces atoms', atoms.length === 1, JSON.stringify(atoms))
+  check('evidence reaches a real route and its atoms are accepted',
+    evRes.status !== 422 && !(evRes.status === 404 && /"Not Found"/.test(evBody)),
+    `${evRes.status} ${evBody.slice(0, 100)}`)
+
+  // The explain client maps a 404 to "nothing recorded", so a wrong path would
+  // pass silently through it. Watch what Nucleos actually answers instead.
+  let explainStatus = null
+  let explainBody = ''
+  const watching = async (url, init) => {
+    const res = await fetch(url, init)
+    explainStatus = res.status
+    explainBody = await res.clone().text()
+    return res
+  }
+  try {
+    await explainGoodsLineField(aCase, aLine, 'net_mass_kg', { fetchImpl: watching })
+  } catch {
+    // On SQLite the handler may fail; what matters is which route answered.
+  }
+  // On SQLite the handler itself fails (500), which proves the route exists. A
+  // bare "Not Found" is the router's answer for a path that does not.
+  check('explain reaches a real route and its query is accepted',
+    explainStatus !== null && explainStatus !== 400 && explainStatus !== 422 &&
+      explainBody.trim() !== '{"detail":"Not Found"}',
+    `${explainStatus} ${explainBody.slice(0, 100)}`)
 
   console.log('\n── Calculation boundary ──')
   const calcRes = await fetch(`${BASE}/api/internal/calculate`, {

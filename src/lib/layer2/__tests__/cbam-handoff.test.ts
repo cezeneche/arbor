@@ -411,3 +411,31 @@ describe('supplyCbamHandoffIdentifiers', () => {
     expect(db.rows.get('doc-1')!.status).toBe('NEEDS_INPUT')
   })
 })
+
+// What extraction read is kept with the handoff, so a resume days later can
+// still send the document's own words to the case.
+describe('the evidence behind a handoff', () => {
+  const readFields = [
+    { fieldName: 'lines[0].net_mass_kg', extractedValue: '24000', sourceText: 'Net mass | 24 000 kg', confidence: 0.8 },
+  ]
+
+  it('is stored with the handoff and reaches the case payload', async () => {
+    const db = await enqueued({ readFields })
+    expect((db.rows.get('doc-1')!.handoffInput as any).readFields).toEqual(readFields)
+
+    const writeCase = landingWriter()
+    await runCbamHandoff('doc-1', { db: db as never, writeCase })
+    expect(writeCase.mock.calls[0][0].evidence).toEqual({
+      sourceRef: 'arbor:document:doc-1',
+      readFields,
+      confirmed: Object.fromEntries(CONFIRMED),
+    })
+  })
+
+  it('is simply absent for a handoff recorded before it was kept', async () => {
+    const db = await enqueued()
+    const writeCase = landingWriter()
+    await runCbamHandoff('doc-1', { db: db as never, writeCase })
+    expect(writeCase.mock.calls[0][0].evidence).toBeNull()
+  })
+})

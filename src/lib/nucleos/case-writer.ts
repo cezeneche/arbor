@@ -23,6 +23,7 @@
 
 import { NucleosUnavailableError, isNucleosConfigured } from './extraction-client'
 import type { CasePayload } from './case-payload'
+import { buildCaseEvidence } from './case-evidence'
 import { nucleosHeaders } from './service-auth'
 
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -45,10 +46,13 @@ export interface CaseWriteProgress {
   /** Shipment id per country of origin ('' when no origin was stated). */
   shipments?: Record<string, string>
   lines: Record<string, { goodsLineId: string; emissionsRecorded: boolean }>
+  /** Line indexes whose evidence Nucleos has. Evidence is sent again when a
+   *  resume adds a line; Nucleos merges it and drops what it already holds. */
+  evidenceLines?: string[]
 }
 
 export function emptyProgress(): CaseWriteProgress {
-  return { caseId: null, shipmentId: null, shipments: {}, lines: {} }
+  return { caseId: null, shipmentId: null, shipments: {}, lines: {}, evidenceLines: [] }
 }
 
 const originKey = (origin: string | null) => origin ?? ''
@@ -137,6 +141,50 @@ function assertCaseIsOurs(caseRow: Record<string, unknown>, payload: CasePayload
   }
 }
 
+/**
+ * Sends what Arbor read from the document, once the goods lines exist.
+ *
+ * Advisory: without it the case is complete and the return unaffected, but
+ * "Why this number?" has nothing to show — so a failure is reported, not thrown.
+ */
+async function sendEvidence(
+  payload: CasePayload,
+  progress: CaseWriteProgress,
+  caseId: string,
+  problems: string[],
+  save: () => Promise<void>,
+  opts: CaseWriteOptions,
+): Promise<void> {
+  if (!payload.evidence) return
+  const lineIds = Object.fromEntries(Object.entries(progress.lines).map(([k, v]) => [k, v.goodsLineId]))
+  const covered = new Set(progress.evidenceLines ?? [])
+  const onCase = Object.keys(lineIds).sort()
+  if (progress.evidenceLines && onCase.every(k => covered.has(k))) return
+
+  const evidence = buildCaseEvidence({
+    readFields: payload.evidence.readFields,
+    confirmed: payload.evidence.confirmed,
+    lineIds,
+  })
+  if (evidence.length === 0) return
+
+  try {
+    await post(
+      `/api/cbam/cases/${encodeURIComponent(caseId)}/evidence`,
+      { source_ref: payload.evidence.sourceRef, evidence },
+      opts,
+    )
+  } catch (err) {
+    problems.push(
+      'The case is complete, but the text these figures were read from could not be added, so ' +
+        `"Why this number?" has nothing to show yet: ${(err as Error).message}`,
+    )
+    return
+  }
+  progress.evidenceLines = onCase
+  await save()
+}
+
 /** Opens a case from nothing. */
 export async function createCbamCase(
   payload: CasePayload,
@@ -169,6 +217,7 @@ export async function writeCbamCase(
     shipmentId: start.shipmentId,
     shipments,
     lines: { ...start.lines },
+    ...(start.evidenceLines ? { evidenceLines: [...start.evidenceLines] } : {}),
   }
   const save = async () => {
     if (opts.onProgress) await opts.onProgress(progress)
@@ -285,6 +334,8 @@ export async function writeCbamCase(
     progress.lines[key] = { ...entry, emissionsRecorded: true }
     await save()
   }
+
+  await sendEvidence(payload, progress, caseId, problems, save, opts)
 
   for (const [key, { message, lines }] of failedOrigins) {
     const from = key ? ` from ${key}` : ''

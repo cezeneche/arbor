@@ -340,6 +340,13 @@ export async function POST(
         reportingPeriodEnd: documentPeriod(Object.fromEntries(confirmedValues), {
           documentType: document.documentType,
         })!.periodEnd,
+        // What extraction read, so the case can show where each figure came from.
+        readFields: (job?.extractedFields ?? []).map(f => ({
+          fieldName: f.fieldName,
+          extractedValue: f.rawValue,
+          sourceText: f.sourceText,
+          confidence: f.confidenceScore,
+        })),
       }
     : null
 

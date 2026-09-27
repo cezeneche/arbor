@@ -517,3 +517,96 @@ describe('writeCbamCase — goods of different origins', () => {
     expect(result.problems[0]).toMatch(/goods line 2\b/i)
   })
 })
+
+// What Arbor read from the document goes to Nucleos once the goods lines exist,
+// keyed to their ids, so "Why this number?" has the document's own words to
+// show. It is advisory: a failure is reported but costs the case nothing.
+describe('writeCbamCase — evidence', () => {
+  const ORIGINAL = { ...process.env }
+  beforeEach(() => {
+    process.env.NUCLEOS_URL = 'https://nucleos.test'
+    process.env.NUCLEOS_INTERNAL_TOKEN = 'token'
+  })
+  afterEach(() => {
+    process.env = { ...ORIGINAL }
+  })
+
+  const withEvidence = () =>
+    payload({
+      ref: 'doc-1',
+      evidence: {
+        sourceRef: 'arbor:document:doc-1',
+        confirmed: { 'lines[0].net_mass_kg': '24000', importer_eori: 'GB123456789000' },
+        readFields: [
+          { fieldName: 'lines[0].net_mass_kg', extractedValue: '24000', sourceText: 'Net mass | 24 000 kg', confidence: 0.8 },
+          { fieldName: 'importer_eori', extractedValue: 'GB123456789000', sourceText: 'EORI GB123456789000', confidence: 0.8 },
+        ],
+      },
+    })
+
+  it('sends the evidence after the lines, keyed to them, and records that it did', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-1' }],
+      '/api/cbam/shipments': [{ id: 'ship-1' }],
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }],
+      '/api/cbam/emissions': [{ id: 'em-0' }],
+      '/api/cbam/cases/case-1/evidence': [{ evidence_count: 2 }],
+    })
+    const result = await writeCbamCase(withEvidence(), emptyProgress(), { fetchImpl: impl as never })
+
+    const evidenceCall = calls.find(c => c.path === '/api/cbam/cases/case-1/evidence')
+    expect(evidenceCall?.body).toEqual({
+      source_ref: 'arbor:document:doc-1',
+      evidence: [
+        { field: 'goods_lines.gl-0.net_mass_kg', value: 24000, source: 'arbor_extraction', confidence: 0.8, snippet: 'Net mass | 24 000 kg' },
+        { field: 'case.importer_eori', value: 'GB123456789000', source: 'arbor_extraction', confidence: 0.8, snippet: 'EORI GB123456789000' },
+      ],
+    })
+    expect(calls.map(c => c.path).indexOf('/api/cbam/cases/case-1/evidence')).toBe(calls.length - 1)
+    expect(result.progress.evidenceLines).toEqual(['0'])
+    expect(result.problems).toEqual([])
+  })
+
+  it('does not send it again once every line on the case is covered', async () => {
+    const { impl, calls } = routedFetch({})
+    await writeCbamCase(
+      withEvidence(),
+      {
+        caseId: 'case-1',
+        shipmentId: 'ship-1',
+        shipments: { IN: 'ship-1' },
+        lines: { '0': { goodsLineId: 'gl-0', emissionsRecorded: true } },
+        evidenceLines: ['0'],
+      },
+      { fetchImpl: impl as never },
+    )
+    expect(calls).toHaveLength(0)
+  })
+
+  it('reports a failure without costing the case anything', async () => {
+    const { impl } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-1' }],
+      '/api/cbam/shipments': [{ id: 'ship-1' }],
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }],
+      '/api/cbam/emissions': [{ id: 'em-0' }],
+      '/api/cbam/cases/case-1/evidence': [503],
+    })
+    const result = await writeCbamCase(withEvidence(), emptyProgress(), { fetchImpl: impl as never })
+    expect(result.caseId).toBe('case-1')
+    expect(result.goodsLineIds).toEqual(['gl-0'])
+    expect(result.problems).toHaveLength(1)
+    expect(result.problems[0]).toMatch(/why this number/i)
+    expect(result.progress.evidenceLines ?? []).toEqual([])
+  })
+
+  it('sends nothing for a document with no evidence to give', async () => {
+    const { impl, calls } = routedFetch({
+      '/api/cbam/cases': [{ id: 'case-1' }],
+      '/api/cbam/shipments': [{ id: 'ship-1' }],
+      '/api/cbam/goods-lines': [{ id: 'gl-0' }],
+      '/api/cbam/emissions': [{ id: 'em-0' }],
+    })
+    await writeCbamCase(payload(), emptyProgress(), { fetchImpl: impl as never })
+    expect(calls.map(c => c.path)).not.toContain('/api/cbam/cases/case-1/evidence')
+  })
+})

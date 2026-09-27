@@ -22,6 +22,7 @@
 //   no emissions rather than one still waiting for a figure.
 
 import { parseGoodsLineFieldName } from './cbam-fields'
+import type { ReadField } from './case-evidence'
 import type { CbamJurisdiction } from './jurisdiction'
 import { parseNumericValue } from '@/lib/parse-numeric'
 
@@ -69,6 +70,13 @@ export interface CasePayload {
     import_date: string | null
   }
   lines: CasePayloadLine[]
+  /** What Arbor read from the document, sent once the goods lines exist so
+   *  "Why this number?" can show the document's own words. */
+  evidence?: {
+    sourceRef: string
+    readFields: ReadField[]
+    confirmed: Record<string, string>
+  } | null
 }
 
 export interface BuildCasePayloadInput {
@@ -81,6 +89,8 @@ export interface BuildCasePayloadInput {
   ownerRef?: string
   /** The source document; see CasePayload.ref. */
   ref?: string
+  /** What extraction read, kept at confirmation; see CasePayload.evidence. */
+  readFields?: ReadField[]
 }
 
 export interface BuildCasePayloadResult {
@@ -229,6 +239,14 @@ export function buildCasePayload(input: BuildCasePayloadInput): BuildCasePayload
         import_date: isoDate(text(confirmed, 'import_date') ?? text(confirmed, 'invoice_date')),
       },
       lines,
+      evidence:
+        input.ref && input.readFields && input.readFields.length > 0
+          ? {
+              sourceRef: `arbor:document:${input.ref}`,
+              readFields: input.readFields,
+              confirmed: Object.fromEntries(confirmed),
+            }
+          : null,
     },
     problems,
   }

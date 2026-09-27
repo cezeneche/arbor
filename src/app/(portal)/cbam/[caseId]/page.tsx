@@ -16,6 +16,7 @@ import type { CaseGoodsLine } from '@/lib/nucleos/declaration-payload'
 import { CbamEmissions } from '@/components/CbamEmissions'
 import { CbamReturnBuilder } from '@/components/CbamReturnBuilder'
 import { CbamVerification } from '@/components/CbamVerification'
+import { CbamWhyThisNumber } from '@/components/CbamWhyThisNumber'
 import { prisma } from '@/lib/prisma'
 import { latestStatements, presentVerification } from '@/lib/nucleos/verification-presenter'
 
@@ -114,6 +115,11 @@ export default async function CbamCasePage({
         ),
       ] as const
     }),
+  )
+  // A published default has no document text behind it; the panel says so
+  // instead of looking for some.
+  const usesDefault = new Set(
+    rawGoodsLines.filter(raw => String(raw.method ?? '').toLowerCase() === 'default').map(raw => String(raw.id ?? '')),
   )
   const gaps = presentGaps(record?.open_gaps)
   const jurisdiction = resolveJurisdiction(record?.jurisdiction)
@@ -278,11 +284,33 @@ export default async function CbamCasePage({
                             )}
                           </td>
                           <td style={cell}>{line.description}</td>
-                          <td style={cell}>{line.mass}</td>
+                          <td style={cell}>
+                            {line.mass}
+                            {line.mass !== '—' && (
+                              <CbamWhyThisNumber caseId={caseId} goodsLineId={line.id} figures={[{ field: 'net_mass_kg' }]} />
+                            )}
+                          </td>
                           <td style={cell}>{line.origin}</td>
                           <td style={cell}>{line.installation}</td>
                           <td style={cell}>
                             {line.declaredEmissions}
+                            {line.declaredEmissions !== '—' && (
+                              <CbamWhyThisNumber
+                                caseId={caseId}
+                                goodsLineId={line.id}
+                                figures={[
+                                  { field: 'direct_embedded_kgco2e', label: 'From making the goods' },
+                                  { field: 'indirect_embedded_kgco2e', label: 'From the electricity used' },
+                                ]}
+                                defaultNote={
+                                  usesDefault.has(line.id)
+                                    ? 'This is the published default for these goods, used because the supplier ' +
+                                      'has not given a figure, so there is no document text behind it. The ' +
+                                      'Emissions section below shows why the default applies.'
+                                    : null
+                                }
+                              />
+                            )}
                             {line.emissionsNeeded && (
                               <span
                                 style={{
