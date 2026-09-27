@@ -119,41 +119,21 @@ async def db_error_handler(request: Request, exc: Exception) -> JSONResponse:
 
 from ledger_app.api.health import router as health_router
 from ledger_app.api.auth import router as auth_router
-from ledger_app.api.auth import protected_router as auth_protected_router
 from ledger_app.api.db_check import router as db_check_router
-from ledger_app.api.storage_check import router as storage_check_router
-from ledger_app.api.cases import router as cases_router
 from ledger_app.api.cbam_extraction import router as cbam_extraction_router
 from ledger_app.api.cbam_calculate import router as cbam_calculate_router
-from ledger_app.api.extract import router as extract_router
-from ledger_app.api.calculate import router as calculate_router
-from ledger_app.api.bundle import router as bundle_router
-from ledger_app.api.gaps import router as gaps_router
-from ledger_app.api.resolve import router as resolve_router
-from ledger_app.api.report_package import router as report_package_router
 from ledger_app.api.cbam import router as cbam_router
 from ledger_app.api.audit import router as audit_router
-from ledger_app.api.review import router as review_router
 from ledger_app.services.cbam_factors_seeder import seed_emission_factors
 
 app.include_router(health_router, prefix="/api")
 app.include_router(health_router)
 app.include_router(auth_router, prefix="/api")
-app.include_router(auth_protected_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(db_check_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(storage_check_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(cases_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(cbam_extraction_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(cbam_calculate_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(extract_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(calculate_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(bundle_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(gaps_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(resolve_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(report_package_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(cbam_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 app.include_router(audit_router, prefix="/api", dependencies=[Depends(get_auth_context)])
-app.include_router(review_router, prefix="/api", dependencies=[Depends(get_auth_context)])
 
 @app.get("/")
 def root():

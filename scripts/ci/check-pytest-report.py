@@ -21,11 +21,9 @@ import xml.etree.ElementTree as ET
 # Empty. Add an entry only with the open decision that owns it.
 KNOWN_FAILURES: set[str] = set()
 
-ALLOWED_SKIPS = {
-    # Live-model test: needs ANTHROPIC_API_KEY, which CI does not hold. Reported
-    # separately; its absence is not a release approval.
-    "api.tests.test_full_pipeline.TestHappyPathSteelActual::test_narrative_pipeline_endpoint_returns_200",
-}
+# Empty. The one live-model skip went with the narrative endpoint it tested,
+# removed on 27 September 2026. Add an entry only with the reason it may skip.
+ALLOWED_SKIPS: set[str] = set()
 
 
 def main(path: str) -> int:
@@ -53,7 +51,7 @@ def main(path: str) -> int:
     for name in sorted(failed & KNOWN_FAILURES):
         print(f"  known failure, owner decision open: {name}")
     for name in sorted(skipped & ALLOWED_SKIPS):
-        print(f"  allowed skip (live model): {name}")
+        print(f"  allowed skip: {name}")
     if problems:
         print("\n".join(problems))
         return 1

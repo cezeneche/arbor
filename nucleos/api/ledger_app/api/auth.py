@@ -2,14 +2,12 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from shared_auth import AuthContext, create_access_token, get_auth_context, is_dev_token_endpoint_enabled
-from shared_auth.dependencies import require_scopes
+from shared_auth import create_access_token, is_dev_token_endpoint_enabled
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-protected_router = APIRouter(prefix="/auth", tags=["auth"])
 
 _DEFAULT_SCOPES = ["cbam:read", "cbam:write", "narrative:run", "review:write"]
 
@@ -39,11 +37,3 @@ def issue_dev_token(body: DevTokenRequest = DevTokenRequest()):
 
 
 
-@protected_router.get("/context")
-def auth_context(context: AuthContext = Depends(get_auth_context)):
-    return context.model_dump(mode="json")
-
-
-@protected_router.get("/scope-check", dependencies=[Depends(require_scopes(["auth:test"]))])
-def scope_check():
-    return {"ok": True}

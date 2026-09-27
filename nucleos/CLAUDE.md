@@ -92,9 +92,10 @@ cp .env.example .env
 docker compose up --build
 ```
 
-### End-to-end smoke test
+### End-to-end check
+Arbor's boundary check boots Nucleos and exercises every route Arbor calls:
 ```bash
-./scripts/demo_cbam_e2e.sh          # API_URL / EORI / INVOICE / YEAR / QUARTER
+PATH="$PWD/.venv/bin:$PATH" npm --prefix .. run verify:boundary
 ```
 
 ---
@@ -115,9 +116,9 @@ api/  (port 8000)
 `api/main.py` mounts all routers. All application code lives under `api/` — no separate editable installs or sibling packages.
 
 Key layers:
-- `api/app/api/` — consolidated API routers (narrative_pipeline, cbam_compliance, cpr, verification, registration, public_tools, supplier_outreach)
+- `api/app/api/` — consolidated API routers (cbam_compliance, cpr, verification, registration, public_tools, supplier_token)
 - `api/app/services/` — business logic: `narrative`, `compliance_pack`, `hmrc_return_builder`, `cpr_calculator`, `report_validator`, `cbam_free_allocation`, `cbam_uk_rates`, `eu_xml_builder`, `registration_manager`, `notifications`
-- `api/ledger_app/api/` — FastAPI routers (cases, cbam_extraction, extract, calculate, bundle, resolve, report_package, cbam, auth, health, etc.). Document upload lives in Arbor from Phase 2; Nucleos receives text.
+- `api/ledger_app/api/` — FastAPI routers (cbam_extraction, cbam_calculate, cbam, audit, auth, health, db_check). Document upload lives in Arbor from Phase 2; Nucleos receives text. Routes Arbor does not call were removed on 27 September 2026 — see `docs/audits/2026-09-27-nucleos-endpoints.md` in the Arbor repo.
 - `api/ledger_app/services/` — business logic: `cbam_extractor`, `cbam_arbiter`, `cbam_repair`, `cbam_explain`, `snapshot_store`, `storage`, and `text_ingest` (the text-in entry point)
 - `api/ledger_app/db/` — SQLAlchemy models and migrations
 - `api/ledger_app/models/` — Pydantic schemas
@@ -127,7 +128,7 @@ Key layers:
 Primary workflow: Arbor extracts document text → POST /api/internal/cbam/extract → structured extraction → arbiter resolves conflicts → repair fills gaps → Arbor writes the fields. Nucleos holds no documents and exposes no upload endpoint.
 
 ### Narrative pipeline — single Claude call
-The narrative pipeline runs entirely in-process (no inter-service HTTP):
+The narrative pipeline runs entirely in-process, inside `POST /api/cbam/cases/{id}/compliance-pack` (it no longer has an endpoint of its own):
 
 1. Fetch report package via direct function call to the ledger report builder
 2. Single **Claude** call generates the full narrative (executive_summary, methodology, limitations, open_gaps)
@@ -135,7 +136,7 @@ The narrative pipeline runs entirely in-process (no inter-service HTTP):
 4. Deterministic validator (replaces former Gemini QA gate) checks narrative integrity
 5. Review flag persisted to ledger; Slack notification fired as BackgroundTask if `human_review_required`
 
-Key file: `api/app/api/narrative_pipeline.py` — registers at the same paths as the old pipeline router so external callers see no change.
+Key file: `api/app/services/narrative.py`.
 
 ### shared_auth — JWT library (used by all code)
 ```
@@ -184,8 +185,7 @@ Test conftest files set `DATABASE_URL`, `JWT_*`, and `AUTH_DEV_TOKEN_ENDPOINT` v
 | Scope | Enforced on |
 |---|---|
 | `cbam:read` / `cbam:write` | Ledger CBAM routes (dev token default) |
-| `narrative:run` | `POST /api/cases/{id}/narrative/pipeline` |
-| `auth:test` | `GET /api/auth/scope-check` (test only) |
+| `narrative:run` | `POST /api/cbam/cases/{id}/compliance-pack` |
 
 ---
 

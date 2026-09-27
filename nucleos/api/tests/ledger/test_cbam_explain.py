@@ -73,56 +73,74 @@ def test_explain_metric_recomputes_total_and_matches_summary(monkeypatch, tmp_pa
 
 
 def test_explain_field_returns_evidence_even_when_bbox_missing(monkeypatch, tmp_path):
-    """Explain-by-field still works now that Arbor owns document ingestion.
+    """Explain-by-field reads the evidence recorded in the case's repaired_v1 snapshot.
 
-    This used to build its case by uploading a file to /drafts/from-document.
-    That endpoint is gone — Arbor extracts the text and Nucleos receives it — so
-    the case is built through the JSON draft path, which is the surviving way in.
-    The evidence atoms travel in the payload rather than being produced here,
-    which is exactly the Phase 2 boundary: text and structure in, no bytes.
+    That snapshot was written by /drafts/from-parsed-invoice, the one route that
+    carried evidence atoms. The route was removed on 27 September 2026 with the
+    pre-integration pipeline — Arbor never called it, and Arbor's case writer
+    sends no evidence — so no production path writes this snapshot today. The
+    case is built through the routes Arbor uses, and the snapshot is recorded
+    the way the draft route recorded it, so the reading side stays pinned while
+    whether to feed it is decided (docs/audits/2026-09-27-nucleos-endpoints.md,
+    section 6).
     """
+    from ledger_app.api.cbam import _shared
+
     monkeypatch.setenv("SNAPSHOT_STORE_DIR", str(tmp_path / "snapshots"))
 
     client, _ = _client_with_fake_engine()
 
-    draft = client.post(
-        "/api/cbam/drafts/from-parsed-invoice",
+    case_res = client.post(
+        "/api/cbam/cases",
+        json={"importer_eori": "GB123456789", "reporting_year": 2025, "reporting_quarter": 1},
+    )
+    assert case_res.status_code == 201, case_res.text
+    case_id = case_res.json()["id"]
+
+    shipment_res = client.post(
+        "/api/cbam/shipments",
+        json={"cbam_case_id": case_id, "origin_country": "CN", "entry_reference": "ER-001"},
+    )
+    assert shipment_res.status_code == 201, shipment_res.text
+    goods_res = client.post(
+        "/api/cbam/goods-lines",
         json={
-            "importer": {"name": "Acme Imports Ltd", "eori": "GB123456789"},
-            "invoice": {
-                "invoice_number": "INV-2025-001",
-                "invoice_date": "2025-01-15",
-                "origin_country": "CN",
-                "incoterm": "FOB",
-                "entry_reference": "ER-001",
-            },
-            "lines": [
-                {
-                    "cn_code": "720711",
-                    "description": "Hot rolled steel coil",
-                    "quantity": 10000,
-                    "quantity_unit": "kg",
-                    "net_mass_kg": 10000,
-                }
-            ],
-            "emissions": {
-                "method": "actual",
-                "direct_embedded_kgco2e": 50000,
-                "indirect_embedded_kgco2e": 10000,
-            },
-            "evidence": [
-                {
-                    "field": "invoice.invoice_number",
-                    "value": "INV-2025-001",
-                    "source": "rule_regex",
-                    "confidence": 0.96,
-                    "snippet": "Invoice number: INV-2025-001",
-                }
-            ],
+            "shipment_id": shipment_res.json()["id"],
+            "cn_code": "720711",
+            "product_description": "Hot rolled steel coil",
+            "net_mass_kg": 10000,
         },
     )
-    assert draft.status_code == 201, draft.text
-    case_id = draft.json()["case_id"]
+    assert goods_res.status_code == 201, goods_res.text
+    em_res = client.post(
+        "/api/cbam/emissions",
+        json={
+            "goods_line_id": goods_res.json()["id"],
+            "direct_emissions_kgco2e": 50000,
+            "indirect_emissions_kgco2e": 10000,
+            "calculation_method": "actual",
+            "version": 1,
+        },
+    )
+    assert em_res.status_code == 201, em_res.text
+
+    evidence = _shared._normalized_evidence(
+        [
+            {
+                "field": "invoice.invoice_number",
+                "value": "INV-2025-001",
+                "source": "rule_regex",
+                "confidence": 0.96,
+                "snippet": "Invoice number: INV-2025-001",
+            }
+        ]
+    )
+    for stage in ("arbitrated_v1", "repaired_v1"):
+        _shared._safe_snapshot_write(
+            case_id=case_id,
+            stage=stage,
+            payload={"invoice": {"invoice_number": "INV-2025-001"}, "evidence": evidence},
+        )
 
     # The explain endpoint reads a snapshot; building the report package writes it.
     assert client.get(f"/api/cbam/cases/{case_id}/report-package").status_code == 200
