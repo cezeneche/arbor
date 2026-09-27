@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
-from ledger_app.core.config import optional_startup_warnings, validate_startup_config
+from ledger_app.core.config import AppConfig, optional_startup_warnings, validate_startup_config
 from shared_auth import get_auth_context
 
 # Standard Python logging → stdout
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-app = FastAPI(title="núcleo ledger", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="núcleo ledger", version="0.1.0", lifespan=lifespan, **AppConfig.api_docs_urls())
 
 # OpenTelemetry distributed tracing (no-op when OTLP_ENDPOINT absent)
 from ledger_app.core.telemetry import setup_telemetry

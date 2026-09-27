@@ -57,7 +57,20 @@ def get_jwt_settings() -> JWTSettings:
     )
 
 
+def _is_production_deployment() -> bool:
+    return (
+        os.getenv("ENVIRONMENT", "").strip().lower() in ("production", "prod")
+        or os.getenv("VERCEL_ENV", "").strip().lower() == "production"
+    )
+
+
 def is_dev_token_endpoint_enabled() -> bool:
+    # Never in production, whatever the flag says: a token issuer there is one
+    # misplaced environment variable from minting credentials for anyone.
+    # VERCEL_ENV is checked as well as ENVIRONMENT because Vercel sets it on
+    # every production deployment without anyone having to remember to.
+    if _is_production_deployment():
+        return False
     return _get_bool_env("AUTH_DEV_TOKEN_ENDPOINT", default=False)
 
 
