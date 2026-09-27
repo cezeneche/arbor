@@ -1,24 +1,8 @@
-import { spacing, textStyles } from '@/lib/design-system'
-import { QueryEngine } from './QueryEngine'
+import { redirect } from 'next/navigation'
 
+// Retired. Asking questions of your records happens on Records, where the
+// answer sits beside the records themselves. Kept as a redirect so an existing
+// bookmark lands somewhere sensible.
 export default function QueryPage() {
-  return (
-    <div>
-      <div style={{ marginBottom: spacing[4] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Query
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
-          Ask a question in plain English. arbor answers from your own certified records and shows
-          you every one it used, with its certification. It never works figures out for you.
-        </p>
-      </div>
-
-      <QueryEngine />
-    </div>
-  )
+  redirect('/records')
 }
