@@ -1,37 +1,16 @@
-"""Public CBAM scope checker and liability calculator — no authentication required.
-
-This module provides free lead-generation API endpoints for the
-/tools/cbam-checker page.  No JWT, no tenant, no DB required — all
-calculations run from the in-memory Annex VI factor table.
-
-Endpoints
----------
-POST /api/public/cbam-scope-check
-    Check whether a CN commodity code is in scope for UK/EU CBAM and whether
-    the annual import value exceeds the £50,000 registration threshold.
-
-POST /api/public/cbam-liability-estimate
-    Estimate annual CBAM liability using Annex VI default emissions intensities
-    or a caller-supplied actual SEE value.
+"""Public CBAM commodity-code lookup — no authentication required.
 
 GET  /api/public/cbam-cn-lookup?q={prefix}
-    Autocomplete: returns CN codes whose prefix overlaps the query string.
-    Results drawn from the in-memory Annex VI factor table — no DB required.
+    Autocomplete: CN codes whose prefix overlaps the query, from the in-memory
+    Annex VI factor table (Commission Implementing Regulation (EU) 2023/1773).
+    No JWT, no tenant, no database. Arbor's default-value lookup calls it.
 
 Rate limit: 30 requests per rolling 60-second window per client IP.
 
-Regulatory basis
-----------------
-UK CBAM: Finance No.2 Bill 2025-26.  Registration threshold £50,000 rolling
-12-month import value.  First return due 31 May 2028 (Year 1, annual filers).
-
-EU CBAM: Regulation (EU) 2023/956.  Full application from 1 January 2026.
-First annual declaration due 31 May 2027 (for calendar year 2026 imports).
-
-Default SEE values: Commission Implementing Regulation (EU) 2023/1773 Annex VI,
-DG TAXUD Art. 4(3) default values (Dec 2023) — world-average figures.
-
-UK ETS carbon price: HMRC reference rate for Q1 2027 quarterly average.
+The public scope checker and liability estimate that shared this module served
+the Nucleos marketing page, and were removed on 27 September 2026
+(docs/audits/2026-09-27-nucleos-endpoints.md). Arbor's own scope check goes
+through the authenticated /api/cbam/scope-check.
 """
 
 from __future__ import annotations
@@ -39,11 +18,9 @@ from __future__ import annotations
 import time
 from collections import defaultdict, deque
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Literal
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, model_validator
 
 # Regulatory constants
 
@@ -140,42 +117,6 @@ _SECTOR_STEPS: dict[str, list[str]] = {
     ],
 }
 
-_STEP_REGISTER_UK = (
-    "Register with HMRC via Government Gateway by 31 January 2028 — "
-    "you will need your EORI number and UK VAT registration"
-)
-_STEP_REGISTER_EU = (
-    "Purchase EU CBAM certificates via the EU CBAM Transitional Registry "
-    "(cbam.climate.ec.europa.eu) — required from 1 January 2026"
-)
-_STEP_MONITOR = (
-    "Monitor your rolling 12-month CBAM goods import value monthly — "
-    "HMRC registration is required when you reach £50,000"
-)
-_STEP_CTA = (
-    "Start a free trial to automate threshold monitoring, supplier data collection, "
-    "and HMRC return preparation"
-)
-
-
-def _build_next_steps(
-    sector: str,
-    registration_required: bool,
-    regime: str,
-) -> list[str]:
-    steps: list[str] = []
-    if registration_required:
-        if "UK" in regime:
-            steps.append(_STEP_REGISTER_UK)
-        if "EU" in regime:
-            steps.append(_STEP_REGISTER_EU)
-    else:
-        steps.append(_STEP_MONITOR)
-
-    steps.extend(_SECTOR_STEPS.get(sector, [])[:2])
-    steps.append(_STEP_CTA)
-    return steps[:5]
-
 
 # Emission factor helpers
 
@@ -216,55 +157,7 @@ def _cn_search(q_digits: str, limit: int = 10) -> list[dict]:
     return results
 
 
-def _resolve_see(cn8_code: str) -> tuple[object, str] | tuple[None, None]:
-    """Return (DefaultSEE entry, normalised cn8_prefix) or (None, None)."""
-    _, get_default_see = _load_factors()
-    entry = get_default_see(cn8_code)
-    return (entry, entry.cn8_prefix) if entry else (None, None)
-
-
 # Pydantic request models
-
-class ScopeCheckRequest(BaseModel):
-    cn8_code: str = Field(..., description="CN8 commodity code (2–8 digits)")
-    annual_import_value_gbp: Decimal = Field(..., ge=0)
-    annual_import_tonnes: Decimal | None = Field(
-        None, ge=0,
-        description="Annual import mass in tonnes — required for EU threshold assessment (50 t/yr)"
-    )
-    regime: Literal["UK", "EU", "BOTH"] = "UK"
-
-    @model_validator(mode="after")
-    def _clean(self) -> "ScopeCheckRequest":
-        self.cn8_code = "".join(ch for ch in self.cn8_code if ch.isdigit())
-        if len(self.cn8_code) < 2:
-            raise ValueError("cn8_code must contain at least 2 digits")
-        return self
-
-
-class LiabilityRequest(BaseModel):
-    cn8_code: str = Field(..., description="CN8 commodity code (2–8 digits)")
-    annual_import_tonnes: Decimal = Field(..., gt=0)
-    origin_country: str = Field(default="CN", max_length=3)
-    emissions_method: Literal["default", "actual"] = "default"
-    actual_see_tco2e_per_t: Decimal | None = None
-    regime: Literal["UK", "EU", "BOTH"] = "UK"
-
-    @model_validator(mode="after")
-    def _validate(self) -> "LiabilityRequest":
-        self.cn8_code = "".join(ch for ch in self.cn8_code if ch.isdigit())
-        if len(self.cn8_code) < 2:
-            raise ValueError("cn8_code must contain at least 2 digits")
-        if self.emissions_method == "actual" and self.actual_see_tco2e_per_t is None:
-            raise ValueError(
-                "actual_see_tco2e_per_t is required when emissions_method is 'actual'"
-            )
-        if (
-            self.actual_see_tco2e_per_t is not None
-            and self.actual_see_tco2e_per_t < 0
-        ):
-            raise ValueError("actual_see_tco2e_per_t must be >= 0")
-        return self
 
 
 # Router
@@ -301,264 +194,3 @@ def cn_lookup(
 
 
 # Scope Checker
-
-@router.post(
-    "/cbam-scope-check",
-    summary="CBAM scope check",
-    description=(
-        "Check whether a commodity code is in scope for UK and/or EU CBAM and "
-        "whether the annual import value triggers the £50,000 registration threshold."
-    ),
-)
-def scope_check(request: Request, body: ScopeCheckRequest) -> dict:
-    _check_rate(_client_ip(request))
-
-    entry, _matched_prefix = _resolve_see(body.cn8_code)
-
-    if entry is None:
-        return {
-            "in_scope": False,
-            "regime": body.regime,
-            "sector": None,
-            "cn_description": None,
-            "registration_required": False,
-            "reason": (
-                f"CN code {body.cn8_code!r} is not classified as a CBAM commodity "
-                f"under UK CBAM (Finance No.2 Bill 2025-26) or EU CBAM "
-                f"(Regulation (EU) 2023/956). No CBAM reporting obligation applies."
-            ),
-            "first_return_due": None,
-            "default_see_tco2e_per_t": None,
-            "next_steps": [
-                "Confirm the CN code with your freight forwarder or HMRC Trade Tariff",
-                "Review the UK CBAM commodities list on the HMRC website",
-                _STEP_CTA,
-            ],
-        }
-
-    # Threshold assessment — UK and EU use different measures
-    gbp = body.annual_import_value_gbp
-    uk_required = gbp >= _UK_THRESHOLD_GBP
-    uk_approaching = _UK_APPROACHING_GBP <= gbp < _UK_THRESHOLD_GBP
-
-    # EU threshold: 50 tonnes net mass (Regulation (EU) 2023/956 Art. 2(3))
-    eu_required: bool | None = None
-    eu_approaching: bool | None = None
-    if body.annual_import_tonnes is not None:
-        t = body.annual_import_tonnes
-        eu_required = t >= _EU_THRESHOLD_TONNES
-        eu_approaching = _EU_APPROACHING_TONNES <= t < _EU_THRESHOLD_TONNES
-
-    if body.regime == "UK":
-        registration_required = uk_required
-        approaching = uk_approaching
-        sector_label = entry.sector.replace("_", " ")
-        if registration_required:
-            reason = (
-                f"Annual import value of £{gbp:,.0f} exceeds the £50,000 "
-                f"UK CBAM registration threshold for {sector_label} imports. "
-                "You must register with HMRC."
-            )
-        elif approaching:
-            reason = (
-                f"Annual import value of £{gbp:,.0f} is approaching the £50,000 "
-                "UK CBAM registration threshold. Prepare your EORI number and "
-                "Government Gateway credentials now."
-            )
-        else:
-            reason = (
-                f"Annual import value of £{gbp:,.0f} is below the £50,000 "
-                "UK CBAM registration threshold. No registration action required at this time. "
-                "Check monthly on the first of each month."
-            )
-    elif body.regime == "EU":
-        if eu_required is not None:
-            registration_required = eu_required
-            approaching = eu_approaching or False
-            t = body.annual_import_tonnes  # type: ignore[assignment]
-            if registration_required:
-                reason = (
-                    f"Annual import of {t:,.1f} tonnes exceeds the 50 tonne EU CBAM "
-                    "registration threshold (Regulation (EU) 2023/956 Art. 2(3)). "
-                    "You must register as an Authorised CBAM Declarant."
-                )
-            elif approaching:
-                reason = (
-                    f"Annual import of {t:,.1f} tonnes is approaching the 50 tonne EU CBAM "
-                    "registration threshold. Prepare your EORI and contact your national "
-                    "competent authority."
-                )
-            else:
-                reason = (
-                    f"Annual import of {t:,.1f} tonnes is below the 50 tonne EU CBAM "
-                    "registration threshold. No registration action required at this time."
-                )
-        else:
-            registration_required = False
-            approaching = False
-            reason = (
-                "EU CBAM registration is required when annual imports exceed 50 tonnes net mass "
-                "(Regulation (EU) 2023/956 Art. 2(3)). Supply annual_import_tonnes to receive "
-                "a threshold assessment."
-            )
-    else:  # BOTH
-        registration_required = uk_required or bool(eu_required)
-        approaching = uk_approaching or bool(eu_approaching)
-        parts: list[str] = []
-        if uk_required:
-            parts.append(f"Annual import value of £{gbp:,.0f} exceeds the £50,000 UK CBAM threshold.")
-        elif uk_approaching:
-            parts.append(f"Annual import value of £{gbp:,.0f} is approaching the £50,000 UK CBAM threshold.")
-        else:
-            parts.append(f"Annual import value of £{gbp:,.0f} is below the £50,000 UK CBAM threshold.")
-        if eu_required is not None:
-            t = body.annual_import_tonnes  # type: ignore[assignment]
-            if eu_required:
-                parts.append(f"Annual import of {t:,.1f} tonnes exceeds the 50 tonne EU CBAM threshold.")
-            elif eu_approaching:
-                parts.append(f"Annual import of {t:,.1f} tonnes is approaching the 50 tonne EU CBAM threshold.")
-            else:
-                parts.append(f"Annual import of {t:,.1f} tonnes is below the 50 tonne EU CBAM threshold.")
-        else:
-            parts.append(
-                "Supply annual_import_tonnes to assess the EU 50 tonne threshold."
-            )
-        reason = " ".join(parts)
-
-    # First return due date
-    if body.regime == "UK":
-        first_return_due = _UK_FIRST_RETURN.isoformat()
-    elif body.regime == "EU":
-        first_return_due = _EU_FIRST_RETURN.isoformat()
-    else:  # BOTH — show earlier EU date
-        first_return_due = _EU_FIRST_RETURN.isoformat()
-
-    total_see = float(
-        (entry.total_tco2e_per_t).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-    )
-
-    return {
-        "in_scope": True,
-        "regime": body.regime,
-        "sector": entry.sector,
-        "cn_description": entry.description,
-        "registration_required": registration_required,
-        "approaching_threshold": approaching,
-        "reason": reason,
-        "first_return_due": first_return_due,
-        "default_see_tco2e_per_t": total_see,
-        "direct_see_tco2e_per_t": float(
-            entry.direct_tco2e_per_t.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-        ),
-        "indirect_see_tco2e_per_t": float(
-            entry.indirect_tco2e_per_t.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-        ),
-        "source_ref": entry.source_ref,
-        "next_steps": _build_next_steps(entry.sector, registration_required, body.regime),
-    }
-
-
-# Liability Estimator
-
-@router.post(
-    "/cbam-liability-estimate",
-    summary="CBAM liability estimate",
-    description=(
-        "Estimate annual CBAM liability using Annex VI default SEE values or "
-        "a caller-supplied actual emissions intensity.  No auth required."
-    ),
-)
-def liability_estimate(request: Request, body: LiabilityRequest) -> dict:
-    _check_rate(_client_ip(request))
-
-    entry, _matched_prefix = _resolve_see(body.cn8_code)
-
-    if entry is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"CN code {body.cn8_code!r} is not a CBAM commodity — "
-                "no Annex VI default SEE value is published for this code."
-            ),
-        )
-
-    # Select ETS rate based on regime
-    if body.regime == "EU":
-        ets_rate = _EU_ETS_RATE
-        rate_source = _EU_ETS_RATE_SOURCE
-    else:
-        ets_rate = _UK_ETS_RATE
-        rate_source = _UK_ETS_RATE_SOURCE
-
-    # Emissions intensity
-    if body.emissions_method == "actual" and body.actual_see_tco2e_per_t is not None:
-        see_tco2e_per_t: Decimal = body.actual_see_tco2e_per_t
-        markup_note: str | None = None
-    else:
-        see_tco2e_per_t = entry.total_tco2e_per_t
-        markup_note = (
-            "A 10% surcharge will be added to your CBAM liability when using default (non-verified) "
-            "SEE values — the figure shown is the base estimate before this loading is applied. "
-            "Using verified supplier data eliminates the surcharge."
-        )
-
-    # Core calculation
-    t = body.annual_import_tonnes.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-    total_embedded = (t * see_tco2e_per_t).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    gross_liability = (total_embedded * ets_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-    # Default-method surcharge and potential saving from switching to actual data
-    if body.emissions_method == "default":
-        # Gross shown is the base; the 10% markup is what you avoid with actual data
-        actual_data_saving = (gross_liability * _DEFAULT_MARKUP).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-    else:
-        # Actual data already used — compute what the default liability would have been
-        default_total = (t * entry.total_tco2e_per_t).quantize(Decimal("0.01"))
-        default_liability = (default_total * ets_rate).quantize(Decimal("0.01"))
-        actual_data_saving = (default_liability - gross_liability).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-        actual_data_saving = max(Decimal("0"), actual_data_saving)
-
-    # Subscription comparison
-    sub_comparison: dict | None = None
-    if gross_liability > 0:
-        pct = (
-            (_PROFESSIONAL_TIER_GBP / gross_liability * 100)
-            .quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
-        )
-        sub_comparison = {
-            "professional_tier_gbp": int(_PROFESSIONAL_TIER_GBP),
-            "as_percentage_of_liability": f"{pct}%",
-            "message": (
-                f"A Professional tier subscription (£{int(_PROFESSIONAL_TIER_GBP):,}/year) "
-                f"represents {pct}% of your estimated annual CBAM liability"
-            ),
-        }
-
-    return {
-        "cn8_code": body.cn8_code,
-        "sector": entry.sector,
-        "cn_description": entry.description,
-        "annual_import_tonnes": float(t),
-        "emissions_intensity_tco2e_per_t": float(
-            see_tco2e_per_t.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-        ),
-        "emissions_method": body.emissions_method,
-        "total_embedded_tco2e": float(total_embedded),
-        "cbam_rate_gbp_per_tco2e": float(ets_rate),
-        "cbam_rate_source": rate_source,
-        "gross_cbam_liability_gbp": float(gross_liability),
-        "default_value_markup": markup_note,
-        "if_actual_data_saving_gbp": float(actual_data_saving),
-        "annual_subscription_comparison": sub_comparison,
-        "disclaimer": (
-            "This is an estimate based on published UK/EU ETS reference prices and "
-            "Annex VI world-average default emissions values (EU 2023/1773, DG TAXUD "
-            "Dec 2023). Actual liability depends on verified supplier emissions data "
-            "and the final CBAM rate published by HMRC each quarter. "
-            "This tool does not constitute tax or legal advice."
-        ),
-    }

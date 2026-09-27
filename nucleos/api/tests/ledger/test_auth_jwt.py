@@ -6,14 +6,37 @@ import hmac
 import json
 from datetime import datetime, timedelta, timezone
 
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from ledger_app.main import app
+from shared_auth import AuthContext, get_auth_context
+from shared_auth.dependencies import require_scopes
 from shared_auth.jwt import get_jwt_settings
 from shared_auth.testing import make_test_token
 
-
 client = TestClient(app)
+
+# Token validation and scope enforcement guard every Nucleos route. They were
+# exercised through /api/auth/context and /api/auth/scope-check, which served
+# the retired Nucleos web app and were removed from production on 27 September
+# 2026. The same two dependencies are mounted here, on an app of the tests' own.
+_guarded = APIRouter(prefix="/api/auth")
+
+
+@_guarded.get("/context")
+def _context(context: AuthContext = Depends(get_auth_context)):  # noqa: B008 — FastAPI dependency idiom
+    return {"sub": context.sub, "tenant_id": context.tenant_id, "scopes": context.scopes}
+
+
+@_guarded.get("/scope-check", dependencies=[Depends(require_scopes(["auth:test"]))])
+def _scope_check():
+    return {"ok": True}
+
+
+_guarded_app = FastAPI()
+_guarded_app.include_router(_guarded)
+guarded = TestClient(_guarded_app)
 
 
 def _auth_header(token: str) -> dict[str, str]:
@@ -80,13 +103,13 @@ def test_dev_token_endpoint_returns_token_when_enabled(monkeypatch):
 
 
 def test_api_requires_token():
-    response = client.get("/api/auth/context")
+    response = guarded.get("/api/auth/context")
     assert response.status_code == 401
 
 
 def test_api_accepts_valid_token():
     token = make_test_token(sub="alice", tenant_id="tenant-ledger", scopes=["auth:test"])
-    response = client.get("/api/auth/context", headers=_auth_header(token))
+    response = guarded.get("/api/auth/context", headers=_auth_header(token))
     assert response.status_code == 200
     body = response.json()
     assert body["sub"] == "alice"
@@ -97,8 +120,8 @@ def test_invalid_audience_or_issuer_fails():
     bad_aud = _token_with(aud="wrong-audience")
     bad_iss = _token_with(iss="wrong-issuer")
 
-    response_aud = client.get("/api/auth/context", headers=_auth_header(bad_aud))
-    response_iss = client.get("/api/auth/context", headers=_auth_header(bad_iss))
+    response_aud = guarded.get("/api/auth/context", headers=_auth_header(bad_aud))
+    response_iss = guarded.get("/api/auth/context", headers=_auth_header(bad_iss))
 
     assert response_aud.status_code == 401
     assert response_iss.status_code == 401
@@ -106,7 +129,7 @@ def test_invalid_audience_or_issuer_fails():
 
 def test_missing_tenant_id_fails():
     token = _token_with(tenant_id=None)
-    response = client.get("/api/auth/context", headers=_auth_header(token))
+    response = guarded.get("/api/auth/context", headers=_auth_header(token))
     assert response.status_code == 401
 
 
@@ -114,8 +137,8 @@ def test_scope_enforcement_works():
     no_scope = make_test_token(sub="bob", tenant_id="tenant-ledger", scopes=[])
     with_scope = make_test_token(sub="bob", tenant_id="tenant-ledger", scopes=["auth:test"])
 
-    denied = client.get("/api/auth/scope-check", headers=_auth_header(no_scope))
-    allowed = client.get("/api/auth/scope-check", headers=_auth_header(with_scope))
+    denied = guarded.get("/api/auth/scope-check", headers=_auth_header(no_scope))
+    allowed = guarded.get("/api/auth/scope-check", headers=_auth_header(with_scope))
 
     assert denied.status_code == 403
     assert allowed.status_code == 200

@@ -10,7 +10,9 @@ Key changes from the two-service architecture:
     HTTP GET /api/cbam/cases/{id}/report-package.
   - Review flag/clear calls are direct function calls instead of HTTP POSTs.
   - LEDGER_URL / LEDGER_BASE_URL are no longer required.
-  - All existing route paths are unchanged — external callers see no difference.
+  - Routes Arbor does not call, from the pre-integration pipeline and the
+    retired front ends, were removed on 27 September 2026
+    (docs/audits/2026-09-27-nucleos-endpoints.md).
 
 Startup sequence (lifespan):
   1. Supabase clients initialised (if SUPABASE_URL set)
@@ -21,12 +23,10 @@ import os
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from pathlib import Path
 
 import sentry_sdk
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from ledger_app.core.config import AppConfig, optional_startup_warnings, validate_startup_config
@@ -232,22 +232,6 @@ async def db_error_handler(request: Request, exc: Exception) -> JSONResponse:
 # Routers (core + ledger + platform)
 from app.routers import register_all as _register_all
 _register_all(app)
-
-
-# Static files + public tool page
-_STATIC_DIR = Path(__file__).parent / "static"
-if _STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
-
-_CBAM_CHECKER_HTML = _STATIC_DIR / "cbam-checker.html"
-
-
-@app.get("/tools/cbam-checker", response_class=HTMLResponse, include_in_schema=False)
-def cbam_checker_page() -> HTMLResponse:
-    """Serve the free public CBAM scope checker tool."""
-    if not _CBAM_CHECKER_HTML.exists():
-        return HTMLResponse(content="Tool page not found", status_code=404)
-    return HTMLResponse(content=_CBAM_CHECKER_HTML.read_text(encoding="utf-8"))
 
 
 @app.get("/")

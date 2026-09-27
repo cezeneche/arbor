@@ -6,10 +6,10 @@ A CBAM (Carbon Border Adjustment Mechanism) compliance platform for UK and EU ca
 
 ```
 api/                  — consolidated FastAPI service (port 8000)
-  app/api/            — narrative pipeline, CPR, registration, verification, compliance routers
+  app/api/            — CPR, registration, verification, compliance, supplier form routers
   app/services/       — narrative, compliance pack, HMRC return builder, CPR, report validator
 nucleo-ledger/        — ledger package (imported in-process by api/)
-  ledger_app/api/     — 17 FastAPI routers: cases, documents, extract, calculate, bundle, etc.
+  ledger_app/api/     — FastAPI routers: CBAM extraction, calculation, cases, audit, auth, health
   ledger_app/services/— CBAM extractor, arbiter, repair, snapshot store, emission factors
   ledger_app/db/      — SQLAlchemy models and migrations
 shared_auth/          — HS256 JWT library used across all code
@@ -95,14 +95,10 @@ TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/auth/token \
   | python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
 ```
 
-## End-to-end smoke test
+## End-to-end check
+
+Arbor's boundary check boots Nucleos and exercises every route Arbor calls:
 
 ```bash
-./scripts/demo_cbam_e2e.sh
-```
-
-Or the live demo (requires real Supabase + Anthropic keys):
-
-```bash
-RECIPIENT_EMAIL=your@email.com python scripts/demo_live.py
+PATH="$PWD/.venv/bin:$PATH" npm --prefix .. run verify:boundary
 ```

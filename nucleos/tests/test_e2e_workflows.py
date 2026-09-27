@@ -35,6 +35,75 @@ requires_supabase = pytest.mark.skipif(
 )
 
 
+def _open_case(client, payload: dict) -> tuple[str, list[str]]:
+    """Open a case the way Arbor does: case, shipment, goods lines, emissions.
+
+    These workflows used to post the whole invoice to
+    /api/cbam/drafts/from-parsed-invoice, which was removed on 27 September 2026
+    with the rest of the pre-integration pipeline — Arbor never called it. The
+    case is built with the same values the draft route derived: reporting year
+    and quarter from the invoice date, one shipment carrying the invoice's
+    origin, and one emissions record per line that states a figure.
+    """
+    from datetime import date
+
+    invoice = payload["invoice"]
+    invoice_date = date.fromisoformat(invoice["invoice_date"])
+    case = client.post(
+        "/api/cbam/cases",
+        json={
+            "importer_eori": payload["importer"]["eori"],
+            "importer_name": payload["importer"]["name"],
+            "reporting_year": invoice_date.year,
+            "reporting_quarter": (invoice_date.month - 1) // 3 + 1,
+        },
+    )
+    assert case.status_code in (200, 201), f"Case creation failed ({case.status_code}): {case.text}"
+    case_id = case.json()["id"]
+
+    shipment = client.post(
+        "/api/cbam/shipments",
+        json={
+            "cbam_case_id": case_id,
+            "origin_country": invoice["origin_country"],
+            "entry_reference": invoice.get("entry_reference") or invoice["invoice_number"],
+            "import_date": invoice["invoice_date"],
+        },
+    )
+    assert shipment.status_code == 201, f"Shipment creation failed ({shipment.status_code}): {shipment.text}"
+
+    goods_line_ids: list[str] = []
+    for line in payload["lines"]:
+        goods = client.post(
+            "/api/cbam/goods-lines",
+            json={
+                "shipment_id": shipment.json()["id"],
+                "cn_code": line["cn_code"],
+                "product_description": line.get("description"),
+                "net_mass_kg": line["net_mass_kg"],
+            },
+        )
+        assert goods.status_code == 201, f"Goods line creation failed ({goods.status_code}): {goods.text}"
+        goods_line_ids.append(goods.json()["id"])
+
+        if line.get("direct_embedded_kgco2e") is not None:
+            emissions = client.post(
+                "/api/cbam/emissions",
+                json={
+                    "goods_line_id": goods_line_ids[-1],
+                    "direct_emissions_kgco2e": line["direct_embedded_kgco2e"],
+                    "indirect_emissions_kgco2e": line.get("indirect_embedded_kgco2e"),
+                    "calculation_method": line.get("method", "actual"),
+                    "version": 1,
+                },
+            )
+            assert emissions.status_code == 201, (
+                f"Emissions creation failed ({emissions.status_code}): {emissions.text}"
+            )
+
+    return case_id, goods_line_ids
+
+
 # Test 1: Steel importer — clean actual data, email notification wiring
 
 @requires_supabase
@@ -88,16 +157,7 @@ def test_steel_importer_clean_data_email_trigger(
         ],
     }
 
-    r = client.post("/api/cbam/drafts/from-parsed-invoice", json=payload)
-    assert r.status_code == 201, f"Draft creation failed ({r.status_code}): {r.text}"
-
-    body = r.json()
-    # The endpoint returns these at the top level. Reading them from a
-    # "created" wrapper raised KeyError on a 201 — a shape this response has
-    # never had.
-    created = body
-    case_id = created["case_id"]
-    goods_line_ids = created["goods_line_ids"]
+    case_id, goods_line_ids = _open_case(client, payload)
     cleanup_cbam_cases.append(case_id)
 
     assert case_id, "case_id must be returned"
@@ -140,42 +200,6 @@ def test_steel_importer_clean_data_email_trigger(
         f"Expected ~850,000 kgCO2e direct emissions, got {total_direct_kg}"
     )
 
-    # Step 3: Run narrative pipeline
-    r = client.post(
-        f"/api/cases/{case_id}/narrative/pipeline",
-        params={"packet_kind": "cbam"},
-    )
-    assert r.status_code == 200, f"Narrative pipeline failed ({r.status_code}): {r.text}"
-    pipeline = r.json()
-
-    assert pipeline.get("case_id") == case_id
-
-    # Claude mock returns fixture narrative; results{} hard-overridden from packet
-    narrative = pipeline.get("final_narrative_json") or {}
-    assert narrative.get("executive_summary"), "executive_summary must be populated"
-    assert narrative.get("methodology"), "methodology must be populated"
-    assert isinstance(narrative.get("open_gaps"), list), "open_gaps must be a list"
-
-    # results{} must carry authoritative values overridden from the report package
-    # (Claude's empty results{} is replaced by _extract_results_from_packet — Rule 6)
-    results = narrative.get("results") or {}
-    assert results.get("total_direct_embedded_kgco2e") is not None, (
-        "results.total_direct_embedded_kgco2e must be hard-overridden from the report package"
-    )
-
-    # Steel with complete actual data: human review must NOT be required
-    assert not pipeline.get("human_review_required"), (
-        "Steel importer with clean actual data should not require human review. "
-        f"Stage errors: {pipeline.get('stage_errors', [])}"
-    )
-
-    # Step 4: Slack must NOT be called for a clean case
-    # Slack fires only when the deterministic validator sets human_review_required=True.
-    assert len(slack_mock.calls) == 0, (
-        f"Slack webhook must not be called for a clean steel case. "
-        f"Got {len(slack_mock.calls)} call(s)."
-    )
-
     # Step 5: Create compliance pack
     r = client.post(f"/api/cbam/cases/{case_id}/compliance-pack")
     assert r.status_code == 200, f"Compliance pack creation failed ({r.status_code}): {r.text}"
@@ -187,6 +211,25 @@ def test_steel_importer_clean_data_email_trigger(
     assert "narrative" in pack, (
         f"Compliance pack must contain 'narrative'. Keys: {list(pack.keys())}"
     )
+
+    # The pack runs the narrative in-process (the standalone narrative endpoint
+    # was removed with the pre-integration pipeline). Claude's mock fills the
+    # prose; results{} is hard-overridden from the report package (Rule 6).
+    narrative = pack["narrative"] or {}
+    assert narrative.get("executive_summary"), "executive_summary must be populated"
+    assert narrative.get("methodology"), "methodology must be populated"
+    assert isinstance(narrative.get("open_gaps"), list), "open_gaps must be a list"
+    assert (narrative.get("results") or {}).get("total_direct_embedded_kgco2e") is not None, (
+        "results.total_direct_embedded_kgco2e must be hard-overridden from the report package"
+    )
+
+    # Slack must NOT be called for a clean case
+    # Slack fires only when the deterministic validator sets human_review_required=True.
+    assert len(slack_mock.calls) == 0, (
+        f"Slack webhook must not be called for a clean steel case. "
+        f"Got {len(slack_mock.calls)} call(s)."
+    )
+
     # Compliance pack audit hash must be a 64-char SHA-256 of the canonical JSON
     pack_audit = pack.get("audit") or {}
     assert len(pack_audit.get("payload_hash", "")) == 64, (
@@ -292,63 +335,30 @@ def test_cement_importer_missing_data_slack_review(
         ],
     }
 
-    r = client.post("/api/cbam/drafts/from-parsed-invoice", json=payload)
-    assert r.status_code == 201, f"Draft creation failed ({r.status_code}): {r.text}"
-    body = r.json()
-    # The endpoint returns these at the top level. Reading them from a
-    # "created" wrapper raised KeyError on a 201 — a shape this response has
-    # never had.
-    case_id = body["case_id"]
+    case_id, _ = _open_case(client, payload)
     cleanup_cbam_cases.append(case_id)
 
     # Step 2: Report package — data quality must surface gaps
+    #
+    # Built the way Arbor builds it, a line with no supplier figure has no
+    # emissions record: choosing the published default is the calculation
+    # step's decision, not something stored at intake. (The removed draft route
+    # stored a default-method record at intake, so the package used to build.)
+    # Either way the gap has to be said, not silently filled.
     r = client.get(f"/api/cbam/cases/{case_id}/report-package")
-    assert r.status_code == 200, f"Report package fetch failed ({r.status_code}): {r.text}"
-    rp = r.json()
-
-    data_quality = rp.get("data_quality") or {}
-    missing = data_quality.get("missing") or []
-    warnings = data_quality.get("warnings") or []
-
-    # Cement without supplier emissions must have at least one data quality issue
-    assert missing or warnings, (
-        "Cement case without direct_embedded_kgco2e must have data quality issues. "
-        f"Got missing={missing}, warnings={warnings}"
-    )
-
-    # Step 3: Pipeline endpoint — handle blocking or Tier 3 path
-    r = client.post(
-        f"/api/cases/{case_id}/narrative/pipeline",
-        params={"packet_kind": "cbam"},
-    )
-
-    if data_quality.get("blocking"):
-        # Missing_emissions tag → data_quality.blocking=True → 422 gate fires
-        assert r.status_code == 422, (
-            f"Blocked case (data_quality.blocking=True) must return 422, "
-            f"got {r.status_code}: {r.text}"
+    if r.status_code == 422:
+        detail = r.json().get("detail") or {}
+        assert detail.get("risk_tier") == "blocking", f"Expected a blocking data quality gate: {detail}"
+        assert any("missing_emissions" in issue for issue in detail.get("blocking_issues") or []), (
+            f"The blocking issue must name the missing emissions: {detail}"
         )
-        block_body = r.json()
-        assert block_body.get("data_quality"), (
-            "422 response must include the data_quality object"
-        )
-        assert block_body["data_quality"].get("blocking") is True, (
-            "data_quality.blocking must be True in the 422 blocking response"
-        )
-        # Pipeline was blocked before Claude was called — Slack must not have fired
-        assert len(slack_mock.calls) == 0, (
-            "Slack must not be called when the pipeline is blocked at the data quality gate"
-        )
+        data_quality = {"blocking": True}
     else:
-        # Tier 3 defaults were applied — pipeline completes
-        assert r.status_code == 200, (
-            f"Pipeline with Tier 3 defaults must return 200, got {r.status_code}: {r.text}"
-        )
-        pipeline = r.json()
-        # Method warnings present for non-actual method → may or may not flag human review
-        # Either way, the narrative must contain an executive_summary
-        assert (pipeline.get("final_narrative_json") or {}).get("executive_summary"), (
-            "Tier 3 narrative must include executive_summary"
+        assert r.status_code == 200, f"Report package fetch failed ({r.status_code}): {r.text}"
+        data_quality = r.json().get("data_quality") or {}
+        assert data_quality.get("missing") or data_quality.get("warnings"), (
+            "Cement case without direct_embedded_kgco2e must have data quality issues. "
+            f"Got {data_quality}"
         )
 
     # Step 4: Compliance pack — must be blocked for a missing-data case
@@ -357,7 +367,19 @@ def test_cement_importer_missing_data_slack_review(
         assert r.status_code == 422, (
             f"Compliance pack for a blocked case must return 422, got {r.status_code}: {r.text}"
         )
-        assert r.json().get("data_quality", {}).get("blocking") is True
+        blocked = r.json()
+        # Refused by the pack's own gate, or by the report-package gate it runs first.
+        assert (blocked.get("data_quality") or {}).get("blocking") is True or (
+            (blocked.get("detail") or {}).get("risk_tier") == "blocking"
+        ), f"Compliance pack must be refused as blocking: {blocked}"
+    else:
+        # Tier 3 defaults were applied — the pack, and its narrative, complete.
+        assert r.status_code == 200, (
+            f"Compliance pack with Tier 3 defaults must return 200, got {r.status_code}: {r.text}"
+        )
+        assert (r.json().get("narrative") or {}).get("executive_summary"), (
+            "Tier 3 narrative must include executive_summary"
+        )
 
     # Step 5: Slack notification service — verify wiring directly
     # In production, notify_review_required fires as a BackgroundTask after the
@@ -468,15 +490,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
         ],
     }
 
-    r = client.post("/api/cbam/drafts/from-parsed-invoice", json=payload)
-    assert r.status_code == 201, f"Draft creation failed ({r.status_code}): {r.text}"
-    body = r.json()
-    # The endpoint returns these at the top level. Reading them from a
-    # "created" wrapper raised KeyError on a 201 — a shape this response has
-    # never had.
-    created = body
-    case_id = created["case_id"]
-    goods_line_ids = created["goods_line_ids"]
+    case_id, goods_line_ids = _open_case(client, payload)
     cleanup_cbam_cases.append(case_id)
 
     assert len(goods_line_ids) == 1, f"Expected 1 goods line, got {len(goods_line_ids)}"
@@ -525,21 +539,6 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
                     f"is excluded from the UK CBAM charge until 2029. "
                     f"Expected ≤ £19,116 (direct only at £53.10/tCO2e Q3 2027)."
                 )
-
-    # Step 3: Run narrative pipeline
-    r = client.post(
-        f"/api/cases/{case_id}/narrative/pipeline",
-        params={"packet_kind": "cbam"},
-    )
-    assert r.status_code == 200, f"Narrative pipeline failed ({r.status_code}): {r.text}"
-    pipeline = r.json()
-
-    assert pipeline.get("case_id") == case_id
-    # results{} hard-overridden with authoritative values (Rule 6)
-    results = (pipeline.get("final_narrative_json") or {}).get("results") or {}
-    assert results.get("total_direct_embedded_kgco2e") is not None, (
-        "results.total_direct_embedded_kgco2e must be overridden from report package"
-    )
 
     # Step 4: CPR calculation — Norwegian CO₂ tax (NOK 1155/tCO2e)
     #
@@ -666,6 +665,10 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     assert "narrative" in pack, (
         f"Compliance pack must include narrative. Keys: {list(pack.keys())}"
     )
+    # results{} hard-overridden with authoritative values (Rule 6)
+    assert ((pack["narrative"] or {}).get("results") or {}).get("total_direct_embedded_kgco2e") is not None, (
+        "results.total_direct_embedded_kgco2e must be overridden from report package"
+    )
 
     # Registry submission (EU 2023/1773 Annex I): both direct and indirect must appear
     registry = pack.get("registry_submission") or {}
@@ -690,10 +693,12 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     )
 
     # Step 8: Slack and Resend not fired in the happy path
-    # Slack fires only if human_review_required=True; Resend after formal approval.
-    if not pipeline.get("human_review_required"):
+    # Slack fires only if the narrative asked for human review, which it records
+    # on the case as review_status; Resend only after formal approval.
+    review_status = client.get(f"/api/cbam/cases/{case_id}").json().get("review_status")
+    if review_status != "pending_review":
         assert len(slack_mock.calls) == 0, (
-            "Slack must not be called when human_review_required=False"
+            "Slack must not be called when the case was not flagged for review"
         )
     assert len(resend_mock.calls) == 0, (
         "Resend email must not be fired from the pipeline or compliance-pack endpoints"

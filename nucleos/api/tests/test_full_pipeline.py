@@ -56,7 +56,6 @@ import pytest
 
 _DB_URL = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
 _HAS_POSTGRES = _DB_URL.startswith("postgresql") or _DB_URL.startswith("postgres")
-_HAS_ANTHROPIC = bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 requires_postgres = pytest.mark.skipif(
     not _HAS_POSTGRES,
@@ -64,11 +63,6 @@ requires_postgres = pytest.mark.skipif(
         "TEST_DATABASE_URL (PostgreSQL DSN) is required for API integration tests. "
         "Set TEST_DATABASE_URL=postgresql+psycopg2://... to enable."
     ),
-)
-
-requires_anthropic = pytest.mark.skipif(
-    not _HAS_ANTHROPIC,
-    reason="ANTHROPIC_API_KEY not set — skipping narrative pipeline tests.",
 )
 
 # Application imports (env already set by conftest.py)
@@ -750,35 +744,6 @@ class TestHappyPathSteelActual:
         assert len(doc.audit_chain_hash) == 64
         assert all(c in "0123456789abcdef" for c in doc.audit_chain_hash)
         assert doc.accuracy_declaration is True
-
-    @requires_postgres
-    @requires_anthropic
-    def test_narrative_pipeline_endpoint_returns_200(self, api_client, tenant_id, cleanup_cases):
-        """
-        POST /api/cases/{id}/narrative/pipeline returns 200 with final_narrative_json
-        key when ANTHROPIC_API_KEY is configured.
-        """
-        auth = _auth_headers(tenant_id)
-
-        case    = _post_case(api_client, auth)
-        case_id = case["id"]
-        cleanup_cases.append(case_id)
-
-        ship          = _post_shipment(api_client, auth, case_id)
-        gl            = _post_goods_line(api_client, auth, case_id, ship["id"])
-        _post_emissions(api_client, auth, gl["id"])
-
-        resp = api_client.post(
-            f"/api/cases/{case_id}/narrative/pipeline",
-            params={"packet_kind": "cbam"},
-            headers=auth,
-        )
-        assert resp.status_code == 200, f"Narrative pipeline failed: {resp.text}"
-        body = resp.json()
-        assert "final_narrative_json"  in body
-        assert "human_review_required" in body
-        # With clean actual data, narrative should not require human review
-        assert body["human_review_required"] is False
 
 
 #  TEST 2 — Default value fallback (Annex VI, Tier 3)

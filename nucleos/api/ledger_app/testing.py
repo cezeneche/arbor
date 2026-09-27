@@ -10,7 +10,6 @@ from fastapi.testclient import TestClient
 os.environ.setdefault("DATABASE_URL", "sqlite:///./cbam_test.db")
 
 import ledger_app.api.cbam as cbam_api
-import ledger_app.api.report_package as report_package_api
 from shared_auth import get_auth_context
 
 
@@ -452,10 +451,7 @@ def _client_with_fake_engine() -> tuple[TestClient, FakeConnection]:
 
     # Mounted as production mounts them, behind get_auth_context. Without it the
     # tenant on request.state was empty, and any route that reads the real engine
-    # (insights binds it at import) ran its queries unscoped.
+    # ran its queries unscoped.
     app = FastAPI()
     app.include_router(cbam_api.router, prefix="/api", dependencies=[Depends(get_auth_context)])
-    app.include_router(
-        report_package_api.router, prefix="/api", dependencies=[Depends(get_auth_context)]
-    )
     return TestClient(app, headers={"Authorization": f"Bearer {token}"}), conn
