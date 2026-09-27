@@ -239,6 +239,10 @@ model Document {
   submittedAt   DateTime       @default(now())
   submittedById String
   status        DocumentStatus @default(PENDING)
+  // Set when the document was saved Declared with nobody checking it; cleared
+  // when a person confirms it. While set, the document stays in the review
+  // queue and the weekly digest, because that check is what makes it Verified.
+  autoAcceptedAt DateTime?
 
   dataRecords       DataRecord[]
   extractionJobs    ExtractionJob[]
@@ -333,6 +337,10 @@ enum CbamHandoffStatus {
   PARTIAL
   // No case was created. `problems` says why.
   FAILED
+  // No case can be created until the user supplies an identifier the document
+  // did not give (the importer's EORI, a goods line's commodity code). Not
+  // retried: the same input cannot produce a different result.
+  NEEDS_INPUT
 }
 
 enum DocumentType {
@@ -1311,9 +1319,12 @@ model SharedExport {
   // Audit-package integrity hash for the scope; verifiable via /api/audit/verify-public.
   packageHash String
   // The records the share was issued with — exactly the set packageHash covers.
-  // A share shows these, marking any since corrected. Empty for shares issued
-  // before snapshots, which keep their live scope.
+  // A share shows these, marking any since corrected.
   recordIds   String[]    @default([])
+  // False only for shares issued before snapshots, which keep their live scope.
+  // Explicit because an empty recordIds is also a snapshot of an empty scope,
+  // and reading that as legacy exposed records added after the share was issued.
+  isSnapshot  Boolean     @default(true)
   createdById String
   createdAt   DateTime    @default(now())
   expiresAt   DateTime?

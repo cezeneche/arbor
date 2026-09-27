@@ -161,3 +161,53 @@ describe('derivePeriod — last resort', () => {
     expect(periodEnd.toISOString()).toBe('2026-07-01T23:59:59.999Z')
   })
 })
+
+// A customs declaration extracted by Nucleos speaks the CBAM vocabulary, which
+// has no declaration_date: the import is dated by import_date, and failing that
+// the invoice. Anchoring only on declaration_date let every one fall through to
+// the review date, so a March import reviewed in September landed in Q3 — and the
+// CBAM case, whose quarter is this period's end, was opened for the wrong quarter.
+describe('derivePeriod — CBAM-extracted customs declarations', () => {
+  const september = at('2026-09-20T10:00:00.000Z')
+
+  it('anchors on import_date', () => {
+    const { periodStart, periodEnd } = derivePeriod(
+      { import_date: '2026-03-14' },
+      { now: september, documentType: 'CUSTOMS_DECLARATION' },
+    )
+    expect(periodStart.toISOString()).toBe('2026-03-14T00:00:00.000Z')
+    expect(periodEnd.toISOString()).toBe('2026-03-14T23:59:59.999Z')
+  })
+
+  it('falls back to invoice_date when there is no import date', () => {
+    const { periodEnd } = derivePeriod(
+      { invoice_date: '2026-03-10' },
+      { now: september, documentType: 'CUSTOMS_DECLARATION' },
+    )
+    expect(periodEnd.toISOString()).toBe('2026-03-10T23:59:59.999Z')
+  })
+
+  it('prefers the import date over the invoice date', () => {
+    const { periodEnd } = derivePeriod(
+      { invoice_date: '2026-02-27', import_date: '2026-04-02' },
+      { now: september, documentType: 'CUSTOMS_DECLARATION' },
+    )
+    expect(periodEnd.toISOString().slice(0, 10)).toBe('2026-04-02')
+  })
+
+  it('still honours declaration_date where the generic extractor supplied one', () => {
+    const { periodEnd } = derivePeriod(
+      { declaration_date: '2026-01-05', import_date: '2026-01-07' },
+      { now: september, documentType: 'CUSTOMS_DECLARATION' },
+    )
+    expect(periodEnd.toISOString().slice(0, 10)).toBe('2026-01-05')
+  })
+
+  it('anchors a CBAM supplier invoice on its import date before its invoice date', () => {
+    const { periodEnd } = derivePeriod(
+      { invoice_date: '2026-03-28', import_date: '2026-04-03' },
+      { now: september, documentType: 'SUPPLIER_INVOICE' },
+    )
+    expect(periodEnd.toISOString().slice(0, 10)).toBe('2026-04-03')
+  })
+})

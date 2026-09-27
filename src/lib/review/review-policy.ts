@@ -39,6 +39,22 @@ export const NUMERIC_FIELDS = new Set([
   'energy_consumption', 'energy_consumption_total', 'average_herd_size',
 ])
 
+/**
+ * How many values a document adds to the weekly digest. A document awaiting
+ * review counts the fields it was unsure of. An auto-accepted one counts every
+ * figure it saved: none was checked, and checking them is what makes them
+ * Verified. It has no flags by construction, so counting flags left it out.
+ */
+export function digestFieldCount(doc: {
+  autoAccepted: boolean
+  fields: readonly { fieldName: string; rawValue: string | null; flagged: boolean }[]
+}): number {
+  if (doc.autoAccepted) {
+    return doc.fields.filter(f => NUMERIC_FIELDS.has(f.fieldName) && (f.rawValue ?? '').trim() !== '').length
+  }
+  return doc.fields.filter(f => f.flagged).length
+}
+
 export interface ReviewQueueSummary {
   fieldCount: number
   estimatedMinutes: number
@@ -80,9 +96,13 @@ const PERIOD_ANCHOR_FIELDS: Record<string, string[]> = {
   FUEL_RECEIPT: ['purchase_date'],
   MATERIAL_INTAKE: ['delivery_date'],
   DELIVERY_NOTE: ['delivery_date'],
-  CUSTOMS_DECLARATION: ['declaration_date'],
+  // declaration_date is the generic extractor's name; a Nucleos (CBAM)
+  // extraction has none and dates the import instead. Without the CBAM names a
+  // customs declaration fell through to the review date, and its case to the
+  // quarter it happened to be reviewed in.
+  CUSTOMS_DECLARATION: ['declaration_date', 'import_date', 'invoice_date'],
   BILL_OF_LADING: ['date_of_issue'],
-  SUPPLIER_INVOICE: ['invoice_date'],
+  SUPPLIER_INVOICE: ['import_date', 'invoice_date'],
   PURCHASE_ORDER: ['po_date'],
   FREIGHT_INVOICE: ['shipment_date', 'invoice_date'],
   CROP_YIELD_RECORD: ['harvest_date'],

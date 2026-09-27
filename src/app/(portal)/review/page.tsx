@@ -12,10 +12,16 @@ export default async function ReviewPage() {
   const entityId = getSessionUser(session).entityId as string
 
   const documents = await prisma.document.findMany({
-    where: { entityId, status: 'REVIEW_REQUIRED' },
+    // Auto-accepted documents too: saved Declared with nobody checking them,
+    // and this queue is where the check that makes them Verified happens.
+    where: {
+      entityId,
+      OR: [{ status: 'REVIEW_REQUIRED' }, { status: 'ACCEPTED', autoAcceptedAt: { not: null } }],
+    },
     orderBy: { submittedAt: 'desc' },
     select: {
       id: true,
+      autoAcceptedAt: true,
       fileName: true,
       documentType: true,
       extractionJobs: {
@@ -48,6 +54,7 @@ export default async function ReviewPage() {
       domain: (DOMAIN_BY_DOCUMENT_TYPE[doc.documentType] ?? DataDomain.COMPLIANCE) as string,
       periodStart: periodStart.toISOString(),
       periodEnd: periodEnd.toISOString(),
+      autoAccepted: doc.autoAcceptedAt !== null,
       fields: numeric.map((f) => ({
         fieldName: f.fieldName,
         value: f.rawValue ?? '',

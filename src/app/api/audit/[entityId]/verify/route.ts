@@ -5,6 +5,7 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { verifyChain } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
+import { auditPayloadMismatches } from '@/lib/layer2/audit-record-match'
 
 export async function GET(
   _req: NextRequest,
@@ -48,6 +49,7 @@ export async function GET(
   const recordMap = new Map(records.map(r => [r.id, r]))
 
   const chainEntries = entries.map((e) => ({
+    eventType: e.eventType,
     hash: e.hash,
     previousHash: e.previousHash,
     payload: e.payload as unknown as AuditPayload,
@@ -68,22 +70,7 @@ export async function GET(
       }
       continue
     }
-    const mismatches: string[] = []
-    if (record.domain !== p.domain) mismatches.push('domain')
-    if (record.fieldName !== p.fieldName) mismatches.push('fieldName')
-    if (record.value !== p.value) mismatches.push('value')
-    if (record.unit !== p.unit) mismatches.push('unit')
-    if (record.originalValue !== p.originalValue) mismatches.push('originalValue')
-    if (record.originalUnit !== p.originalUnit) mismatches.push('originalUnit')
-    // Compare period dates as ISO strings — DB returns Date objects, payload stores strings.
-    if (new Date(record.periodStart).toISOString() !== p.periodStart) mismatches.push('periodStart')
-    if (new Date(record.periodEnd).toISOString() !== p.periodEnd) mismatches.push('periodEnd')
-    if (record.trustTier !== p.trustTier) mismatches.push('trustTier')
-    if (record.confidenceScore !== p.confidenceScore) mismatches.push('confidenceScore')
-    if ((record.sourceText ?? null) !== p.sourceText) mismatches.push('sourceText')
-    if ((record.documentId ?? null) !== p.documentId) mismatches.push('documentId')
-    if (record.extractionMethod !== p.extractionMethod) mismatches.push('extractionMethod')
-    if (record.submittedById !== p.submittedById) mismatches.push('submittedById')
+    const mismatches = auditPayloadMismatches(entry.eventType, p, record)
     if (mismatches.length > 0) {
       tampered.push(`${p.recordId}: fields altered — ${mismatches.join(', ')}`)
     }

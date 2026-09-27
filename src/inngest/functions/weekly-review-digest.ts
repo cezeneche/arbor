@@ -4,7 +4,7 @@
 import { inngest } from '@/inngest/client'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
-import { summariseReviewQueue } from '@/lib/review/review-policy'
+import { digestFieldCount, summariseReviewQueue } from '@/lib/review/review-policy'
 
 interface Tally {
   fieldCount: number
@@ -18,19 +18,22 @@ export const weeklyReviewDigestFunction = inngest.createFunction(
   },
   async ({ step }) => {
     const tallies = await step.run('tally-flagged-fields', async () => {
-      // Documents still awaiting review, with their latest extraction job's
-      // unresolved flagged fields.
+      // Documents still awaiting review, and auto-accepted ones nobody has
+      // checked yet, with their latest extraction job's unconfirmed fields.
       const docs = await prisma.document.findMany({
-        where: { status: 'REVIEW_REQUIRED' },
+        where: {
+          OR: [{ status: 'REVIEW_REQUIRED' }, { status: 'ACCEPTED', autoAcceptedAt: { not: null } }],
+        },
         select: {
           entityId: true,
+          autoAcceptedAt: true,
           extractionJobs: {
             orderBy: { completedAt: 'desc' },
             take: 1,
             select: {
               extractedFields: {
-                where: { flagged: true, confirmedAt: null },
-                select: { id: true },
+                where: { confirmedAt: null },
+                select: { fieldName: true, rawValue: true, flagged: true },
               },
             },
           },
@@ -39,7 +42,10 @@ export const weeklyReviewDigestFunction = inngest.createFunction(
 
       const byEntity = new Map<string, Tally>()
       for (const doc of docs) {
-        const flagged = doc.extractionJobs[0]?.extractedFields.length ?? 0
+        const flagged = digestFieldCount({
+          autoAccepted: doc.autoAcceptedAt !== null,
+          fields: doc.extractionJobs[0]?.extractedFields ?? [],
+        })
         if (flagged === 0) continue
         const t = byEntity.get(doc.entityId) ?? { fieldCount: 0, documentCount: 0 }
         t.fieldCount += flagged

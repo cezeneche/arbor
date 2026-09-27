@@ -71,13 +71,20 @@ export async function DELETE(
           extractionMethod: true,
         },
       },
+      // Inactive records too: superseded or withdrawn, they are still chain
+      // links that name this document.
+      _count: { select: { dataRecords: true } },
     },
   })
 
   if (!document) return err('Document not found', 'NOT_FOUND', 404)
   if (document.entityId !== entityId) return err('Access denied', 'FORBIDDEN', 403)
 
-  const plan = planDocumentRemoval({ status: document.status, records: document.dataRecords })
+  const plan = planDocumentRemoval({
+    status: document.status,
+    records: document.dataRecords,
+    hasRecordHistory: document._count.dataRecords > 0,
+  })
 
   if (plan.mode === 'HARD_DELETE') {
     // The extraction and its fields exist only to serve this document.

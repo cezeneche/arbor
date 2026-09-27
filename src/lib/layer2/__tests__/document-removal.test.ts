@@ -73,6 +73,23 @@ describe('planDocumentRemoval', () => {
   it('has nothing to withdraw when it is deleting', () => {
     expect(planDocumentRemoval({ status: 'PENDING', records: [] }).recordIds).toEqual([])
   })
+
+  // Withdrawal deactivates the records, so a second delete found no active ones,
+  // saw a status that was not ACCEPTED, and hard-deleted: the extraction evidence
+  // went, and the records' documentId was nulled under audit payloads that still
+  // name the document.
+  it('never hard-deletes a document that was already withdrawn', () => {
+    const plan = planDocumentRemoval({ status: 'WITHDRAWN', records: [] })
+    expect(plan.mode).toBe('WITHDRAW')
+    expect(plan.recordIds).toEqual([])
+  })
+
+  it('never hard-deletes a document whose records are all inactive', () => {
+    // Superseded or withdrawn, they are still links in the chain.
+    const plan = planDocumentRemoval({ status: 'REVIEW_REQUIRED', records: [], hasRecordHistory: true })
+    expect(plan.mode).toBe('WITHDRAW')
+    expect(plan.recordIds).toEqual([])
+  })
 })
 
 describe('buildWithdrawalPayload', () => {

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colours, typography, spacing, confidenceThreshold, textStyles } from '@/lib/design-system'
-import { splitConfirmFields } from '@/lib/review/confirm-split'
+import { clearedFieldEntries, splitConfirmFields } from '@/lib/review/confirm-split'
 
 export interface ReviewField {
   fieldName: string
@@ -22,6 +22,8 @@ export interface ReviewDoc {
   domain: string
   periodStart: string
   periodEnd: string
+  /** Already saved as Declared without a check; confirming makes it Verified. */
+  autoAccepted?: boolean
   fields: ReviewField[]
 }
 
@@ -53,6 +55,12 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
     // refusal was reported as "check that each value is a number", the reason
     // pointed at the wrong thing.
     const { records, context } = splitConfirmFields(filled)
+    // A cleared field is sent as a clear; left out, the route would certify it
+    // from the extraction as though it had never been cleared.
+    const cleared = clearedFieldEntries(
+      doc.fields.map((f) => ({ fieldName: f.fieldName, rawValue: f.value })),
+      docValues,
+    )
 
     const fields = records.map((f) => ({
       fieldName: f.fieldName,
@@ -71,12 +79,15 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fields,
-        ...(context.length > 0
+        ...(context.length + cleared.length > 0
           ? {
-              context: context.map((f) => ({
-                fieldName: f.fieldName,
-                confirmedValue: docValues[f.fieldName],
-              })),
+              context: [
+                ...context.map((f) => ({
+                  fieldName: f.fieldName,
+                  confirmedValue: docValues[f.fieldName],
+                })),
+                ...cleared,
+              ],
             }
           : {}),
       }),
@@ -197,6 +208,7 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
                 <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>{doc.fileName}</span>
                 <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, marginLeft: spacing[2] }}>
                   {readable(doc.documentType.toLowerCase())} · {new Date(doc.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} – {new Date(doc.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                  {doc.autoAccepted ? ' · saved without a check — confirm to make it Verified' : ''}
                 </span>
               </div>
               <button

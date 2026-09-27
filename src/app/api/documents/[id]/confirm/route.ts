@@ -5,7 +5,10 @@ import { requireWriteAccess } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { writeRecordWithAuditEntry } from '@/lib/layer2/record-writer'
-import { findDuplicates } from '@/lib/layer2/duplicate-check'
+import { findDuplicates, replacementsByField } from '@/lib/layer2/duplicate-check'
+import { planOwnRecordReplacement } from '@/lib/layer2/own-record-replacement'
+import { buildWithdrawalPayload } from '@/lib/layer2/document-removal'
+import { appendAuditEntry } from '@/lib/layer2/audit-append'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { runCrossValidation } from '@/lib/validation/cross-validation'
 import { assertRecordCapacity } from '@/lib/plan-guard'
@@ -92,7 +95,14 @@ export async function POST(
   })
   if (!document) return err('Document not found', 'NOT_FOUND', 404)
   if (document.entityId !== entityId) return err('Access denied', 'FORBIDDEN', 403)
-  if (document.status === 'ACCEPTED') return err('Document already confirmed', 'ALREADY_CONFIRMED', 409)
+  // An auto-accepted document was saved Declared with nobody checking it, and
+  // this confirmation is that check: it stays open until a person has done it.
+  if (document.status === 'ACCEPTED' && !document.autoAcceptedAt) {
+    return err('Document already confirmed', 'ALREADY_CONFIRMED', 409)
+  }
+  // Its records were withdrawn from the chain's active set. Confirming would
+  // put them back with no withdrawal of the withdrawal on record.
+  if (document.status === 'WITHDRAWN') return err('This document was removed', 'DOCUMENT_WITHDRAWN', 409)
 
   const job = document.extractionJobs[0]
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[document.documentType] ?? []
@@ -270,9 +280,10 @@ export async function POST(
       { status: 409 },
     )
   }
-  const replacePriorIds = new Set(
-    parsed.data.onDuplicate === 'replace' ? duplicates.flatMap(d => d.priorIds) : [],
-  )
+  // Per field: each new record supersedes its own field's duplicates only.
+  const replacePriorIds = parsed.data.onDuplicate === 'replace'
+    ? replacementsByField(duplicates)
+    : new Map<string, string[]>()
 
   // scopes whose prior records were superseded, so we can notify buyers.
   const supersededScopes: { domain: string; periodStart: Date; periodEnd: Date }[] = []
@@ -324,10 +335,31 @@ export async function POST(
     // for the common case; on its own it left a window in which two confirmations
     // in flight together both passed it and both wrote a full set of records.
     const claimed = await tx.document.updateMany({
-      where: { id: documentId, entityId, status: { not: 'ACCEPTED' } },
-      data: { status: 'ACCEPTED' },
+      where: {
+        id: documentId,
+        entityId,
+        OR: [
+          { status: { notIn: ['ACCEPTED', 'WITHDRAWN'] } },
+          { status: 'ACCEPTED', autoAcceptedAt: { not: null } },
+        ],
+      },
+      data: { status: 'ACCEPTED', autoAcceptedAt: null },
     })
     if (claimed.count === 0) throw new AlreadyConfirmed()
+
+    // Records this document already wrote — auto-accepted, or left behind when
+    // the constraint gate sent it back to review — are replaced by this
+    // confirmation, whatever the period or the duplicate choice.
+    const own = await tx.dataRecord.findMany({
+      where: { documentId, isActive: true },
+      select: {
+        id: true, entityId: true, domain: true, fieldName: true, value: true, unit: true,
+        originalValue: true, originalUnit: true, periodStart: true, periodEnd: true,
+        trustTier: true, confidenceScore: true, sourceText: true, documentId: true,
+        extractionMethod: true,
+      },
+    })
+    const ownPlan = planOwnRecordReplacement(own, preparedFields.map(p => p.field.fieldName))
 
     for (const { field, rawNum, siValue, siUnit, periodStart, periodEnd } of preparedFields) {
       // Supersede any existing active records for the same entity+domain+fieldName+period.
@@ -337,15 +369,17 @@ export async function POST(
       // reason it is not a duplicate candidate: matching on `lines[0].*` would
       // retire another shipment's first goods line because this document also
       // has one.
+      const ownIds = ownPlan.supersedeByField.get(field.fieldName) ?? []
       const prior = parsed.data.onDuplicate === 'keep_both' || isPositional(field.fieldName)
-        ? []
+        ? ownIds.map(id => ({ id }))
         : await tx.dataRecord.findMany({
             where: {
               entityId,
               isActive: true,
               OR: [
                 { domain: field.domain, fieldName: field.fieldName, periodStart, periodEnd },
-                { id: { in: [...replacePriorIds] } },
+                { id: { in: replacePriorIds.get(field.fieldName) ?? [] } },
+                { id: { in: ownIds } },
               ],
             },
             select: { id: true },
@@ -383,6 +417,20 @@ export async function POST(
       }
 
       recordIds.push(result.recordId)
+    }
+
+    // An earlier record whose field the reviewer cleared: nothing replaces it,
+    // and the figure it holds is one the reviewer says the document does not
+    // state. Withdrawn, with its chain entry, rather than left standing.
+    const ownById = new Map(own.map(r => [r.id, r]))
+    for (const recordId of ownPlan.withdraw) {
+      await appendAuditEntry(tx, {
+        entityId,
+        recordId,
+        eventType: 'WITHDRAWN',
+        payload: buildWithdrawalPayload(ownById.get(recordId)!, { at: new Date(), byId: session.user!.id! }),
+      })
+      await tx.dataRecord.update({ where: { id: recordId }, data: { isActive: false } })
     }
 
     if (cbamHandoff) await enqueueCbamHandoff(tx, cbamHandoff)
@@ -566,6 +614,8 @@ export async function POST(
   return ok({
     recordIds: createdRecords,
     documentStatus: 'ACCEPTED',
-    ...(cbam ? { cbam: { caseId: cbam.caseId, status: cbam.status, problems: cbam.problems } } : {}),
+    ...(cbam
+      ? { cbam: { caseId: cbam.caseId, status: cbam.status, problems: cbam.problems, needs: cbam.needs ?? [] } }
+      : {}),
   })
 }

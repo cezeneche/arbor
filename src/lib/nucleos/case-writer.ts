@@ -38,13 +38,20 @@ export interface CaseWriteOptions {
 /** Which Nucleos rows already exist for this case, keyed by payload line index. */
 export interface CaseWriteProgress {
   caseId: string | null
+  /** The first shipment created. Before shipments were kept per origin it was
+   *  the only one, carrying the document's origin — which is how a resume
+   *  reads it when `shipments` is absent. */
   shipmentId: string | null
+  /** Shipment id per country of origin ('' when no origin was stated). */
+  shipments?: Record<string, string>
   lines: Record<string, { goodsLineId: string; emissionsRecorded: boolean }>
 }
 
 export function emptyProgress(): CaseWriteProgress {
-  return { caseId: null, shipmentId: null, lines: {} }
+  return { caseId: null, shipmentId: null, shipments: {}, lines: {} }
 }
+
+const originKey = (origin: string | null) => origin ?? ''
 
 export interface CaseWriteResult {
   /** Null when the case itself could not be created. */
@@ -105,6 +112,31 @@ function idOf(row: unknown, what: string): string {
   return id
 }
 
+/**
+ * Refuses a case that is not the one asked for.
+ *
+ * Nucleos hands back an existing case for the same importer and quarter. Before
+ * it keyed that on the owner and the regime, the one returned could be another
+ * organisation's, or the other regime's return — and everything posted next
+ * would land on it. Checked only where Nucleos says; a row without the column
+ * is left to the handoff's own ownership check.
+ */
+function assertCaseIsOurs(caseRow: Record<string, unknown>, payload: CasePayload): void {
+  const jurisdiction = caseRow.jurisdiction
+  if (typeof jurisdiction === 'string' && jurisdiction !== payload.case.jurisdiction) {
+    throw new NucleosUnavailableError(
+      `Nucleos returned an existing ${jurisdiction} case for this importer and quarter, ` +
+        `which is another regime's return, so nothing was added to it`,
+    )
+  }
+  const owner = caseRow.owner_ref
+  if (payload.case.owner_ref && typeof owner === 'string' && owner !== payload.case.owner_ref) {
+    throw new NucleosUnavailableError(
+      'Nucleos returned a case belonging to another organisation, so nothing was added to it',
+    )
+  }
+}
+
 /** Opens a case from nothing. */
 export async function createCbamCase(
   payload: CasePayload,
@@ -127,9 +159,15 @@ export async function writeCbamCase(
   start: CaseWriteProgress,
   opts: CaseWriteOptions = {},
 ): Promise<CaseWriteResult & { progress: CaseWriteProgress }> {
+  // Legacy progress recorded one shipment, and it carried the document's origin.
+  const shipments: Record<string, string> = { ...(start.shipments ?? {}) }
+  if (!start.shipments && start.shipmentId) {
+    shipments[originKey(payload.shipment.origin_country)] = start.shipmentId
+  }
   const progress: CaseWriteProgress = {
     caseId: start.caseId,
     shipmentId: start.shipmentId,
+    shipments,
     lines: { ...start.lines },
   }
   const save = async () => {
@@ -147,7 +185,9 @@ export async function writeCbamCase(
 
   if (!progress.caseId) {
     const caseRow = await post<Record<string, unknown>>('/api/cbam/cases', payload.case, opts)
-    progress.caseId = idOf(caseRow, 'case')
+    const id = idOf(caseRow, 'case')
+    assertCaseIsOurs(caseRow, payload)
+    progress.caseId = id
     await save()
   }
   const caseId = progress.caseId
@@ -156,29 +196,46 @@ export async function writeCbamCase(
   // a failure to record progress: a failure after this point leaves a real case
   // that the user can see, and the honest report of it is the id plus what is
   // missing.
-  if (!progress.shipmentId) {
+  //
+  // One shipment per country of origin. Nucleos reads a goods line's origin
+  // from its shipment — the line has nowhere to hold one — so a single shipment
+  // stamped with the document's origin gave every line that country.
+  const failedOrigins = new Map<string, { message: string; lines: number[] }>()
+  const shipmentFor = async (origin: string | null): Promise<string | null> => {
+    const key = originKey(origin)
+    if (shipments[key]) return shipments[key]
+    if (failedOrigins.has(key)) return null
     try {
       const shipmentRow = await post<Record<string, unknown>>(
         '/api/cbam/shipments',
-        { cbam_case_id: caseId, ...payload.shipment },
+        {
+          cbam_case_id: caseId,
+          ...payload.shipment,
+          origin_country: origin,
+          ...(payload.ref ? { client_ref: `${payload.ref}:shipment:${key}` } : {}),
+        },
         opts,
       )
-      progress.shipmentId = idOf(shipmentRow, 'shipment')
+      shipments[key] = idOf(shipmentRow, 'shipment')
     } catch (err) {
-      problems.push(
-        `The case was opened but its consignment could not be added, so it has no goods on it yet: ${(err as Error).message}`,
-      )
-      return done()
+      failedOrigins.set(key, { message: (err as Error).message, lines: [] })
+      return null
     }
+    progress.shipmentId ??= shipments[key]
     await save()
+    return shipments[key]
   }
-  const shipmentId = progress.shipmentId
 
   for (const line of payload.lines) {
     const key = String(line.lineIndex)
     let entry = progress.lines[key]
 
     if (!entry) {
+      const shipmentId = await shipmentFor(line.origin_country)
+      if (!shipmentId) {
+        failedOrigins.get(originKey(line.origin_country))!.lines.push(line.lineIndex + 1)
+        continue
+      }
       try {
         const lineRow = await post<Record<string, unknown>>(
           '/api/cbam/goods-lines',
@@ -188,6 +245,7 @@ export async function writeCbamCase(
             product_description: line.product_description,
             net_mass_kg: line.net_mass_kg,
             installation_id: line.installation_id,
+            ...(payload.ref ? { client_ref: `${payload.ref}:line:${line.lineIndex}` } : {}),
           },
           opts,
         )
@@ -226,6 +284,14 @@ export async function writeCbamCase(
     }
     progress.lines[key] = { ...entry, emissionsRecorded: true }
     await save()
+  }
+
+  for (const [key, { message, lines }] of failedOrigins) {
+    const from = key ? ` from ${key}` : ''
+    const which = lines.length === 1 ? `goods line ${lines[0]} is` : `goods lines ${lines.join(', ')} are`
+    problems.push(
+      `The case was opened but its consignment${from} could not be added, so ${which} not on it yet: ${message}`,
+    )
   }
 
   return done()

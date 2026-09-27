@@ -48,3 +48,22 @@ export function splitConfirmFields<T extends { fieldName: string }>(
   }
   return { records, context }
 }
+
+/**
+ * The fields the reviewer cleared, as explicit empty values for `context`.
+ *
+ * The route certifies the extraction with the confirmed values laid over it,
+ * so a field missing from the request keeps what the extraction read. Sending
+ * only the fields that still hold a value made clearing a compulsory field a
+ * no-op — it reappeared at certification, Verified. Only fields that were
+ * extracted with a value and are shown (present in `values`) can be cleared.
+ */
+export function clearedFieldEntries(
+  fields: readonly { fieldName: string; rawValue: string | null }[],
+  values: Readonly<Record<string, string | undefined>>,
+): { fieldName: string; confirmedValue: '' }[] {
+  return fields
+    .filter(f => (f.rawValue ?? '').trim() !== '')
+    .filter(f => f.fieldName in values && (values[f.fieldName] ?? '').trim() === '')
+    .map(f => ({ fieldName: f.fieldName, confirmedValue: '' as const }))
+}

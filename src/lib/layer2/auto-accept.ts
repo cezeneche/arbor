@@ -134,7 +134,12 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
         ids.push(result.recordId)
       }
 
-      await tx.document.update({ where: { id: documentId }, data: { status: 'ACCEPTED' } })
+      // Marked, so the review queue and the weekly digest can offer the check
+      // that upgrades these records to Verified.
+      await tx.document.update({
+        where: { id: documentId },
+        data: { status: 'ACCEPTED', autoAcceptedAt: new Date() },
+      })
       return ids
     },
     { isolationLevel: 'Serializable' },

@@ -62,7 +62,9 @@ export async function POST(req: NextRequest) {
       periodStart,
       periodEnd,
       packageHash: pkg.packageIntegrityHash,
-      // Frozen: the share shows exactly the records its hash covers.
+      // Frozen: the share shows exactly the records its hash covers — none, if
+      // the scope was empty, rather than whatever arrives in it later.
+      isSnapshot: true,
       recordIds: pkg.dataRecords.map(r => r.id),
       createdById,
       expiresAt,

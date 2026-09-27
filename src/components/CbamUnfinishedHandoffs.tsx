@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { colours, spacing, textStyles, typography } from '@/lib/design-system'
 import { CbamResumeHandoff, type HandoffState } from './CbamResumeHandoff'
+import { CbamHandoffInputs } from './CbamHandoffInputs'
 
 export interface UnfinishedHandoff {
   documentId: string
@@ -11,6 +12,7 @@ export interface UnfinishedHandoff {
   caseId: string | null
   status: string
   problems: string[]
+  needs?: { fieldName: string; label: string }[]
 }
 
 // Confirmed documents whose case did not open, or opened with something
@@ -43,7 +45,7 @@ export function CbamUnfinishedHandoffs({ handoffs }: { handoffs: UnfinishedHando
         {rows.length === 1 ? 'One case is not finished' : `${rows.length} cases are not finished`}
       </p>
       <p style={{ ...textStyles.caption, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
-        The figures are saved. Resume adds only what is missing from the case.
+        The figures are saved. Resume adds only what is missing from the case, and a case waiting for details opens once you add them.
       </p>
       {rows.map(row => (
         <div
@@ -53,7 +55,13 @@ export function CbamUnfinishedHandoffs({ handoffs }: { handoffs: UnfinishedHando
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[3], alignItems: 'center' }}>
             <span style={textStyles.value}>
               {row.fileName}
-              {row.status === 'PENDING' ? ' · not opened yet' : row.caseId ? ' · incomplete' : ' · not opened'}
+              {row.status === 'PENDING'
+                ? ' · not opened yet'
+                : row.status === 'NEEDS_INPUT'
+                  ? ' · waiting for details'
+                  : row.caseId
+                    ? ' · incomplete'
+                    : ' · not opened'}
             </span>
             <span style={{ display: 'inline-flex', gap: spacing[2], alignItems: 'center' }}>
               {row.caseId && (
@@ -68,7 +76,9 @@ export function CbamUnfinishedHandoffs({ handoffs }: { handoffs: UnfinishedHando
                   Open the case
                 </Link>
               )}
-              <CbamResumeHandoff documentId={row.documentId} onResult={next => update(row.documentId, next)} />
+              {row.status !== 'NEEDS_INPUT' && (
+                <CbamResumeHandoff documentId={row.documentId} onResult={next => update(row.documentId, next)} />
+              )}
             </span>
           </div>
           {row.problems.length > 0 && (
@@ -86,6 +96,13 @@ export function CbamUnfinishedHandoffs({ handoffs }: { handoffs: UnfinishedHando
                 <li key={i}>{p}</li>
               ))}
             </ul>
+          )}
+          {row.status === 'NEEDS_INPUT' && (row.needs?.length ?? 0) > 0 && (
+            <CbamHandoffInputs
+              documentId={row.documentId}
+              needs={row.needs!}
+              onResult={next => update(row.documentId, next)}
+            />
           )}
         </div>
       ))}

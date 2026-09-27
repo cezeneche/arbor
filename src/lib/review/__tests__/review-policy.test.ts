@@ -1,5 +1,6 @@
 import {
   isCriticalDocumentType,
+  digestFieldCount,
   shouldAutoAccept,
   summariseReviewQueue,
   derivePeriod,
@@ -71,5 +72,25 @@ describe('derivePeriod', () => {
     const { periodStart, periodEnd } = derivePeriod({}, { now })
     expect(periodEnd.toISOString()).toBe('2026-06-20T23:59:59.999Z')
     expect(periodStart.toISOString()).toBe('2025-06-20T00:00:00.000Z')
+  })
+})
+
+// Auto-accepted documents were saved Declared with a promise that the weekly
+// digest would invite a check that could make them Verified. The digest only
+// counted flagged fields on documents still in review, so an auto-accepted
+// document — which has no flags by construction — was never counted.
+describe('digestFieldCount', () => {
+  const fields = [
+    { fieldName: 'total_consumption_kwh', rawValue: '12400', flagged: false },
+    { fieldName: 'total_consumption_m3', rawValue: '800', flagged: true },
+    { fieldName: 'supplier_name', rawValue: 'Octopus', flagged: false },
+  ]
+
+  it('counts the flagged fields of a document awaiting review', () => {
+    expect(digestFieldCount({ autoAccepted: false, fields })).toBe(1)
+  })
+
+  it('counts every figure of an auto-accepted document, since none was checked', () => {
+    expect(digestFieldCount({ autoAccepted: true, fields })).toBe(2)
   })
 })
