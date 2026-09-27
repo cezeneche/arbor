@@ -101,3 +101,28 @@ section or something to drop; leaving them reachable but unused is neither.
 The sections add up to the 89 routes (18 + 9 + 7 + 17 + 13 + 25). After the
 first two steps Nucleos would expose 52; after the third, 27 plus whatever of
 section 6 Arbor chooses to surface — each with a known caller.
+
+## Outcome (27 September)
+
+- **Section 3** removed (#119). **Sections 4 and 5** removed (#120).
+- **Section 6**, decided with the owner:
+  - *Emissions verification* — built. Statements are Arbor documents; Nucleos
+    records a reference and hash (`upload-verification` takes JSON, not a file).
+    Verified lines now reach both returns as actual, verified: neither builder
+    had ever been given a verification reference.
+  - *Carbon price relief* — claims list and qualifying schemes kept for Arbor to
+    show; the statement upload takes a reference; `exchange-rates` removed.
+  - *Registration* — scheduler off unless `CBAM_REGISTRATION_SCHEDULER=true`;
+    routes kept for later.
+  - *Case extras* — summary, liability, edit and delete removed. The report
+    package stays: "explain this figure" reads its snapshot. The compliance pack
+    stays and is to be surfaced in Arbor as the audit narrative.
+  - *Explain* — `POST /cbam/cases/{id}/evidence` records what Arbor read from each
+    document, keyed to goods-line ids; explain gained a tenant check. Reading any
+    snapshot from Postgres had always failed (UUID/datetime/jsonb types), so
+    explain had never worked in production at all.
+  - *Classification* — `classify`, `reclassify`, `regulatory-tables` removed.
+  - *Supplier history* — the broken `/suppliers/{eori}/see-history` is replaced by
+    `GET /cbam/goods-lines/{id}/supplier-history`, read from recorded emissions,
+    scoped to the owning organisation, flagged by the existing B2 rule. The
+    `supplier_see_history` table is no longer read or written.

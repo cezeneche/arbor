@@ -89,29 +89,6 @@ class CBAMEmissionsCreate(BaseModel):
     production_route: str | None = None
 
 
-class CBAMLiabilityRequest(BaseModel):
-    """Input for POST /cases/{case_id}/liability (EU 2023/956 Arts. 9 & 21)."""
-
-    eu_ets_price_eur: Decimal = Field(
-        ..., gt=0,
-        description="EU ETS allowance price for the reporting period (EUR/tCO2e).",
-    )
-    carbon_price_paid_eur: Decimal = Field(
-        default=Decimal("0"), ge=0,
-        description=(
-            "Effective carbon price already paid in origin country (EUR/tCO2e). "
-            "0 when no recognised equivalent scheme applies (EU 2023/956 Art. 9)."
-        ),
-    )
-    origin_country: str | None = Field(
-        default=None,
-        description=(
-            "ISO 3166-1 alpha-2 origin country. When provided, the system "
-            "auto-detects whether a recognised Art. 9 carbon pricing scheme applies."
-        ),
-    )
-
-
 class CBAMScopeCheckRequest(BaseModel):
     """Input for POST /cbam/scope-check (EU 2023/956 Art. 2)."""
 

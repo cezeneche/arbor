@@ -407,6 +407,13 @@ def _insert_returning(
     return dict(row)
 
 
+def verification_reference(goods_line: dict[str, object]) -> str:
+    """The verifier and accreditation, as the return reports them."""
+    verifier = str(goods_line.get("verifier_name") or "").strip()
+    accreditation = str(goods_line.get("verifier_accreditation") or "").strip()
+    return f"{verifier} ({accreditation})" if accreditation else verifier
+
+
 def _build_case_summary(conn: Connection, case_id: UUID) -> dict[str, object]:
     shipments_cols = _table_columns(conn, "cbam_shipments")
     goods_cols = _table_columns(conn, "cbam_goods_lines")
@@ -525,6 +532,11 @@ def _build_case_shipments_payload(conn: Connection, case_id: UUID) -> list[dict[
         goods_payload: list[dict[str, object]] = []
         for goods_line_row in goods_rows:
             goods_line = dict(goods_line_row)
+            # A verified statement is what lets a supplier's figure be reported
+            # as actual, verified data. Both return builders read this key; it
+            # is set only on verified lines, so nothing else changes.
+            if goods_line.get("verification_status") == "verified":
+                goods_line["verification_reference"] = verification_reference(goods_line)
             emissions_rows = conn.execute(
                 text(
                     f"""
