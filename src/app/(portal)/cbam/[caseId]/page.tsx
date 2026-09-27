@@ -15,6 +15,9 @@ import {
 import type { CaseGoodsLine } from '@/lib/nucleos/declaration-payload'
 import { CbamEmissions } from '@/components/CbamEmissions'
 import { CbamReturnBuilder } from '@/components/CbamReturnBuilder'
+import { CbamVerification } from '@/components/CbamVerification'
+import { prisma } from '@/lib/prisma'
+import { latestStatements, presentVerification } from '@/lib/nucleos/verification-presenter'
 
 // One case, end to end.
 //
@@ -75,7 +78,43 @@ export default async function CbamCasePage({
   }
 
   const row = record ? presentCase(record as unknown as CbamCaseSummary) : null
-  const goodsLines = record ? presentGoodsLines(record.goods_lines as CaseGoodsLine[]) : []
+  const rawGoodsLines = (record?.goods_lines ?? []) as CaseGoodsLine[]
+  const goodsLines = record ? presentGoodsLines(rawGoodsLines) : []
+
+  // Verification: Nucleos holds each line's status, Arbor the statements.
+  const statementRows = record
+    ? await prisma.cbamVerificationStatement.findMany({
+        where: { entityId, nucleosCaseId: caseId, subject: 'EMISSIONS' },
+        select: {
+          id: true, goodsLineId: true, status: true, verifierName: true, verifierAccreditation: true,
+          uploadedById: true, uploadedAt: true, decidedById: true, rejectionReason: true, syncedAt: true,
+        },
+      })
+    : []
+  const people = statementRows.length
+    ? await prisma.user.findMany({
+        where: { id: { in: [...new Set(statementRows.flatMap(r => [r.uploadedById, r.decidedById].filter((x): x is string => Boolean(x))))] } },
+        select: { id: true, name: true, email: true },
+      })
+    : []
+  const statements = latestStatements(statementRows, new Map(people.map(p => [p.id, p.name || p.email])))
+  const verificationByLine = new Map(
+    rawGoodsLines.map(raw => {
+      const id = String(raw.id ?? '')
+      return [
+        id,
+        presentVerification(
+          {
+            method: raw.method as string | null,
+            status: raw.verification_status as string | null,
+            verifierName: raw.verifier_name as string | null,
+            verifierAccreditation: raw.verifier_accreditation as string | null,
+          },
+          statements.get(id) ?? null,
+        ),
+      ] as const
+    }),
+  )
   const gaps = presentGaps(record?.open_gaps)
   const jurisdiction = resolveJurisdiction(record?.jurisdiction)
 
@@ -217,6 +256,7 @@ export default async function CbamCasePage({
                         <th style={headCell}>Origin</th>
                         <th style={headCell}>Installation</th>
                         <th style={headCell}>Declared emissions</th>
+                        <th style={headCell}>Verification</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -253,6 +293,15 @@ export default async function CbamCasePage({
                               >
                                 {line.emissionsNeeded}
                               </span>
+                            )}
+                          </td>
+                          <td style={cell}>
+                            {verificationByLine.get(line.id) && (
+                              <CbamVerification
+                                caseId={caseId}
+                                goodsLineId={line.id}
+                                verification={verificationByLine.get(line.id)!}
+                              />
                             )}
                           </td>
                         </tr>

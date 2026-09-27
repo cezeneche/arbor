@@ -124,6 +124,7 @@ try {
       'src/lib/nucleos/field-mapper.ts',
       'src/lib/nucleos/supplier-form-client.ts',
       'src/lib/nucleos/scope-client.ts',
+      'src/lib/nucleos/verification-client.ts',
       '--outDir', outDir, '--rootDir', 'src/lib/nucleos',
       '--module', 'commonjs', '--target', 'es2020',
       '--esModuleInterop', '--skipLibCheck',
@@ -136,6 +137,7 @@ try {
   const { toExtractedFieldRows } = require(path.join(compiled, 'field-mapper.js'))
   const { getSupplierFormContext } = require(path.join(compiled, 'supplier-form-client.js'))
   const { checkCbamScope } = require(path.join(compiled, 'scope-client.js'))
+  const verification = require(path.join(compiled, 'verification-client.js'))
 
   console.log('── Extraction boundary ──')
   const result = await extractCbamFields({
@@ -213,6 +215,37 @@ try {
   check('supplier form reaches a real route',
     !/endpoint not found/i.test(supplierErr?.message ?? ''),
     supplierErr?.message?.slice(0, 100))
+
+  console.log('\n── Verification ──')
+  // Each step must reach a real route and have its body accepted. On SQLite the
+  // handler itself fails, which is fine: that proves the route exists. A bare
+  // "Not Found" means the path is wrong; a 422 means the body's field names do
+  // not match what Nucleos expects — the statement would never be recorded.
+  const aLine = '00000000-0000-0000-0000-00000000b0b0'
+  const steps = {
+    'request-verification': () => verification.requestVerification(aLine),
+    'upload-verification (a reference, not a file)': () =>
+      verification.recordVerificationStatement(aLine, {
+        verifierName: 'Carbon Assurance Ltd',
+        verifierAccreditation: 'UKAS 9876',
+        documentRef: 'arbor:verification:boundary',
+        sha256: 'a'.repeat(64),
+      }),
+    verify: () => verification.acceptVerification(aLine),
+    'reject-verification': () => verification.rejectVerification(aLine, 'Boundary check.'),
+  }
+  for (const [name, call] of Object.entries(steps)) {
+    let stepErr = null
+    try {
+      await call()
+    } catch (e) {
+      stepErr = e
+    }
+    const message = stepErr?.message ?? ''
+    check(`${name} reaches a real route and its body is accepted`,
+      message !== 'Not Found' && !/ 422 /.test(message),
+      message.slice(0, 100))
+  }
 
   console.log('\n── Calculation boundary ──')
   const calcRes = await fetch(`${BASE}/api/internal/calculate`, {
