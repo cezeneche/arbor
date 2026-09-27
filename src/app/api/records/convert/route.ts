@@ -6,6 +6,7 @@ import { authenticateApiKeyRequest } from '@/lib/api-key-auth'
 import { enforceBuyerApiLimit } from '@/lib/rate-limit-guard'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { GRANT_SCOPE_SELECT, anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
 import { convertFromSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
 import type { SupportedUnit } from '@/lib/layer3/unit-conversion'
 
@@ -74,22 +75,17 @@ export async function POST(req: NextRequest) {
 
   // Check the requesting entity owns this record or has an active access grant for it
   if (record.entityId !== entityId) {
-    const grant = await prisma.dataAccessGrant.findFirst({
-      where: {
-        grantorEntityId: record.entityId,
-        granteeEntityId: entityId,
-        isActive: true,
-        revokedAt: null,
-        OR: [{ domain: null }, { domain: record.domain }],
-      },
+    // Every grant, judged by the one shared rule. This used to take the first
+    // grant with a matching domain and check only its period — so a second
+    // grant was never considered, and a field-scoped grant converted fields it
+    // did not cover.
+    const grants = await prisma.dataAccessGrant.findMany({
+      where: { grantorEntityId: record.entityId, granteeEntityId: entityId, isActive: true, revokedAt: null },
+      select: GRANT_SCOPE_SELECT,
     })
-    if (!grant) return err('Access denied', 'FORBIDDEN', 403)
-
-    // Verify record falls within the grant's period scope
-    const periodOk =
-      (!grant.periodStart || record.periodEnd >= grant.periodStart) &&
-      (!grant.periodEnd || record.periodStart <= grant.periodEnd)
-    if (!periodOk) return err('Access denied : record outside grant period', 'FORBIDDEN', 403)
+    if (!anyGrantCoversRecord(grants.map(toGrantScope), record)) {
+      return err('Access denied', 'FORBIDDEN', 403)
+    }
   }
 
   let conversion

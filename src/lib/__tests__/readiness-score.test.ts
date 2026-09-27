@@ -1,134 +1,68 @@
-import { computeReadinessScore, type ReadinessInput } from '../readiness-score'
+import { supplierReadiness } from '../readiness-score'
 
-function makeRecord(
-  id: string,
-  domain: string,
-  trustTier: 'A' | 'B' | 'C',
-): ReadinessInput['records'][0] {
-  return { id, domain, trustTier }
-}
+// The buyer's supply-chain view showed each supplier's "readiness" as the share
+// of their records that were Verified, green at 75%. A supplier with one
+// Verified record and nothing else showed 100%. Readiness is now measured
+// against what the buyer asked this supplier for, and verification is reported
+// beside it rather than blended into it.
 
-describe('computeReadinessScore', () => {
-  it('all Tier A → overall HIGH, 100% score', () => {
-    const input: ReadinessInput = {
+const d = (iso: string) => new Date(iso)
+const q1 = { periodStart: d('2026-01-01'), periodEnd: d('2026-03-31') }
+
+const request = (over: Partial<Parameters<typeof supplierReadiness>[0]['requests'][number]> = {}) => ({
+  domain: 'ENERGY',
+  requiredFields: ['total_consumption_kwh', 'total_consumption_m3'],
+  ...q1,
+  ...over,
+})
+const record = (fieldName: string, trustTier: 'A' | 'B' | 'C', over: object = {}) => ({
+  domain: 'ENERGY',
+  fieldName,
+  trustTier,
+  ...q1,
+  ...over,
+})
+
+describe('supplierReadiness', () => {
+  it('is null when nothing has been requested, so no score is shown', () => {
+    expect(supplierReadiness({ requests: [], records: [record('total_consumption_kwh', 'A')] })).toBeNull()
+  })
+
+  it('counts each requested figure, and whether it was supplied and verified', () => {
+    expect(
+      supplierReadiness({ requests: [request()], records: [record('total_consumption_kwh', 'A')] }),
+    ).toEqual({ requested: 2, supplied: 1, verified: 1 })
+  })
+
+  // The case the old score got backwards.
+  it('does not call one verified record complete', () => {
+    const r = supplierReadiness({
+      requests: [request({ requiredFields: ['a', 'b', 'c', 'd'] })],
+      records: [record('a', 'A')],
+    })
+    expect(r).toEqual({ requested: 4, supplied: 1, verified: 1 })
+  })
+
+  it('counts a figure supplied but only Declared as supplied, not verified', () => {
+    expect(
+      supplierReadiness({ requests: [request({ requiredFields: ['total_consumption_kwh'] })], records: [record('total_consumption_kwh', 'B')] }),
+    ).toEqual({ requested: 1, supplied: 1, verified: 0 })
+  })
+
+  it('needs the record to cover the requested period and area', () => {
+    const r = supplierReadiness({
+      requests: [request({ requiredFields: ['total_consumption_kwh'] })],
       records: [
-        makeRecord('r1', 'ENERGY', 'A'),
-        makeRecord('r2', 'FREIGHT', 'A'),
-        makeRecord('r3', 'MATERIALS', 'A'),
+        record('total_consumption_kwh', 'A', { periodStart: d('2025-01-01'), periodEnd: d('2025-03-31') }),
+        record('total_consumption_kwh', 'A', { domain: 'LOGISTICS' }),
       ],
-    }
-    const result = computeReadinessScore(input)
-    expect(result.overallScore).toBe(100)
-    expect(result.interpretation).toBe('HIGH')
+    })
+    expect(r).toEqual({ requested: 1, supplied: 0, verified: 0 })
   })
 
-  it('all Tier C → overall LOW, 0% score', () => {
-    const input: ReadinessInput = {
-      records: [
-        makeRecord('r1', 'ENERGY', 'C'),
-        makeRecord('r2', 'FREIGHT', 'C'),
-      ],
-    }
-    const result = computeReadinessScore(input)
-    expect(result.overallScore).toBe(0)
-    expect(result.interpretation).toBe('LOW')
-  })
-
-  it('mixed A and C → score is percentage of Tier A', () => {
-    const input: ReadinessInput = {
-      records: [
-        makeRecord('r1', 'ENERGY', 'A'),
-        makeRecord('r2', 'ENERGY', 'A'),
-        makeRecord('r3', 'ENERGY', 'C'),
-        makeRecord('r4', 'ENERGY', 'C'),
-      ],
-    }
-    const result = computeReadinessScore(input)
-    expect(result.overallScore).toBe(50)
-  })
-
-  // interpretation thresholds: HIGH ≥75%, MEDIUM ≥40%, LOW <40%
-  it('75% Tier A → HIGH', () => {
-    const input: ReadinessInput = {
-      records: [
-        makeRecord('r1', 'ENERGY', 'A'),
-        makeRecord('r2', 'ENERGY', 'A'),
-        makeRecord('r3', 'ENERGY', 'A'),
-        makeRecord('r4', 'ENERGY', 'C'),
-      ],
-    }
-    const result = computeReadinessScore(input)
-    expect(result.interpretation).toBe('HIGH')
-  })
-
-  it('50% Tier A → MEDIUM', () => {
-    const input: ReadinessInput = {
-      records: [
-        makeRecord('r1', 'ENERGY', 'A'),
-        makeRecord('r2', 'ENERGY', 'C'),
-      ],
-    }
-    const result = computeReadinessScore(input)
-    expect(result.interpretation).toBe('MEDIUM')
-  })
-
-  it('25% Tier A → LOW', () => {
-    const input: ReadinessInput = {
-      records: [
-        makeRecord('r1', 'ENERGY', 'A'),
-        makeRecord('r2', 'ENERGY', 'C'),
-        makeRecord('r3', 'ENERGY', 'C'),
-        makeRecord('r4', 'ENERGY', 'C'),
-      ],
-    }
-    const result = computeReadinessScore(input)
-    expect(result.interpretation).toBe('LOW')
-  })
-
-  it('per-domain breakdown reflects each domain independently', () => {
-    const input: ReadinessInput = {
-      records: [
-        makeRecord('r1', 'ENERGY', 'A'),
-        makeRecord('r2', 'ENERGY', 'A'),
-        makeRecord('r3', 'FREIGHT', 'C'),
-        makeRecord('r4', 'FREIGHT', 'C'),
-      ],
-    }
-    const result = computeReadinessScore(input)
-    const energy = result.byDomain.find((d) => d.domain === 'ENERGY')!
-    const freight = result.byDomain.find((d) => d.domain === 'FREIGHT')!
-    expect(energy.score).toBe(100)
-    expect(energy.interpretation).toBe('HIGH')
-    expect(freight.score).toBe(0)
-    expect(freight.interpretation).toBe('LOW')
-  })
-
-  it('Tier B counts as non-Tier-A (score excludes Tier B)', () => {
-    const input: ReadinessInput = {
-      records: [
-        makeRecord('r1', 'ENERGY', 'A'),
-        makeRecord('r2', 'ENERGY', 'B'),
-        makeRecord('r3', 'ENERGY', 'B'),
-        makeRecord('r4', 'ENERGY', 'B'),
-      ],
-    }
-    const result = computeReadinessScore(input)
-    expect(result.overallScore).toBe(25)
-  })
-
-  it('empty records → score 0, LOW', () => {
-    const result = computeReadinessScore({ records: [] })
-    expect(result.overallScore).toBe(0)
-    expect(result.interpretation).toBe('LOW')
-    expect(result.byDomain).toHaveLength(0)
-  })
-
-  it('is a pure function  -  same inputs always return same outputs', () => {
-    const input: ReadinessInput = {
-      records: [makeRecord('r1', 'ENERGY', 'A'), makeRecord('r2', 'ENERGY', 'C')],
-    }
-    const a = computeReadinessScore(input)
-    const b = computeReadinessScore(input)
-    expect(a.overallScore).toBe(b.overallScore)
+  it('treats a request naming no fields as asking for anything in its area', () => {
+    expect(
+      supplierReadiness({ requests: [request({ requiredFields: [] })], records: [record('anything', 'A')] }),
+    ).toEqual({ requested: 1, supplied: 1, verified: 1 })
   })
 })

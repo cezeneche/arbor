@@ -3,6 +3,8 @@ import { getSessionUser } from '@/lib/session'
 import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { GRANT_SCOPE_SELECT, anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
+import { supplierReadiness } from '@/lib/readiness-score'
 
 export default async function SupplyChainPage({
   searchParams,
@@ -20,9 +22,7 @@ export default async function SupplyChainPage({
     where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
     select: {
       grantorEntityId: true,
-      domain: true,
-      periodStart: true,
-      periodEnd: true,
+      ...GRANT_SCOPE_SELECT,
       grantorEntity: {
         select: {
           legalName: true,
@@ -30,7 +30,7 @@ export default async function SupplyChainPage({
           sector: true,
           dataRecords: {
             where: { isActive: true },
-            select: { domain: true, trustTier: true, periodEnd: true, periodStart: true, staleAfterDate: true },
+            select: { domain: true, fieldName: true, trustTier: true, periodEnd: true, periodStart: true, staleAfterDate: true },
           },
           documents: {
             orderBy: { submittedAt: 'desc' },
@@ -40,6 +40,13 @@ export default async function SupplyChainPage({
         },
       },
     },
+  })
+
+  // What this buyer has asked each supplier for — the only thing a supplier can
+  // be "ready" against.
+  const requests = await prisma.dataRequest.findMany({
+    where: { buyerEntityId: entityId, supplierEntityId: { in: [...new Set(grants.map(g => g.grantorEntityId))] } },
+    select: { supplierEntityId: true, domain: true, periodStart: true, periodEnd: true, requiredFields: true },
   })
 
   // Group grants by supplier and build one summary row per supplier
@@ -52,19 +59,26 @@ export default async function SupplyChainPage({
 
   const suppliers = [...supplierMap.entries()].map(([grantorEntityId, supplierGrants]) => {
     const first = supplierGrants[0]
-    // Filter records to only those within the union of all grants for this supplier
-    const allRecords = first.grantorEntity.dataRecords.filter(record =>
-      supplierGrants.some(grant => {
-        const domainMatch = !grant.domain || grant.domain === record.domain
-        const startMatch = !grant.periodStart || record.periodEnd >= grant.periodStart
-        const endMatch = !grant.periodEnd || record.periodStart <= grant.periodEnd
-        return domainMatch && startMatch && endMatch
-      })
-    )
+    // Records within the union of this supplier's grants, by the one shared
+    // rule. The inline copy it replaces ignored field-scoped grants, so a
+    // supplier's counts included fields they had not shared.
+    const scopes = supplierGrants.map(toGrantScope)
+    const allRecords = first.grantorEntity.dataRecords.filter(record => anyGrantCoversRecord(scopes, record))
+    const readiness = supplierReadiness({
+      requests: requests
+        .filter(r => r.supplierEntityId === grantorEntityId)
+        .map(r => ({
+          ...r,
+          requiredFields: Array.isArray(r.requiredFields)
+            ? r.requiredFields.filter((f): f is string => typeof f === 'string')
+            : [],
+        })),
+      records: allRecords,
+    })
     const expiringCount = allRecords.filter(
       (r) => r.staleAfterDate && new Date(r.staleAfterDate) < now,
     ).length
-    return { grantorEntityId, grantorEntity: { ...first.grantorEntity, dataRecords: allRecords }, expiringCount }
+    return { grantorEntityId, grantorEntity: { ...first.grantorEntity, dataRecords: allRecords }, expiringCount, readiness }
   })
 
   // buyer filter: show only suppliers with expiring/stale records.
@@ -180,13 +194,16 @@ export default async function SupplyChainPage({
               return { domain, total: domainRecords.length, tierA, tierB, tierC }
             }).filter(d => d.total > 0)
 
-            const totalRecords = records.length
-            const tierACount = records.filter(r => r.trustTier === 'A').length
-            const readinessScore = totalRecords > 0 ? Math.round((tierACount / totalRecords) * 100) : 0
-            const readinessColour =
-              readinessScore >= 75 ? colours.green :
-              readinessScore >= 40 ? colours.amber :
-              colours.red
+            // Completeness against what was asked, coloured by that alone.
+            // Verification is a separate fact and is said separately.
+            const readiness = grant.readiness
+            const readinessColour = !readiness
+              ? colours.textSecondary
+              : readiness.supplied === readiness.requested
+                ? colours.green
+                : readiness.supplied > 0
+                  ? colours.amber
+                  : colours.red
 
             return (
               <div
@@ -248,12 +265,19 @@ export default async function SupplyChainPage({
                     <span
                       style={{
                         fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.medium,
+                        fontWeight: readiness ? typography.weights.medium : typography.weights.light,
                         color: readinessColour,
                         marginRight: spacing[2],
                       }}
                     >
-                      {readinessScore}% Tier A
+                      {readiness
+                        ? `${readiness.supplied} of ${readiness.requested} requested figures supplied`
+                        : 'Nothing requested yet'}
+                      {readiness && readiness.supplied > 0 && (
+                        <span style={{ fontWeight: typography.weights.light, color: colours.textSecondary }}>
+                          {` · ${readiness.verified} Verified`}
+                        </span>
+                      )}
                     </span>
                     <Link
                       href={`/supply-chain/${grant.grantorEntityId}/records`}
