@@ -38,10 +38,15 @@ class CBAMCaseCreate(BaseModel):
     reporting_quarter: int = Field(..., ge=1, le=4)
     jurisdiction: CaseJurisdiction = CaseJurisdiction.EU
     carbon_price_paid_third_country_eur: Decimal | None = None
+    # The caller's organisation. Arbor's organisations share one service tenant,
+    # so without this a case is reused across them for the same importer.
+    owner_ref: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 class CBAMShipmentCreate(BaseModel):
     cbam_case_id: UUID
+    # The caller's key for this shipment; see CBAMGoodsLineCreate.client_ref.
+    client_ref: str | None = Field(default=None, min_length=1, max_length=200)
     origin_country: str | None = None
     customs_procedure: str | None = None
     # Each of these has its own column and its own meaning. They used to share
@@ -62,6 +67,9 @@ class CBAMShipmentCreate(BaseModel):
 
 class CBAMGoodsLineCreate(BaseModel):
     shipment_id: UUID
+    # The caller's key for this line. A retry with the same key returns the line
+    # the first attempt created rather than adding the goods twice.
+    client_ref: str | None = Field(default=None, min_length=1, max_length=200)
     cn_code: str = Field(..., min_length=1)
     product_description: str | None = None
     net_mass_kg: Decimal = Field(..., gt=0)

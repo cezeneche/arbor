@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Container
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -306,28 +307,45 @@ def list_carbon_pricing_schemes():
 def _existing_case(
     conn,
     *,
+    columns: Container[str],
     tenant_id: str,
+    owner_ref: str | None,
+    jurisdiction: str,
     fingerprint: str | None,
     reporting_year: int,
     reporting_quarter: int,
 ) -> dict | None:
-    """The case this tenant already has for this importer and period, if any."""
+    """The case this owner already has for this importer, regime and period, if any.
+
+    Owner and jurisdiction are part of the key. Arbor's organisations share one
+    service tenant, so matching on tenant and importer alone handed one
+    organisation's case to another; and a UK and an EU filing for the same
+    quarter are different returns.
+    """
     if not fingerprint:
         return None
+    owner_filter = (
+        "AND owner_ref IS NOT DISTINCT FROM :owner_ref" if "owner_ref" in columns else ""
+    )
+    jurisdiction_filter = "AND jurisdiction = :jurisdiction" if "jurisdiction" in columns else ""
     row = conn.execute(
         text(
-            """
+            f"""
             SELECT *
             FROM cbam.cbam_cases
             WHERE tenant_id = :tenant_id
               AND importer_eori_hash = :fingerprint
               AND reporting_year = :reporting_year
               AND reporting_quarter = :reporting_quarter
+              {owner_filter}
+              {jurisdiction_filter}
             LIMIT 1
             """
         ),
         {
             "tenant_id": tenant_id,
+            "owner_ref": owner_ref,
+            "jurisdiction": jurisdiction,
             "fingerprint": fingerprint,
             "reporting_year": reporting_year,
             "reporting_quarter": reporting_quarter,
@@ -353,7 +371,10 @@ def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
         if "importer_eori_hash" in columns:
             existing = _existing_case(
                 conn,
+                columns=columns,
                 tenant_id=tenant_id,
+                owner_ref=payload.owner_ref,
+                jurisdiction=payload.jurisdiction.value,
                 fingerprint=fingerprint,
                 reporting_year=payload.reporting_year,
                 reporting_quarter=payload.reporting_quarter,
@@ -370,6 +391,8 @@ def create_cbam_case(request: Request, payload: _shared.CBAMCaseCreate):
         if "importer_eori_hash" in columns:
             insert_payload["importer_eori_hash"] = fingerprint
 
+        if "owner_ref" in columns and payload.owner_ref:
+            insert_payload["owner_ref"] = payload.owner_ref
         if "importer_name" in columns:
             insert_payload["importer_name"] = payload.importer_name
         if "status" in columns:

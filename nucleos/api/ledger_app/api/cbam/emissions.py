@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Container
 from datetime import date
 from decimal import Decimal
 from uuid import uuid4
@@ -26,6 +27,57 @@ _VALID_PRODUCTION_ROUTES: dict[str, frozenset[str]] = {
     "fertilisers": frozenset({"HABER_BOSCH_NG", "HABER_BOSCH_COAL", "WORLD_AVG"}),
     "electricity": frozenset({"GRID", "RENEWABLE", "WORLD_AVG"}),
 }
+
+
+def _row_by_client_ref(
+    conn, table: str, parent_col: str, parent_id: str, client_ref: str, tenant_id: str, columns: Container[str]
+) -> dict | None:
+    tenant_filter = "AND tenant_id = :tenant_id" if tenant_id and "tenant_id" in columns else ""
+    row = conn.execute(
+        text(
+            f"""
+            SELECT * FROM cbam.{table}
+            WHERE {parent_col} = :parent_id AND client_ref = :client_ref {tenant_filter}
+            LIMIT 1
+            """
+        ),
+        {"parent_id": parent_id, "client_ref": client_ref, "tenant_id": tenant_id},
+    ).mappings().first()
+    return dict(row) if row else None
+
+
+def _insert_once(
+    conn,
+    table: str,
+    insert_payload: dict[str, object],
+    *,
+    parent_col: str,
+    client_ref: str | None,
+    tenant_id: str,
+    columns: Container[str],
+) -> dict:
+    """Insert a row, or return the one an earlier attempt with this client_ref made.
+
+    Arbor posts the shipments and goods lines of a case one by one, and a post
+    whose row committed but whose response was lost is retried. Without a key
+    every retry added the goods again. With one, the retry — or a concurrent
+    duplicate that loses the race to the unique index — gets the first row.
+    """
+    if not client_ref or "client_ref" not in columns:
+        return _shared._insert_returning(conn, table, insert_payload)
+
+    parent_id = str(insert_payload[parent_col])
+    existing = _row_by_client_ref(conn, table, parent_col, parent_id, client_ref, tenant_id, columns)
+    if existing is not None:
+        return existing
+    try:
+        with conn.begin_nested():
+            return _shared._insert_returning(conn, table, {**insert_payload, "client_ref": client_ref})
+    except IntegrityError:
+        existing = _row_by_client_ref(conn, table, parent_col, parent_id, client_ref, tenant_id, columns)
+        if existing is None:
+            raise
+        return existing
 
 
 @router.post("/shipments", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_scopes(["cbam:write"]))])
@@ -73,8 +125,15 @@ def create_cbam_shipment(request: Request, payload: _shared.CBAMShipmentCreate):
         if _shared._needs_explicit_value(columns, "import_date"):
             insert_payload["import_date"] = payload.import_date or date.today()
 
-        created = _shared._insert_returning(conn, "cbam_shipments", insert_payload)
-        return created
+        return _insert_once(
+            conn,
+            "cbam_shipments",
+            insert_payload,
+            parent_col=case_fk_column,
+            client_ref=payload.client_ref,
+            tenant_id=tenant_id,
+            columns=columns,
+        )
 
 
 @router.post("/goods-lines", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_scopes(["cbam:write"]))])
@@ -124,8 +183,15 @@ def create_cbam_goods_line(request: Request, payload: _shared.CBAMGoodsLineCreat
                     detail=str(exc),
                 )
 
-        created = _shared._insert_returning(conn, "cbam_goods_lines", insert_payload)
-        return created
+        return _insert_once(
+            conn,
+            "cbam_goods_lines",
+            insert_payload,
+            parent_col="shipment_id",
+            client_ref=payload.client_ref,
+            tenant_id=tenant_id,
+            columns=columns,
+        )
 
 
 @router.post("/emissions", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_scopes(["cbam:write"]))])
