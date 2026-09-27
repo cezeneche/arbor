@@ -7,6 +7,7 @@ import {
   buildEvidenceBlock,
   buildAnswerSystemPrompt,
   answerWithoutModel,
+  ungroundedNumbers,
   type AnswerRecord,
 } from '../answer'
 
@@ -96,5 +97,39 @@ describe('answerWithoutModel', () => {
   it('says plainly when nothing matched', () => {
     const text = answerWithoutModel({ recordCount: 0, interpretation: 'waste records for 2020' })
     expect(text).toMatch(/no|nothing/i)
+  })
+})
+
+// "Use only these records" was a prompt instruction and nothing more. Every
+// number in the answer now has to appear in what the model was given — the
+// evidence, the question, the scope line — or the answer is replaced by the
+// plain factual one, and the table stands alone.
+describe('ungroundedNumbers', () => {
+  const grounding = [
+    'Acme Steel Ltd | ENERGY | total_consumption_kwh | 44640 MJ | 2026-01-01 to 2026-03-31 | Verified',
+    'Question: show our energy for Q1 2026',
+    '3 records',
+  ]
+
+  it('accepts figures, dates and counts that are in the evidence', () => {
+    expect(
+      ungroundedNumbers('Acme Steel Ltd used 44,640 MJ between 1 January and 31 March 2026, Verified. 3 records match.', grounding),
+    ).toEqual([])
+  })
+
+  it('accepts a figure written with trailing zeros', () => {
+    expect(ungroundedNumbers('It recorded 44640.00 MJ.', grounding)).toEqual([])
+  })
+
+  it('catches a total the evidence does not contain', () => {
+    expect(ungroundedNumbers('In total that comes to 89,280 MJ.', grounding)).toEqual(['89280'])
+  })
+
+  it('catches a percentage, which is a calculation', () => {
+    expect(ungroundedNumbers('That is 75% Verified.', grounding)).toEqual(['75'])
+  })
+
+  it('ignores digits that belong to a unit or a quarter', () => {
+    expect(ungroundedNumbers('No CO2e figures are stored for Q1.', grounding)).toEqual([])
   })
 })

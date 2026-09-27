@@ -21,6 +21,13 @@ export interface ParsedQuery {
   periodEnd?: string
   trustTier?: TrustTier
   supplierEntityId?: string
+  /** A supplier named in the question, as the user wrote it. */
+  supplierName?: string
+}
+
+export interface ParserSupplier {
+  id: string
+  name: string
 }
 
 const parsedQuerySchema = z.object({
@@ -34,14 +41,30 @@ const parsedQuerySchema = z.object({
   periodEnd: z.string().nullable().optional(),
   trustTier: z.enum(['A', 'B', 'C']).nullable().optional(),
   supplierEntityId: z.string().nullable().optional(),
+  supplierName: z.string().nullable().optional(),
 })
 
-function buildSystemPrompt(todayIso: string, vocabulary: VocabularyEntry[]): string {
+/** The suppliers a question may name, with the ids the parser must answer in. */
+export function describeSuppliers(suppliers: readonly ParserSupplier[]): string {
+  if (suppliers.length === 0) return 'AUTHORISED SUPPLIERS: none. supplierEntityId must be null.'
+  return [
+    'AUTHORISED SUPPLIERS (name → supplierEntityId). Use only these ids:',
+    ...suppliers.map(s => `- ${s.name} → ${s.id}`),
+  ].join('\n')
+}
+
+export function buildSystemPrompt(
+  todayIso: string,
+  vocabulary: VocabularyEntry[],
+  suppliers: readonly ParserSupplier[] = [],
+): string {
   return `You are a query parameter extractor for arbor, a certified operational data repository for manufacturers and suppliers.
 
 Your only job is to translate a plain English question into structured query parameters. You do NOT answer questions — you extract parameters.
 
 ${describeVocabulary(vocabulary)}
+
+${describeSuppliers(suppliers)}
 
 DATABASE STRUCTURE:
 - DOMAINS: ENERGY, MATERIALS, PRODUCTION, LOGISTICS, EMISSIONS, AGRICULTURE, WASTE_AND_WATER, COMPLIANCE
@@ -58,8 +81,12 @@ Respond ONLY with a valid JSON object — no markdown, no explanation, just the 
   "fieldName": "snake_case field name if a specific field is clearly mentioned, otherwise null",
   "periodStart": "YYYY-MM-DD or null",
   "periodEnd": "YYYY-MM-DD or null",
-  "trustTier": "A" | "B" | "C" | null
+  "trustTier": "A" | "B" | "C" | null,
+  "supplierName": "the supplier the question names, exactly as written, or null",
+  "supplierEntityId": "the id of that supplier from AUTHORISED SUPPLIERS, or null if it is not listed"
 }
+
+A question that names a supplier is a supply_chain question. Never invent a supplierEntityId: if the named supplier is not in the list, give its name and a null id.
 
 isCalculation must be true when the question asks for: totals, sums, averages, combined figures, carbon intensity, ratios, percentages, or any derived metric.
 
@@ -98,13 +125,14 @@ function getClient(): Anthropic {
 export async function parseNlQuery(
   question: string,
   vocabulary: VocabularyEntry[] = [],
+  suppliers: readonly ParserSupplier[] = [],
 ): Promise<ParsedQuery> {
   const todayIso = new Date().toISOString().split('T')[0]
 
   const response = await getClient().messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
-    system: buildSystemPrompt(todayIso, vocabulary),
+    system: buildSystemPrompt(todayIso, vocabulary, suppliers),
     messages: [{ role: 'user', content: question }],
   })
 
@@ -149,5 +177,6 @@ export async function parseNlQuery(
     ...(d.periodEnd ? { periodEnd: d.periodEnd } : {}),
     ...(d.trustTier ? { trustTier: d.trustTier } : {}),
     ...(d.supplierEntityId ? { supplierEntityId: d.supplierEntityId } : {}),
+    ...(d.supplierName?.trim() ? { supplierName: d.supplierName.trim() } : {}),
   }
 }

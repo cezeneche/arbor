@@ -104,7 +104,9 @@ export function buildGapBlock(gap: AnswerGapResult): string {
     parts.push(`This company has no records for: ${gap.ownMissingDomains.join(', ')}.`)
   }
   for (const s of gap.supplierGaps) {
-    parts.push(`${s.supplierName} has no records for: ${s.missingDomains.join(', ')}.`)
+    // Within what the supplier has shared: the buyer cannot see, and is not
+    // told about, anything outside the grant.
+    parts.push(`${s.supplierName} has shared no records for: ${s.missingDomains.join(', ')}.`)
   }
   return parts.length > 0 ? parts.join('\n') : 'No gaps: every expected area has records.'
 }
@@ -149,6 +151,39 @@ export function answerWithoutModel(params: {
   return `${recordCount} stored record${recordCount === 1 ? '' : 's'} match ${interpretation}. They are listed below with the certification of each.`
 }
 
+// A number, with thousands separators and decimals. Digits joined to a letter
+// are part of a name, not a figure — CO2e, Q1, m3.
+const NUMBER = /(?<![A-Za-z])\d[\d,]*(?:\.\d+)?(?![A-Za-z\d])/g
+const ANY_NUMBER = /\d[\d,]*(?:\.\d+)?/g
+
+function normaliseNumber(raw: string): string {
+  const [whole, fraction] = raw.replace(/,/g, '').split('.')
+  const int = whole.replace(/^0+(?=\d)/, '')
+  const frac = (fraction ?? '').replace(/0+$/, '')
+  return frac ? `${int}.${frac}` : int
+}
+
+/**
+ * The numbers in an answer that appear nowhere in what the model was given.
+ *
+ * The prompt tells the model to use only the evidence; this is the check that
+ * it did. A number is grounded when the same value occurs in the evidence, the
+ * question or the scope line — so a figure, a date part or a count passes, and
+ * a total, an average or a percentage it worked out does not.
+ */
+export function ungroundedNumbers(answer: string, grounding: readonly string[]): string[] {
+  const known = new Set<string>()
+  for (const text of grounding) {
+    for (const m of text.match(ANY_NUMBER) ?? []) known.add(normaliseNumber(m))
+  }
+  const missing: string[] = []
+  for (const m of answer.match(NUMBER) ?? []) {
+    const n = normaliseNumber(m)
+    if (!known.has(n) && !missing.includes(n)) missing.push(n)
+  }
+  return missing
+}
+
 let client: Anthropic | null = null
 function getClient(): Anthropic {
   if (!client) client = new Anthropic()
@@ -162,6 +197,8 @@ export interface ComposeAnswerParams {
   gapResult?: AnswerGapResult | null
   /** True for SME suppliers: plain English only, no codes. */
   plainEnglish: boolean
+  /** What was actually searched, from the filters that ran. */
+  scope?: string
 }
 
 /**
@@ -169,7 +206,7 @@ export interface ComposeAnswerParams {
  * still gets a truthful sentence and the record table underneath it.
  */
 export async function composeAnswer(params: ComposeAnswerParams): Promise<string> {
-  const { question, interpretation, records, gapResult, plainEnglish } = params
+  const { question, interpretation, records, gapResult, plainEnglish, scope } = params
 
   const evidence = gapResult ? buildGapBlock(gapResult) : buildEvidenceBlock(records)
 
@@ -180,7 +217,7 @@ export async function composeAnswer(params: ComposeAnswerParams): Promise<string
 
   const userContent = `Question: ${question}
 
-What was searched for: ${interpretation}
+What was searched for: ${scope ?? interpretation}
 
 Evidence (entity | area | field | value | period | certification):
 ${evidence}`
@@ -204,7 +241,11 @@ ${evidence}`
       .join('')
       .trim()
 
-    return text || fallback
+    // A number the evidence does not contain is one the model made up or
+    // worked out. The factual sentence replaces the whole answer; the table
+    // beneath it is unaffected.
+    if (!text || ungroundedNumbers(text, [userContent, String(records.length)]).length > 0) return fallback
+    return text
   } catch {
     return fallback
   }

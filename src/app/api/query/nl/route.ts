@@ -14,7 +14,15 @@ import { NextRequest } from 'next/server'
 import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { enforceBuyerApiLimit } from '@/lib/rate-limit-guard'
-import { GRANT_SCOPE_SELECT, anyGrantCoversRecord, toGrantScope } from '@/lib/layer3/grant-scope'
+import { GRANT_SCOPE_SELECT, toGrantScope } from '@/lib/layer3/grant-scope'
+import {
+  describeScope,
+  grantedRecordsWhere,
+  resolveSupplierScope,
+  supplierGapsWithinGrants,
+  type AuthorisedSupplier,
+  type SupplierGrant,
+} from '@/lib/layer3/nl-query-scope'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { parseNlQuery } from '@/lib/query-interpreter/nl-parser'
@@ -48,24 +56,29 @@ export async function POST(req: NextRequest) {
   if (!question) return err('question is required', 'VALIDATION_ERROR', 400)
   if (question.length > 500) return err('question must be 500 characters or fewer', 'VALIDATION_ERROR', 400)
 
-  // Resolve the user's authorised supplier IDs for supply-chain queries
-  const [grants, entity] = await Promise.all([
+  // The grants are the whole of what this caller may see of any supplier, and
+  // every supplier read below stays inside them — in the query itself.
+  const [grantRows, entity] = await Promise.all([
     prisma.dataAccessGrant.findMany({
       where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
-      select: { grantorEntityId: true, grantorEntity: { select: { legalName: true } } },
+      select: { grantorEntityId: true, grantorEntity: { select: { legalName: true } }, ...GRANT_SCOPE_SELECT },
     }),
     prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true } }),
   ])
-  const authorisedSupplierIds = [...new Set(grants.map(g => g.grantorEntityId))]
+  const grants: SupplierGrant[] = grantRows.map(g => ({ grantorEntityId: g.grantorEntityId, ...toGrantScope(g) }))
+  const suppliers: AuthorisedSupplier[] = [
+    ...new Map(grantRows.map(g => [g.grantorEntityId, { id: g.grantorEntityId, name: g.grantorEntity.legalName }])).values(),
+  ]
+  const granted = grantedRecordsWhere(grants)
 
   // SME suppliers get plain English only; buyers get the full technical vocabulary.
   const plainEnglish = entity?.entityType !== 'BUYER'
 
-  // The field names this caller can actually reach — their own, plus anything
-  // an authorised supplier has shared. Given to the parser so it chooses from
-  // what exists instead of guessing a name that matches no row.
+  // The field names this caller can actually reach — their own, plus what the
+  // suppliers' grants cover. Given to the parser so it chooses from what exists
+  // instead of guessing a name that matches no row.
   const vocabularyRows = await prisma.dataRecord.findMany({
-    where: { entityId: { in: [entityId, ...authorisedSupplierIds] }, isActive: true },
+    where: { isActive: true, OR: [{ entityId }, ...(granted?.OR ?? [])] },
     select: { domain: true, fieldName: true, unit: true },
     distinct: ['domain', 'fieldName', 'unit'],
     take: 200,
@@ -75,29 +88,46 @@ export async function POST(req: NextRequest) {
   // Parse the question into structured query parameters
   let parsed
   try {
-    parsed = await parseNlQuery(question, vocabulary)
+    parsed = await parseNlQuery(question, vocabulary, suppliers)
   } catch (e) {
     return err(e instanceof Error ? e.message : 'Failed to parse question', 'PARSE_ERROR', 422)
   }
 
-  const { interpretation, isCalculation, calculationNote, queryType, domain, fieldName, periodStart, periodEnd, trustTier, supplierEntityId } = parsed
+  const { interpretation, isCalculation, calculationNote, domain, fieldName, periodStart, periodEnd, trustTier } = parsed
+  const supplier = resolveSupplierScope(parsed, suppliers)
+  // A question about one supplier is a question about their shared records,
+  // whatever the parser called it.
+  const queryType =
+    supplier.kind === 'one' && (parsed.queryType === 'entity' || parsed.queryType === 'historical')
+      ? 'supply_chain'
+      : parsed.queryType
+  const scope = describeScope({ queryType, domain, fieldName, periodStart, periodEnd, trustTier, supplier })
 
-  // For supply-chain queries naming a specific supplier, scope to that supplier if they are authorised
-  const supplierScope =
-    supplierEntityId && authorisedSupplierIds.includes(supplierEntityId)
-      ? [supplierEntityId]
-      : authorisedSupplierIds
+  // A named supplier that matches none the caller may see is said so. It used
+  // to widen to every supplier and answer about everyone else.
+  if (supplier.kind === 'unmatched') {
+    const answer = `You have no shared data from a supplier called “${supplier.name}”. Check the name, or ask them to share their records with you.`
+    return ok({
+      interpretation, scope, answer, isCalculation: false, queryType, summary: answer,
+      recordCount: 0, hasMore: false, tierDistribution: { A: 0, B: 0, C: 0 }, records: [],
+    })
+  }
+  const scopedGrants = supplier.kind === 'one' ? grants.filter(g => g.grantorEntityId === supplier.id) : grants
 
   // Execute the appropriate query
   let records: NlRecord[] = []
   let gapResult: GapResult | null = null
 
   if (queryType === 'gap') {
-    gapResult = await runGapQuery({ entityId, domain: domain ?? undefined, periodStart, periodEnd, authorisedSupplierIds: supplierScope })
+    gapResult = await runGapQuery({
+      entityId, domain: domain ?? undefined, periodStart, periodEnd,
+      grants: scopedGrants,
+      suppliers: supplier.kind === 'one' ? suppliers.filter(s => s.id === supplier.id) : suppliers,
+    })
   } else if (queryType === 'supply_chain') {
-    records = await runSupplyChainQuery({ entityId, domain: domain ?? undefined, fieldName, periodStart, periodEnd, trustTier: trustTier ?? undefined, authorisedSupplierIds: supplierScope })
+    records = await runSupplyChainQuery({ domain: domain ?? undefined, fieldName, periodStart, periodEnd, trustTier: trustTier ?? undefined, grants: scopedGrants })
   } else if (queryType === 'historical') {
-    records = await runHistoricalQuery({ entityId, domain: domain ?? undefined, fieldName })
+    records = await runHistoricalQuery({ entityId, domain: domain ?? undefined, fieldName, periodStart, periodEnd, trustTier: trustTier ?? undefined })
   } else {
     records = await runEntityQuery({ entityId, domain: domain ?? undefined, fieldName, periodStart, periodEnd, trustTier: trustTier ?? undefined })
   }
@@ -125,10 +155,12 @@ export async function POST(req: NextRequest) {
         records: records.map(r => ({ ...r, trustTier: r.trustTier as 'A' | 'B' | 'C' })),
         gapResult,
         plainEnglish,
+        scope,
       })
 
   return ok({
     interpretation,
+    scope,
     answer,
     isCalculation,
     ...(isCalculation ? { calculationNote: calculationNote ?? CALCULATION_NOTE } : {}),
@@ -201,31 +233,33 @@ async function runEntityQuery(params: {
 }
 
 async function runSupplyChainQuery(params: {
-  entityId: string
   domain?: DataDomain
   fieldName?: string
   periodStart?: string | null
   periodEnd?: string | null
   trustTier?: TrustTier
-  authorisedSupplierIds: string[]
+  grants: SupplierGrant[]
 }): Promise<NlRecord[]> {
-  const { entityId, domain, fieldName, periodStart, periodEnd, trustTier, authorisedSupplierIds } = params
+  const { domain, fieldName, periodStart, periodEnd, trustTier, grants } = params
 
-  if (authorisedSupplierIds.length === 0) return []
-
-  const grants = await prisma.dataAccessGrant.findMany({
-    where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
-    select: { grantorEntityId: true, ...GRANT_SCOPE_SELECT },
-  })
+  // Scoped in the query, so the cap applies to records the caller may see.
+  // Filtering after a capped read hid in-scope records behind out-of-scope ones
+  // and reported the answer as complete.
+  const granted = grantedRecordsWhere(grants)
+  if (!granted) return []
 
   const rows = await prisma.dataRecord.findMany({
     where: {
-      entityId: { in: authorisedSupplierIds },
-      isActive: true,
-      ...(domain ? { domain } : {}),
-      ...(fieldName ? { fieldName } : {}),
-      ...(trustTier ? { trustTier } : {}),
-      ...periodOverlapWhere(periodStart, periodEnd),
+      AND: [
+        granted,
+        {
+          isActive: true,
+          ...(domain ? { domain } : {}),
+          ...(fieldName ? { fieldName } : {}),
+          ...(trustTier ? { trustTier } : {}),
+          ...periodOverlapWhere(periodStart, periodEnd),
+        },
+      ],
     },
     select: {
       id: true, entityId: true, domain: true, fieldName: true, value: true, unit: true,
@@ -237,32 +271,31 @@ async function runSupplyChainQuery(params: {
     take: 201,
   })
 
-  return rows
-    .filter(r =>
-      anyGrantCoversRecord(grants.filter(g => g.grantorEntityId === r.entityId).map(toGrantScope), r),
-    )
-    .map(r => ({
-      id: r.id,
-      entityName: r.entity.legalName,
-      domain: r.domain,
-      fieldName: r.fieldName,
-      value: r.value,
-      unit: r.unit,
-      periodStart: r.periodStart,
-      periodEnd: r.periodEnd,
-      trustTier: r.trustTier,
-      confidenceScore: r.confidenceScore,
-      sourceText: r.sourceText,
-      submittedAt: r.submittedAt,
-    }))
+  return rows.map(r => ({
+    id: r.id,
+    entityName: r.entity.legalName,
+    domain: r.domain,
+    fieldName: r.fieldName,
+    value: r.value,
+    unit: r.unit,
+    periodStart: r.periodStart,
+    periodEnd: r.periodEnd,
+    trustTier: r.trustTier,
+    confidenceScore: r.confidenceScore,
+    sourceText: r.sourceText,
+    submittedAt: r.submittedAt,
+  }))
 }
 
 async function runHistoricalQuery(params: {
   entityId: string
   domain?: DataDomain
   fieldName?: string | null
+  periodStart?: string | null
+  periodEnd?: string | null
+  trustTier?: TrustTier
 }): Promise<NlRecord[]> {
-  const { entityId, domain, fieldName } = params
+  const { entityId, domain, fieldName, periodStart, periodEnd, trustTier } = params
 
   const entity = await prisma.entity.findUnique({ where: { id: entityId }, select: { legalName: true } })
   const entityName = entity?.legalName ?? 'Your organisation'
@@ -273,6 +306,10 @@ async function runHistoricalQuery(params: {
       isActive: true,
       ...(domain ? { domain } : {}),
       ...(fieldName ? { fieldName } : {}),
+      // Parsed and then dropped, once: "verified energy in 2025" returned every
+      // energy record of any status from any year.
+      ...(trustTier ? { trustTier } : {}),
+      ...periodOverlapWhere(periodStart, periodEnd),
     },
     select: {
       id: true, domain: true, fieldName: true, value: true, unit: true,
@@ -291,9 +328,10 @@ async function runGapQuery(params: {
   domain?: DataDomain
   periodStart?: string | null
   periodEnd?: string | null
-  authorisedSupplierIds: string[]
+  grants: SupplierGrant[]
+  suppliers: AuthorisedSupplier[]
 }): Promise<GapResult> {
-  const { entityId, domain, periodStart, periodEnd, authorisedSupplierIds } = params
+  const { entityId, domain, periodStart, periodEnd, grants, suppliers } = params
 
   const ownRecords = await prisma.dataRecord.findMany({
     where: {
@@ -308,39 +346,34 @@ async function runGapQuery(params: {
   const targetDomains = domain ? [domain] : ALL_DOMAINS
   const ownMissingDomains = targetDomains.filter(d => !coveredDomains.has(d))
 
-  const supplierGaps: GapResult['supplierGaps'] = []
+  // A gap is a statement about a supplier's data, so it is made only from the
+  // records the grants cover and only about areas they cover. Checked against
+  // the grant's existence alone, it told a buyer granted energy which other
+  // areas the supplier had records in.
+  const granted = grantedRecordsWhere(grants)
+  const supplierRecords = granted
+    ? await prisma.dataRecord.findMany({
+        where: {
+          AND: [
+            granted,
+            { isActive: true, ...(domain ? { domain } : {}), ...periodOverlapWhere(periodStart, periodEnd) },
+          ],
+        },
+        select: { entityId: true, domain: true },
+        distinct: ['entityId', 'domain'],
+      })
+    : []
 
-  if (authorisedSupplierIds.length > 0) {
-    const supplierRecords = await prisma.dataRecord.findMany({
-      where: {
-        entityId: { in: authorisedSupplierIds }, isActive: true,
-        ...(domain ? { domain } : {}),
-        ...periodOverlapWhere(periodStart, periodEnd),
-      },
-      select: { entityId: true, domain: true },
-    })
-
-    const coverage = new Map<string, Set<string>>()
-    for (const r of supplierRecords) {
-      if (!coverage.has(r.entityId)) coverage.set(r.entityId, new Set())
-      coverage.get(r.entityId)!.add(r.domain)
-    }
-
-    const supplierEntities = await prisma.entity.findMany({
-      where: { id: { in: authorisedSupplierIds } },
-      select: { id: true, legalName: true },
-    })
-
-    for (const s of supplierEntities) {
-      const covered = coverage.get(s.id) ?? new Set()
-      const missing = targetDomains.filter(d => !covered.has(d))
-      if (missing.length > 0) {
-        supplierGaps.push({ supplierEntityId: s.id, supplierName: s.legalName, missingDomains: missing })
-      }
-    }
+  const covered = new Map<string, Set<string>>()
+  for (const r of supplierRecords) {
+    if (!covered.has(r.entityId)) covered.set(r.entityId, new Set())
+    covered.get(r.entityId)!.add(r.domain)
   }
 
-  return { ownMissingDomains, supplierGaps }
+  return {
+    ownMissingDomains,
+    supplierGaps: supplierGapsWithinGrants({ suppliers, grants, covered, targetDomains }),
+  }
 }
 
 // SUMMARY BUILDER
