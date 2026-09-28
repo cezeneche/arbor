@@ -98,33 +98,34 @@ model Entity {
   createdAt                 DateTime         @default(now())
   updatedAt                 DateTime         @updatedAt
 
-  users                   User[]
-  documents               Document[]
-  dataRecords             DataRecord[]
-  auditChain              AuditEntry[]
-  outgoingRequests        DataRequest[]            @relation("BuyerRequests")
-  incomingRequests        DataRequest[]            @relation("SupplierRequests")
-  notifications           Notification[]
-  dataAccess              DataAccessGrant[]        @relation("GrantorEntity")
-  receivedAccess          DataAccessGrant[]        @relation("GranteeEntity")
-  apiKeys                 ApiKey[]
-  verificationAssignments VerificationAssignment[]
-  auditPackageLogs        AuditPackageLog[]
-  auditorAccess           AuditorAccess[]
-  webhookSubscriptions    WebhookSubscription[]
-  integrationCredentials  IntegrationCredential[]
-  sharedExports           SharedExport[]
-  inboundRequests         InboundRequest[]
-  groundTruthLabels       GroundTruthLabel[]
-  merkleRoots             MerkleRoot[]
-  entityLinksA            EntityLink[]             @relation("EntityLinkA")
-  entityLinksB            EntityLink[]             @relation("EntityLinkB")
-  domainStewards          DomainSteward[]
-  supplierAgreements      DefinitionAgreement[]    @relation("AgreementSupplier")
-  buyerAgreements         DefinitionAgreement[]    @relation("AgreementBuyer")
-  cbamCaseLinks           CbamCaseLink[]
+  users                      User[]
+  documents                  Document[]
+  dataRecords                DataRecord[]
+  auditChain                 AuditEntry[]
+  outgoingRequests           DataRequest[]               @relation("BuyerRequests")
+  incomingRequests           DataRequest[]               @relation("SupplierRequests")
+  notifications              Notification[]
+  dataAccess                 DataAccessGrant[]           @relation("GrantorEntity")
+  receivedAccess             DataAccessGrant[]           @relation("GranteeEntity")
+  apiKeys                    ApiKey[]
+  verificationAssignments    VerificationAssignment[]
+  auditPackageLogs           AuditPackageLog[]
+  auditorAccess              AuditorAccess[]
+  webhookSubscriptions       WebhookSubscription[]
+  integrationCredentials     IntegrationCredential[]
+  sharedExports              SharedExport[]
+  inboundRequests            InboundRequest[]
+  groundTruthLabels          GroundTruthLabel[]
+  merkleRoots                MerkleRoot[]
+  entityLinksA               EntityLink[]                @relation("EntityLinkA")
+  entityLinksB               EntityLink[]                @relation("EntityLinkB")
+  domainStewards             DomainSteward[]
+  supplierAgreements         DefinitionAgreement[]       @relation("AgreementSupplier")
+  buyerAgreements            DefinitionAgreement[]       @relation("AgreementBuyer")
+  cbamCaseLinks              CbamCaseLink[]
   cbamVerificationStatements CbamVerificationStatement[]
-  ingestOperations        IngestOperation[]
+  cbamNarratives             CbamNarrative[]
+  ingestOperations           IngestOperation[]
 }
 
 // USER
@@ -234,16 +235,16 @@ enum UserRole {
 // DOCUMENT
 
 model Document {
-  id            String         @id @default(cuid())
-  entityId      String
-  entity        Entity         @relation(fields: [entityId], references: [id])
-  fileName      String
-  fileType      String
-  documentType  DocumentType
-  blobUrl       String
-  submittedAt   DateTime       @default(now())
-  submittedById String
-  status        DocumentStatus @default(PENDING)
+  id             String         @id @default(cuid())
+  entityId       String
+  entity         Entity         @relation(fields: [entityId], references: [id])
+  fileName       String
+  fileType       String
+  documentType   DocumentType
+  blobUrl        String
+  submittedAt    DateTime       @default(now())
+  submittedById  String
+  status         DocumentStatus @default(PENDING)
   // Set when the document was saved Declared with nobody checking it; cleared
   // when a person confirms it. While set, the document stays in the review
   // queue and the weekly digest, because that check is what makes it Verified.
@@ -304,6 +305,30 @@ model CbamVerificationStatement {
 
   @@index([entityId, nucleosCaseId])
   @@index([goodsLineId])
+}
+
+// An audit narrative for a CBAM case, as Nucleos wrote it. Kept, not re-run:
+// an auditor needs the text that was produced, by whom and when, and each run
+// is a Claude call. Append-only — writing it again adds a row.
+model CbamNarrative {
+  id             String    @id @default(cuid())
+  entityId       String
+  entity         Entity    @relation(fields: [entityId], references: [id])
+  nucleosCaseId  String
+  generatedById  String
+  generatedAt    DateTime  @default(now())
+  // Nucleos's validator verdict: a person must check the figures before relying on it.
+  reviewRequired Boolean
+  // Every finding the validator made, including those that do not require review.
+  reviewReasons  Json
+  // executive_summary, methodology, limitations, open_gaps, results.
+  narrative      Json
+  // The compliance pack's own audit hash, so the text can be matched to it.
+  packHash       String?
+  // When the organisation was emailed that review is needed.
+  emailedAt      DateTime?
+
+  @@index([entityId, nucleosCaseId, generatedAt])
 }
 
 enum CbamVerificationSubject {

@@ -97,7 +97,7 @@ Then, in Arbor's environment:
 
 ```
 NUCLEOS_URL=https://<the nucleos service>
-NUCLEOS_INTERNAL_TOKEN=<a token with cbam:read and cbam:write>
+NUCLEOS_INTERNAL_TOKEN=<a token with cbam:read, cbam:write and narrative:run (audit narratives)>
 ```
 
 Both are required. `isNucleosConfigured()` is false without either, and the

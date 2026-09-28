@@ -82,8 +82,19 @@ def create_cbam_compliance_pack(
             },
         )
 
-    return build_cbam_compliance_pack(
+    pack = build_cbam_compliance_pack(
         case_id=case_id,
         report_package=report_package,
         narrative=narrative,
     )
+    # The validator's verdict, which also drives the Slack alert. Outside the
+    # audit hash: it is a judgement about the pack, not part of its content.
+    pack["review"] = {
+        "required": bool(pipeline_result.get("human_review_required")),
+        "reasons": [
+            str(e.get("error"))
+            for e in pipeline_result.get("stage_errors") or []
+            if isinstance(e, dict) and e.get("stage") == "report_validator"
+        ],
+    }
+    return pack
