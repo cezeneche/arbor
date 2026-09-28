@@ -36,10 +36,17 @@ export async function POST(request: Request) {
       signal: AbortSignal.timeout(20_000),
     })
     if (res.status === 422) {
+      // Nucleos says in words why a claim is refused — a scheme not recognised
+      // for the origin, the wrong country. A list is field validation, which
+      // the form's own checks should have caught; the general message serves.
+      const detail = await res.json().then(b => (b as { detail?: unknown }).detail, () => null)
       return NextResponse.json(
-        { error: 'These figures do not make a valid claim.' },
+        { error: typeof detail === 'string' ? detail : 'These figures do not make a valid claim.' },
         { status: 422 },
       )
+    }
+    if (res.status === 404) {
+      return NextResponse.json({ error: 'This goods line could not be found.' }, { status: 404 })
     }
     if (!res.ok) throw new NucleosUnavailableError(`cpr claim failed: ${res.status}`)
     return NextResponse.json(await res.json(), { status: 201 })

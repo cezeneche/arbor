@@ -2,45 +2,10 @@
 // network, no calculation of the relief itself — that is Nucleos's engine, and
 // duplicating its formula here would produce a second answer that disagrees.
 //
-// What this does own is the three questions the screen has to answer before the
-// engine is called at all: does this origin country run a qualifying scheme,
-// what does the relief leave owing, and what is still missing.
-
-/** EU member states, EEA, and Switzerland — the schemes UK CBAM recognises. */
-const QUALIFYING: ReadonlySet<string> = new Set([
-  'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR',
-  'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO',
-  'SE', 'SI', 'SK',
-  'NO', 'IS', 'LI',
-  'CH',
-])
-
-// Switzerland runs its own scheme. It is linked to the EU's, which is why it
-// qualifies at all, but it is a different scheme priced in a different currency
-// — claiming under the EU name would misstate the claim.
-const NAMED_SCHEMES: Record<string, { schemeName: string; currency: string }> = {
-  CH: { schemeName: 'Swiss Emissions Trading Scheme (Swiss ETS)', currency: 'CHF' },
-}
-
-const DEFAULT_SCHEME = {
-  schemeName: 'EU Emissions Trading System (EU ETS)',
-  currency: 'EUR',
-}
-
-export interface QualifyingScheme {
-  eligible: boolean
-  schemeName: string | null
-  /** The currency the carbon price is quoted in. */
-  currency: string | null
-}
-
-export function qualifyingScheme(originCountry: string | null | undefined): QualifyingScheme {
-  const iso = (originCountry ?? '').trim().toUpperCase()
-  if (!iso || !QUALIFYING.has(iso)) {
-    return { eligible: false, schemeName: null, currency: null }
-  }
-  return { eligible: true, ...(NAMED_SCHEMES[iso] ?? DEFAULT_SCHEME) }
-}
+// What this does own is the two questions the screen has to answer before the
+// engine is called at all: what does the relief leave owing, and what is still
+// missing. Which schemes qualify, and in which currency, is Nucleos's reference
+// data (relief-client, relief-presenter) — Arbor's own copy had drifted.
 
 /**
  * What is left owing after relief.
@@ -64,7 +29,11 @@ export function netLiability(
 export interface CprInputs {
   verifiedEmissions: string
   carbonPrice: string
+  /** ISO 4217, the currency the carbon price was paid in. */
+  currency: string
   exchangeRate: string
+  /** YYYY-MM-DD: the date the exchange rate applies to, normally the import date. */
+  rateDate: string
 }
 
 /**
@@ -86,8 +55,13 @@ export function missingForCalculation(inputs: CprInputs): string[] {
     return raw.trim() !== '' && Number.isFinite(n) && n >= 0
   }
 
+  const isDate = (raw: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(raw) && !Number.isNaN(new Date(`${raw}T00:00:00Z`).getTime())
+
   if (!positive(inputs.verifiedEmissions)) missing.push('Verified emissions')
   if (!nonNegative(inputs.carbonPrice)) missing.push('Carbon price')
+  if (!/^[A-Z]{3}$/.test(inputs.currency.trim())) missing.push('Currency')
   if (!positive(inputs.exchangeRate)) missing.push('Exchange rate')
+  if (!isDate(inputs.rateDate.trim())) missing.push('Date of the exchange rate')
   return missing
 }

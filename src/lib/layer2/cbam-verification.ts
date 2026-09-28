@@ -45,6 +45,31 @@ function clean(value: string | undefined | null, max: number): string | null {
   return v && v.length <= max ? v : null
 }
 
+/**
+ * The checks every verifier's statement passes, whatever it verifies: a named,
+ * accredited verifier and the verifier's own PDF.
+ */
+export function checkStatement(input: {
+  bytes: Uint8Array
+  verifierName: string
+  verifierAccreditation: string
+}):
+  | { ok: true; verifierName: string; verifierAccreditation: string }
+  | { ok: false; code: 'NOT_PDF' | 'TOO_LARGE' | 'INVALID'; message: string } {
+  const verifierName = clean(input.verifierName, 200)
+  const verifierAccreditation = clean(input.verifierAccreditation, 200)
+  if (!verifierName || !verifierAccreditation) {
+    return { ok: false, code: 'INVALID', message: 'Name the verifier and their accreditation, for example "UKAS 9876".' }
+  }
+  if (input.bytes.length === 0 || input.bytes.length > MAX_STATEMENT_BYTES) {
+    return { ok: false, code: 'TOO_LARGE', message: 'The statement must be a PDF of up to 20 MB.' }
+  }
+  if (sniffFileType(input.bytes) !== 'application/pdf') {
+    return { ok: false, code: 'NOT_PDF', message: 'The statement must be the verifier’s PDF.' }
+  }
+  return { ok: true, verifierName, verifierAccreditation }
+}
+
 export async function submitStatement(
   input: {
     entityId: string
@@ -58,22 +83,15 @@ export async function submitStatement(
   },
   deps: VerificationDeps,
 ): Promise<SubmitResult> {
-  const verifierName = clean(input.verifierName, 200)
-  const verifierAccreditation = clean(input.verifierAccreditation, 200)
-  if (!verifierName || !verifierAccreditation) {
-    return { ok: false, code: 'INVALID', message: 'Name the verifier and their accreditation, for example "UKAS 9876".' }
-  }
-  if (input.bytes.length === 0 || input.bytes.length > MAX_STATEMENT_BYTES) {
-    return { ok: false, code: 'TOO_LARGE', message: 'The statement must be a PDF of up to 20 MB.' }
-  }
-  if (sniffFileType(input.bytes) !== 'application/pdf') {
-    return { ok: false, code: 'NOT_PDF', message: 'The statement must be the verifier’s PDF.' }
-  }
+  const checked = checkStatement(input)
+  if (!checked.ok) return checked
+  const { verifierName, verifierAccreditation } = checked
 
   const waiting = await deps.db.cbamVerificationStatement.findFirst({
     where: {
       entityId: input.entityId,
       goodsLineId: input.goodsLineId,
+      subject: 'EMISSIONS',
       status: 'SUBMITTED',
       syncedAt: { not: null },
     },
@@ -178,6 +196,7 @@ export async function decideStatement(
       id: input.statementId,
       entityId: input.entityId,
       goodsLineId: input.goodsLineId,
+      subject: 'EMISSIONS',
       status: 'SUBMITTED',
       syncedAt: { not: null },
     },

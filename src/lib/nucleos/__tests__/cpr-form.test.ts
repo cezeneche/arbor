@@ -1,46 +1,9 @@
-import { qualifyingScheme, netLiability, missingForCalculation } from '../cpr-form'
+import { netLiability, missingForCalculation } from '../cpr-form'
 
 // Carbon price relief reduces what an importer owes, so every one of these
-// answers is money. The two that matter most: relief is only claimable where the
-// origin country actually runs a qualifying scheme, and a relief larger than the
-// liability does not produce a refund.
-
-describe('qualifyingScheme', () => {
-  it('recognises an EU member state as running a qualifying scheme', () => {
-    const s = qualifyingScheme('DE')
-    expect(s.eligible).toBe(true)
-    expect(s.currency).toBe('EUR')
-    expect(s.schemeName).toContain('EU Emissions Trading System')
-  })
-
-  it('names the Swiss scheme rather than the EU one, and prices it in francs', () => {
-    // Switzerland's ETS is linked to the EU's but is a different scheme with a
-    // different currency. Claiming under the wrong scheme name misstates the claim.
-    const s = qualifyingScheme('CH')
-    expect(s.eligible).toBe(true)
-    expect(s.currency).toBe('CHF')
-    expect(s.schemeName).toContain('Swiss')
-  })
-
-  it('includes EEA states that are not EU members', () => {
-    expect(qualifyingScheme('NO').eligible).toBe(true)
-    expect(qualifyingScheme('IS').eligible).toBe(true)
-  })
-
-  it('refuses a country with no qualifying scheme', () => {
-    const s = qualifyingScheme('TR')
-    expect(s.eligible).toBe(false)
-    expect(s.schemeName).toBeNull()
-  })
-
-  it('is not case-sensitive about the country code', () => {
-    expect(qualifyingScheme('de').eligible).toBe(true)
-  })
-
-  it('treats an absent origin as not eligible rather than throwing', () => {
-    expect(qualifyingScheme(null).eligible).toBe(false)
-  })
-})
+// answers is money. Which schemes qualify is Nucleos's reference data now (see
+// relief-presenter); what stays here is that a relief larger than the liability
+// does not produce a refund, and that a claim is not made on missing figures.
 
 describe('netLiability', () => {
   it('subtracts the relief from what is owed', () => {
@@ -60,7 +23,13 @@ describe('netLiability', () => {
 })
 
 describe('missingForCalculation', () => {
-  const complete = { verifiedEmissions: '12.5', carbonPrice: '80', exchangeRate: '0.85' }
+  const complete = {
+    verifiedEmissions: '12.5',
+    carbonPrice: '80',
+    currency: 'EUR',
+    exchangeRate: '0.85',
+    rateDate: '2027-04-15',
+  }
 
   it('is satisfied by a complete set of inputs', () => {
     expect(missingForCalculation(complete)).toEqual([])
@@ -85,5 +54,16 @@ describe('missingForCalculation', () => {
 
   it('rejects a non-numeric entry rather than passing NaN to the engine', () => {
     expect(missingForCalculation({ ...complete, exchangeRate: 'abc' })).toContain('Exchange rate')
+  })
+
+  // The rate used to be stamped with the day the claim was made. HMRC's rate is
+  // the one for the import date, so the claim has to say which date it used.
+  it('needs the date the exchange rate applies to', () => {
+    expect(missingForCalculation({ ...complete, rateDate: '' })).toEqual(['Date of the exchange rate'])
+    expect(missingForCalculation({ ...complete, rateDate: '15/04/2027' })).toEqual(['Date of the exchange rate'])
+  })
+
+  it('needs the currency the carbon price was paid in', () => {
+    expect(missingForCalculation({ ...complete, currency: 'eu' })).toEqual(['Currency'])
   })
 })
