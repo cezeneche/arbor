@@ -127,6 +127,7 @@ try {
       'src/lib/nucleos/verification-client.ts',
       'src/lib/nucleos/case-evidence.ts',
       'src/lib/nucleos/explain-client.ts',
+      'src/lib/nucleos/relief-client.ts',
       '--outDir', outDir, '--rootDir', 'src/lib/nucleos',
       '--module', 'commonjs', '--target', 'es2020',
       '--esModuleInterop', '--skipLibCheck',
@@ -142,6 +143,7 @@ try {
   const verification = require(path.join(compiled, 'verification-client.js'))
   const { buildCaseEvidence } = require(path.join(compiled, 'case-evidence.js'))
   const { explainGoodsLineField } = require(path.join(compiled, 'explain-client.js'))
+  const relief = require(path.join(compiled, 'relief-client.js'))
 
   console.log('── Extraction boundary ──')
   const result = await extractCbamFields({
@@ -250,6 +252,50 @@ try {
       message !== 'Not Found' && !/ 422 /.test(message),
       message.slice(0, 100))
   }
+
+  console.log('\n── Carbon price relief ──')
+  // Same test as verification: each call reaches a real route and its body is
+  // accepted. On SQLite the handlers fail (no cbam schema), which proves the
+  // route exists; " 404 " from the router means a wrong path, " 422 " a body
+  // Nucleos does not accept — the statement would never reach the claim.
+  const reliefCalls = {
+    'qualifying schemes': () => relief.listQualifyingSchemes('DE'),
+    'claims for a goods line': () => relief.listReliefClaims(aLine),
+  }
+  for (const [name, call] of Object.entries(reliefCalls)) {
+    let callErr = null
+    try {
+      await call()
+    } catch (e) {
+      callErr = e
+    }
+    const message = callErr?.message ?? ''
+    check(`${name} reaches a real route and is accepted`,
+      !/ 404 /.test(message) && !/ 422 /.test(message) && message !== 'Not Found',
+      message.slice(0, 100))
+  }
+
+  // The relief client reads a 404 as "no claim waiting", so a wrong path would
+  // pass through it unnoticed. Watch what Nucleos actually answers instead.
+  let reliefStatus = null
+  let reliefBody = ''
+  try {
+    await relief.recordReliefStatement(
+      aLine,
+      { documentRef: 'arbor:verification:boundary', sha256: 'a'.repeat(64) },
+      async (url, init) => {
+        const res = await fetch(url, init)
+        reliefStatus = res.status
+        reliefBody = await res.clone().text()
+        return res
+      },
+    )
+  } catch {
+    // On SQLite the handler may fail; what matters is which route answered.
+  }
+  check('relief statement (a reference, not a file) reaches a real route and is accepted',
+    reliefStatus !== null && reliefStatus !== 422 && reliefBody.trim() !== '{"detail":"Not Found"}',
+    `${reliefStatus} ${reliefBody.slice(0, 100)}`)
 
   console.log('\n── Why this number? ──')
   // The evidence Arbor files when it opens a case, built by the real builder,

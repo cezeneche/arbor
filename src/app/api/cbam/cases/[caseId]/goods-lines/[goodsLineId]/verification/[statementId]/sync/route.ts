@@ -4,9 +4,11 @@ import { getSessionUser } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { resolveGoodsLineAccess } from '@/lib/nucleos/goods-line-access'
 import { defaultVerificationDeps, syncStatement } from '@/lib/layer2/cbam-verification'
+import { defaultReliefStatementDeps, syncReliefStatement } from '@/lib/layer2/cbam-relief-statement'
 
 // Add a stored statement to the case, after Nucleos could not be reached when it
-// was uploaded. Safe to press twice.
+// was uploaded. Safe to press twice. A relief statement goes to the relief
+// claim; an emissions statement to the line's verification step.
 
 export async function POST(
   _request: Request,
@@ -25,7 +27,10 @@ export async function POST(
   })
   if (!row) return NextResponse.json({ error: 'There is nothing to retry for this statement.' }, { status: 404 })
 
-  const result = await syncStatement(row, await defaultVerificationDeps())
+  const result =
+    row.subject === 'RELIEF'
+      ? await syncReliefStatement(row, await defaultReliefStatementDeps())
+      : await syncStatement(row, await defaultVerificationDeps())
   if (!result.ok) return NextResponse.json({ error: result.message }, { status: 502 })
   return NextResponse.json({ ok: true })
 }

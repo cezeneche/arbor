@@ -5,7 +5,6 @@ Route prefix: /api/cbam/cpr  (registered in main.py with prefix="/api")
 Endpoints
 ---------
 GET  /cbam/cpr/qualifying-schemes          List/check recognised CPR schemes
-GET  /cbam/cpr/exchange-rates              List HMRC reference exchange rates
 POST /cbam/cpr/calculate                   Pure CPR calculation (no DB write)
 POST /cbam/cpr/claims                      Create a CPR claim and persist to DB
 GET  /cbam/cpr/claims/{goods_line_id}      List all CPR claims for a goods line
@@ -33,6 +32,7 @@ from app.services.cpr_calculator import (
     CPRValidationError,
     calculate_cpr,
     get_qualifying_schemes,
+    scheme_currency,
 )
 from app.services.cpr_repository import (
     lookup_qualifying_schemes_db,
@@ -176,6 +176,71 @@ def _require_cbam_write(auth_context: AuthContext = Depends(require_scopes(["cba
     return auth_context
 
 
+def _schemes_for(conn, country: str) -> list[dict[str, Any]]:
+    """The schemes recognised for an origin country, each with its currency."""
+    rows = lookup_qualifying_schemes_db(conn, country)
+    if not rows:
+        # Fall back to in-memory registry for countries not yet in DB
+        rows = [
+            {
+                "country_code": s.country_code,
+                "scheme_name": s.scheme_name,
+                "scheme_type": s.scheme_type,
+                "recognition_status": s.recognition_status,
+                "notes": s.notes,
+            }
+            for s in get_qualifying_schemes(country)
+        ]
+    return [{**r, "currency_code": scheme_currency(str(r["scheme_name"]))} for r in rows]
+
+
+def _check_claim(conn, payload: CPRClaimCreate, tenant_id: str) -> None:
+    """Refuse a claim the return must not carry.
+
+    The goods line has to be this tenant's; the claim has to name the country
+    the goods came from; and the scheme has to be one the UK recognises for that
+    country. Relief under any other scheme would reduce the return by money the
+    importer is not owed.
+    """
+    line = conn.execute(
+        text(
+            """
+            SELECT sh.origin_country
+            FROM   cbam.cbam_goods_lines gl
+            JOIN   cbam.cbam_shipments   sh ON sh.id = gl.shipment_id
+            JOIN   cbam.cbam_cases       c  ON c.id = sh.case_id
+            WHERE  gl.id = :goods_line_id AND c.tenant_id = :tenant_id
+            """
+        ),
+        {"goods_line_id": str(payload.goods_line_id), "tenant_id": tenant_id},
+    ).mappings().first()
+    if line is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+    origin = payload.origin_country_code.upper()
+    line_origin = (line["origin_country"] or "").strip().upper()
+    if line_origin != origin:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"These goods came from {line_origin or 'an unrecorded country'}, not {origin}. "
+                "Relief is claimed under a scheme of the country of origin."
+            ),
+        )
+
+    confirmed = {
+        s["scheme_name"] for s in _schemes_for(conn, origin) if s["recognition_status"] == "confirmed"
+    }
+    if payload.qualifying_scheme_name not in confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"{payload.qualifying_scheme_name} is not a scheme the UK recognises for relief on goods "
+                f"from {origin}."
+            ),
+        )
+
+
 # Endpoints
 
 @router.get("/qualifying-schemes")
@@ -197,21 +262,7 @@ def list_qualifying_schemes(
     """
     with engine.begin() as conn:
         if country:
-            rows = lookup_qualifying_schemes_db(conn, country)
-            if not rows:
-                # Fall back to in-memory registry for countries not yet in DB
-                in_mem = get_qualifying_schemes(country)
-                if in_mem:
-                    rows = [
-                        {
-                            "country_code": s.country_code,
-                            "scheme_name": s.scheme_name,
-                            "scheme_type": s.scheme_type,
-                            "recognition_status": s.recognition_status,
-                            "notes": s.notes,
-                        }
-                        for s in in_mem
-                    ]
+            rows = _schemes_for(conn, country)
             cpr_claimable = any(r["recognition_status"] == "confirmed" for r in rows)
             warning = None
             if any(r["recognition_status"] == "pending" for r in rows) and not cpr_claimable:
@@ -238,7 +289,7 @@ def list_qualifying_schemes(
             )
         ).mappings().all()
         return {
-            "schemes": [dict(r) for r in all_rows],
+            "schemes": [{**dict(r), "currency_code": scheme_currency(r["scheme_name"])} for r in all_rows],
             "count": len(all_rows),
             "note": "Pre-seeded with EU ETS participants (indicative). "
                     "Update when HMRC publishes the official UK qualifying list.",
@@ -321,6 +372,7 @@ def create_cpr_claim(
     with engine.begin() as conn:
         columns = _table_columns(conn, "cbam_cpr_claims")
         set_tenant_context(conn, tenant_id)
+        _check_claim(conn, payload, tenant_id)
 
         insert_payload: dict[str, Any] = {
             "id":                           str(uuid4()),

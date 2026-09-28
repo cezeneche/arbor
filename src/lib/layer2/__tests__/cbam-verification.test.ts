@@ -32,6 +32,7 @@ function deps(over: Partial<VerificationDeps> = {}, nucleosStatus = 'not_require
             r => (!where.id || r.id === where.id) && r.entityId === where.entityId &&
               (!where.goodsLineId || r.goodsLineId === where.goodsLineId) &&
               (!where.status || r.status === where.status) &&
+              (!where.subject || r.subject === where.subject) &&
               (where.syncedAt?.not === undefined || r.syncedAt !== null),
           ) ?? null,
         ),
@@ -176,5 +177,33 @@ describe('decideStatement', () => {
     const out = await decideStatement({ entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' }, d)
     expect(out).toMatchObject({ ok: false, code: 'REFUSED' })
     expect(rows.get('stmt-1').status).toBe('SUBMITTED')
+  })
+})
+
+// Relief statements share the table. A relief statement waiting on its claim
+// must not stand in for, or in the way of, the emissions statement.
+describe('statements about relief', () => {
+  function withRelief() {
+    const h = deps()
+    h.rows.set('relief-1', {
+      id: 'relief-1', entityId: 'ent-1', goodsLineId: 'gl-1', subject: 'RELIEF',
+      status: 'SUBMITTED', syncedAt: new Date('2027-03-19T10:00:00Z'),
+    })
+    return h
+  }
+
+  it('do not block an emissions statement', async () => {
+    const { d } = withRelief()
+    await expect(submitStatement(input, d)).resolves.toMatchObject({ ok: true })
+  })
+
+  it('cannot be accepted or rejected as the emissions statement', async () => {
+    const { d, calls } = withRelief()
+    const out = await decideStatement(
+      { entityId: 'ent-1', userId: 'user-1', goodsLineId: 'gl-1', statementId: 'relief-1', decision: 'accept' },
+      d,
+    )
+    expect(out).toMatchObject({ ok: false, code: 'NOT_FOUND' })
+    expect(calls).toEqual([])
   })
 })

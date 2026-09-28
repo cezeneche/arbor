@@ -143,12 +143,14 @@ def test_the_relief_statement_is_recorded_as_a_reference(api_client, cleanup_cas
         json={
             "goods_line_id": line_id,
             "origin_country_code": "NO",
-            "qualifying_scheme_name": "Norway CO2 tax",
-            "carbon_price_local_currency": "1155",
-            "local_currency_code": "NOK",
+            # Norway prices carbon through the EU ETS (EEA): its own CO2 tax is
+            # not a scheme the UK recognises, and the claim is now refused.
+            "qualifying_scheme_name": "EU Emissions Trading System (EU ETS)",
+            "carbon_price_local_currency": "70",
+            "local_currency_code": "EUR",
             "free_allocations_received": "0",
             "rebates_received": "0",
-            "exchange_rate_to_gbp": "0.074",
+            "exchange_rate_to_gbp": "0.85",
             "exchange_rate_date": "2027-03-15",
             "cbam_liability_gbp": "19116",
             "verified_emissions_tco2e": "360",

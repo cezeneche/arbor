@@ -985,7 +985,7 @@ class TestCPRClaim:
             json={
                 "goods_line_id":             gl["id"],
                 "origin_country_code":       "DE",
-                "qualifying_scheme_name":    "EU Emissions Trading System",
+                "qualifying_scheme_name":    "EU Emissions Trading System (EU ETS)",
                 "carbon_price_local_currency": float(_EU_ETS_EUR_PRICE),
                 # local_currency_code, not currency_code, and the rate date is
                 # required: the exchange rate that produced the relief has to be

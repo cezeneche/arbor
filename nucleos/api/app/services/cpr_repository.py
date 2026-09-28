@@ -14,6 +14,8 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from app.services.cpr_calculator import _ONE, _gbp
+
 
 def lookup_qualifying_schemes_db(conn: Any, country_code: str) -> list[dict[str, Any]]:
     """Query ``cbam.cbam_qualifying_schemes`` for a given country code.
@@ -116,7 +118,11 @@ def get_cpr_by_consignment_db(
     case_id: str,
     tenant_id: str,
 ) -> dict[str, Decimal]:
-    """Sum confirmed CPR claims per consignment for a case.
+    """Sum the relief on each consignment of a case, one claim per goods line.
+
+    Only the latest claim on a goods line counts. Claiming again for a line —
+    to correct a mistyped price, say — replaces the earlier claim; summing every
+    claim ever made added the correction to the mistake and doubled the relief.
 
     Joins cbam_cpr_claims → cbam_goods_lines → cbam_shipments to resolve
     each claim to its consignment reference.  Replicates the same fallback
@@ -144,18 +150,24 @@ def get_cpr_by_consignment_db(
     rows = conn.execute(
         _text(
             """
+            WITH latest AS (
+                SELECT DISTINCT ON (c.goods_line_id)
+                       c.goods_line_id, c.cpr_amount_gbp
+                FROM   cbam.cbam_cpr_claims c
+                WHERE  c.tenant_id = :tenant_id
+                ORDER  BY c.goods_line_id, c.created_at DESC, c.id DESC
+            )
             SELECT
                 COALESCE(
                     sh.consignment_reference,
                     sh.entry_reference,
                     'SHIP-' || LEFT(sh.id::text, 12)
                 )                        AS consignment_ref,
-                SUM(c.cpr_amount_gbp)    AS total_cpr_gbp
-            FROM   cbam.cbam_cpr_claims   c
-            JOIN   cbam.cbam_goods_lines  gl ON gl.id = c.goods_line_id
+                SUM(l.cpr_amount_gbp)    AS total_cpr_gbp
+            FROM   latest                 l
+            JOIN   cbam.cbam_goods_lines  gl ON gl.id = l.goods_line_id
             JOIN   cbam.cbam_shipments    sh ON sh.id = gl.shipment_id
-            WHERE  sh.case_id   = :case_id
-              AND  c.tenant_id  = :tenant_id
+            WHERE  sh.case_id = :case_id
             GROUP  BY consignment_ref
             """
         ),

@@ -199,6 +199,23 @@ _UK_QUALIFYING_SCHEMES: dict[str, list[UKQualifyingScheme]] = {
 _UK_EU_ETS_LINKING_STATUS = "pending"
 
 
+# The currency each scheme's carbon price is quoted in. A relief claim converts
+# that price to sterling, so claiming an EU ETS price as if it were in SEK — or a
+# Swedish carbon tax as if it were in EUR — would misstate the relief by the
+# exchange rate. A scheme not listed here has no known currency, and the claim
+# has to state it.
+_SCHEME_CURRENCY: dict[str, str] = {
+    "EU Emissions Trading System (EU ETS)": "EUR",
+    "Swiss Emissions Trading Scheme (Swiss ETS)": "CHF",
+    "Swedish Carbon Tax": "SEK",
+}
+
+
+def scheme_currency(scheme_name: str) -> str | None:
+    """The currency a qualifying scheme's carbon price is quoted in, if known."""
+    return _SCHEME_CURRENCY.get(scheme_name)
+
+
 def get_qualifying_schemes(country_code: str) -> list[UKQualifyingScheme]:
     """Return the in-memory list of qualifying schemes for an origin country.
 
