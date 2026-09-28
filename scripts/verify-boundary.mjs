@@ -128,6 +128,8 @@ try {
       'src/lib/nucleos/case-evidence.ts',
       'src/lib/nucleos/explain-client.ts',
       'src/lib/nucleos/relief-client.ts',
+      'src/lib/nucleos/supplier-history-client.ts',
+      'src/lib/nucleos/supplier-history-presenter.ts',
       '--outDir', outDir, '--rootDir', 'src/lib/nucleos',
       '--module', 'commonjs', '--target', 'es2020',
       '--esModuleInterop', '--skipLibCheck',
@@ -144,6 +146,7 @@ try {
   const { buildCaseEvidence } = require(path.join(compiled, 'case-evidence.js'))
   const { explainGoodsLineField } = require(path.join(compiled, 'explain-client.js'))
   const relief = require(path.join(compiled, 'relief-client.js'))
+  const { getSupplierHistory } = require(path.join(compiled, 'supplier-history-client.js'))
 
   console.log('── Extraction boundary ──')
   const result = await extractCbamFields({
@@ -296,6 +299,25 @@ try {
   check('relief statement (a reference, not a file) reaches a real route and is accepted',
     reliefStatus !== null && reliefStatus !== 422 && reliefBody.trim() !== '{"detail":"Not Found"}',
     `${reliefStatus} ${reliefBody.slice(0, 100)}`)
+
+  console.log('\n── Supplier history ──')
+  // The client reads a 404 as "no history", so a wrong path would pass through
+  // it unnoticed. The route's own 404 names the goods line; the router's does not.
+  let historyStatus = null
+  let historyBody = ''
+  try {
+    await getSupplierHistory(aLine, async (url, init) => {
+      const res = await fetch(url, init)
+      historyStatus = res.status
+      historyBody = await res.clone().text()
+      return res
+    })
+  } catch {
+    // On SQLite the handler may fail; what matters is which route answered.
+  }
+  check('supplier history reaches a real route',
+    historyStatus !== null && historyStatus !== 422 && historyBody.trim() !== '{"detail":"Not Found"}',
+    `${historyStatus} ${historyBody.slice(0, 100)}`)
 
   console.log('\n── Why this number? ──')
   // The evidence Arbor files when it opens a case, built by the real builder,

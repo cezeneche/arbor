@@ -17,6 +17,7 @@ import { CbamEmissions } from '@/components/CbamEmissions'
 import { CbamReturnBuilder } from '@/components/CbamReturnBuilder'
 import { CbamVerification } from '@/components/CbamVerification'
 import { CbamWhyThisNumber } from '@/components/CbamWhyThisNumber'
+import { CbamSupplierHistory } from '@/components/CbamSupplierHistory'
 import { prisma } from '@/lib/prisma'
 import { latestStatements, presentVerification } from '@/lib/nucleos/verification-presenter'
 
@@ -120,6 +121,12 @@ export default async function CbamCasePage({
   // instead of looking for some.
   const usesDefault = new Set(
     rawGoodsLines.filter(raw => String(raw.method ?? '').toLowerCase() === 'default').map(raw => String(raw.id ?? '')),
+  )
+  // Only a supplier's own figure has a history to compare against.
+  const hasSupplierFigure = new Set(
+    rawGoodsLines
+      .filter(raw => ['actual', 'estimated'].includes(String(raw.method ?? '').toLowerCase()))
+      .map(raw => String(raw.id ?? '')),
   )
   const gaps = presentGaps(record?.open_gaps)
   const jurisdiction = resolveJurisdiction(record?.jurisdiction)
@@ -291,7 +298,12 @@ export default async function CbamCasePage({
                             )}
                           </td>
                           <td style={cell}>{line.origin}</td>
-                          <td style={cell}>{line.installation}</td>
+                          <td style={cell}>
+                            {line.installation}
+                            {hasSupplierFigure.has(line.id) && (
+                              <CbamSupplierHistory caseId={caseId} goodsLineId={line.id} />
+                            )}
+                          </td>
                           <td style={cell}>
                             {line.declaredEmissions}
                             {line.declaredEmissions !== '—' && (
