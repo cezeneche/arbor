@@ -442,7 +442,13 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     seed_cbam_rates,
     cleanup_cbam_cases,
 ):
-    """CBAM workflow for an aluminium importer with a Norwegian CO₂ tax CPR claim.
+    """CBAM workflow for an aluminium importer with an EU ETS CPR claim.
+
+    Norwegian aluminium smelting prices carbon through the EU ETS (Norway takes
+    part under the EEA Agreement). This test used to claim under a "Norwegian CO2
+    Tax", which is not a scheme the reference data recognises for Norway; claims
+    are now checked against it and that one is refused. The price and rate below
+    give the same £85.47/tCO2e as before, so the arithmetic is unchanged.
 
     Verifies:
       - Case created with both direct (360 tCO2e) and indirect (520 tCO2e) emissions
@@ -450,7 +456,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
         in the CBAM charge calculation (Finance No.2 Bill 2025-26, UK indirect
         exclusion until 2029)
       - CPR arithmetic (Finance No.2 Bill 2025-26 formula):
-          net_price_local  = NOK 1155 × 0.074 GBP/NOK = GBP 85.4700 (4dp)
+          net_price_local  = EUR 100 × 0.8547 GBP/EUR = GBP 85.4700 (4dp)
           cpr_raw          = 360 tCO2e × GBP 85.4700  = GBP 30,769.20
           cbam_liability   = 360 tCO2e × GBP 53.10    = GBP 19,116.00  [Q3 2027]
           cpr_final        = min(30,769.20, 19,116.00) = GBP 19,116.00  [CAPPED]
@@ -466,7 +472,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     """
     # Step 1: Create CBAM aluminium case
     # Norway (NO): direct 360,000 kgCO2e, indirect 520,000 kgCO2e (primary electrolysis)
-    # NOK CO2 tax: 1155 NOK/tCO2e, exchange rate 0.074 GBP/NOK
+    # EU ETS: 100 EUR/tCO2e, exchange rate 0.8547 GBP/EUR
     payload = {
         "importer": {
             "name": "Norsk Hydro ASA",
@@ -540,7 +546,7 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
                     f"Expected ≤ £19,116 (direct only at £53.10/tCO2e Q3 2027)."
                 )
 
-    # Step 4: CPR calculation — Norwegian CO₂ tax (NOK 1155/tCO2e)
+    # Step 4: CPR calculation — EU ETS (EUR 100/tCO2e)
     #
     # Finance No.2 Bill 2025-26 CPR formula:
     #   effective_price_gbp = (carbon_price_local − free_allocations − rebates)
@@ -549,27 +555,27 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     #   cpr_final_gbp       = min(cpr_raw_gbp, cbam_liability_gbp)  [cap Rule 7]
     #
     # Input values:
-    #   carbon_price_local  = NOK 1155/tCO2e
+    #   carbon_price_local  = EUR 100/tCO2e
     #   free_allocations    = 0
     #   rebates             = 0
-    #   exchange_rate       = 0.074 GBP/NOK  (HMRC CDRM rate on import date)
+    #   exchange_rate       = 0.8547 GBP/EUR  (HMRC CDRM rate on import date)
     #   verified_emissions  = 360 tCO2e  (direct only — UK excludes indirect)
     #   cbam_liability      = 360 × £53.10 = £19,116.00  (Q3 2027 rate)
     #
     # Expected intermediate values (from cpr_calculator.py rounding logic):
-    #   net_price_local         = 1155.0000 NOK/tCO2e
-    #   effective_carbon_price  = _local(1155 × 0.074) = 85.4700 GBP/tCO2e
+    #   net_price_local         = 100.0000 EUR/tCO2e
+    #   effective_carbon_price  = _local(100 × 0.8547) = 85.4700 GBP/tCO2e
     #   cpr_raw                 = _gbp(360 × 85.4700)  = 30,769.20 GBP
     #   cpr_capped              = True  (30,769.20 > 19,116.00)
     #   cpr_amount              = 19,116.00 GBP
 
     cpr_request = {
         "verified_emissions_tco2e": "360",
-        "carbon_price_local":       "1155",
-        "currency_code":            "NOK",
+        "carbon_price_local":       "100",
+        "currency_code":            "EUR",
         "free_allocations":         "0",
         "rebates":                  "0",
-        "exchange_rate_to_gbp":     "0.074",
+        "exchange_rate_to_gbp":     "0.8547",
         "cbam_liability_gbp":       "19116.00",
     }
 
@@ -577,12 +583,12 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     assert r.status_code == 200, f"CPR calculation failed ({r.status_code}): {r.text}"
     cpr_calc = r.json()
 
-    # net_price_local = 1155 - 0 - 0 = 1155, rounded to 4dp = 1155.0000 NOK
-    assert Decimal(cpr_calc["net_price_local"]) == Decimal("1155.0000"), (
-        f"net_price_local: expected 1155.0000 NOK, got {cpr_calc['net_price_local']!r}"
+    # net_price_local = 100 - 0 - 0 = 100, rounded to 4dp = 100.0000 EUR
+    assert Decimal(cpr_calc["net_price_local"]) == Decimal("100.0000"), (
+        f"net_price_local: expected 100.0000 EUR, got {cpr_calc['net_price_local']!r}"
     )
 
-    # effective_carbon_price_gbp = _local(1155.0000 × 0.074) = 85.4700 GBP/tCO2e
+    # effective_carbon_price_gbp = _local(100.0000 × 0.8547) = 85.4700 GBP/tCO2e
     assert Decimal(cpr_calc["effective_carbon_price_gbp"]) == Decimal("85.4700"), (
         f"effective_carbon_price_gbp: expected 85.4700, got {cpr_calc['effective_carbon_price_gbp']!r}"
     )
@@ -618,13 +624,13 @@ def test_aluminium_importer_cpr_claim_uk_jurisdiction(
     claim_request = {
         "goods_line_id":              goods_line_id,
         "origin_country_code":        "NO",
-        "qualifying_scheme_name":     "Norwegian CO2 Tax",
-        "carbon_price_local_currency":"1155",
-        "local_currency_code":        "NOK",
+        "qualifying_scheme_name":     "EU Emissions Trading System (EU ETS)",
+        "carbon_price_local_currency":"100",
+        "local_currency_code":        "EUR",
         "free_allocations_received":  "0",
         "rebates_received":           "0",
         "verified_emissions_tco2e":   "360",
-        "exchange_rate_to_gbp":       "0.074",
+        "exchange_rate_to_gbp":       "0.8547",
         "exchange_rate_date":         "2027-09-10",
         "cbam_liability_gbp":         "19116.00",
         "verifier_name":              "Lloyd's Register EMEA",
