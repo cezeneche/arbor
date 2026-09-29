@@ -26,7 +26,7 @@ SLACK_WEBHOOK_URL  Slack Incoming Webhook for the internal compliance team.
 RESEND_API_KEY     Resend secret key (re_live_… or re_test_…).
 RESEND_FROM_EMAIL  Verified sender address (default: reports@nucleos.io).
 SUPPORT_EMAIL      Nucleos support address shown in email footer (default: support@nucleos.io).
-BASE_URL           Public application base URL, e.g. https://app.nucleos.io.
+BASE_URL           The Arbor app URL; case links go to {BASE_URL}/cbam/{case_id}.
                    Used for building case deep-links if the caller does not
                    supply base_url explicitly.
 """
@@ -112,9 +112,7 @@ async def notify_review_required(
         return
 
     effective_base = base_url or _base_url()
-    case_url = (
-        f"{effective_base}/cases/{case_id}" if effective_base else f"/cases/{case_id}"
-    )
+    case_url = f"{effective_base}/cbam/{case_id}" if effective_base else f"/cbam/{case_id}"
     flags_text = (
         "\n".join(f"• {f}" for f in flags) if flags else "_No specific flags provided_"
     )
@@ -336,7 +334,7 @@ async def notify_importer_supplier_submitted(
     from_email    = os.getenv("RESEND_FROM_EMAIL", "reports@nucleos.io").strip()
     support_email = os.getenv("SUPPORT_EMAIL",     "support@nucleos.io").strip()
     effective_base = base_url or _base_url()
-    case_url = f"{effective_base}/cases/{case_id}" if effective_base else f"/cases/{case_id}"
+    case_url = f"{effective_base}/cbam/{case_id}" if effective_base else f"/cbam/{case_id}"
 
     route_label   = production_route.replace("_", " ").title() if production_route else "Not specified"
     install_label = installation_name or "Not specified"
