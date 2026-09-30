@@ -311,7 +311,7 @@ export default async function RecordsPage({
               backgroundColor: colours.surface,
               border: `1px solid ${colours.border}`,
               borderRadius: '8px',
-              overflow: 'hidden',
+              overflowX: 'auto',
             }}
           >
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
