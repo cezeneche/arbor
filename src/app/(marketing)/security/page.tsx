@@ -1,114 +1,28 @@
-import { colours, typography } from '@/lib/design-system'
-import { SUB_PROCESSORS } from '@/lib/legal/subprocessors'
+import type { Metadata } from 'next'
 
-// public security posture page. Referenced in the DPA and sent to
-// enterprise buyer procurement / security teams.
-const container = { maxWidth: '900px', margin: '0 auto', padding: '0 clamp(20px, 5vw, 40px)' }
-
-const h2 = {
-  fontSize: '20px',
-  fontWeight: typography.weights.medium,
-  color: colours.textPrimary,
-  letterSpacing: typography.tracking.tight,
-  margin: '40px 0 12px',
+export const metadata: Metadata = {
+  title: 'Security and data access | Arbor',
+  description: 'How Arbor structures access to operational records, tracks corrections and supports security reviews.',
 }
-const p = {
-  fontSize: typography.sizes.base,
-  fontWeight: typography.weights.light,
-  color: colours.textSecondary,
-  lineHeight: '1.75',
-  margin: '0 0 16px',
-}
-const li = { ...p, margin: '0 0 8px' }
 
-export const metadata = { title: 'Security · Arbor' }
+const nav = [
+  ['access', 'Access controls'], ['integrity', 'Record integrity'], ['documents', 'Documents and API keys'],
+  ['assurance', 'Assurance requests'], ['disclosure', 'Report a vulnerability'],
+] as const
 
 export default function SecurityPage() {
   return (
-    <div style={{ backgroundColor: colours.surface }}>
-      <div style={{ borderBottom: `1px solid ${colours.border}`, padding: '64px 0 48px' }}>
-        <div style={container}>
-          <span
-            style={{
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.medium,
-              color: colours.textTertiary,
-              letterSpacing: typography.tracking.wider,
-              textTransform: 'uppercase' as const,
-              display: 'block',
-              marginBottom: '16px',
-            }}
-          >
-            Trust
-          </span>
-          <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 40px)', fontWeight: typography.weights.light, color: colours.textPrimary, letterSpacing: typography.tracking.tight, margin: 0 }}>
-            Security at Arbor
-          </h1>
-          <p style={{ ...p, marginTop: '16px', maxWidth: '640px' }}>
-            Arbor holds verified operational data on behalf of manufacturers and
-            their customers. The integrity and confidentiality of that data is the
-            product. This page summarises how we protect it.
-          </p>
+    <div className="mk-doc-page">
+      <header className="mk-page-intro"><div className="mk-container"><span className="mk-eyebrow">Security</span><h1>Controls that keep operational records accountable.</h1><p>Arbor combines account and grant controls with a history of record changes. This page explains the controls built into the application. Ask us for current deployment details and assessment status.</p></div></header>
+      <div className="mk-container mk-doc-layout">
+        <nav aria-label="On this page" className="mk-doc-nav"><strong>On this page</strong>{nav.map(([id,label]) => <a href={`#${id}`} key={id}>{label}</a>)}</nav>
+        <div className="mk-doc-content">
+          <section id="access"><h2>Access controls</h2><p>Organisation accounts use roles to separate administrators, contributors, viewers, verifiers and auditors. Sharing grants scope a buyer’s access to a supplier’s records; revocation stops subsequent reads through Arbor. Previously downloaded copies remain outside the service’s control.</p><p>Administrative accounts have a two-factor setup flow. API keys belong to one organisation and have read or read/write scope. Where configured, single sign-on and provisioning are available through the connected identity provider.</p></section>
+          <section id="integrity"><h2>Record integrity</h2><p>Stored records are linked in an HMAC audit chain. A correction creates a superseding record instead of rewriting the prior value. Checking the chain can reveal a change to historical chain content at verification time.</p><p>The audit chain establishes provenance within Arbor. It does not independently verify a document’s factual accuracy or a supplier’s underlying activity. Audit packages include a separate way to inspect their inclusion proofs.</p></section>
+          <section id="documents"><h2>Documents and API keys</h2><p>Document retrieval is controlled through authenticated or authorised access paths. API key secrets are stored as hashes rather than retrievable plaintext, and keys can be limited by scope. The application also supports account session revocation.</p><p>Specific encryption, storage-region and contractual transfer guarantees depend on the deployed services and provider agreements. Ask for the current evidence before relying on any particular deployment posture.</p></section>
+          <section id="assurance"><h2>Assurance requests</h2><p>For current hosting regions, sub-processor details, contractual safeguards or external assessment status, contact <a href="mailto:security@arbor.io">security@arbor.io</a>. We share what is in place today, not what is planned.</p><p>The draft <a href="/legal/dpa">Data Processing Agreement</a> needs legal approval for your specific arrangement before it is executed.</p></section>
+          <section id="disclosure"><h2>Report a vulnerability</h2><p>Send a suspected vulnerability to <a href="mailto:security@arbor.io">security@arbor.io</a> with the affected area and steps to reproduce. Please do not include production customer data or secrets in the report.</p></section>
         </div>
-      </div>
-
-      <div style={{ ...container, padding: '0 40px 64px' }}>
-        <h2 style={h2}>Encryption</h2>
-        <p style={p}>
-          Data is encrypted in transit with TLS 1.3 and at rest with AES-256.
-          Uploaded documents are stored in private blob storage and can only be
-          retrieved with a bearer token. TOTP secrets are encrypted with AES-256-GCM
-          before storage.
-        </p>
-
-        <h2 style={h2}>Access controls</h2>
-        <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
-          <li style={li}>Role-based access: administrator, contributor, viewer, verifier, and external auditor roles, each scoped to what they need.</li>
-          <li style={li}>Two-factor authentication is mandatory for every administrator account.</li>
-          <li style={li}>Enterprise single sign-on (SAML/OIDC) and automatic user provisioning and de-provisioning via SCIM, through WorkOS.</li>
-          <li style={li}>API keys are scoped to a single organisation and stored only as a bcrypt hash.</li>
-          <li style={li}>A session version stamp lets us revoke every active session for an account instantly.</li>
-        </ul>
-
-        <h2 style={h2}>Cryptographic audit chain</h2>
-        <p style={p}>
-          Every data record is cryptographically linked to the previous one using an
-          HMAC chain. Any alteration to a stored record breaks the chain and is
-          immediately detectable. Records are never overwritten — a correction
-          creates a new record that supersedes the original, and both are preserved.
-          External verifiers and auditors can confirm the chain independently.
-        </p>
-
-        <h2 style={h2}>Data residency</h2>
-        <p style={p}>
-          Application hosting and the primary database run in EU/UK regions. Where a
-          sub-processor operates outside the UK/EEA, Standard Contractual Clauses are
-          in place.
-        </p>
-
-        <h2 style={h2}>Sub-processors</h2>
-        <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
-          {SUB_PROCESSORS.map((s) => (
-            <li key={s.name} style={li}>
-              <strong style={{ fontWeight: typography.weights.medium, color: colours.textPrimary }}>{s.name}</strong> — {s.activity}. {s.location}.
-            </li>
-          ))}
-        </ul>
-
-        <h2 style={h2}>Independent assurance</h2>
-        <p style={p}>
-          We follow SOC 2-aligned controls; formal certification is on our
-          roadmap. A penetration test is scheduled for Q3 2026; a results summary
-          will be published here. Our Data Processing Agreement is available on the{' '}
-          <a href="/legal/dpa" style={{ color: colours.navy }}>legal page</a>.
-        </p>
-
-        <h2 style={h2}>Responsible disclosure</h2>
-        <p style={p}>
-          If you believe you have found a security vulnerability, please email{' '}
-          <a href="mailto:security@arbor.io" style={{ color: colours.navy }}>security@arbor.io</a>.
-          We will acknowledge your report and keep you updated on remediation.
-        </p>
       </div>
     </div>
   )

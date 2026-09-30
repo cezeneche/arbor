@@ -1,11 +1,16 @@
+import type { Metadata } from 'next'
 import { colours, typography } from '@/lib/design-system'
 import { SUB_PROCESSORS } from '@/lib/legal/subprocessors'
+import { LegalContents } from '@/components/marketing/LegalContents'
+import { LegalDraftNotice } from '@/components/marketing/LegalDraftNotice'
+
+export const metadata: Metadata = { title: 'Privacy Policy | Arbor', description: 'How Arbor describes its handling of personal data, rights and contact routes.' }
 
 // IMPORTANT: This document must be reviewed by a qualified solicitor before publication.
 // Placeholder company details (marked with []) must be replaced before going live.
 
 const container = {
-  maxWidth: '1140px',
+  maxWidth: '820px',
   margin: '0 auto',
   padding: '0 clamp(20px, 5vw, 40px)',
 }
@@ -44,7 +49,7 @@ const liStyle = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <div style={{ backgroundColor: colours.surface }}>
+    <div className="mk-legal-page" style={{ backgroundColor: colours.surface }}>
       {/* Header */}
       <div style={{ borderBottom: `1px solid ${colours.border}`, padding: '64px 0 48px' }}>
         <div style={container}>
@@ -73,6 +78,7 @@ export default function PrivacyPolicyPage() {
           >
             Privacy Policy
           </h1>
+          <LegalDraftNotice />
           <p style={{ ...pStyle, margin: 0 }}>
             Last updated: 1 June 2026. This policy applies to all users of the arbor platform.
           </p>
@@ -81,27 +87,28 @@ export default function PrivacyPolicyPage() {
 
       {/* Body */}
       <div style={{ padding: '64px 0 96px' }}>
-        <div style={container}>
+        <div id="privacy-sections" className="mk-legal-reading" style={container}>
+          <LegalContents sections={[{ id: 'privacy-identity', label: 'Who we are' }, { id: 'privacy-collection', label: 'Data we collect' }, { id: 'privacy-use', label: 'How we use data' }, { id: 'privacy-retention', label: 'Retention' }, { id: 'privacy-rights', label: 'Your rights' }, { id: 'privacy-contact', label: 'Contact' }]} />
 
-          <h2 style={h2Style}>1. Who we are</h2>
+          <h2 id="privacy-identity" style={h2Style}>1. Who we are</h2>
           <p style={pStyle}>
-            arbor Data Ltd (&quot;arbor&quot;, &quot;we&quot;, &quot;us&quot;, &quot;our&quot;) is a company registered in England and Wales
-            (company number [TO BE CONFIRMED], registered address [Company Address, City, Postcode]).
-            We operate the arbor platform, a certified operational data repository accessible at arbor.io
+            Arbor is operated by arbor. Its company number and registered address are pending confirmation
+            in this sample policy. &quot;We&quot;, &quot;us&quot; and &quot;our&quot; refer to arbor.
+            We operate the Arbor operational data platform accessible at arbor.io
             and related subdomains.
           </p>
           <p style={pStyle}>
-            For the purposes of UK data protection law, arbor Data Ltd is the data controller for personal
+            For the purposes of UK data protection law, the Arbor operator is the data controller for personal
             data collected from visitors to our website and users of our platform. Where we process personal
             data on behalf of our business customers, we act as a data processor. This distinction is addressed
             in our Data Processing Agreement.
           </p>
           <p style={pStyle}>
-            Our ICO registration number is [TO BE CONFIRMED]. Our data protection contact is
+            Our ICO registration position is pending confirmation. Our data protection contact is
             legal@arbor.io.
           </p>
 
-          <h2 style={h2Style}>2. Personal data we collect</h2>
+          <h2 id="privacy-collection" style={h2Style}>2. Personal data we collect</h2>
 
           <h3 style={h3Style}>Account and identity data</h3>
           <p style={pStyle}>
@@ -127,11 +134,11 @@ export default function PrivacyPolicyPage() {
 
           <h3 style={h3Style}>Communications</h3>
           <p style={pStyle}>
-            When you contact us by email, we retain that correspondence to handle your enquiry and maintain
-            a record of our communications.
+            When you contact us by email or submit a pilot or institutional enquiry, we collect the details
+            you provide to handle your request and maintain a record of our communications.
           </p>
 
-          <h2 style={h2Style}>3. How we use your personal data</h2>
+          <h2 id="privacy-use" style={h2Style}>3. How we use your personal data</h2>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             {[
               'To create and manage your account',
@@ -172,7 +179,8 @@ export default function PrivacyPolicyPage() {
 
           <h2 style={h2Style}>5. Third-party processors</h2>
           <p style={pStyle}>
-            We use the following third-party service providers who process personal data on our behalf:
+            This illustrative provider inventory is drawn from the application configuration. The actual
+            providers, processing locations and contractual terms must be verified before this policy is approved:
           </p>
           <div
             style={{
@@ -232,29 +240,26 @@ export default function PrivacyPolicyPage() {
 
           <h2 style={h2Style}>6. International transfers</h2>
           <p style={pStyle}>
-            Some of our third-party processors are located or operate infrastructure outside the UK. Where we
-            transfer personal data to countries not covered by a UK adequacy decision, we rely on appropriate
-            safeguards under UK GDPR Article 46, including Standard Contractual Clauses approved by the
-            Information Commissioner&apos;s Office.
+            Any international transfers and the applicable UK transfer safeguards must be mapped to the
+            deployed providers and reviewed before this draft is approved. No particular transfer mechanism
+            is asserted by this sample policy.
           </p>
 
-          <h2 style={h2Style}>7. Data retention</h2>
+          <h2 id="privacy-retention" style={h2Style}>7. Data retention</h2>
           <p style={pStyle}>
-            We retain your personal data for as long as your account is active. If you close your account,
-            we will retain your data for a further 90 days to allow for recovery, after which it is deleted
-            from our systems, except where we are required to retain it by law.
+            We retain account and service data while needed to provide the service. The period after account
+            closure, backup expiry and any lawful exceptions must be set in an approved retention schedule.
+            No fixed post-closure period is approved in this draft.
           </p>
           <p style={pStyle}>
-            Operational data records (the certified data stored in the repository) are retained for the life
-            of your account. On account closure, you may request an export of all certified records before
-            deletion.
+            The retention and export process for operational records after account closure must be defined in
+            the approved schedule and customer terms. This draft does not set a deletion deadline.
           </p>
           <p style={pStyle}>
-            Server logs and technical data are retained for a maximum of 12 months, unless required for
-            ongoing security investigations.
+            The retention period for server logs and technical data is also pending operational confirmation.
           </p>
 
-          <h2 style={h2Style}>8. Your rights under UK GDPR</h2>
+          <h2 id="privacy-rights" style={h2Style}>8. Your rights under UK GDPR</h2>
           <p style={pStyle}>You have the following rights regarding your personal data:</p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             {[
@@ -287,10 +292,10 @@ export default function PrivacyPolicyPage() {
             of changes constitutes acceptance of the updated policy.
           </p>
 
-          <h2 style={h2Style}>11. Contact</h2>
+          <h2 id="privacy-contact" style={h2Style}>11. Contact</h2>
           <p style={pStyle}>
             For any questions about this policy or our data practices, contact us at legal@arbor.io or write
-            to: arbor Data Ltd, [Company Address, City, Postcode].
+            to: arbor (registered address to be confirmed).
           </p>
 
         </div>

@@ -10,13 +10,23 @@ describe('isPublicPath', () => {
     expect(isPublicPath('/')).toBe(true)
     expect(isPublicPath('/login')).toBe(true)
     expect(isPublicPath('/pricing')).toBe(true)
+    expect(isPublicPath('/request-access')).toBe(true)
   })
 
   it('treats self-authenticating API routes as public', () => {
     expect(isPublicPath('/api/v1/records')).toBe(true)
     expect(isPublicPath('/api/query')).toBe(true)
+    expect(isPublicPath('/api/pilot-enquiry')).toBe(true)
     // The calibration cron authenticates with a Bearer CRON_SECRET, not a session.
     expect(isPublicPath('/api/cron/calibrate')).toBe(true)
+  })
+
+  // The CBAM marketing page sits beside the product's own /cbam pages, which
+  // hold an importer's cases and must stay behind sign-in.
+  it('makes the CBAM marketing page public without exposing the CBAM product pages', () => {
+    expect(isPublicPath('/cbam-compliance')).toBe(true)
+    expect(isPublicPath('/cbam')).toBe(false)
+    expect(isPublicPath('/cbam/case-1')).toBe(false)
   })
 
   it('exposes the offline Merkle verifier (client-only, fetches no data)', () => {
@@ -26,6 +36,8 @@ describe('isPublicPath', () => {
   it('keeps session-guarded app and API routes private', () => {
     expect(isPublicPath('/dashboard')).toBe(false)
     expect(isPublicPath('/api/records')).toBe(false)
+    expect(isPublicPath('/request-access-admin')).toBe(false)
+    expect(isPublicPath('/api/pilot-enquiries')).toBe(false)
     expect(isPublicPath('/api/documents/abc/confirm')).toBe(false)
   })
 

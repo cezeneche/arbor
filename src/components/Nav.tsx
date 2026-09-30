@@ -11,14 +11,16 @@ export function Nav({
   entityType = 'SUPPLIER',
   recordCount,
   showCbam = false,
+  isPlatformAdmin = false,
 }: {
   entityName: string
   entityType?: 'SUPPLIER' | 'BUYER'
   recordCount?: number
   showCbam?: boolean
+  isPlatformAdmin?: boolean
 }) {
   const pathname = usePathname()
-  const links = getNavLinks(entityType, { showCbam })
+  const links = getNavLinks(entityType, { showCbam, isPlatformAdmin })
 
   return (
     <nav

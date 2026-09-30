@@ -14,7 +14,9 @@ const PUBLIC_PREFIXES = [
   '/docs',
   '/about',
   '/how-it-works',
+  '/cbam-compliance',
   '/institutional',
+  '/request-access',
   // Auth entry points
   '/login',
   '/signup',
@@ -47,6 +49,7 @@ const PUBLIC_PREFIXES = [
   '/api/query',
   '/api/records/convert',
   '/api/institutional',
+  '/api/pilot-enquiry',
   '/api/audit/verify-public',
   // Scheduled jobs — each route enforces its own CRON_SECRET Bearer auth.
   '/api/cron',

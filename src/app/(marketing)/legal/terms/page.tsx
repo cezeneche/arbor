@@ -1,9 +1,14 @@
+import type { Metadata } from 'next'
 import { colours, typography } from '@/lib/design-system'
+import { LegalContents } from '@/components/marketing/LegalContents'
+import { LegalDraftNotice } from '@/components/marketing/LegalDraftNotice'
+
+export const metadata: Metadata = { title: 'Terms of Service | Arbor', description: 'Terms governing access to and use of the Arbor service.' }
 
 // IMPORTANT: This document must be reviewed by a qualified solicitor before publication.
 
 const container = {
-  maxWidth: '1140px',
+  maxWidth: '820px',
   margin: '0 auto',
   padding: '0 clamp(20px, 5vw, 40px)',
 }
@@ -42,7 +47,7 @@ const liStyle = {
 
 export default function TermsPage() {
   return (
-    <div style={{ backgroundColor: colours.surface }}>
+    <div className="mk-legal-page" style={{ backgroundColor: colours.surface }}>
       {/* Header */}
       <div style={{ borderBottom: `1px solid ${colours.border}`, padding: '64px 0 48px' }}>
         <div style={container}>
@@ -71,6 +76,7 @@ export default function TermsPage() {
           >
             Terms of Service
           </h1>
+          <LegalDraftNotice />
           <p style={{ ...pStyle, margin: 0 }}>
             Last updated: 1 June 2026. By creating an account and using the arbor platform,
             you agree to these terms.
@@ -80,21 +86,22 @@ export default function TermsPage() {
 
       {/* Body */}
       <div style={{ padding: '64px 0 96px' }}>
-        <div style={container}>
+        <div id="terms-sections" className="mk-legal-reading" style={container}>
+          <LegalContents sections={[{ id: 'terms-service', label: 'About the service' }, { id: 'terms-data', label: 'Your data' }, { id: 'terms-certification', label: 'Trust certification' }, { id: 'terms-sharing', label: 'Sharing' }, { id: 'terms-termination', label: 'Termination' }, { id: 'terms-contact', label: 'Contact' }]} />
 
-          <h2 style={h2Style}>1. About the service</h2>
+          <h2 id="terms-service" style={h2Style}>1. About the service</h2>
           <p style={pStyle}>
             arbor is a certified operational data repository. The service enables manufacturers,
             suppliers, and producers (&quot;Suppliers&quot;) to upload operational documents, extract structured
-            data fields, and store those records with a permanent audit chain. It enables buyers,
+            data fields, and store those records with a linked audit history. It enables buyers,
             large companies, and procurement teams (&quot;Buyers&quot;) to request and receive certified data
             records from their supply chain.
           </p>
           <p style={pStyle}>
             arbor certifies the provenance of data records, not their accuracy. A trust tier of
-            &quot;Verified&quot; means the data was extracted from a document you submitted and that extraction
-            met the required confidence threshold. It does not mean arbor has independently verified
-            the accuracy of the underlying document.
+            &quot;Verified&quot; means document-derived data met the applicable source and review
+            requirements. Extraction confidence alone does not establish factual accuracy. It does not
+            mean arbor has independently verified the underlying document or business activity.
           </p>
 
           <h2 style={h2Style}>2. Account eligibility and creation</h2>
@@ -108,16 +115,16 @@ export default function TermsPage() {
             suspect unauthorised access.
           </p>
           <p style={pStyle}>
-            arbor Data Ltd reserves the right to decline or suspend accounts at its discretion,
+            Arbor [contracting entity to confirm] reserves the right to decline or suspend accounts at its discretion,
             including where use is inconsistent with these terms or applicable law.
           </p>
 
-          <h2 style={h2Style}>3. Data submitted to the service</h2>
+          <h2 id="terms-data" style={h2Style}>3. Data submitted to the service</h2>
 
           <h3 style={h3Style}>Ownership</h3>
           <p style={pStyle}>
             You retain ownership of all data and documents you submit to arbor. By submitting data,
-            you grant arbor Data Ltd a limited, non-exclusive, worldwide licence to store, process,
+            you grant Arbor [contracting entity to confirm] a limited, non-exclusive, worldwide licence to store, process,
             and serve that data for the purpose of providing the service to you and to authorised parties
             you designate.
           </p>
@@ -137,7 +144,7 @@ export default function TermsPage() {
             and cannot be waived.
           </p>
 
-          <h2 style={h2Style}>4. Trust certification</h2>
+          <h2 id="terms-certification" style={h2Style}>4. Trust certification</h2>
           <p style={pStyle}>
             Every data record stored in arbor carries a trust tier: Verified, Declared, or Estimated.
             These tiers are determined automatically by applying the admissibility rules of the service.
@@ -145,11 +152,11 @@ export default function TermsPage() {
             Verified by submitting a qualifying source document.
           </p>
           <p style={pStyle}>
-            Trust tier labels travel with data records in all exports and API responses. They cannot be
-            removed or hidden by any user or system integration.
+            Arbor includes trust tier labels in its record views and supported exports. A copy downloaded
+            or modified outside the service is beyond Arbor&apos;s control.
           </p>
 
-          <h2 style={h2Style}>5. Sharing and access control</h2>
+          <h2 id="terms-sharing" style={h2Style}>5. Sharing and access control</h2>
           <p style={pStyle}>
             Suppliers control which Buyers can access their certified records. Granting access authorises
             the Buyer to read the records you specify for the duration you specify. You may revoke access
@@ -183,17 +190,17 @@ export default function TermsPage() {
           <h2 style={h2Style}>7. Intellectual property</h2>
           <p style={pStyle}>
             The arbor platform, including its extraction algorithms, trust certification methodology,
-            audit chain implementation, and user interface, is owned by arbor Data Ltd. Nothing in
+            audit chain implementation, and user interface, is owned by Arbor [contracting entity to confirm]. Nothing in
             these terms transfers any intellectual property rights to you.
           </p>
           <p style={pStyle}>
-            &quot;arbor&quot;, the arbor wordmark, and associated logos are trademarks of arbor Data Ltd. You may
+            &quot;arbor&quot;, the arbor wordmark, and associated logos are trademarks of Arbor [contracting entity to confirm]. You may
             not use them without our prior written consent.
           </p>
 
           <h2 style={h2Style}>8. Limitation of liability</h2>
           <p style={pStyle}>
-            To the maximum extent permitted by applicable law, arbor Data Ltd shall not be liable for any
+            To the maximum extent permitted by applicable law, Arbor [contracting entity to confirm] shall not be liable for any
             indirect, incidental, special, consequential, or punitive damages arising from or related to
             your use of the service, including but not limited to loss of data, loss of profits, or business
             interruption.
@@ -209,7 +216,7 @@ export default function TermsPage() {
 
           <h2 style={h2Style}>9. Indemnification</h2>
           <p style={pStyle}>
-            You agree to indemnify and hold harmless arbor Data Ltd, its officers, directors, and employees
+            You agree to indemnify and hold harmless Arbor [contracting entity to confirm], its officers, directors, and employees
             from any claims, damages, or costs (including reasonable legal fees) arising from your violation
             of these terms, your submitted content, or your use of the service.
           </p>
@@ -221,7 +228,7 @@ export default function TermsPage() {
             30 days&apos; notice before any change that materially reduces the functionality you rely on.
           </p>
 
-          <h2 style={h2Style}>11. Termination</h2>
+          <h2 id="terms-termination" style={h2Style}>11. Termination</h2>
           <p style={pStyle}>
             You may close your account at any time by contacting hello@arbor.io. We will provide an export
             of your certified records before deletion, which must be requested before account closure is
@@ -247,10 +254,10 @@ export default function TermsPage() {
             after the effective date constitutes acceptance.
           </p>
 
-          <h2 style={h2Style}>14. Contact</h2>
+          <h2 id="terms-contact" style={h2Style}>14. Contact</h2>
           <p style={pStyle}>
             For questions about these terms, contact us at legal@arbor.io or write to:
-            arbor Data Ltd, [Company Address, City, Postcode].
+            arbor (registered address to be confirmed).
           </p>
 
         </div>

@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { pilotRequestHref } from '@/lib/marketing/pilot'
 
 const SECTORS = [
   { value: 'steel', label: 'Steel' },
@@ -36,7 +37,8 @@ const COUNTRIES = [
 
 export default function SignupPage() {
   const router = useRouter()
-  const [entityType, setEntityType] = useState<'SUPPLIER' | 'BUYER'>('SUPPLIER')
+  const searchParams = useSearchParams()
+  const [entityType, setEntityType] = useState<'SUPPLIER' | 'BUYER'>(() => searchParams.get('audience') === 'buyer' ? 'BUYER' : 'SUPPLIER')
   const [companyName, setCompanyName] = useState('')
   const [sector, setSector] = useState('')
   const [country, setCountry] = useState('GB')
@@ -57,33 +59,30 @@ export default function SignupPage() {
     setError(null)
     setLoading(true)
 
-    const res = await fetch('/api/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyName, sector, country, name, email, password, entityType, inviteCode }),
-    })
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyName, sector, country, name, email, password, entityType, inviteCode }),
+      })
 
-    const data = await res.json()
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        setError(data?.error ?? 'Something went wrong. Your entries are still here; please try again.')
+        return
+      }
 
-    if (!res.ok) {
-      setError(data.error ?? 'Something went wrong. Try again.')
+      const result = await signIn('credentials', { email, password, redirect: false })
+      if (result?.error) {
+        setError('Account created but sign-in failed. Try signing in manually.')
+        return
+      }
+      router.push('/onboarding')
+    } catch {
+      setError('We could not complete signup. Your entries are still here; check your connection and try again.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    })
-
-    if (result?.error) {
-      setError('Account created but sign-in failed. Try signing in manually.')
-      setLoading(false)
-      return
-    }
-
-    router.push('/onboarding')
   }
 
   const labelStyle = {
@@ -105,7 +104,6 @@ export default function SignupPage() {
     backgroundColor: colours.surface,
     border: `1px solid ${colours.border}`,
     borderRadius: '4px',
-    outline: 'none',
     boxSizing: 'border-box' as const,
   }
 
@@ -129,12 +127,12 @@ export default function SignupPage() {
         <p
           style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
         >
-          Create your account
+          Create your pilot account
         </p>
         <p style={{ ...textStyles.caption, color: colours.textSecondary, margin: `${spacing[2]} 0 0` }}>
           arbor is in a private pilot. You need an invite code to sign up.{' '}
-          <a href="mailto:hello@arbor.io?subject=arbor%20pilot%20access" style={{ color: colours.textPrimary }}>
-            Ask for one
+          <a href={pilotRequestHref()} style={{ color: colours.textPrimary }}>
+            Request pilot access
           </a>
           .
         </p>
@@ -147,8 +145,8 @@ export default function SignupPage() {
           <p style={{ ...labelStyle, marginBottom: '8px' }}>I am signing up as a</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             {([
-              { value: 'SUPPLIER', heading: 'Supplier / manufacturer', sub: 'I supply goods or services and need to manage my operational data' },
-              { value: 'BUYER', heading: 'Buyer / large company', sub: 'I need verified operational data from my supply chain' },
+              { value: 'SUPPLIER', heading: 'Supplier / manufacturer', sub: 'Manage and share our operational data' },
+              { value: 'BUYER', heading: 'Buyer / large company', sub: 'Request and review supplier data' },
             ] as const).map(opt => (
               <button
                 key={opt.value}

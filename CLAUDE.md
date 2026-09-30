@@ -51,6 +51,7 @@ Every feature must either fill the database, improve the quality of existing rec
 - Every screen has one clear primary action.
 - SME supplier-facing screens show only plain English. No domain codes, tier codes, or technical detail unless the user specifically requests it.
 - Buyer-facing screens show full technical detail — trust tiers, confidence scores, source text, domain classification.
+- **Exception: the public marketing site** (`src/app/(marketing)`, `src/components/marketing`, `/institutional`) has its own palette and type scale, so the colour and font-weight rules above do not apply there. Its colours are defined once as `--mk-` tokens at the top of `src/app/(marketing)/marketing.css`; no raw colour values anywhere else. Everything signed-in users see (portal, admin, supplier and share pages) follows the rules above without exception.
 
 ---
 
