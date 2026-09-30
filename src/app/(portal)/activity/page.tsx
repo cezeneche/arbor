@@ -1,4 +1,5 @@
 import { fieldLabel } from '@/lib/layer3/field-label'
+import { parsePage } from '@/lib/pagination'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { getSessionUser } from '@/lib/session'
 import { requirePageSession } from '@/lib/page-auth'
@@ -43,7 +44,7 @@ export default async function ActivityPage({
 
   const entityId = getSessionUser(session).entityId as string
   const sp = await searchParams
-  const page = Math.max(1, parseInt(sp.page ?? '1', 10))
+  const page = parsePage(sp.page)
 
   const [auditEntries, total] = await Promise.all([
     prisma.auditEntry.findMany({

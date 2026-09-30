@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { requirePageSession } from '@/lib/page-auth'
 import { getSessionUser } from '@/lib/session'
-import { colours, spacing, textStyles, typography } from '@/lib/design-system'
+import { colours, controls, spacing, textStyles, typography } from '@/lib/design-system'
 
 export const metadata: Metadata = { title: 'Enquiry review | Arbor' }
 
@@ -55,10 +55,26 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
       <h1 style={{ ...textStyles.pageTitle, marginBottom: spacing[1] }}>Enquiry review</h1>
       <p style={{ ...textStyles.sectionSubtitle, marginTop: 0 }}>Platform operators can review saved pilot and institutional enquiries here. New submissions are not emailed automatically.</p>
       <nav aria-label="Enquiry status" style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap', margin: `${spacing[3]} 0`, fontSize: typography.sizes.sm }}>
-        {statuses.map(value => <a key={value} href={`/admin/enquiries?status=${value}`} aria-current={status === value ? 'page' : undefined}>{value.replace('_', ' ')}</a>)}
+        {statuses.map(value => (
+          <a
+            key={value}
+            href={`/admin/enquiries?status=${value}`}
+            aria-current={status === value ? 'page' : undefined}
+            style={{
+              color: status === value ? colours.textPrimary : colours.textSecondary,
+              fontWeight: status === value ? typography.weights.medium : typography.weights.light,
+              textDecoration: status === value ? 'underline' : 'none',
+              textUnderlineOffset: '4px',
+            }}
+          >
+            {value.replace('_', ' ')}
+          </a>
+        ))}
       </nav>
-      <p>{enquiries.length} {status.toLowerCase().replace('_', ' ')} enquiries shown (up to 100 per type).</p>
-      {enquiries.length === 0 && <p>No enquiries in this status.</p>}
+      <p style={{ ...textStyles.caption, color: colours.textSecondary }}>
+        {enquiries.length} {status.toLowerCase().replace('_', ' ')} enquiries shown (up to 100 per type).
+      </p>
+      {enquiries.length === 0 && <p style={{ ...textStyles.sectionSubtitle }}>No enquiries in this status.</p>}
       <div style={{ display: 'grid', gap: spacing[2] }}>
         {enquiries.map(item => (
           <article key={`${item.type}-${item.id}`} style={{ background: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', padding: spacing[3], overflowWrap: 'anywhere', fontSize: typography.sizes.sm, fontWeight: typography.weights.light }}>
@@ -66,17 +82,27 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
               <h2 style={{ ...textStyles.sectionTitle, margin: 0 }}>{item.orgName}</h2>
               <span style={{ ...textStyles.caption, color: colours.textTertiary }}>{item.type === 'pilot' ? 'Pilot' : 'Institutional'} · {item.createdAt.toLocaleString('en-GB', { timeZone: 'Europe/London' })}</span>
             </div>
-            <p>{item.contactName} · <a href={`mailto:${item.email}`}>{item.email}</a></p>
+            <p>
+              {item.contactName} · <a href={`mailto:${item.email}`} style={{ color: colours.navy }}>{item.email}</a>
+            </p>
             <p>{item.category}</p>
             {item.message && <p style={{ whiteSpace: 'pre-wrap' }}>{item.message}</p>}
             <form action={updateEnquiry} style={{ display: 'flex', alignItems: 'center', gap: spacing[1], flexWrap: 'wrap' }}>
               <input type="hidden" name="type" value={item.type} />
               <input type="hidden" name="id" value={item.id} />
-              <label htmlFor={`status-${item.type}-${item.id}`}>Status</label>
-              <select id={`status-${item.type}-${item.id}`} name="status" defaultValue={item.status}>
-                {statuses.map(value => <option key={value} value={value}>{value.replace('_', ' ')}</option>)}
+              <label htmlFor={`status-${item.type}-${item.id}`} style={{ ...textStyles.eyebrow }}>
+                Status
+              </label>
+              <select id={`status-${item.type}-${item.id}`} name="status" defaultValue={item.status} style={controls.input}>
+                {statuses.map(value => (
+                  <option key={value} value={value}>
+                    {value.replace('_', ' ')}
+                  </option>
+                ))}
               </select>
-              <button type="submit">Save status</button>
+              <button type="submit" style={controls.primaryButton}>
+                Save status
+              </button>
             </form>
           </article>
         ))}

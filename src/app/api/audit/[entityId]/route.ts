@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { parseLimit, parsePage } from '@/lib/pagination'
 import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
@@ -16,8 +17,8 @@ export async function GET(
 
   if (sessionEntityId !== entityId) return err('Access denied', 'FORBIDDEN', 403)
 
-  const page = Math.max(1, parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10))
-  const limit = Math.min(Math.max(1, parseInt(req.nextUrl.searchParams.get('limit') ?? '50', 10)), 100)
+  const page = parsePage(req.nextUrl.searchParams.get('page'))
+  const limit = parseLimit(req.nextUrl.searchParams.get('limit'), { fallback: 50, max: 100 })
   const skip = (page - 1) * limit
 
   const [entries, total] = await Promise.all([
