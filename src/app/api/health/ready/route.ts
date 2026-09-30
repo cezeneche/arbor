@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { missingProductionEnv } from '@/lib/production-env'
 import { evaluateReadiness } from '@/lib/readiness'
 import { rateLimiterHealth } from '@/lib/rate-limit'
-import { serviceTokenExpiry } from '@/lib/nucleos/service-auth'
+import { monitoredServiceToken, serviceTokenExpiry } from '@/lib/nucleos/service-auth'
 import { probeNucleos } from '@/lib/nucleos/readiness-probe'
 
 export const dynamic = 'force-dynamic'
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     database,
     nucleos,
     rateLimiter,
-    serviceToken: serviceTokenExpiry(process.env.NUCLEOS_INTERNAL_TOKEN ?? ''),
+    serviceToken: serviceTokenExpiry(monitoredServiceToken()),
   })
 
   const secret = process.env.CRON_SECRET

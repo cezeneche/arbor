@@ -14,7 +14,6 @@ export const REQUIRED_PRODUCTION_ENV = [
   'AUDIT_CHAIN_SECRET', // HMAC audit chain
   'TOTP_ENCRYPTION_KEY', // 2FA secret encryption
   'NUCLEOS_URL', // CBAM extraction, cases, returns
-  'NUCLEOS_INTERNAL_TOKEN',
   'INNGEST_EVENT_KEY', // document extraction runs as an Inngest function
   'INNGEST_SIGNING_KEY',
   'SUPABASE_URL', // document storage
@@ -24,11 +23,15 @@ export const REQUIRED_PRODUCTION_ENV = [
   'ANTHROPIC_API_KEY', // document extraction
 ] as const
 
+/** Arbor's Vercel identity or the static token; either authenticates to Nucleos. */
+export const NUCLEOS_CREDENTIAL_LABEL = 'NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN'
+
 /** Named apart from the list because either pair of names will do. */
 export const REDIS_CREDENTIALS_LABEL = 'UPSTASH_REDIS_REST_URL / KV_REST_API_URL (+ token)'
 
 export function missingProductionEnv(env: Record<string, string | undefined>): string[] {
   const missing: string[] = REQUIRED_PRODUCTION_ENV.filter(k => !env[k])
+  if (!env.NUCLEOS_OIDC_AUDIENCE && !env.NUCLEOS_INTERNAL_TOKEN) missing.push(NUCLEOS_CREDENTIAL_LABEL)
   // Rate limits; login fails closed without them.
   if (!redisCredentials(env)) missing.push(REDIS_CREDENTIALS_LABEL)
   return missing

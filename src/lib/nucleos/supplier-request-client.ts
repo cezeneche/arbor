@@ -44,7 +44,7 @@ export interface SupplierTokenResult {
 
 function base(): string {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or NUCLEOS_INTERNAL_TOKEN is not configured')
+    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
   }
   return process.env.NUCLEOS_URL as string
 }
@@ -57,7 +57,7 @@ export async function createSupplierToken(
     `${base()}/api/cbam/goods-lines/${encodeURIComponent(goodsLineId)}/supplier-token`,
     {
       method: 'POST',
-      headers: nucleosHeaders({ 'content-type': 'application/json' }),
+      headers: await nucleosHeaders({ 'content-type': 'application/json' }),
       cache: 'no-store',
     },
   )

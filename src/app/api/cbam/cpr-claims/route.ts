@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     if (!isNucleosConfigured()) throw new NucleosUnavailableError('not configured')
     const res = await fetch(`${process.env.NUCLEOS_URL}/api/cbam/cpr/claims`, {
       method: 'POST',
-      headers: nucleosHeaders({ 'content-type': 'application/json' }),
+      headers: await nucleosHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(claim),
       cache: 'no-store',
       signal: AbortSignal.timeout(20_000),

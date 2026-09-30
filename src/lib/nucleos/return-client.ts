@@ -64,7 +64,7 @@ async function postForFile(
 ): Promise<ReturnDocument> {
   if (!isNucleosConfigured()) {
     throw new NucleosUnavailableError(
-      'NUCLEOS_URL or NUCLEOS_INTERNAL_TOKEN is not configured',
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
     )
   }
 
@@ -75,7 +75,7 @@ async function postForFile(
   try {
     const res = await doFetch(`${process.env.NUCLEOS_URL}${path}`, {
       method: 'POST',
-      headers: nucleosHeaders({ 'content-type': 'application/json' }),
+      headers: await nucleosHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(body ?? {}),
       signal: controller.signal,
     })

@@ -18,8 +18,7 @@
 import { spawn, execFileSync } from 'node:child_process'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { createRequire } from 'node:module'
-import { mkdtempSync } from 'node:fs'
-import os from 'node:os'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { REPO_ROOT as REPO, requireVenvBin } from './python-env.mjs'
 
@@ -116,7 +115,12 @@ try {
   // Arbor's real client, compiled with the repo's own TypeScript — the same
   // modules the Inngest pipeline calls. Compiled rather than reimplemented in
   // JS, because a hand-written stand-in would test the stand-in.
-  const outDir = mkdtempSync(path.join(os.tmpdir(), 'arbor-boundary-'))
+  // Inside the repo, so the compiled clients resolve their dependencies (such
+  // as @vercel/oidc) from its node_modules, as they do in the app.
+  const cacheDir = path.join(REPO, 'node_modules/.cache')
+  mkdirSync(cacheDir, { recursive: true })
+  const outDir = mkdtempSync(path.join(cacheDir, 'arbor-boundary-'))
+  process.on('exit', () => rmSync(outDir, { recursive: true, force: true }))
   execFileSync(
     path.join(REPO, 'node_modules/.bin/tsc'),
     [
