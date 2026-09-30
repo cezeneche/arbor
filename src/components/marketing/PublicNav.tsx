@@ -1,106 +1,81 @@
+'use client'
+
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { colours, typography } from '@/lib/design-system'
+import { pilotRequestHref } from '@/lib/marketing/pilot'
 
-const navLink = {
-  fontSize: typography.sizes.base,
-  fontWeight: typography.weights.light,
-  color: colours.textSecondary,
-  textDecoration: 'none',
-  letterSpacing: typography.tracking.normal,
-}
+const links = [
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/about', label: 'About' },
+]
 
-const burgerBar = {
-  display: 'block',
-  width: '18px',
-  height: '2px',
-  backgroundColor: colours.textPrimary,
-  borderRadius: '1px',
-}
-
-// Server component. The mobile menu is a CSS-only disclosure (hidden checkbox +
-// label) driven by marketing.css — no client JS, no modal, per design rules.
 export function PublicNav() {
+  const pathname = usePathname()
+  return <Navigation key={pathname} pathname={pathname} />
+}
+
+function Navigation({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false)
+  const nav = useRef<HTMLElement>(null)
+  const toggle = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function closeOutside(event: PointerEvent) {
+      if (!nav.current?.contains(event.target as Node)) setOpen(false)
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      setOpen(false)
+      toggle.current?.focus()
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
   return (
     <nav
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        backgroundColor: colours.surface,
-        borderBottom: `1px solid ${colours.border}`,
-        minHeight: '64px',
-        display: 'flex',
-        alignItems: 'center',
+      ref={nav}
+      aria-label="Main navigation"
+      className="mk-nav"
+      onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false)
       }}
+      style={{ backgroundColor: colours.surface, borderBottom: `1px solid ${colours.border}` }}
     >
-      <div
-        style={{
-          maxWidth: '1140px',
-          width: '100%',
-          margin: '0 auto',
-          padding: '0 clamp(20px, 5vw, 40px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          position: 'relative',
-        }}
-      >
-        {/* Wordmark */}
-        <Link
-          href="/"
-          style={{
-            fontSize: typography.sizes.base,
-            fontWeight: typography.weights.medium,
-            color: colours.navy,
-            textDecoration: 'none',
-            letterSpacing: typography.tracking.tight,
-          }}
-        >
+      <div className="mk-site-frame mk-nav-inner">
+        <Link href="/" onClick={() => setOpen(false)} style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.navy, textDecoration: 'none' }} aria-label="arbor home">
           arbor
         </Link>
-
-        {/* Mobile menu state — must precede .mk-nav-links for the CSS sibling
-            selector. Invisible at every breakpoint. */}
-        <input type="checkbox" id="mk-nav-toggle" className="mk-nav-toggle" aria-label="Toggle navigation menu" />
-
-        {/* Centre links: row on desktop, dropdown panel on mobile (marketing.css) */}
-        <div className="mk-nav-links">
-          <Link href="/how-it-works" style={navLink}>How it works</Link>
-          <Link href="/pricing" style={navLink}>Pricing</Link>
-          <Link href="/about" style={navLink}>About</Link>
-        </div>
-
-        {/* Auth actions + burger */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(14px, 3vw, 24px)' }}>
-          <Link
-            href="/login"
-            style={{
-              ...navLink,
-              color: colours.textPrimary,
-            }}
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/signup"
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.medium,
-              color: colours.surface,
-              backgroundColor: colours.navy,
-              textDecoration: 'none',
-              padding: '7px 16px',
-              borderRadius: '4px',
-              letterSpacing: typography.tracking.normal,
-            }}
-          >
-            Get started
-          </Link>
-          <label htmlFor="mk-nav-toggle" className="mk-nav-burger" aria-label="Open menu">
-            <span style={burgerBar} />
-            <span style={burgerBar} />
-            <span style={burgerBar} />
-          </label>
+        <button
+          ref={toggle}
+          type="button"
+          className="mk-nav-toggle"
+          aria-expanded={open}
+          aria-controls="mk-nav-menu"
+          onClick={() => setOpen(!open)}
+        >
+          {open ? 'Close menu' : 'Menu'}
+        </button>
+        <div id="mk-nav-menu" className="mk-nav-menu" data-open={open}>
+          <div className="mk-nav-links">
+            {links.map(link => (
+              <Link key={link.href} href={link.href} aria-current={pathname === link.href ? 'page' : undefined} onClick={() => setOpen(false)}>
+                {link.label}
+              </Link>
+            ))}
+          </div>
+          <div className="mk-nav-actions">
+            <Link href="/login" onClick={() => setOpen(false)}>Sign in</Link>
+            <a href={pilotRequestHref()} className="mk-nav-cta" onClick={() => setOpen(false)}>Request pilot access</a>
+          </div>
         </div>
       </div>
     </nav>

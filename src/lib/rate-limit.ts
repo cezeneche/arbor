@@ -37,6 +37,7 @@ export const RATE_LIMITS = {
   buyerApi: { prefix: 'buyer-api', limit: 100, window: '1 m' },
   // Keyed by IP: caps spam to the public institutional enquiry form.
   institutionalEnquiry: { prefix: 'inst-enquiry', limit: 5, window: '60 m' },
+  pilotEnquiry: { prefix: 'pilot-enquiry', limit: 5, window: '60 m' },
   // Keyed by share token: collapses repeated views into one access-log write per window.
   shareView: { prefix: 'share-view', limit: 1, window: '5 m' },
 } as const satisfies Record<string, RateLimitConfig>

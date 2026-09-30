@@ -1,666 +1,151 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import { colours, typography } from '@/lib/design-system'
+import { RecordExample } from '@/components/marketing/RecordExample'
+import { pilotRequestHref } from '@/lib/marketing/pilot'
 
-const container = {
-  maxWidth: '1140px',
-  margin: '0 auto',
-  padding: '0 clamp(20px, 5vw, 40px)',
+export const metadata: Metadata = {
+  title: 'Arbor | Operational records you can reuse',
+  description: 'Turn supported operational documents into evidence-labelled records. Review the figures, keep their sources in view, and share current records with authorised customers.',
 }
 
-const eyebrow = {
-  fontSize: typography.sizes.xs,
-  fontWeight: typography.weights.medium,
-  color: 'rgba(255,255,255,0.4)',
-  letterSpacing: typography.tracking.wider,
-  textTransform: 'uppercase' as const,
-  marginBottom: '28px',
-  display: 'block',
-}
+const workflow = [
+  { number: '01', title: 'Bring your documents together', body: 'Upload supported bills, invoices, production logs and other operational documents.' },
+  { number: '02', title: 'Extract and review figures', body: 'Arbor structures the fields and flags review needs. Some eligible documents create Declared records automatically; others require review first.' },
+  { number: '03', title: 'Keep a usable record', body: 'Each stored figure has an evidence-quality label. Available source information and later corrections stay connected to its history.' },
+  { number: '04', title: 'Share with permission', body: 'Give customers access to the current records they need. Their view includes the evidence quality Arbor can provide.' },
+]
 
-const sectionEyebrow = {
-  fontSize: typography.sizes.xs,
-  fontWeight: typography.weights.medium,
-  color: colours.textTertiary,
-  letterSpacing: typography.tracking.wider,
-  textTransform: 'uppercase' as const,
-  marginBottom: '16px',
-  display: 'block',
-}
+const tiers = [
+  { name: 'Verified', className: 'verified', body: 'Document-derived data that meets the applicable source and review requirements. This is not independent assurance of the underlying business activity.' },
+  { name: 'Declared', className: 'declared', body: 'Self-reported, imported, or document-derived data that has not met Verified requirements. It can still have a source document.' },
+  { name: 'Estimated', className: 'estimated', body: 'A cited reference value used in place of measured activity. It is labelled so it is not mistaken for an observed figure.' },
+]
 
-const sectionHeading = {
-  fontSize: 'clamp(24px, 4.5vw, 32px)',
-  fontWeight: typography.weights.medium,
-  color: colours.textPrimary,
-  letterSpacing: typography.tracking.heading,
-  lineHeight: typography.lineHeight.display,
-  margin: '0 0 20px',
-}
-
-const sectionBody = {
-  fontSize: typography.sizes.base,
-  fontWeight: typography.weights.light,
-  color: colours.textSecondary,
-  lineHeight: typography.lineHeight.body,
-  margin: '0',
-}
-
-const stepNumber = {
-  fontSize: typography.sizes.xs,
-  fontWeight: typography.weights.medium,
-  color: colours.textTertiary,
-  letterSpacing: typography.tracking.wider,
-  fontVariantNumeric: 'tabular-nums' as const,
-  marginBottom: '12px',
-  display: 'block',
-}
+const domains = [
+  { name: 'Energy', examples: 'Electricity and fuel statements' },
+  { name: 'Materials', examples: 'Purchased inputs and feedstocks' },
+  { name: 'Production', examples: 'Output and batch logs' },
+  { name: 'Logistics', examples: 'Freight and delivery records' },
+  { name: 'Emissions', examples: 'Measured and estimated figures' },
+  { name: 'Agriculture', examples: 'Land and crop records' },
+  { name: 'Waste and water', examples: 'Usage and disposal records' },
+  { name: 'Compliance', examples: 'Permits and test results' },
+]
 
 export default function HomePage() {
   return (
-    <div>
-
-      {/* Hero */}
-      <section style={{ backgroundColor: colours.navy, padding: 'clamp(72px, 14vw, 128px) 0 clamp(88px, 16vw, 160px)' }}>
-        <div style={container}>
-          <span style={eyebrow}>For manufacturers, suppliers &amp; producers</span>
-          <h1
-            style={{
-              fontSize: 'clamp(32px, 6.5vw, 72px)',
-              fontWeight: typography.weights.medium,
-              color: '#FFFFFF',
-              letterSpacing: typography.tracking.tight,
-              lineHeight: typography.lineHeight.display,
-              margin: '0 0 28px',
-              maxWidth: '880px',
-              textAlign: 'left' as const,
-            }}
-          >
-            Answer any data request in{' '}
-            <s style={{ color: 'rgba(255,255,255,0.35)', textDecorationThickness: '4px' }}>days</s>{' '}
-            minutes.
-          </h1>
-          <p
-            style={{
-              fontSize: typography.sizes.base,
-              fontWeight: typography.weights.light,
-              color: 'rgba(255,255,255,0.65)',
-              lineHeight: typography.lineHeight.body,
-              margin: '0 0 40px',
-              maxWidth: '560px',
-              textAlign: 'left' as const,
-            }}
-          >
-            Never rebuild the same numbers twice — one certified record, ready the
-            moment anyone asks.
-          </p>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' as const }}>
-            <Link
-              href="/signup"
-              style={{
-                display: 'inline-block',
-                padding: '13px 28px',
-                backgroundColor: colours.surface,
-                color: colours.navy,
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.medium,
-                textDecoration: 'none',
-                borderRadius: '4px',
-                letterSpacing: typography.tracking.normal,
-              }}
-            >
-              Get started
-            </Link>
-            <Link
-              href="/how-it-works"
-              style={{
-                display: 'inline-block',
-                padding: '13px 24px',
-                color: 'rgba(255,255,255,0.65)',
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.light,
-                textDecoration: 'none',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '4px',
-                letterSpacing: typography.tracking.normal,
-              }}
-            >
-              See how it works
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Feature strip */}
-      <section style={{ backgroundColor: colours.surface, borderBottom: `1px solid ${colours.border}` }}>
-        <div
-          style={{
-            ...container,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            borderLeft: `1px solid ${colours.border}`,
-          }}
-        >
-          {[
-            { stat: '8', label: 'Data domains' },
-            { stat: '3', label: 'Trust tiers' },
-            { stat: 'HMAC', label: 'Audit chain' },
-            { stat: 'API', label: 'Direct access' },
-          ].map(({ stat, label }) => (
-            <div
-              key={label}
-              style={{
-                padding: '24px 32px',
-                textAlign: 'center' as const,
-                borderRight: `1px solid ${colours.border}`,
-                borderTop: `1px solid ${colours.border}`,
-                borderBottom: `1px solid ${colours.border}`,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '22px',
-                  fontWeight: typography.weights.medium,
-                  color: colours.navy,
-                  letterSpacing: typography.tracking.tight,
-                  marginBottom: '4px',
-                }}
-              >
-                {stat}
-              </div>
-              <div
-                style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
-                }}
-              >
-                {label}
-              </div>
+    <>
+      <section className="mk-hero">
+        <div className="mk-container mk-hero-grid">
+          <div className="mk-hero-copy">
+            <span className="mk-eyebrow mk-eyebrow-light">For manufacturers, suppliers and producers</span>
+            <h1>Operational data, ready to reuse.</h1>
+            <p>Upload supported documents. Arbor extracts key figures, shows their evidence and review status, and helps you share current records with authorised customers.</p>
+            <div className="mk-actions">
+              <a className="mk-button mk-button-light" href={pilotRequestHref('supplier')}>Request pilot access</a>
+              <Link className="mk-button mk-button-outline-light" href="/how-it-works">See how it works</Link>
             </div>
-          ))}
+            <span className="mk-hero-note">Private pilot · Access by invitation</span>
+          </div>
+          <RecordExample />
         </div>
       </section>
 
-      {/* Problem */}
-      <section style={{ backgroundColor: colours.background, padding: '88px 0' }}>
-        <div style={container}>
-          <span style={sectionEyebrow}>The problem</span>
-          <h2 style={sectionHeading}>
-            The same data, rebuilt from scratch, every time.
-          </h2>
-          <p style={{ ...sectionBody, marginBottom: '56px' }}>
-            Manufacturers receive increasing requests for operational data from customers,
-            auditors, and regulators. Each request triggers the same process: find the documents,
-            extract the figures, format the output. Hours spent. Same data arrived at differently.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', backgroundColor: colours.border }}>
-            {[
-              {
-                heading: 'Rebuilt every time',
-                body: 'Every data request means reconstructing the same figures from different sources. Supplier questionnaires, customs declarations, audit requests, each answered from scratch.',
-              },
-              {
-                heading: 'No audit trail',
-                body: 'When a figure arrives without a source document, there is no way to verify where it came from. Buyers cannot trust it. Regulators will not accept it.',
-              },
-              {
-                heading: 'Inconsistent across submissions',
-                body: 'The same figure submitted to different customers at different times can vary. Without a single source of truth, inconsistency accumulates and trust erodes.',
-              },
-            ].map(({ heading, body }) => (
-              <div key={heading} style={{ backgroundColor: colours.surface, padding: '32px' }}>
-                <p
-                  style={{
-                    fontSize: typography.sizes.base,
-                    fontWeight: typography.weights.medium,
-                    color: colours.textPrimary,
-                    margin: '0 0 12px',
-                    letterSpacing: typography.tracking.tight,
-                  }}
-                >
-                  {heading}
-                </p>
-                <p
-                  style={{
-                    fontSize: typography.sizes.sm,
-                    fontWeight: typography.weights.light,
-                    color: colours.textSecondary,
-                    lineHeight: '1.65',
-                    margin: 0,
-                  }}
-                >
-                  {body}
-                </p>
-              </div>
+      <section className="mk-benefit-band" aria-label="What Arbor helps you do">
+        <div className="mk-container mk-benefit-grid">
+          <div><strong>Reuse figures</strong><span>Answer another request without starting from the document search.</span></div>
+          <div><strong>See the evidence</strong><span>Keep available source information and review status beside each record.</span></div>
+          <div><strong>Track corrections</strong><span>See how a stored figure changed over time.</span></div>
+          <div><strong>Choose access</strong><span>Share authorised records with the customers who need them.</span></div>
+        </div>
+      </section>
+
+      <section className="mk-section mk-section-warm">
+        <div className="mk-container mk-editorial-grid">
+          <div>
+            <span className="mk-eyebrow">The problem</span>
+            <h2>The next request should not start from zero.</h2>
+          </div>
+          <div className="mk-editorial-copy">
+            <p>A customer asks for last quarter’s electricity use. Your team finds the bill, copies the figure into a questionnaire and sends it. Months later, another customer asks for the same period in a different format.</p>
+            <p>Arbor keeps the figure, its label and available evidence together, so the next response can start with a record your team can inspect and correct.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mk-section" id="workflow">
+        <div className="mk-container">
+          <div className="mk-section-head">
+            <span className="mk-eyebrow">How it works</span>
+            <h2>From document to a record you can use again.</h2>
+            <p>The workflow keeps extraction, review and sharing distinct, so the evidence quality stays visible.</p>
+          </div>
+          <div className="mk-workflow-grid">
+            {workflow.map(step => (
+              <article className="mk-workflow-step" key={step.number}>
+                <span className="mk-workflow-number">{step.number}</span>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </article>
+            ))}
+          </div>
+          <Link className="mk-text-link" href="/how-it-works">Explore the full workflow <span aria-hidden="true">→</span></Link>
+        </div>
+      </section>
+
+      <section className="mk-section mk-section-sage">
+        <div className="mk-container">
+          <div className="mk-section-head">
+            <span className="mk-eyebrow">Evidence quality</span>
+            <h2>A label that tells you what sits behind the figure.</h2>
+            <p>Arbor’s tiers describe evidence and review status. They do not certify that a supplier’s underlying activity happened exactly as stated.</p>
+          </div>
+          <div className="mk-tier-grid">
+            {tiers.map(tier => (
+              <article className="mk-tier-card" key={tier.name}>
+                <span className={`mk-tier-pill mk-tier-${tier.className}`}>{tier.name}</span>
+                <p>{tier.body}</p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it works (summary) */}
-      <section style={{ backgroundColor: colours.surface, padding: '88px 0' }}>
-        <div style={container}>
-          <span style={sectionEyebrow}>How it works</span>
-          <h2 style={sectionHeading}>Four steps from document to certified record.</h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '40px',
-              marginTop: '48px',
-            }}
-          >
-            {[
-              {
-                n: '01',
-                heading: 'Upload documents',
-                body: 'Energy bills, production logs, delivery notes, invoices. Any operational document your business already produces.',
-              },
-              {
-                n: '02',
-                heading: 'Extraction and review',
-                body: 'arbor reads each document and extracts structured data fields. Fields below the confidence threshold are flagged for your review before anything is stored.',
-              },
-              {
-                n: '03',
-                heading: 'Certified records',
-                body: 'Every confirmed field is written with its source text, confidence score, and trust tier. Records are permanent. Corrections create new versions, not overwrites.',
-              },
-              {
-                n: '04',
-                heading: 'Share on demand',
-                body: 'When a customer, auditor, or regulator needs your data, share certified records directly from the repository. Same data, every time.',
-              },
-            ].map(({ n, heading, body }) => (
-              <div key={n} style={{ borderTop: `2px solid ${colours.navy}`, paddingTop: '24px' }}>
-                <span style={stepNumber}>{n}</span>
-                <p
-                  style={{
-                    fontSize: typography.sizes.base,
-                    fontWeight: typography.weights.medium,
-                    color: colours.textPrimary,
-                    margin: '0 0 10px',
-                    letterSpacing: typography.tracking.tight,
-                  }}
-                >
-                  {heading}
-                </p>
-                <p
-                  style={{
-                    fontSize: typography.sizes.sm,
-                    fontWeight: typography.weights.light,
-                    color: colours.textSecondary,
-                    lineHeight: '1.65',
-                    margin: 0,
-                  }}
-                >
-                  {body}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: '40px' }}>
-            <Link
-              href="/how-it-works"
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.medium,
-                color: colours.navy,
-                textDecoration: 'none',
-                borderBottom: `1px solid ${colours.navy}`,
-                paddingBottom: '2px',
-              }}
-            >
-              Full technical detail →
-            </Link>
+      <section className="mk-section">
+        <div className="mk-container">
+          <div className="mk-section-head"><span className="mk-eyebrow">Two sides of the exchange</span><h2>Useful for the team sending data and the team requesting it.</h2></div>
+          <div className="mk-audience-grid">
+            <article className="mk-audience-card">
+              <span className="mk-eyebrow">For suppliers</span>
+              <h3>Keep answers close to their source.</h3>
+              <p>Organise operational figures from documents you already hold. Review exceptions, track corrections and share authorised records when a customer asks.</p>
+              <a className="mk-text-link" href={pilotRequestHref('supplier')}>Request supplier pilot access <span aria-hidden="true">→</span></a>
+            </article>
+            <article className="mk-audience-card mk-audience-card-dark">
+              <span className="mk-eyebrow mk-eyebrow-light">For buyers</span>
+              <h3>Ask for data you can assess.</h3>
+              <p>Request structured information from participating suppliers and review the evidence quality of records they choose to share with you.</p>
+              <a className="mk-text-link" href={pilotRequestHref('buyer')}>Request buyer pilot access <span aria-hidden="true">→</span></a>
+            </article>
           </div>
         </div>
       </section>
 
-      {/* Trust tiers */}
-      <section style={{ backgroundColor: colours.background, padding: '88px 0' }}>
-        <div style={container}>
-          <span style={sectionEyebrow}>Data certification</span>
-          <h2 style={sectionHeading}>
-            Every record carries a certification label, permanently.
-          </h2>
-          <p style={{ ...sectionBody, marginBottom: '48px' }}>
-            Trust tiers are assigned automatically from the quality of the source. They travel
-            with the data in every output and cannot be removed or hidden.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', backgroundColor: colours.border }}>
-            {[
-              {
-                tier: 'Verified',
-                colour: colours.green,
-                bg: colours.greenBg,
-                body: 'Extracted from a submitted document. Source text recorded. AI confidence at or above 0.85, or field manually confirmed by the user.',
-              },
-              {
-                tier: 'Declared',
-                colour: colours.amber,
-                bg: colours.amberBg,
-                body: 'Entered directly, without a supporting document attached. Valid and useful. Upgradeable to Verified when a source document is submitted.',
-              },
-              {
-                tier: 'Estimated',
-                colour: colours.slate,
-                bg: colours.slateBg,
-                body: 'A published default reference value has been applied. Source always cited. Never presented as actual activity data from your operations.',
-              },
-            ].map(({ tier, colour, bg, body }) => (
-              <div key={tier} style={{ backgroundColor: colours.surface, padding: '32px' }}>
-                <div
-                  style={{
-                    display: 'inline-block',
-                    padding: '4px 10px',
-                    backgroundColor: bg,
-                    color: colour,
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.medium,
-                    borderRadius: '3px',
-                    letterSpacing: typography.tracking.wide,
-                    textTransform: 'uppercase' as const,
-                    marginBottom: '16px',
-                  }}
-                >
-                  {tier}
-                </div>
-                <p
-                  style={{
-                    fontSize: typography.sizes.sm,
-                    fontWeight: typography.weights.light,
-                    color: colours.textSecondary,
-                    lineHeight: '1.65',
-                    margin: 0,
-                  }}
-                >
-                  {body}
-                </p>
-              </div>
-            ))}
+      <section className="mk-section mk-section-warm">
+        <div className="mk-container">
+          <div className="mk-section-head"><span className="mk-eyebrow">Operational domains</span><h2>Make different kinds of operational data easier to find.</h2><p>Records are grouped into eight domains. The examples show the kinds of material the categories can organise; support for a specific field depends on its document and workflow.</p></div>
+          <div className="mk-domain-grid">
+            {domains.map(domain => <div className="mk-domain-row" key={domain.name}><strong>{domain.name}</strong><span>{domain.examples}</span></div>)}
           </div>
         </div>
       </section>
 
-      {/* For who */}
-      <section style={{ backgroundColor: colours.surface, padding: '88px 0' }}>
-        <div style={container}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1px', backgroundColor: colours.border }}>
-            {/* Suppliers */}
-            <div style={{ backgroundColor: colours.surface, padding: 'clamp(24px, 5vw, 48px)' }}>
-              <span style={{ ...sectionEyebrow, marginBottom: '20px' }}>For suppliers and manufacturers</span>
-              <h3
-                style={{
-                  fontSize: '24px',
-                  fontWeight: typography.weights.medium,
-                  color: colours.textPrimary,
-                  letterSpacing: typography.tracking.tight,
-                  lineHeight: '1.25',
-                  margin: '0 0 16px',
-                }}
-              >
-                Respond to any data request in minutes, not days.
-              </h3>
-              <p
-                style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
-                  lineHeight: '1.65',
-                  margin: '0 0 28px',
-                }}
-              >
-                Upload the documents you already have. arbor organises and certifies
-                the data. Every submission traces back to a source document. Control
-                exactly which buyers can see your records.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {[
-                  'Build a permanent, verifiable operational data record',
-                  'Respond to customer questionnaires directly from the store',
-                  'Every figure traces back to a source document',
-                  'Control exactly which buyers can access your data',
-                ].map(item => (
-                  <div key={item} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <span
-                      style={{
-                        flexShrink: 0,
-                        width: '4px',
-                        height: '4px',
-                        borderRadius: '50%',
-                        backgroundColor: colours.navy,
-                        marginTop: '6px',
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.light,
-                        color: colours.textSecondary,
-                        lineHeight: '1.5',
-                      }}
-                    >
-                      {item}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <Link
-                href="/signup"
-                style={{
-                  display: 'inline-block',
-                  marginTop: '32px',
-                  padding: '10px 20px',
-                  backgroundColor: colours.navy,
-                  color: colours.surface,
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.medium,
-                  textDecoration: 'none',
-                  borderRadius: '4px',
-                }}
-              >
-                Sign up as a supplier
-              </Link>
-            </div>
-
-            {/* Buyers */}
-            <div style={{ backgroundColor: colours.background, padding: 'clamp(24px, 5vw, 48px)' }}>
-              <span style={{ ...sectionEyebrow, marginBottom: '20px' }}>For buyers and large companies</span>
-              <h3
-                style={{
-                  fontSize: '24px',
-                  fontWeight: typography.weights.medium,
-                  color: colours.textPrimary,
-                  letterSpacing: typography.tracking.tight,
-                  lineHeight: '1.25',
-                  margin: '0 0 16px',
-                }}
-              >
-                Certified supply chain data, without the chasing.
-              </h3>
-              <p
-                style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.light,
-                  color: colours.textSecondary,
-                  lineHeight: '1.65',
-                  margin: '0 0 28px',
-                }}
-              >
-                Send structured data requests to your entire supply chain.
-                Receive certified, document-backed records. Query across
-                suppliers with consistent data formats.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {[
-                  'Send structured data requests across your supply chain',
-                  'Receive certified records with full source provenance',
-                  'Query across suppliers with consistent data formats',
-                  'API access for integration into your own systems',
-                ].map(item => (
-                  <div key={item} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <span
-                      style={{
-                        flexShrink: 0,
-                        width: '4px',
-                        height: '4px',
-                        borderRadius: '50%',
-                        backgroundColor: colours.navy,
-                        marginTop: '6px',
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: typography.sizes.sm,
-                        fontWeight: typography.weights.light,
-                        color: colours.textSecondary,
-                        lineHeight: '1.5',
-                      }}
-                    >
-                      {item}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <Link
-                href="/signup"
-                style={{
-                  display: 'inline-block',
-                  marginTop: '32px',
-                  padding: '10px 20px',
-                  backgroundColor: colours.navy,
-                  color: colours.surface,
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.medium,
-                  textDecoration: 'none',
-                  borderRadius: '4px',
-                }}
-              >
-                Sign up as a buyer
-              </Link>
-            </div>
-          </div>
+      <section className="mk-close">
+        <div className="mk-container mk-close-inner">
+          <div><span className="mk-eyebrow mk-eyebrow-light">Private pilot</span><h2>Bring your next data request into a clearer workflow.</h2><p>Tell us what documents and customer requests you handle. Pilot access is by invitation.</p></div>
+          <a className="mk-button mk-button-light" href={pilotRequestHref()}>Request pilot access</a>
         </div>
       </section>
-
-      {/* Data domains */}
-      <section style={{ backgroundColor: colours.background, padding: '88px 0' }}>
-        <div style={container}>
-          <span style={sectionEyebrow}>Data domains</span>
-          <h2 style={sectionHeading}>Eight certified operational data domains.</h2>
-          <p style={{ ...sectionBody, marginBottom: '48px' }}>
-            Every data record is classified into one of eight operational domains.
-            Domain classification travels with every export.
-          </p>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '1px',
-              backgroundColor: colours.border,
-            }}
-          >
-            {[
-              { domain: 'Energy', desc: 'Electricity, gas, fuel consumption and purchased energy.' },
-              { domain: 'Materials', desc: 'Raw material inputs, purchased content, and feedstocks.' },
-              { domain: 'Production', desc: 'Output volumes, yields, batch records, and throughput.' },
-              { domain: 'Logistics', desc: 'Freight, transport modes, distances, and delivery data.' },
-              { domain: 'Emissions', desc: 'Direct and indirect emission measurements and estimates.' },
-              { domain: 'Agriculture', desc: 'Land use, crop inputs, livestock, and agricultural outputs.' },
-              { domain: 'Waste and water', desc: 'Water consumption, discharge, and waste disposal records.' },
-              { domain: 'Compliance', desc: 'Certificates, permits, test results, and regulatory filings.' },
-            ].map(({ domain, desc }) => (
-              <div key={domain} style={{ backgroundColor: colours.surface, padding: '24px' }}>
-                <p
-                  style={{
-                    fontSize: typography.sizes.base,
-                    fontWeight: typography.weights.medium,
-                    color: colours.navy,
-                    margin: '0 0 8px',
-                    letterSpacing: typography.tracking.tight,
-                  }}
-                >
-                  {domain}
-                </p>
-                <p
-                  style={{
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.light,
-                    color: colours.textSecondary,
-                    lineHeight: '1.55',
-                    margin: 0,
-                  }}
-                >
-                  {desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section style={{ backgroundColor: colours.navy, padding: '96px 0' }}>
-        <div style={{ ...container, textAlign: 'center' }}>
-          <h2
-            style={{
-              fontSize: 'clamp(24px, 4.5vw, 32px)',
-              fontWeight: typography.weights.medium,
-              color: '#FFFFFF',
-              letterSpacing: typography.tracking.tight,
-              lineHeight: typography.lineHeight.display,
-              margin: '0 0 16px',
-            }}
-          >
-            Start building your certified data record today.
-          </h2>
-          <p
-            style={{
-              fontSize: typography.sizes.base,
-              fontWeight: typography.weights.light,
-              color: 'rgba(255,255,255,0.55)',
-              margin: '0 0 40px',
-            }}
-          >
-            Free to get started. No credit card required.
-          </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' as const }}>
-            <Link
-              href="/signup"
-              style={{
-                display: 'inline-block',
-                padding: '13px 32px',
-                backgroundColor: colours.surface,
-                color: colours.navy,
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.medium,
-                textDecoration: 'none',
-                borderRadius: '4px',
-                letterSpacing: typography.tracking.normal,
-              }}
-            >
-              Get started
-            </Link>
-            <Link
-              href="/pricing"
-              style={{
-                display: 'inline-block',
-                padding: '13px 24px',
-                color: 'rgba(255,255,255,0.65)',
-                fontSize: typography.sizes.base,
-                fontWeight: typography.weights.light,
-                textDecoration: 'none',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '4px',
-                letterSpacing: typography.tracking.normal,
-              }}
-            >
-              View pricing
-            </Link>
-          </div>
-        </div>
-      </section>
-
-    </div>
+    </>
   )
 }

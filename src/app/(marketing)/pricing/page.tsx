@@ -1,496 +1,72 @@
-import Link from 'next/link'
-import { colours, typography, textStyles } from '@/lib/design-system'
+import type { Metadata } from 'next'
+import { pilotRequestHref } from '@/lib/marketing/pilot'
 
-const container = {
-  maxWidth: '1140px',
-  margin: '0 auto',
-  padding: '0 clamp(20px, 5vw, 40px)',
+export const metadata: Metadata = {
+  title: 'Pilot access and planned pricing | Arbor',
+  description: 'Arbor is in a private pilot with invitation-only access and individually agreed terms. Explore the planned supplier and buyer plans.',
 }
 
-interface Plan {
-  name: string
-  price: string
-  period: string
-  description: string
-  features: string[]
-  highlighted?: boolean
-  cta: string
-}
+type Plan = { name: string; price: string; description: string; capacity: string; detail: string; highlighted?: boolean }
 
 const supplierPlans: Plan[] = [
-  {
-    name: 'Starter',
-    price: 'Free',
-    period: '',
-    description: 'Respond to data requests from buyers. No uploading, no certified records.',
-    features: [
-      'Respond to buyer data requests',
-      'Up to 5 manual declarations',
-      'Standard trust tier labels',
-      'arbor data portal access',
-    ],
-    cta: 'Join the pilot',
-  },
-  {
-    name: 'Micro',
-    price: '£29',
-    period: '/month',
-    description: 'For small manufacturers beginning to build a certified data record.',
-    features: [
-      'Up to 500 active records',
-      '10 document uploads per month',
-      'AI extraction and review',
-      'HMAC audit chain',
-      'Buyer data request handling',
-      'Email notifications',
-    ],
-    cta: 'Join the pilot',
-  },
-  {
-    name: 'Small',
-    price: '£79',
-    period: '/month',
-    description: 'For growing businesses with regular document submission workflows.',
-    features: [
-      'Up to 2,500 active records',
-      '50 document uploads per month',
-      'AI extraction and review',
-      'HMAC audit chain',
-      'Sector benchmark access',
-      'API read access',
-      'Buyer data request handling',
-      'Priority email support',
-    ],
-    highlighted: true,
-    cta: 'Join the pilot',
-  },
-  {
-    name: 'Growth',
-    price: '£149',
-    period: '/month',
-    description: 'For established manufacturers with high-volume data obligations.',
-    features: [
-      'Up to 10,000 active records',
-      'Unlimited document uploads',
-      'AI extraction and review',
-      'HMAC audit chain',
-      'Sector benchmark access',
-      'Full API access',
-      'Bulk export (CSV, JSON)',
-      'Buyer data request handling',
-      'Dedicated onboarding',
-    ],
-    cta: 'Join the pilot',
-  },
+  { name: 'Starter', price: 'Free', description: 'Respond to buyer requests using manual declarations.', capacity: 'Up to 5 active records', detail: 'No document uploads.' },
+  { name: 'Micro', price: '£29', description: 'Start building a document-backed operational record.', capacity: 'Up to 500 active records', detail: 'Up to 10 document uploads each calendar month.' },
+  { name: 'Small', price: '£79', description: 'For teams handling documents more regularly.', capacity: 'Up to 2,500 active records', detail: 'Up to 50 document uploads each calendar month.', highlighted: true },
+  { name: 'Growth', price: '£149', description: 'For a larger record and document workload.', capacity: 'Up to 10,000 active records', detail: 'No monthly document-upload cap in the plan configuration.' },
 ]
 
 const buyerPlans: Plan[] = [
-  {
-    name: 'Standard',
-    price: '£299',
-    period: '/month',
-    description: 'For procurement teams beginning to collect certified supplier data.',
-    features: [
-      'Connect up to 10 supplier entities',
-      'Structured data request tools',
-      'Certified record access',
-      'Basic query and filter',
-      'CSV export',
-      'API read access',
-    ],
-    cta: 'Join the pilot',
-  },
-  {
-    name: 'Business',
-    price: '£699',
-    period: '/month',
-    description: 'For supply chain teams managing mid-size supplier portfolios.',
-    features: [
-      'Connect up to 50 supplier entities',
-      'Structured data request tools',
-      'Certified record access',
-      'Advanced cross-supplier query',
-      'CSV and JSON export',
-      'Full API access',
-      'Trust tier filtering',
-      'Priority support',
-    ],
-    highlighted: true,
-    cta: 'Join the pilot',
-  },
-  {
-    name: 'Enterprise',
-    price: '£1,499',
-    period: '/month',
-    description: 'For large buyers with extensive supply chains and compliance requirements.',
-    features: [
-      'Unlimited supplier entities',
-      'Structured data request tools',
-      'Certified record access',
-      'Advanced cross-supplier query',
-      'All export formats',
-      'Full API access with higher rate limits',
-      'SAML/OIDC SSO & SCIM provisioning',
-      'Data Processing Agreement included',
-      'SLA and uptime guarantee',
-      'Dedicated customer success',
-      'Custom integration support',
-    ],
-    cta: 'Contact us',
-  },
+  { name: 'Standard', price: '£299', description: 'Begin requesting and reviewing supplier records.', capacity: 'Up to 10 connected suppliers', detail: 'A connection is a distinct supplier organisation.' },
+  { name: 'Business', price: '£699', description: 'Work across a wider supplier portfolio.', capacity: 'Up to 50 connected suppliers', detail: 'Requests to an already-connected supplier do not use another connection.', highlighted: true },
+  { name: 'Enterprise', price: '£1,499', description: 'Discuss larger-scale supplier access and integration needs.', capacity: 'No supplier-connection cap in the plan configuration', detail: 'Service and support terms are agreed separately.' },
 ]
 
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({ plan, audience }: { plan: Plan; audience: 'supplier' | 'buyer' }) {
   return (
-    <div
-      style={{
-        backgroundColor: plan.highlighted ? colours.navy : colours.surface,
-        border: `1px solid ${plan.highlighted ? colours.navy : colours.border}`,
-        borderRadius: '6px',
-        padding: '32px',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <div style={{ marginBottom: '24px' }}>
-        <p
-          style={{
-            fontSize: typography.sizes.xs,
-            fontWeight: typography.weights.medium,
-            color: plan.highlighted ? 'rgba(255,255,255,0.5)' : colours.textTertiary,
-            letterSpacing: typography.tracking.wider,
-            textTransform: 'uppercase' as const,
-            margin: '0 0 8px',
-          }}
-        >
-          {plan.name}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-          <span
-            style={{
-              fontSize: '32px',
-              fontWeight: typography.weights.medium,
-              color: plan.highlighted ? '#FFFFFF' : colours.textPrimary,
-              letterSpacing: typography.tracking.tight,
-              lineHeight: 1,
-            }}
-          >
-            {plan.price}
-          </span>
-          {plan.period && (
-            <span
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: plan.highlighted ? 'rgba(255,255,255,0.5)' : colours.textTertiary,
-              }}
-            >
-              {plan.period}
-            </span>
-          )}
-        </div>
-        <p
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: plan.highlighted ? 'rgba(255,255,255,0.6)' : colours.textSecondary,
-            lineHeight: '1.5',
-            margin: 0,
-          }}
-        >
-          {plan.description}
-        </p>
-      </div>
-
-      <div style={{ flex: 1, marginBottom: '28px' }}>
-        {plan.features.map(feature => (
-          <div
-            key={feature}
-            style={{
-              display: 'flex',
-              gap: '10px',
-              alignItems: 'flex-start',
-              marginBottom: '8px',
-            }}
-          >
-            <span
-              style={{
-                flexShrink: 0,
-                width: '4px',
-                height: '4px',
-                borderRadius: '50%',
-                backgroundColor: plan.highlighted ? 'rgba(255,255,255,0.4)' : colours.navy,
-                marginTop: '6px',
-              }}
-            />
-            <span
-              style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.light,
-                color: plan.highlighted ? 'rgba(255,255,255,0.65)' : colours.textSecondary,
-                lineHeight: '1.4',
-              }}
-            >
-              {feature}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {plan.cta === 'Contact us' ? (
-        <a
-          href="mailto:hello@arbor.io"
-          style={{
-            display: 'block',
-            textAlign: 'center' as const,
-            padding: '11px 20px',
-            backgroundColor: plan.highlighted ? colours.surface : colours.navy,
-            color: plan.highlighted ? colours.navy : colours.surface,
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.medium,
-            textDecoration: 'none',
-            borderRadius: '4px',
-            letterSpacing: typography.tracking.normal,
-          }}
-        >
-          {plan.cta}
-        </a>
-      ) : (
-        <Link
-          href="/signup"
-          style={{
-            display: 'block',
-            textAlign: 'center' as const,
-            padding: '11px 20px',
-            backgroundColor: plan.highlighted ? colours.surface : colours.navy,
-            color: plan.highlighted ? colours.navy : colours.surface,
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.medium,
-            textDecoration: 'none',
-            borderRadius: '4px',
-            letterSpacing: typography.tracking.normal,
-          }}
-        >
-          {plan.cta}
-        </Link>
-      )}
-    </div>
+    <article className={`mk-plan-card${plan.highlighted ? ' mk-plan-featured' : ''}`}>
+      <span className="mk-plan-name">{plan.name}</span>
+      <div className="mk-plan-price">{plan.price}{plan.price !== 'Free' && <small> / month</small>}</div>
+      <p>{plan.description}</p>
+      <div className="mk-plan-capacity"><strong>{plan.capacity}</strong><span>{plan.detail}</span></div>
+      <a className={`mk-button ${plan.highlighted ? 'mk-button-light' : 'mk-button-navy'}`} href={pilotRequestHref(audience, plan.name)}>Discuss {plan.name}</a>
+    </article>
   )
 }
 
 export default function PricingPage() {
   return (
-    <div>
-      {/* Header */}
-      <section
-        style={{
-          backgroundColor: colours.surface,
-          borderBottom: `1px solid ${colours.border}`,
-          padding: '72px 0 56px',
-        }}
-      >
-        <div style={container}>
-          <span
-            style={{
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.medium,
-              color: colours.textTertiary,
-              letterSpacing: typography.tracking.wider,
-              textTransform: 'uppercase' as const,
-              display: 'block',
-              marginBottom: '16px',
-            }}
-          >
-            Pricing
-          </span>
-          <h1
-            style={{
-              fontSize: 'clamp(30px, 6vw, 44px)',
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
-              letterSpacing: typography.tracking.tight,
-              lineHeight: typography.lineHeight.display,
-              margin: '0 0 16px',
-            }}
-          >
-            Simple, transparent pricing.
-          </h1>
-          <p
-            style={{
-              fontSize: typography.sizes.base,
-              fontWeight: typography.weights.light,
-              color: colours.textSecondary,
-              lineHeight: typography.lineHeight.body,
-              margin: '0',
-            }}
-          >
-            All plans include the free tier for responding to data requests.
-            Supplier plans are priced by record volume and upload capacity.
-            Buyer plans are priced by supplier entity connections.
-          </p>
-          <p
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.light,
-              color: colours.textPrimary,
-              lineHeight: typography.lineHeight.body,
-              margin: '16px 0 0',
-              padding: '12px 16px',
-              border: `1px solid ${colours.border}`,
-              borderRadius: '6px',
-              backgroundColor: colours.surface,
-            }}
-          >
-            arbor is in a private pilot. Pilot organisations join by invitation,
-            and their plan and price are agreed directly. The plans below are
-            what arbor will offer when it opens.{' '}
-            <a href="mailto:hello@arbor.io?subject=arbor%20pilot%20access" style={{ color: colours.textPrimary }}>
-              Ask to join the pilot
-            </a>
-            .
-          </p>
+    <>
+      <section className="mk-page-intro mk-pricing-intro">
+        <div className="mk-container">
+          <span className="mk-eyebrow">Pricing</span>
+          <h1>Pilot terms first. Planned pricing for what follows.</h1>
+          <p>Arbor is in a private pilot. Access is by invitation and pilot terms are agreed directly. The plans and prices below describe a proposed public offering; they are not a checkout or a commitment to current pilot pricing.</p>
+          <a className="mk-button mk-button-navy" href={pilotRequestHref()}>Request pilot access</a>
         </div>
       </section>
 
-      {/* Supplier plans */}
-      <section style={{ backgroundColor: colours.background, padding: '72px 0' }}>
-        <div style={container}>
-          <div style={{ marginBottom: '40px' }}>
-            <h2
-              style={{
-                fontSize: '24px',
-                fontWeight: typography.weights.medium,
-                color: colours.textPrimary,
-                letterSpacing: typography.tracking.tight,
-                margin: '0 0 8px',
-              }}
-            >
-              Supplier plans
-            </h2>
-            <p
-              style={textStyles.sectionSubtitle}
-            >
-              For manufacturers, producers, and suppliers building a certified operational data record.
-            </p>
-          </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-              gap: '16px',
-            }}
-          >
-            {supplierPlans.map(plan => (
-              <PlanCard key={plan.name} plan={plan} />
-            ))}
-          </div>
+      <section className="mk-section">
+        <div className="mk-container">
+          <div className="mk-section-head"><span className="mk-eyebrow">For suppliers</span><h2>Choose the record capacity your work needs.</h2><p>Responding to buyer data requests through the submission flow is not capped by these supplier record limits.</p></div>
+          <div className="mk-plan-grid mk-plan-grid-supplier">{supplierPlans.map(plan => <PlanCard key={plan.name} plan={plan} audience="supplier" />)}</div>
         </div>
       </section>
 
-      {/* Buyer plans */}
-      <section style={{ backgroundColor: colours.surface, padding: '72px 0' }}>
-        <div style={container}>
-          <div style={{ marginBottom: '40px' }}>
-            <h2
-              style={{
-                fontSize: '24px',
-                fontWeight: typography.weights.medium,
-                color: colours.textPrimary,
-                letterSpacing: typography.tracking.tight,
-                margin: '0 0 8px',
-              }}
-            >
-              Buyer plans
-            </h2>
-            <p
-              style={textStyles.sectionSubtitle}
-            >
-              For large companies, procurement teams, and sustainability functions accessing verified supply chain data.
-            </p>
-          </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '16px',
-            }}
-          >
-            {buyerPlans.map(plan => (
-              <PlanCard key={plan.name} plan={plan} />
-            ))}
-          </div>
+      <section className="mk-section mk-section-warm">
+        <div className="mk-container">
+          <div className="mk-section-head"><span className="mk-eyebrow">For buyers</span><h2>Start with the suppliers you need to work with.</h2><p>Buyer capacity is counted by distinct connected supplier organisations, not by the number of data requests sent to an existing connection.</p></div>
+          <div className="mk-plan-grid mk-plan-grid-buyer">{buyerPlans.map(plan => <PlanCard key={plan.name} plan={plan} audience="buyer" />)}</div>
         </div>
       </section>
 
-      {/* Notes */}
-      <section
-        style={{
-          backgroundColor: colours.background,
-          padding: '56px 0',
-          borderTop: `1px solid ${colours.border}`,
-        }}
-      >
-        <div style={container}>
-          <h3
-            style={{
-              fontSize: typography.sizes.base,
-              fontWeight: typography.weights.medium,
-              color: colours.textPrimary,
-              letterSpacing: typography.tracking.tight,
-              margin: '0 0 20px',
-            }}
-          >
-            Notes on pricing
-          </h3>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-            }}
-          >
-            {[
-              'All prices are exclusive of VAT. VAT is charged at the applicable rate for UK businesses.',
-              'When arbor opens, annual billing will be available on all paid plans at a 20% discount.',
-              'Responding to buyer data requests is always free for suppliers, regardless of plan.',
-              'Data submitted to arbor remains owned by the submitting entity. arbor holds a licence to store and serve it.',
-              'A Data Processing Agreement is included in the Enterprise plan and available separately for other plans.',
-              'For custom pricing, volume discounts, or procurement requirements, contact hello@arbor.io.',
-            ].map((note, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  gap: '12px',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <span
-                  style={{
-                    flexShrink: 0,
-                    width: '4px',
-                    height: '4px',
-                    borderRadius: '50%',
-                    backgroundColor: colours.textTertiary,
-                    marginTop: '8px',
-                  }}
-                />
-                <p
-                  style={{
-                    fontSize: typography.sizes.sm,
-                    fontWeight: typography.weights.light,
-                    color: colours.textSecondary,
-                    lineHeight: '1.55',
-                    margin: 0,
-                  }}
-                >
-                  {note}
-                </p>
-              </div>
-            ))}
-          </div>
+      <section className="mk-section mk-section-sage">
+        <div className="mk-container mk-pricing-explain">
+          <div><span className="mk-eyebrow">A practical example</span><h2>What is an active record?</h2></div>
+          <div><p>An active record is a current stored figure. A single electricity bill can produce several figures, such as consumption and cost, so one document may use more than one record slot. When a correction supersedes a figure, the previous version is no longer active.</p><p>Upload limits count documents submitted in a calendar month. Where a plan limit applies, Arbor blocks a new upload or record write that would exceed it; the existing records remain available.</p></div>
         </div>
       </section>
-    </div>
+
+      <section className="mk-close"><div className="mk-container mk-close-inner"><div><span className="mk-eyebrow mk-eyebrow-light">Private pilot</span><h2>Talk through the right starting point.</h2><p>Tell us whether you supply operational data or request it from suppliers. We will discuss pilot terms directly.</p></div><a className="mk-button mk-button-light" href={pilotRequestHref()}>Request pilot access</a></div></section>
+    </>
   )
 }

@@ -11,11 +11,13 @@ export function Nav({
   entityType = 'SUPPLIER',
   recordCount,
   showCbam = false,
+  isPlatformAdmin = false,
 }: {
   entityName: string
   entityType?: 'SUPPLIER' | 'BUYER'
   recordCount?: number
   showCbam?: boolean
+  isPlatformAdmin?: boolean
 }) {
   const pathname = usePathname()
   const links = getNavLinks(entityType, { showCbam })
@@ -96,6 +98,11 @@ export function Nav({
           borderTop: '1px solid rgba(255,255,255,0.08)',
         }}
       >
+        {isPlatformAdmin && (
+          <Link href="/admin/enquiries" style={{ display: 'block', color: '#FFFFFF', fontSize: typography.sizes.sm, padding: '7px 12px', marginBottom: spacing[1] }}>
+            Enquiry review
+          </Link>
+        )}
         {recordCount !== undefined && (
           <div
             style={{

@@ -1,10 +1,15 @@
+import type { Metadata } from 'next'
 import { colours, typography } from '@/lib/design-system'
 import { SUB_PROCESSORS, DPA_LAST_UPDATED } from '@/lib/legal/subprocessors'
+import { LegalContents } from '@/components/marketing/LegalContents'
+import { LegalDraftNotice } from '@/components/marketing/LegalDraftNotice'
+
+export const metadata: Metadata = { title: 'Data Processing Agreement | Arbor', description: 'The Arbor data processing terms and sub-processor information.' }
 
 // IMPORTANT: This document must be reviewed by a qualified solicitor before publication.
 
 const container = {
-  maxWidth: '1140px',
+  maxWidth: '820px',
   margin: '0 auto',
   padding: '0 clamp(20px, 5vw, 40px)',
 }
@@ -43,7 +48,7 @@ const liStyle = {
 
 export default function DpaPage() {
   return (
-    <div style={{ backgroundColor: colours.surface }}>
+    <div className="mk-legal-page" style={{ backgroundColor: colours.surface }}>
       {/* Header */}
       <div style={{ borderBottom: `1px solid ${colours.border}`, padding: '64px 0 48px' }}>
         <div style={container}>
@@ -72,38 +77,26 @@ export default function DpaPage() {
           >
             Data Processing Agreement
           </h1>
+          <LegalDraftNotice />
           <p style={{ ...pStyle, margin: '0 0 12px' }}>
-            Last updated: 1 June 2026.
+            Document date: 1 June 2026. Sub-processor appendix updated: {DPA_LAST_UPDATED}.
           </p>
           <p style={{ ...pStyle, margin: 0 }}>
             This Data Processing Agreement (&quot;DPA&quot;) forms part of the Terms of Service between
-            arbor Data Ltd (&quot;arbor&quot;, &quot;Processor&quot;) and the entity that has agreed to those terms
+            Arbor [contracting entity to confirm] (&quot;Processor&quot;) and the entity that has agreed to those terms
             (&quot;Customer&quot;, &quot;Controller&quot;). It applies where arbor processes personal data on behalf
             of the Customer in the course of providing the arbor platform service.
           </p>
-          <a
-            href="/api/legal/dpa"
-            style={{
-              display: 'inline-block',
-              marginTop: '20px',
-              padding: '10px 20px',
-              backgroundColor: colours.navy,
-              color: colours.surface,
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.medium,
-              borderRadius: '4px',
-              textDecoration: 'none',
-              letterSpacing: typography.tracking.wide,
-            }}
-          >
-            Download DPA (v1)
-          </a>
+          <p style={{ ...pStyle, margin: '20px 0 0' }}>
+            To keep a review copy, use your browser&apos;s Print command and choose Save as PDF. The approved agreement will be provided after legal review.
+          </p>
         </div>
       </div>
 
       {/* Body */}
       <div style={{ padding: '64px 0 96px' }}>
-        <div style={container}>
+        <div id="dpa-sections" className="mk-legal-reading" style={container}>
+          <LegalContents sections={[{ id: 'dpa-scope', label: 'Scope' }, { id: 'dpa-obligations', label: 'Processor obligations' }, { id: 'dpa-processors', label: 'Sub-processors' }, { id: 'dpa-deletion', label: 'Return and deletion' }, { id: 'dpa-appendix', label: 'Appendix A' }, { id: 'dpa-contact', label: 'Contact' }]} />
 
           <h2 style={h2Style}>1. Definitions</h2>
           <p style={pStyle}>
@@ -117,7 +110,7 @@ export default function DpaPage() {
             facilitation.
           </p>
 
-          <h2 style={h2Style}>2. Scope and subject matter</h2>
+          <h2 id="dpa-scope" style={h2Style}>2. Scope and subject matter</h2>
           <p style={pStyle}>
             arbor processes personal data on behalf of the Customer solely to provide the Services.
             The nature and purpose of processing is the ingestion, AI-powered extraction, storage,
@@ -158,7 +151,7 @@ export default function DpaPage() {
             has been deleted in accordance with Clause 11.
           </p>
 
-          <h2 style={h2Style}>5. Processor obligations</h2>
+          <h2 id="dpa-obligations" style={h2Style}>5. Processor obligations</h2>
           <p style={pStyle}>arbor shall:</p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             <li style={liStyle}>
@@ -195,10 +188,10 @@ export default function DpaPage() {
             </li>
           </ul>
 
-          <h2 style={h2Style}>6. Sub-processors</h2>
+          <h2 id="dpa-processors" style={h2Style}>6. Sub-processors</h2>
           <p style={pStyle}>
-            The Customer provides general authorisation for arbor to engage the following sub-processors,
-            who assist in delivering the Services:
+            The following is an illustrative provider inventory for review. The actual sub-processor list,
+            locations, customer authorisation and related agreements must be verified before execution:
           </p>
           <div
             style={{
@@ -241,10 +234,9 @@ export default function DpaPage() {
 
           <h2 style={h2Style}>7. International transfers</h2>
           <p style={pStyle}>
-            Where sub-processors are located in countries outside the UK not covered by an adequacy
-            decision, arbor ensures appropriate safeguards are in place under UK GDPR Article 46.
-            Where Standard Contractual Clauses are used, arbor will make copies available to the Customer
-            upon written request.
+            The parties must identify any international transfers and confirm the applicable UK transfer
+            safeguards before executing this DPA. Provider locations and transfer terms in this draft have
+            not been verified.
           </p>
 
           <h2 style={h2Style}>8. Data subject rights</h2>
@@ -273,8 +265,7 @@ export default function DpaPage() {
           </p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             {[
-              'Encryption of data in transit using TLS 1.2 or higher',
-              'Encryption of data at rest',
+              'Transport and storage encryption controls, subject to deployment evidence',
               'Access controls limiting database access to authorised personnel only',
               'HMAC-chained audit log for all data record writes',
               'Password hashing using bcrypt with cost factor 12',
@@ -287,7 +278,7 @@ export default function DpaPage() {
             ))}
           </ul>
 
-          <h2 style={h2Style}>11. Return and deletion of data</h2>
+          <h2 id="dpa-deletion" style={h2Style}>11. Return and deletion of data</h2>
           <p style={pStyle}>
             On termination of the Services, arbor shall, at the Customer&apos;s election:
           </p>
@@ -296,7 +287,7 @@ export default function DpaPage() {
               Return all personal data to the Customer in a structured, machine-readable format (CSV or JSON), or
             </li>
             <li style={liStyle}>
-              Securely delete all personal data, and provide written confirmation of deletion within 30 days.
+              Securely delete personal data and provide written confirmation under the agreed retention and deletion schedule, including backup expiry.
             </li>
           </ul>
           <p style={pStyle}>
@@ -317,11 +308,11 @@ export default function DpaPage() {
             the Customer to agree an alternative approach that satisfies the Customer&apos;s compliance needs.
           </p>
 
-          <h2 style={h2Style}>Appendix A — Sub-processors</h2>
+          <h2 id="dpa-appendix" style={h2Style}>Appendix A — Sub-processors</h2>
           <p style={pStyle}>
             arbor engages the following sub-processors to provide the Services. This
-            list is current as of {DPA_LAST_UPDATED}. The Customer will be notified of
-            changes in advance.
+            sample list was last edited on {DPA_LAST_UPDATED}; it is not a verified current inventory.
+            Notice terms for changes require legal and operational approval.
           </p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             {SUB_PROCESSORS.map((s) => (
@@ -338,10 +329,10 @@ export default function DpaPage() {
             jurisdiction of the courts of England and Wales.
           </p>
 
-          <h2 style={h2Style}>14. Contact</h2>
+          <h2 id="dpa-contact" style={h2Style}>14. Contact</h2>
           <p style={pStyle}>
             For all data protection queries, contact legal@arbor.io or write to:
-            arbor Data Ltd, [Company Address, City, Postcode].
+            [Contracting entity and registered address to confirm].
           </p>
 
         </div>

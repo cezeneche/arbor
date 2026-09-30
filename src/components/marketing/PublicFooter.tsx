@@ -1,10 +1,11 @@
 import Link from 'next/link'
+import { pilotRequestHref } from '@/lib/marketing/pilot'
 import { colours, typography } from '@/lib/design-system'
 
 const linkStyle = {
   fontSize: typography.sizes.sm,
   fontWeight: typography.weights.light,
-  color: 'rgba(255,255,255,0.5)',
+  color: 'rgba(255,255,255,0.7)',
   textDecoration: 'none',
   display: 'block',
   marginBottom: '10px',
@@ -13,7 +14,7 @@ const linkStyle = {
 const headingStyle = {
   fontSize: typography.sizes.xs,
   fontWeight: typography.weights.medium,
-  color: 'rgba(255,255,255,0.35)',
+  color: 'rgba(255,255,255,0.7)',
   letterSpacing: typography.tracking.wider,
   textTransform: 'uppercase' as const,
   marginBottom: '16px',
@@ -29,13 +30,7 @@ export function PublicFooter() {
         padding: '64px 0 40px',
       }}
     >
-      <div
-        style={{
-          maxWidth: '1140px',
-          margin: '0 auto',
-          padding: '0 clamp(20px, 5vw, 40px)',
-        }}
-      >
+      <div className="mk-site-frame">
         <div
           style={{
             display: 'grid',
@@ -61,13 +56,13 @@ export function PublicFooter() {
               style={{
                 fontSize: typography.sizes.sm,
                 fontWeight: typography.weights.light,
-                color: 'rgba(255,255,255,0.4)',
+                color: 'rgba(255,255,255,0.7)',
                 lineHeight: '1.6',
                 margin: '0 0 12px',
                 maxWidth: '260px',
               }}
             >
-              Certified operational data infrastructure for manufacturers, suppliers, and producers.
+              Operational data records for manufacturers and their customers.
             </p>
           </div>
 
@@ -77,7 +72,10 @@ export function PublicFooter() {
             <Link href="/how-it-works" style={linkStyle}>How it works</Link>
             <Link href="/pricing" style={linkStyle}>Pricing</Link>
             <Link href="/about" style={linkStyle}>About</Link>
-            <Link href="/signup" style={linkStyle}>Get started</Link>
+            <Link href="/institutional" style={linkStyle}>Institutional enquiries</Link>
+            <Link href="/docs/api" style={linkStyle}>API guide</Link>
+            <a href={pilotRequestHref()} style={linkStyle}>Request pilot access</a>
+            <Link href="/signup" style={linkStyle}>Create your invited account</Link>
             <Link href="/login" style={linkStyle}>Sign in</Link>
           </div>
 
@@ -91,7 +89,7 @@ export function PublicFooter() {
           </div>
 
           {/* Contact */}
-          <div>
+          <div className="mk-footer-contact">
             <p style={headingStyle}>Contact</p>
             <a href="mailto:hello@arbor.io" style={linkStyle}>hello@arbor.io</a>
             <a href="mailto:legal@arbor.io" style={linkStyle}>legal@arbor.io</a>
@@ -104,6 +102,8 @@ export function PublicFooter() {
             paddingTop: '24px',
             display: 'flex',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
             alignItems: 'center',
           }}
         >
@@ -111,17 +111,17 @@ export function PublicFooter() {
             style={{
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.light,
-              color: 'rgba(255,255,255,0.25)',
+              color: 'rgba(255,255,255,0.7)',
               margin: 0,
             }}
           >
-            {year} arbor Data Ltd. All rights reserved. Registered in England and Wales.
+            © {year} Arbor
           </p>
           <p
             style={{
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.light,
-              color: 'rgba(255,255,255,0.25)',
+              color: 'rgba(255,255,255,0.7)',
               margin: 0,
             }}
           >

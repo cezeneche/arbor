@@ -1445,5 +1445,25 @@ model InstitutionalEnquiry {
   role         String?
   interestArea String // BENCHMARKS | DATA_PARTNERSHIP | POLICY | OTHER
   message      String?
+  status       String   @default("NEW")
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model PilotEnquiry {
+  id          String   @id @default(cuid())
+  requestId   String   @unique
+  orgName     String
+  contactName String
+  email       String
+  audience    String
+  plan        String?
+  message     String?
+  status      String   @default("NEW")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, createdAt])
 }

@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { PublicNav } from '@/components/marketing/PublicNav'
+import { PublicFooter } from '@/components/marketing/PublicFooter'
+import '../(marketing)/marketing.css'
 
 const INTEREST_AREAS = [
   { value: 'BENCHMARKS', label: 'Sector benchmark data' },
@@ -19,7 +22,6 @@ const inputStyle: React.CSSProperties = {
   backgroundColor: colours.surface,
   border: `1px solid ${colours.border}`,
   borderRadius: '4px',
-  outline: 'none',
   boxSizing: 'border-box',
 }
 
@@ -51,65 +53,45 @@ export default function InstitutionalPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (submitting) return
     setSubmitting(true)
     setError(null)
 
-    const res = await fetch('/api/institutional/enquiry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 20_000)
+    try {
+      const res = await fetch('/api/institutional/enquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+        signal: controller.signal,
+      })
 
-    if (res.ok) {
-      setSubmitted(true)
-    } else {
-      const data = await res.json().catch(() => ({}))
-      setError((data as Record<string, string>).error ?? 'Something went wrong. Please try again.')
+      if (res.ok) {
+        setSubmitted(true)
+      } else {
+        const data: unknown = await res.json().catch(() => null)
+        const message = data && typeof data === 'object' && 'error' in data && typeof data.error === 'string' ? data.error : null
+        setError(message ?? 'We could not save your enquiry. Your entries are still here; please try again.')
+      }
+    } catch {
+      setError('We could not confirm receipt of your enquiry. Your entries are still here. Check your connection and try again, or email hello@arbor.io.')
+    } finally {
+      window.clearTimeout(timeout)
+      setSubmitting(false)
     }
-    setSubmitting(false)
   }
 
   return (
     <div
+      className="mk-site"
       style={{
         minHeight: '100vh',
         backgroundColor: colours.background,
         fontFamily: typography.fontFamily,
       }}
     >
-      {/* Header */}
-      <header
-        style={{
-          backgroundColor: colours.navy,
-          padding: `${spacing[3]} ${spacing[4]}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <span
-          style={{
-            fontSize: typography.sizes.base,
-            fontWeight: typography.weights.medium,
-            color: colours.surface,
-            letterSpacing: typography.tracking.tight,
-          }}
-        >
-          arbor
-        </span>
-        <a
-          href="/login"
-          style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.light,
-            color: colours.surface,
-            opacity: 0.7,
-            textDecoration: 'none',
-          }}
-        >
-          Sign in
-        </a>
-      </header>
+      <PublicNav />
 
       <main style={{ maxWidth: '960px', margin: '0 auto', padding: `${spacing[8]} ${spacing[4]}` }}>
         {/* Hero */}
@@ -136,7 +118,7 @@ export default function InstitutionalPage() {
               lineHeight: 1.15,
             }}
           >
-            Verified operational data,<br />ready for policy use
+            Operational data for<br />research and institutional use
           </h1>
           <p
             style={{
@@ -148,18 +130,17 @@ export default function InstitutionalPage() {
               margin: 0,
             }}
           >
-            arbor is a certified operational data repository. Manufacturers and suppliers upload
-            production documents. The platform extracts, certifies, and stores the data. Every
-            record carries a trust tier, a confidence score, and a link to the source document
-            it came from.
+            Arbor is an operational data platform. Manufacturers and suppliers upload
+            production documents. The platform extracts and stores operational figures with
+            evidence-quality labels. Document-derived records include available source evidence;
+            declared and estimated figures are labelled separately.
           </p>
         </div>
 
         {/* Three-column feature grid */}
         <div
+          className="mk-institutional-features"
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
             gap: spacing[2],
             marginBottom: spacing[8],
           }}
@@ -167,15 +148,15 @@ export default function InstitutionalPage() {
           {[
             {
               title: 'Document-backed records',
-              body: 'Every data point is tied to a source document: electricity bills, production logs, freight invoices, certificates. The source text is stored alongside the value so any claim can be traced.',
+              body: 'Document-derived records link operational figures to available source text from bills, production logs, invoices, and certificates. A source link does not independently verify the underlying claim.',
             },
             {
               title: 'Sector benchmarks',
-              body: 'Anonymised sector-level statistics computed live from opted-in supplier data. Minimum population floor of 10 entities per benchmark cell. Available as structured data for regulatory use.',
+              body: 'Sector statistics use opted-in supplier data and require at least 10 qualifying entities per benchmark cell. Coverage depends on available data; contact us to discuss your requirements.',
             },
             {
-              title: 'Three-tier certification',
-              body: 'Verified (document-extracted, confidence ≥ 85%), Declared (self-reported), or Estimated (published default factor). The tier travels with every record in every export.',
+              title: 'Evidence-quality labels',
+              body: 'Verified records meet source and review requirements. Declared records include self-reported figures and document-derived figures that have not met those requirements. Estimated records use reference values. These labels describe evidence quality, not independent assurance.',
             },
           ].map(card => (
             <div
@@ -223,13 +204,13 @@ export default function InstitutionalPage() {
               margin: `0 0 ${spacing[2]}`,
             }}
           >
-            How institutions use arbor data
+            Institutional use cases to explore
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[2] }}>
+          <div className="mk-institutional-pairs" style={{ gap: spacing[2] }}>
             {[
-              { label: 'CBAM compliance', text: 'Regulators can cross-reference declared embedded emissions against certified supplier records.' },
+              { label: 'CBAM compliance', text: 'Regulators can cross-reference declared embedded emissions against supplier records labelled by evidence quality.' },
               { label: 'Supply chain due diligence', text: 'Policy teams can assess Scope 3 data quality across sectors without requiring proprietary calculations.' },
-              { label: 'Benchmark research', text: 'Sector energy intensity, water use, and emissions benchmarks with full data lineage for academic and policy research.' },
+              { label: 'Benchmark research', text: 'Explore available energy, water, and emissions statistics, with coverage and methodology assessed for your research question.' },
               { label: 'Audit and verification', text: 'Third-party auditors can access structured, source-linked records rather than unstructured documents.' },
             ].map(item => (
               <div
@@ -272,7 +253,7 @@ export default function InstitutionalPage() {
             backgroundColor: colours.surface,
             border: `1px solid ${colours.border}`,
             borderRadius: '8px',
-            padding: spacing[4],
+            padding: 'clamp(20px, 4vw, 32px)',
           }}
         >
           <h2
@@ -289,10 +270,14 @@ export default function InstitutionalPage() {
           <p
             style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}` }}
           >
-            Tell us about your organisation and what you are looking for. We will follow up within five business days.
+            Tell us about your organisation and what you are looking for. Fields marked * are required.
+          </p>
+          <p style={{ fontSize: typography.sizes.sm, color: colours.textSecondary, lineHeight: 1.6, margin: `0 0 ${spacing[3]}` }}>
+            We use the details you provide to handle your enquiry. See our <a href="/legal/privacy" style={{ color: colours.navy }}>Privacy Policy</a>.
           </p>
 
-          {submitted ? (
+          <div role="status" aria-live="polite" aria-atomic="true">
+          {submitted && (
             <div
               style={{
                 backgroundColor: colours.greenBg,
@@ -314,16 +299,21 @@ export default function InstitutionalPage() {
               <p
                 style={textStyles.sectionSubtitle}
               >
-                Thank you. We will be in touch within five business days.
+                Your enquiry has been saved. For follow-up, contact hello@arbor.io.
               </p>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[2], marginBottom: spacing[2] }}>
+          )}
+          </div>
+          {!submitted && (
+            <form onSubmit={handleSubmit} aria-busy={submitting}>
+              <div className="mk-institutional-pairs" style={{ gap: spacing[2], marginBottom: spacing[2] }}>
                 <div>
                   <label style={labelStyle} htmlFor="orgName">Organisation name *</label>
                   <input
                     id="orgName"
+                    name="organisation"
+                    autoComplete="organization"
+                    maxLength={200}
                     type="text"
                     value={form.orgName}
                     onChange={e => set('orgName', e.target.value)}
@@ -336,6 +326,9 @@ export default function InstitutionalPage() {
                   <label style={labelStyle} htmlFor="contactName">Contact name *</label>
                   <input
                     id="contactName"
+                    name="name"
+                    autoComplete="name"
+                    maxLength={120}
                     type="text"
                     value={form.contactName}
                     onChange={e => set('contactName', e.target.value)}
@@ -346,11 +339,14 @@ export default function InstitutionalPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[2], marginBottom: spacing[2] }}>
+              <div className="mk-institutional-pairs" style={{ gap: spacing[2], marginBottom: spacing[2] }}>
                 <div>
                   <label style={labelStyle} htmlFor="email">Work email *</label>
                   <input
                     id="email"
+                    name="email"
+                    autoComplete="email"
+                    maxLength={200}
                     type="email"
                     value={form.email}
                     onChange={e => set('email', e.target.value)}
@@ -363,6 +359,9 @@ export default function InstitutionalPage() {
                   <label style={labelStyle} htmlFor="role">Your role</label>
                   <input
                     id="role"
+                    name="role"
+                    autoComplete="organization-title"
+                    maxLength={120}
                     type="text"
                     value={form.role}
                     onChange={e => set('role', e.target.value)}
@@ -392,6 +391,7 @@ export default function InstitutionalPage() {
                 <label style={labelStyle} htmlFor="message">Additional context</label>
                 <textarea
                   id="message"
+                  maxLength={4000}
                   value={form.message}
                   onChange={e => set('message', e.target.value)}
                   placeholder="Describe your use case, data needs, or any questions you have."
@@ -402,6 +402,7 @@ export default function InstitutionalPage() {
 
               {error && (
                 <p
+                  role="alert"
                   style={{
                     fontSize: typography.sizes.sm,
                     fontWeight: typography.weights.light,
@@ -438,19 +439,8 @@ export default function InstitutionalPage() {
           )}
         </div>
 
-        {/* Footer */}
-        <p
-          style={{
-            fontSize: typography.sizes.xs,
-            fontWeight: typography.weights.light,
-            color: colours.textTertiary,
-            textAlign: 'center',
-            margin: `${spacing[5]} 0 0`,
-          }}
-        >
-          arbor, certified operational data repository
-        </p>
       </main>
+      <PublicFooter />
     </div>
   )
 }
