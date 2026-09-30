@@ -45,7 +45,7 @@ export function PublicFooter() {
               style={{
                 fontSize: typography.sizes.base,
                 fontWeight: typography.weights.medium,
-                color: '#FFFFFF',
+                color: 'var(--mk-surface)',
                 letterSpacing: typography.tracking.tight,
                 marginBottom: '12px',
               }}

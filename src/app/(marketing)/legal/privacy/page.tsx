@@ -92,8 +92,8 @@ export default function PrivacyPolicyPage() {
 
           <h2 id="privacy-identity" style={h2Style}>1. Who we are</h2>
           <p style={pStyle}>
-            Arbor&apos;s contracting entity, company number and registered address are pending confirmation
-            in this sample policy. &quot;We&quot;, &quot;us&quot; and &quot;our&quot; refer to that entity once identified.
+            Arbor is operated by arbor. Its company number and registered address are pending confirmation
+            in this sample policy. &quot;We&quot;, &quot;us&quot; and &quot;our&quot; refer to arbor.
             We operate the Arbor operational data platform accessible at arbor.io
             and related subdomains.
           </p>
@@ -295,7 +295,7 @@ export default function PrivacyPolicyPage() {
           <h2 id="privacy-contact" style={h2Style}>11. Contact</h2>
           <p style={pStyle}>
             For any questions about this policy or our data practices, contact us at legal@arbor.io or write
-            to: [Contracting entity and registered address to confirm].
+            to: arbor (registered address to be confirmed).
           </p>
 
         </div>

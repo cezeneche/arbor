@@ -43,13 +43,15 @@ Started 30 September 2026. Decisions: CBAM is a **second audience** with its own
 
 ## D. Publishing blockers
 
-- [ ] D1. **Owner:** authoritative company name, number, registered address and ICO position. The pages say arbor Data Ltd; the old DPA said Nucleos Compliance Ltd.
+- [x] D1. **Owner:** authoritative company name, number, registered address and ICO position.
+  - 30 September 2026: the owner confirmed the organisation is **arbor**. The legal pages now name it. Company number, registered address and ICO position stay pending until launch (owner's decision).
 - [ ] D2. **Owner:** confirm `arbor.io` is owned and `hello@`, `legal@` and `security@` inboxes exist, or choose the addresses to use (used in 27 places).
+  - 30 September 2026: the owner confirmed these are placeholders with no real inboxes yet; they are deferred to launch. Until then the pilot request form is the only working way to reach arbor.
 - [x] D3. Alert on new enquiries (Slack message per pilot/institutional enquiry). **Owner:** name who handles them.
   - Built: `src/lib/marketing/enquiry-alert.ts`. Sends only the organisation, the kind of enquiry and a link to `/admin/enquiries`. Never fails the enquiry. Does nothing until **`ENQUIRY_SLACK_WEBHOOK_URL`** is set on Arbor in Vercel (production), which the owner does. The same webhook as the CBAM alert works, or a separate channel.
-  - Still open: a named person who handles the queue.
+  - Owner: the **arbor ops team** handles the queue. Setting `ENQUIRY_SLACK_WEBHOOK_URL` in Vercel is still to do.
 - [ ] D4. **Owner + counsel:** retention schedule, then legal review of Privacy, Terms and DPA.
-  - Add **Slack** to `src/lib/legal/subprocessors.ts` with its verified DPA link: enquiry alerts send organisation names, and Nucleos's CBAM review alert sends case details.
+  - Done: Slack is added to `src/lib/legal/subprocessors.ts` with its DPA link. The rest of D4 is deferred to launch (owner's decision).
 - [ ] D5. Apply the pilot-enquiry migration to production before the form goes live.
 - [ ] D6. Full check before publishing: build, every page at phone to desktop widths, keyboard pass, form submission against a non-production database.
   - Done 30 September 2026:

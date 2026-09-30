@@ -18,5 +18,6 @@ export const SUB_PROCESSORS: SubProcessor[] = [
   { name: 'Resend Inc.', activity: 'Transactional email delivery', location: 'To confirm', dpaUrl: 'https://resend.com/legal/dpa' },
   { name: 'Inngest Inc.', activity: 'Background job queue and scheduling', location: 'To confirm', dpaUrl: 'https://www.inngest.com/legal/dpa' },
   { name: 'Upstash Inc.', activity: 'Rate-limiting (Redis)', location: 'To confirm', dpaUrl: 'https://upstash.com/trust/dpa.pdf' },
+  { name: 'Slack Technologies, LLC', activity: 'Internal alerts: new enquiries (organisation name) and CBAM cases needing review', location: 'To confirm', dpaUrl: 'https://slack.com/terms-of-service/data-processing' },
   { name: 'WorkOS, Inc.', activity: 'Enterprise SSO authentication and SCIM directory provisioning', location: 'To confirm', dpaUrl: 'https://workos.com/legal/dpa' },
 ]

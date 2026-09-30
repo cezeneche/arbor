@@ -332,7 +332,7 @@ export default function DpaPage() {
           <h2 id="dpa-contact" style={h2Style}>14. Contact</h2>
           <p style={pStyle}>
             For all data protection queries, contact legal@arbor.io or write to:
-            [Contracting entity and registered address to confirm].
+            arbor (registered address to be confirmed).
           </p>
 
         </div>

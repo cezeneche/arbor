@@ -257,7 +257,7 @@ export default function TermsPage() {
           <h2 id="terms-contact" style={h2Style}>14. Contact</h2>
           <p style={pStyle}>
             For questions about these terms, contact us at legal@arbor.io or write to:
-            [Contracting entity and registered address to confirm].
+            arbor (registered address to be confirmed).
           </p>
 
         </div>
