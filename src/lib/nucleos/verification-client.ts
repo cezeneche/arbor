@@ -26,7 +26,7 @@ export interface StatementReference {
 
 function base(): string {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or NUCLEOS_INTERNAL_TOKEN is not configured')
+    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
   }
   return process.env.NUCLEOS_URL as string
 }
@@ -34,7 +34,7 @@ function base(): string {
 async function post(path: string, body: unknown, fetchImpl: typeof fetch): Promise<void> {
   const res = await fetchImpl(`${base()}${path}`, {
     method: 'POST',
-    headers: nucleosHeaders({ 'content-type': 'application/json' }),
+    headers: await nucleosHeaders({ 'content-type': 'application/json' }),
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     cache: 'no-store',
   })

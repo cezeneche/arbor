@@ -9,6 +9,7 @@ describe('missingProductionEnv', () => {
   // checked separately.
   const complete: Record<string, string> = {
     ...Object.fromEntries(REQUIRED_PRODUCTION_ENV.map(k => [k, 'set'])),
+    NUCLEOS_INTERNAL_TOKEN: 'set',
     UPSTASH_REDIS_REST_URL: 'https://u.example',
     UPSTASH_REDIS_REST_TOKEN: 'u-token',
   }
@@ -29,10 +30,17 @@ describe('missingProductionEnv', () => {
     ).toEqual([])
   })
 
+  it('accepts either Nucleos credential, and names both when neither is set', () => {
+    const neither = { ...complete, NUCLEOS_INTERNAL_TOKEN: undefined, NUCLEOS_OIDC_AUDIENCE: undefined }
+    expect(missingProductionEnv(neither)).toEqual(['NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN'])
+    expect(missingProductionEnv({ ...neither, NUCLEOS_OIDC_AUDIENCE: 'https://n' })).toEqual([])
+    expect(missingProductionEnv({ ...neither, NUCLEOS_INTERNAL_TOKEN: 't' })).toEqual([])
+  })
+
   it('covers every service a request depends on', () => {
     for (const name of [
       'DATABASE_URL', 'AUTH_SECRET', 'AUDIT_CHAIN_SECRET',
-      'NUCLEOS_URL', 'NUCLEOS_INTERNAL_TOKEN', 'INNGEST_EVENT_KEY', 'INNGEST_SIGNING_KEY',
+      'NUCLEOS_URL', 'INNGEST_EVENT_KEY', 'INNGEST_SIGNING_KEY',
       'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'CRON_SECRET',
     ]) {
       expect(REQUIRED_PRODUCTION_ENV).toContain(name)

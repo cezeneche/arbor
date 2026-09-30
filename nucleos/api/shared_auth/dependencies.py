@@ -6,7 +6,7 @@ from collections.abc import Callable
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from shared_auth.jwt import decode_access_token
+from shared_auth.jwt import decode_bearer_token
 from shared_auth.models import AuthContext
 from shared_auth.roles import roles_to_scopes
 
@@ -30,6 +30,18 @@ def get_auth_context(
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _unauthorized()
 
+    # Arbor's Vercel identity first: its tokens name Vercel as issuer, and
+    # must never be read by the generic OIDC path below, which would take
+    # tenant and scopes from the token itself.
+    try:
+        from shared_auth.vercel_service import try_decode_service_token
+        service_ctx = try_decode_service_token(credentials.credentials)
+    except ValueError:
+        raise _unauthorized()
+    if service_ctx is not None:
+        request.state.auth_context = service_ctx
+        return service_ctx
+
     # Try OIDC first (activated only when OIDC_JWKS_URL env var is set)
     try:
         from shared_auth.oidc import try_decode_oidc_token
@@ -50,7 +62,7 @@ def get_auth_context(
 
     # Fall back to internal HS256 JWT
     try:
-        context = decode_access_token(credentials.credentials)
+        context = decode_bearer_token(credentials.credentials)
     except ValueError:
         raise _unauthorized()
 

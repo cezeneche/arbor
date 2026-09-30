@@ -43,13 +43,13 @@ export async function checkCbamScope(
 ): Promise<ScopeCheckResult> {
   if (!isNucleosConfigured()) {
     throw new NucleosUnavailableError(
-      'NUCLEOS_URL or NUCLEOS_INTERNAL_TOKEN is not configured',
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
     )
   }
 
   const res = await fetchImpl(`${process.env.NUCLEOS_URL}/api/cbam/scope-check`, {
     method: 'POST',
-    headers: nucleosHeaders({ 'content-type': 'application/json' }),
+    headers: await nucleosHeaders({ 'content-type': 'application/json' }),
     body: JSON.stringify(request),
     cache: 'no-store',
   })

@@ -34,7 +34,9 @@ export class NucleosExtractionError extends Error {
 }
 
 export function isNucleosConfigured(): boolean {
-  return Boolean(process.env.NUCLEOS_URL && process.env.NUCLEOS_INTERNAL_TOKEN)
+  return Boolean(
+    process.env.NUCLEOS_URL && (process.env.NUCLEOS_OIDC_AUDIENCE || process.env.NUCLEOS_INTERNAL_TOKEN),
+  )
 }
 
 const EXTRACT_ENDPOINT = '/api/internal/cbam/extract'
@@ -52,7 +54,7 @@ export async function extractCbamFields(
 ): Promise<CbamExtractionResult> {
   if (!isNucleosConfigured()) {
     throw new NucleosUnavailableError(
-      'NUCLEOS_URL or NUCLEOS_INTERNAL_TOKEN is not configured',
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
     )
   }
 
@@ -63,7 +65,7 @@ export async function extractCbamFields(
   try {
     const res = await doFetch(`${process.env.NUCLEOS_URL}${EXTRACT_ENDPOINT}`, {
       method: 'POST',
-      headers: nucleosHeaders({ 'content-type': 'application/json' }),
+      headers: await nucleosHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(request),
       signal: controller.signal,
     })
