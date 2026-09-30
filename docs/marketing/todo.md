@@ -45,7 +45,10 @@ Started 30 September 2026. Decisions: CBAM is a **second audience** with its own
 
 - [ ] D1. **Owner:** authoritative company name, number, registered address and ICO position. The pages say arbor Data Ltd; the old DPA said Nucleos Compliance Ltd.
 - [ ] D2. **Owner:** confirm `arbor.io` is owned and `hello@`, `legal@` and `security@` inboxes exist, or choose the addresses to use (used in 27 places).
-- [ ] D3. Alert on new enquiries (Slack message per pilot/institutional enquiry). **Owner:** name who handles them.
+- [x] D3. Alert on new enquiries (Slack message per pilot/institutional enquiry). **Owner:** name who handles them.
+  - Built: `src/lib/marketing/enquiry-alert.ts`. Sends only the organisation, the kind of enquiry and a link to `/admin/enquiries`. Never fails the enquiry. Does nothing until **`ENQUIRY_SLACK_WEBHOOK_URL`** is set on Arbor in Vercel (production), which the owner does. The same webhook as the CBAM alert works, or a separate channel.
+  - Still open: a named person who handles the queue.
 - [ ] D4. **Owner + counsel:** retention schedule, then legal review of Privacy, Terms and DPA.
+  - Add **Slack** to `src/lib/legal/subprocessors.ts` with its verified DPA link: enquiry alerts send organisation names, and Nucleos's CBAM review alert sends case details.
 - [ ] D5. Apply the pilot-enquiry migration to production before the form goes live.
 - [ ] D6. Full check before publishing: build, every page at phone to desktop widths, keyboard pass, form submission against a non-production database.

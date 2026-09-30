@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
+import { sendEnquiryAlert } from '@/lib/marketing/enquiry-alert'
 
 const schema = z.object({
   requestId: z.uuid(),
@@ -46,5 +47,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'We could not save your request. Please try again later.' }, { status: 503 })
   }
 
+  await sendEnquiryAlert({ kind: 'pilot', orgName, detail: [audience, plan].filter(Boolean).join(' · ') })
   return NextResponse.json({ ok: true }, { status: 201 })
 }

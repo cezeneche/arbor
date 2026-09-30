@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
+import { sendEnquiryAlert } from '@/lib/marketing/enquiry-alert'
 
 const schema = z.object({
   orgName: z.string().trim().min(1).max(200),
@@ -42,5 +43,6 @@ export async function POST(req: NextRequest) {
     },
   })
 
+  await sendEnquiryAlert({ kind: 'institutional', orgName, detail: interestArea.toLowerCase().replace('_', ' ') })
   return NextResponse.json({ ok: true }, { status: 201 })
 }
