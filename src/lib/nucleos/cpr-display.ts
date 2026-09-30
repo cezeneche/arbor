@@ -1,8 +1,8 @@
 // How a carbon price relief claim is presented.
 //
-// The verification flag is NON-BLOCKING but it must travel. An unverified claim
-// is still payable and still reduces the liability, so refusing to show it would
-// be wrong — but presenting it as though it were verified would be worse.
+// An unverified claim is recorded and shown, but does not reduce the return:
+// relief needs independent verification of the carbon price paid. Presenting it
+// as though it counted would be worse than not showing it.
 //
 // Arbor's design rules already forbid confident styling on uncertain data. This
 // applies that rule to a signal that is not a confidence score: verification is
@@ -56,7 +56,7 @@ export function cprDisplay(claim: CprClaimInput): CprDisplay {
   // how it was derived, because a reviewer scanning stops at the first line.
   if (claim.verificationStatus === 'UNVERIFIED') {
     qualifications.push(
-      'The carbon price behind this claim has not been verified. The relief still applies.',
+      'The carbon price behind this claim has not been verified, so the relief is not counted on the return until the verifier’s statement is attached.',
     )
   }
   if (claim.schemeQualifying === false) {

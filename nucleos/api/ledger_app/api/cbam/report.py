@@ -219,9 +219,8 @@ def build_case_hmrc_return(
     Fetches the report package, loads all confirmed CPR claims, derives the
     applicable CBAM rate, and assembles the HMRCReturnDocument.
 
-    CPR claims persisted via POST /api/cbam/cpr/claims are automatically
-    summed per consignment and applied as Carbon Price Relief — reducing the
-    net CBAM liability in the return.
+    Each goods line's latest CPR claim with its verifier's statement attached is
+    applied as Carbon Price Relief, capped at that line's own CBAM charge.
 
     Requires: accuracy_declaration = True (certifies the return is accurate).
     """
@@ -230,7 +229,7 @@ def build_case_hmrc_return(
         UKCBAMRatePlaceholder,
         get_uk_cbam_rate_or_raise,
     )
-    from app.services.cpr_repository import get_cpr_by_consignment_db  # noqa: PLC0415
+    from app.services.cpr_repository import get_cpr_by_goods_line_db  # noqa: PLC0415
     from app.services.hmrc_return_builder import (  # noqa: PLC0415
         HMRCReturnInput,
         HMRCReturnValidationError,
@@ -270,8 +269,8 @@ def build_case_hmrc_return(
 
         case_row = dict(case_rows[0])
 
-        # CPR: sum claims per consignment
-        cpr_by_consignment = get_cpr_by_consignment_db(conn, str(case_id), tenant_id)
+        # CPR: each goods line's latest verified claim, capped per line by the builder
+        cpr_by_goods_line = get_cpr_by_goods_line_db(conn, str(case_id), tenant_id)
 
         # Build report package
         shipments_payload = _shared._build_case_shipments_payload(conn, case_id)
@@ -341,7 +340,7 @@ def build_case_hmrc_return(
         importer_address        = payload.importer_address,
         cbam_rate_gbp_per_tco2e = cbam_rate,
         accuracy_declaration    = True,
-        cpr_by_consignment      = cpr_by_consignment,
+        cpr_by_goods_line       = cpr_by_goods_line,
         verification_refs       = verification_refs,
     )
 

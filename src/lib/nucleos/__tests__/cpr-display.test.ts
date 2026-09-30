@@ -37,10 +37,12 @@ describe('cprDisplay', () => {
     expect(cprDisplay({ ...BASE, verificationStatus: 'NOT_APPLICABLE' }).band).toBe('moderate')
   })
 
-  it('says the relief still applies, so nobody reads the flag as a rejection', () => {
+  // Relief needs independent verification of the carbon price paid before it
+  // reduces the return, so an unverified claim is recorded but not counted.
+  it('says an unverified claim is not counted until its statement is attached', () => {
     const [first] = cprDisplay({ ...BASE, verificationStatus: 'UNVERIFIED' }).qualifications
     expect(first).toMatch(/not been verified/i)
-    expect(first).toMatch(/still applies/i)
+    expect(first).toMatch(/not counted on the return until the verifier’s statement is attached/i)
   })
 
   it('leads with why the figure might be wrong, not how it was derived', () => {

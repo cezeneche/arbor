@@ -84,6 +84,9 @@ class HMRCReturnInput:
     """Methodology / limitations text from the narrative pipeline (rendered in PDF)."""
     cpr_by_consignment: dict[str, Decimal] = field(default_factory=dict)
     """consignment_reference → Carbon Price Relief in GBP.  Defaults to 0 when absent."""
+    cpr_by_goods_line: dict[str, Decimal] = field(default_factory=dict)
+    """goods_line_id → Carbon Price Relief in GBP, capped at that line's own charge.
+    When given, it is used instead of cpr_by_consignment."""
     verification_refs: dict[str, str] = field(default_factory=dict)
     """goods_line_id → verification reference for actual_verified emissions claims."""
     cn8_overrides: dict[str, str] = field(default_factory=dict)
@@ -381,6 +384,7 @@ def build_hmrc_return(
         )
 
         goods_lines: list[HMRCGoodsLine] = []
+        line_ids: list[str] = []
         for gl_item in ship_item.get("goods_lines") or []:
             gl  = gl_item.get("goods_line") or {}
             em  = gl_item.get("latest_emissions") or {}
@@ -475,18 +479,29 @@ def build_hmrc_return(
                 default_value_used      = hmrc_method == "default",
                 cn8_disambiguated       = disambiguated,
             ))
+            line_ids.append(gid)
 
             total_charge += charge
 
-        # CPR is claimed once per consignment (CLAUDE.md Rule 7) but reported
-        # per goods line — distribute proportionally by each line's charge
-        # weight so cpr_gbp never exceeds that line's own cbam_charge_gbp.
-        if goods_lines and cpr_for_consignment > Decimal("0"):
+        # Finance (No.2) Bill 2025-26, CPR: relief cannot exceed the CBAM charge
+        # for the goods line it relates to. The return's total relief is the sum
+        # of what each line was allowed, so relief above one line's charge never
+        # offsets another line's — or another consignment's.
+        if input_data.cpr_by_goods_line:
+            for gid, gl in zip(line_ids, goods_lines):
+                claimed = _to_decimal(input_data.cpr_by_goods_line.get(gid), Decimal("0"))
+                gl.cpr_gbp = _gbp(min(max(claimed, Decimal("0")), gl.cbam_charge_gbp))
+                gl.cbam_liability_gbp = _gbp(gl.cbam_charge_gbp - gl.cpr_gbp)
+                total_cpr += gl.cpr_gbp
+        elif goods_lines and cpr_for_consignment > Decimal("0"):
+            # Relief given for the consignment as a whole: capped at the
+            # consignment's charge, then spread by each line's share of it.
             consignment_charge = sum(gl.cbam_charge_gbp for gl in goods_lines)
+            allowed = _gbp(min(cpr_for_consignment, consignment_charge))
             allocated = Decimal("0")
             for gl in goods_lines[:-1]:
                 gl_cpr = (
-                    _gbp(cpr_for_consignment * gl.cbam_charge_gbp / consignment_charge)
+                    _gbp(allowed * gl.cbam_charge_gbp / consignment_charge)
                     if consignment_charge > Decimal("0")
                     else Decimal("0")
                 )
@@ -494,11 +509,10 @@ def build_hmrc_return(
                 gl.cbam_liability_gbp = _gbp(max(gl.cbam_charge_gbp - gl_cpr, Decimal("0")))
                 allocated += gl_cpr
             last = goods_lines[-1]
-            last_cpr = _gbp(max(cpr_for_consignment - allocated, Decimal("0")))
+            last_cpr = _gbp(max(allowed - allocated, Decimal("0")))
             last.cpr_gbp = last_cpr
             last.cbam_liability_gbp = _gbp(max(last.cbam_charge_gbp - last_cpr, Decimal("0")))
-
-        total_cpr += cpr_for_consignment
+            total_cpr += allowed
 
         if goods_lines:
             consignments.append(HMRCConsignment(

@@ -92,14 +92,14 @@ class CPRResult:
     free_allocations:             Decimal
     rebates:                      Decimal
     exchange_rate_to_gbp:         Decimal
-    cbam_liability_gbp:           Decimal
+    cbam_liability_gbp:           Decimal | None   # None: stored uncapped
 
     # Derived (independently re-derivable from inputs — stored for convenience)
     net_price_local:              Decimal   # ≥ 0; clamped if allocs+rebates > price
     effective_carbon_price_gbp:   Decimal   # net_price_local × exchange_rate_to_gbp
     cpr_raw_gbp:                  Decimal   # verified_emissions × effective_price
     cpr_capped:                   bool      # True when raw CPR > CBAM liability
-    cpr_amount_gbp:               Decimal   # min(cpr_raw_gbp, cbam_liability_gbp)
+    cpr_amount_gbp:               Decimal   # min(cpr_raw_gbp, cbam_liability_gbp), or raw when uncapped
 
     # GACI verification provenance — mandatory per CLAUDE.md Rule 7.
     # Stored verbatim so a regulator auditing the declaration can verify the
@@ -250,7 +250,7 @@ def _validate_inputs(
     free_allocations: Decimal,
     rebates: Decimal,
     exchange_rate_to_gbp: Decimal,
-    cbam_liability_gbp: Decimal,
+    cbam_liability_gbp: Decimal | None,
 ) -> list[str]:
     failures: list[str] = []
     if verified_emissions_tco2e <= _ZERO:
@@ -263,7 +263,7 @@ def _validate_inputs(
         failures.append("rebates must be ≥ 0")
     if exchange_rate_to_gbp <= _ZERO:
         failures.append("exchange_rate_to_gbp must be > 0")
-    if cbam_liability_gbp < _ZERO:
+    if cbam_liability_gbp is not None and cbam_liability_gbp < _ZERO:
         failures.append("cbam_liability_gbp must be ≥ 0")
     if not currency_code or len(currency_code.strip()) != 3:
         failures.append("currency_code must be a 3-letter ISO 4217 code (e.g. 'EUR')")
@@ -279,7 +279,7 @@ def calculate_cpr(
     free_allocations: Decimal,
     rebates: Decimal,
     exchange_rate_to_gbp: Decimal,
-    cbam_liability_gbp: Decimal,
+    cbam_liability_gbp: Decimal | None,
     verifier_accreditation_body: str | None = None,
 ) -> CPRResult:
     """Calculate Carbon Price Relief for a single qualifying scheme.
@@ -307,7 +307,9 @@ def calculate_cpr(
         HMRC reference rate.
     cbam_liability_gbp:
         CBAM liability (£) for this goods line.  CPR is capped at this value
-        (cannot reduce liability below zero).
+        (cannot reduce liability below zero).  None stores the relief uncapped:
+        the HMRC return caps it at the goods line's own charge, which is often
+        not known when the claim is made (the rate may be unpublished).
 
     Returns
     -------
@@ -326,7 +328,7 @@ def calculate_cpr(
     free_allocations          = _to_d(free_allocations)
     rebates                   = _to_d(rebates)
     exchange_rate_to_gbp      = _to_d(exchange_rate_to_gbp)
-    cbam_liability_gbp        = _to_d(cbam_liability_gbp)
+    cbam_liability_gbp        = None if cbam_liability_gbp is None else _to_d(cbam_liability_gbp)
 
     failures = _validate_inputs(
         verified_emissions_tco2e, carbon_price_local, currency_code,
@@ -383,9 +385,9 @@ def calculate_cpr(
     #   cpr_raw = verified_emissions × effective_carbon_price_gbp
     cpr_raw_gbp = _gbp(verified_emissions_tco2e * effective_carbon_price_gbp)
 
-    # Step 4: cap at CBAM liability
-    cpr_capped = cpr_raw_gbp > cbam_liability_gbp
-    cpr_amount_gbp = _gbp(min(cpr_raw_gbp, cbam_liability_gbp))
+    # Step 4: cap at CBAM liability, when one was given
+    cpr_capped = cbam_liability_gbp is not None and cpr_raw_gbp > cbam_liability_gbp
+    cpr_amount_gbp = _gbp(min(cpr_raw_gbp, cbam_liability_gbp)) if cpr_capped else cpr_raw_gbp
 
     if cpr_capped:
         warnings.append(

@@ -280,6 +280,16 @@ try {
       message.slice(0, 100))
   }
 
+  // HMRC's monthly rate comes from Nucleos's reference table, not the database,
+  // so this one answers in full even on SQLite.
+  let hmrcRate = null
+  try {
+    hmrcRate = await relief.getHmrcExchangeRate('EUR', '2026-04-15')
+  } catch (e) {
+    hmrcRate = { error: e.message }
+  }
+  check("HMRC's exchange rate for the month comes back", hmrcRate?.rate === '0.8365', JSON.stringify(hmrcRate))
+
   // The relief client reads a 404 as "no claim waiting", so a wrong path would
   // pass through it unnoticed. Watch what Nucleos actually answers instead.
   let reliefStatus = null

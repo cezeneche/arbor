@@ -1,4 +1,4 @@
-import { listQualifyingSchemes, listReliefClaims, recordReliefStatement } from '../relief-client'
+import { getHmrcExchangeRate, listQualifyingSchemes, listReliefClaims, recordReliefStatement } from '../relief-client'
 import { VerificationRejectedError } from '../verification-client'
 import { NucleosUnavailableError } from '../extraction-client'
 
@@ -71,5 +71,26 @@ describe('relief client', () => {
   it('fails closed otherwise', async () => {
     await expect(listReliefClaims('gl-1', fake(500).impl)).rejects.toBeInstanceOf(NucleosUnavailableError)
     await expect(listQualifyingSchemes('DE', fake(500).impl)).rejects.toBeInstanceOf(NucleosUnavailableError)
+  })
+})
+
+describe('getHmrcExchangeRate', () => {
+  it("reads HMRC's rate for the month of the date", async () => {
+    const { impl, calls } = fake(200, {
+      currency: 'EUR', date: '2027-04-15', rate: '0.8365', effective_from: '2027-04-01',
+      source: 'HMRC monthly rates', table_version: '2027-uk-v1',
+    })
+    await expect(getHmrcExchangeRate('eur', '2027-04-15', impl)).resolves.toEqual({
+      rate: '0.8365', effectiveFrom: '2027-04-01', source: 'HMRC monthly rates', tableVersion: '2027-uk-v1',
+    })
+    expect(calls[0].url).toBe('https://nucleos.test/api/cbam/cpr/exchange-rate?currency=EUR&date=2027-04-15')
+  })
+
+  it('treats a month Nucleos does not hold as no rate', async () => {
+    await expect(getHmrcExchangeRate('EUR', '2027-05-15', fake(404, { detail: 'not held' }).impl)).resolves.toBeNull()
+  })
+
+  it('fails closed otherwise', async () => {
+    await expect(getHmrcExchangeRate('EUR', '2027-05-15', fake(500, {}).impl)).rejects.toBeInstanceOf(NucleosUnavailableError)
   })
 })

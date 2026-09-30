@@ -68,15 +68,25 @@ describe('presentReliefClaims', () => {
   it('counts only the newest claim; earlier ones were replaced', () => {
     const rows = presentReliefClaims(
       [
-        claim({ id: 'old', created_at: '2027-04-19T10:00:00Z', cpr_amount_gbp: 7000 }),
-        claim({ id: 'new', created_at: '2027-04-20T10:00:00Z', cpr_amount_gbp: '5100.00' }),
+        claim({ id: 'old', created_at: '2027-04-19T10:00:00Z', cpr_amount_gbp: 7000, verification_document_hash: 'a'.repeat(64) }),
+        claim({ id: 'new', created_at: '2027-04-20T10:00:00Z', cpr_amount_gbp: '5100.00', verification_document_hash: 'a'.repeat(64) }),
       ],
       [],
     )
-    expect(rows.map(r => [r.id, r.counts, r.status, r.amount])).toEqual([
-      ['new', true, 'Counts on the return', '£5,100.00'],
-      ['old', false, 'Replaced by a later claim', '£7,000.00'],
+    expect(rows.map(r => [r.id, r.latest, r.counts, r.status, r.amount])).toEqual([
+      ['new', true, true, 'Counts on the return', '£5,100.00'],
+      ['old', false, false, 'Replaced by a later claim', '£7,000.00'],
     ])
+  })
+
+  // Relief needs a verifier's statement before it reduces the return.
+  it('does not count the newest claim until its statement is attached', () => {
+    const [row] = presentReliefClaims([claim({ id: 'c' })], [])
+    expect(row).toMatchObject({
+      latest: true,
+      counts: false,
+      status: 'Not counted until the verifier’s statement is attached',
+    })
   })
 
   it('shows the figures the relief was worked out from', () => {
@@ -98,11 +108,11 @@ describe('presentReliefClaims', () => {
     expect(row.summary).toBe('Verified carbon price')
   })
 
-  it('marks a claim with no statement as unverified, and it still counts', () => {
+  it('marks a claim with no statement as unverified', () => {
     const [row] = presentReliefClaims([claim({ id: 'c' })], [])
     expect(row.statement).toEqual({ attached: false, label: 'No verifier’s statement yet', statementId: null })
     expect(row.summary).toBe('Unverified carbon price — please review')
-    expect(row.counts).toBe(true)
+    expect(row.qualifications[0]).toMatch(/not counted on the return/)
   })
 
   it('says when the relief was capped at the liability', () => {

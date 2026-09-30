@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { CbamCasePicker } from './CbamCasePicker'
-import { netLiability, missingForCalculation } from '@/lib/nucleos/cpr-form'
+import { missingForCalculation } from '@/lib/nucleos/cpr-form'
 import type { CbamCaseSummary } from '@/lib/nucleos/cases-client'
 import type { PresentedReliefClaim, SchemeChoice } from '@/lib/nucleos/relief-presenter'
 
@@ -36,12 +36,11 @@ interface ReliefView {
   retryProblem: string | null
 }
 
+type HmrcRateAnswer = { held: true; rate: string; label: string } | { held: false; message: string }
+
 interface CprResult {
   cpr_amount_gbp: string
   effective_carbon_price_gbp: string
-  cpr_raw_gbp: string
-  cpr_capped: boolean
-  cbam_liability_gbp: string
   warnings: string[]
 }
 
@@ -136,14 +135,14 @@ function ClaimList({ caseId, lineId, claims }: { caseId: string; lineId: string;
       {claims.map(claim => (
         <div
           key={claim.id}
-          style={{ padding: `${spacing[2]} 0`, borderBottom: `1px solid ${colours.border}`, opacity: claim.counts ? 1 : 0.7 }}
+          style={{ padding: `${spacing[2]} 0`, borderBottom: `1px solid ${colours.border}`, opacity: claim.latest ? 1 : 0.7 }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing[2] }}>
             <span
               style={{
                 fontSize: typography.sizes.sm,
-                fontWeight: claim.counts ? typography.weights.medium : typography.weights.light,
-                color: claim.counts ? colours.navy : colours.textTertiary,
+                fontWeight: claim.latest ? typography.weights.medium : typography.weights.light,
+                color: claim.counts ? colours.navy : claim.latest ? colours.amber : colours.textTertiary,
               }}
             >
               {claim.status}
@@ -151,7 +150,7 @@ function ClaimList({ caseId, lineId, claims }: { caseId: string; lineId: string;
             <span
               style={{
                 fontSize: typography.sizes.sm,
-                fontWeight: claim.counts ? typography.weights.medium : typography.weights.light,
+                fontWeight: claim.latest ? typography.weights.medium : typography.weights.light,
                 color: colours.textPrimary,
                 fontVariantNumeric: 'tabular-nums',
               }}
@@ -162,7 +161,7 @@ function ClaimList({ caseId, lineId, claims }: { caseId: string; lineId: string;
           <p style={{ ...textStyles.caption, color: colours.textSecondary, margin: '4px 0 0' }}>
             {claim.scheme} · {claim.basis}
           </p>
-          {claim.counts && (
+          {claim.latest && (
             <>
               <p style={{ ...textStyles.caption, color: claim.statement.attached ? colours.green : colours.amber, margin: '4px 0 0' }}>
                 {claim.statement.label}
@@ -231,7 +230,7 @@ function StatementForm({ caseId, lineId, onDone }: { caseId: string; lineId: str
     <div>
       <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}`, lineHeight: 1.6, maxWidth: '520px' }}>
         Attach the accredited verifier&apos;s statement confirming the carbon price paid. Until it is attached, the
-        claim goes on the return as unverified.
+        relief is not counted on the return.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3], maxWidth: '620px', marginBottom: spacing[3] }}>
         <div>
@@ -291,7 +290,30 @@ function ClaimForm({
   const [price, setPrice] = useState('')
   const [allocations, setAllocations] = useState('0')
   const [rate, setRate] = useState('')
+  const [rateTyped, setRateTyped] = useState(false)
   const [rateDate, setRateDate] = useState('')
+  // HMRC's rate for the month of the rate date, kept with the currency and date
+  // it answers, so a changed currency or date never shows a stale answer.
+  const [hmrc, setHmrc] = useState<{ key: string; answer: HmrcRateAnswer } | null>(null)
+  const rateKey = /^[A-Z]{3}$/.test(currency) && /^\d{4}-\d{2}-\d{2}$/.test(rateDate) ? `${currency}|${rateDate}` : null
+  const hmrcAnswer = hmrc && hmrc.key === rateKey ? hmrc.answer : null
+
+  useEffect(() => {
+    if (!rateKey) return
+    let cancelled = false
+    const [code, day] = rateKey.split('|')
+    fetch(`/api/cbam/relief/exchange-rate?currency=${encodeURIComponent(code)}&date=${encodeURIComponent(day)}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then((answer: HmrcRateAnswer | null) => {
+        if (cancelled || !answer) return
+        setHmrc({ key: rateKey, answer })
+        if (answer.held && !rateTyped) setRate(answer.rate)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [rateKey, rateTyped])
   const [verifier, setVerifier] = useState('')
   const [verifierBody, setVerifierBody] = useState('')
 
@@ -322,7 +344,6 @@ function ClaimForm({
           free_allocations: Number(allocations || '0'),
           rebates: 0,
           exchange_rate_to_gbp: Number(rate),
-          cbam_liability_gbp: case_.estimated_liability_gbp ?? 0,
         }),
       })
       const body = await res.json()
@@ -358,7 +379,6 @@ function ClaimForm({
           verified_emissions_tco2e: Number(emissions),
           exchange_rate_to_gbp: Number(rate),
           exchange_rate_date: rateDate,
-          cbam_liability_gbp: case_.estimated_liability_gbp ?? 0,
           verifier_name: verifier || null,
           verifier_accreditation_body: verifierBody || null,
         }),
@@ -377,21 +397,14 @@ function ClaimForm({
   }
 
   if (phase === 'preview' && result) {
-    const net = netLiability(case_.estimated_liability_gbp, Number(result.cpr_amount_gbp))
     return (
       <div style={{ maxWidth: '460px' }}>
         <Row label="Effective carbon price" value={money(result.effective_carbon_price_gbp)} />
-        <Row label="Relief before any cap" value={money(result.cpr_raw_gbp)} />
         <Row label="Relief claimed" value={money(result.cpr_amount_gbp)} emphasis />
-        <div style={{ borderTop: `1px solid ${colours.border}`, margin: `${spacing[2]} 0` }} />
-        <Row label="CBAM liability" value={money(result.cbam_liability_gbp)} />
-        <Row label="Left owing after relief" value={net === null ? 'Not yet known' : money(net)} emphasis />
-
-        {result.cpr_capped && (
-          <p style={note(colours.amber)}>
-            The relief was capped at the CBAM liability. Relief reduces what is owed; it is not refunded beyond it.
-          </p>
-        )}
+        <p style={note(colours.textSecondary)}>
+          On the return, relief is capped at the CBAM charge on these goods: it reduces what is owed, and is never
+          refunded beyond it.
+        </p>
         {result.warnings?.map(w => (
           <p key={w} style={note(colours.amber)}>
             {w}
@@ -468,7 +481,34 @@ function ClaimForm({
         </div>
         <div>
           <p style={labelStyle}>Exchange rate to GBP</p>
-          <input type="number" min={0} step="0.0001" value={rate} onChange={e => setRate(e.target.value)} placeholder="e.g. 0.8500" style={inputStyle} aria-label="Exchange rate" />
+          <input
+            type="number"
+            min={0}
+            step="0.0001"
+            value={rate}
+            onChange={e => {
+              setRate(e.target.value)
+              setRateTyped(true)
+            }}
+            placeholder="e.g. 0.8500"
+            style={inputStyle}
+            aria-label="Exchange rate"
+          />
+          {hmrcAnswer && (
+            <p
+              style={{
+                ...textStyles.caption,
+                margin: '4px 0 0',
+                color: hmrcAnswer.held && rate !== '' && Number(rate) !== Number(hmrcAnswer.rate) ? colours.amber : colours.textTertiary,
+              }}
+            >
+              {!hmrcAnswer.held
+                ? hmrcAnswer.message
+                : rate !== '' && Number(rate) !== Number(hmrcAnswer.rate)
+                  ? `This differs from HMRC’s rate of ${hmrcAnswer.rate} for the month.`
+                  : hmrcAnswer.label}
+            </p>
+          )}
         </div>
         <div>
           <p style={labelStyle}>Date of the rate (normally the import date)</p>
