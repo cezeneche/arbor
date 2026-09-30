@@ -14,5 +14,5 @@ export function CopyCode({ label, code }: { label: string; code: string }) {
     }
   }
 
-  return <div className="mk-code-block"><div className="mk-code-toolbar"><span>{label}</span><button type="button" onClick={copy}>Copy</button><span role="status" className="mk-code-status">{status}</span></div><pre><code>{code}</code></pre></div>
+  return <div className="mk-code-block"><div className="mk-code-toolbar"><span>{label}</span><button type="button" onClick={copy}>Copy</button><span role="status" className="mk-code-status">{status}</span></div><pre tabIndex={0} role="region" aria-label={`${label} example`}><code>{code}</code></pre></div>
 }

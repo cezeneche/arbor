@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { PublicNav } from '@/components/marketing/PublicNav'
+import { SkipLink, MAIN_CONTENT_ID } from '@/components/marketing/SkipLink'
 import { PublicFooter } from '@/components/marketing/PublicFooter'
 import '../(marketing)/marketing.css'
 
@@ -91,9 +92,10 @@ export default function InstitutionalPage() {
         fontFamily: typography.fontFamily,
       }}
     >
+      <SkipLink />
       <PublicNav />
 
-      <main style={{ maxWidth: '960px', margin: '0 auto', padding: `${spacing[8]} ${spacing[4]}` }}>
+      <main id={MAIN_CONTENT_ID} tabIndex={-1} style={{ maxWidth: '960px', margin: '0 auto', padding: `${spacing[8]} ${spacing[4]}` }}>
         {/* Hero */}
         <div style={{ marginBottom: spacing[8] }}>
           <p
@@ -273,7 +275,7 @@ export default function InstitutionalPage() {
             Tell us about your organisation and what you are looking for. Fields marked * are required.
           </p>
           <p style={{ fontSize: typography.sizes.sm, color: colours.textSecondary, lineHeight: 1.6, margin: `0 0 ${spacing[3]}` }}>
-            We use the details you provide to handle your enquiry. See our <a href="/legal/privacy" style={{ color: colours.navy }}>Privacy Policy</a>.
+            We use the details you provide to handle your enquiry. See our <a href="/legal/privacy" style={{ color: colours.navy, textDecoration: 'underline' }}>Privacy Policy</a>.
           </p>
 
           <div role="status" aria-live="polite" aria-atomic="true">

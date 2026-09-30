@@ -39,7 +39,7 @@ const steps = [
   {
     number: '04',
     title: 'Prepare the return',
-    body: 'Arbor prepares the UK return, by consignment and goods line, as a document and a data file, and an EU declaration in XML for your declarant.',
+    body: 'Arbor prepares the UK return, by consignment and goods line, as a document and a data file, and the figures for your EU declaration, in an XML file, for your declarant to enter in the EU registry.',
     detail: 'Arbor does not submit to HMRC or the EU registry. You, or your agent, review and submit.',
   },
 ]
@@ -90,7 +90,7 @@ export default function CbamCompliancePage() {
               threshold pay a charge on the carbon embedded in those goods. The figures come from customs entries you hold and from suppliers who may not
               have them ready.
             </p>
-            <div className="mk-domain-grid">
+            <div className="mk-domain-grid mk-date-grid">
               {dates.map(d => (
                 <div className="mk-domain-row" key={d.name}>
                   <strong>{d.name}</strong>

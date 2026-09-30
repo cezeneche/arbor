@@ -22,9 +22,16 @@ Suggested order: A1 and A3 first (small; A1 corrects wrong information shown to 
 ## B. Review (needs a real run)
 
 - [ ] **B1. First audit narrative in production.** Write one on a real case. It is the only end-to-end proof that the `narrative:run` token works. Needs the owner's login.
+  - Steps: sign in as an organisation member (not the ops account) → CBAM → the case (only `e5f88ff8…` has a link today) → **Write the audit narrative**. It can take a minute. Pass: the narrative shows with a byline. A 403 means the token lacks `narrative:run`; if review is required, the Slack alert should arrive.
 - [ ] **B2. One real CBAM case end to end in production**, including a supplier submitting the form. This has never happened in production.
-- [ ] **B3. Validate the EU declaration XML** against the Commission's official registry schema (XSD) before anyone uploads one.
+  - Steps: upload a real customs declaration → confirm it (import date asked for if missing) → the case opens with a goods line per commodity code → **Create supplier link** on a line → open it in a private window as the supplier and submit → the figure reaches the line → produce the return for the case's regime. Do B1 on this case afterwards. Pass: every step without a manual database fix. Note any wording the supplier stumbles on.
+- [x] **B3. Validate the EU declaration XML** against the Commission's official registry schema (XSD) before anyone uploads one.
+  - Done (30 September 2026). **It does not validate, and cannot yet.** The Commission has published no schema for the annual declaration. The only official one is the transitional quarterly report (`QReport` 18.30, namespace `http://xmlns.ec.eu/BusinessObjects/CBAM/Types/V1`, on the CBAM archive page). A file from `eu_xml_builder.py` fails it at the root: `cbam:quarterlyDeclaration` in `urn:ec.europa.eu:taxud:cbam:declaration:v1` is Nucleos's own layout, and its `cbam-declaration-v1.xsd` doesn't exist. (The Commission's own 18.30 zip doesn't compile either: `QReport_18.30.xsd` uses a type `an..4000` its bundled `stypes_17.03.xsd` lacks.)
+  - Fixed now: the case page called the file "the quarterly XML declaration you lodge with the EU registry". It now says it holds the figures for the annual declaration, is not in the registry's upload format, and that the declarant enters the figures. The CBAM marketing page says the same.
+  - [ ] **B3a. Build the registry format** when the Commission publishes the annual-declaration schema. Watch the CBAM Registry and Reporting page. Validate against it in a test before calling the file uploadable.
 - [ ] **B4. Compare the UK return layout with HMRC's own format** once HMRC publishes it. Today it is our own layout of the fields HMRC asks for.
+  - Checked 30 September 2026: still not published. Returns go through HMRC's online CBAM service on Government Gateway, with more guidance "in the autumn". No file format or API is published.
+  - One rule is already known: the draft Force of Law notice (13 July 2026) says the first return, for 2027, must state the quarter each good was imported in. Our return carries each consignment's import date but not the quarter as a field, and an unreadable import date falls back to the period start (flagged, but that is Q1 for the annual return). Add the quarter per consignment when this item is picked up.
 - [x] **B6. Check the CBAM CN-code table against Annex I.** `nucleos/api/ledger_app/services/cbam_taric.py` lists urea as `31021000` and `31021090`, but not `31021010` (believed to be urea with more than 45% nitrogen, a common grade), so the scope check may call real urea imports "not covered". Check the whole table against the current Annex I and TARIC before relying on the scope check.
   - Done (30 September 2026). Checked against Annex I of Regulation (EU) 2023/956 as published and GOV.UK's sector lists (16 July 2026), which match the EU's for the five sectors the UK covers. Urea was not actually missed (the whole of 3102 is in Annex I, and 3102 10 10 was split into 3102 10 12 / 15 / 19 in 2025), but the table was wrong in other places:
     - wrongly **in** scope: ferrous scrap (7204), the ferro-alloys Annex I excepts (ferro-silicon, -molybdenum, -tungsten and others in 7202), chapter 73 headings Annex I does not list (7312–7317, 7319–7325: nails, chain, household articles and more), aluminium scrap (7602) and household articles (7615), and magnesium sulphate (2833 21 00);
@@ -32,7 +39,10 @@ Suggested order: A1 and A3 first (small; A1 corrects wrong information shown to 
   - The table now names whole headings as Annex I does, with Annex I's exceptions, so new CN8 codes under a covered heading are covered automatically. Version `2023-956-AnnexI-checked-2026-09-30`. No golden case moved.
   - Left alone: the unused description classifier (`cbam_classifier.py`, no production caller) still has scrap entries, and the default-values table still has rows for goods outside Annex I, which the scope check now keeps out of any case.
 - [ ] **B7. The EU scope check still uses the old EUR 150 de minimis.** Since 1 January 2026 (Regulation (EU) 2025/2083, Article 2a) the EU exemption is 50 tonnes a year, cumulative per importer across iron and steel, aluminium, fertilisers and cement (not hydrogen or electricity). `cbam_scope.py` still calls a consignment under EUR 150 out of scope, which can tell an importer that liable goods are exempt. One line cannot settle an annual threshold, so this needs a decision on what the scope check should say instead.
-- [ ] **B5. Browser pass of the marketing site** at 320 / 390 / 768 / 1024 / desktop widths, with keyboard and screen-reader checks. Nobody has viewed the new `--mk-` colour tokens in a browser yet.
+- [x] **B5. Browser pass of the marketing site** at 320 / 390 / 768 / 1024 / desktop widths, with keyboard and screen-reader checks. Nobody has viewed the new `--mk-` colour tokens in a browser yet.
+  - Done (30 September 2026), all 12 public pages, automated with Playwright and axe-core (WCAG 2.1 AA) in light and dark mode. What was fine: no horizontal scroll at any width, no contrast failures in either mode, a visible focus ring on every Tab stop, one `h1` per page with no skipped heading levels, `lang="en"`, labelled navigation, and a mobile menu that opens with Enter and closes with Escape, returning focus.
+  - Fixed: the CBAM deadline dates broke mid-word from 768 px up ("Janua / ry"); no skip link on any page; the privacy link in the request forms was marked by colour alone (1.9:1); code examples on `/docs/api` and the provider tables in the Privacy Policy and DPA scrolled sideways on phones but could not be reached by keyboard.
+  - Not done: a pass with a real screen reader (VoiceOver). The structure it relies on checks out, but nobody has listened to the pages.
 
 ## C. Later: planned, built only when earned
 
@@ -47,5 +57,6 @@ Suggested order: A1 and A3 first (small; A1 corrects wrong information shown to 
 
 ## D. Housekeeping
 
-- [ ] **D1. Delete two stale branches**, `docs/launch-readiness-audit-2026-09-16` and `fix/product-trim`. Everything in them is already in `main`.
-- [ ] **D2. Update `docs/marketing/todo.md` D3.** The enquiry webhook is now set and tested; the file still lists it as to do.
+- [x] **D1. Delete two stale branches**, `docs/launch-readiness-audit-2026-09-16` and `fix/product-trim`. Everything in them is already in `main`.
+  - Done 30 September 2026, locally and on GitHub, after checking each commit's patch and each changed file against `main`.
+- [x] **D2. Update `docs/marketing/todo.md` D3.** The enquiry webhook is now set and tested; the file still lists it as to do.

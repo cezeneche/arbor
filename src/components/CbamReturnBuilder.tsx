@@ -30,8 +30,13 @@ const LABELS: Record<ReturnFormat, { title: string; action: string; detail: stri
   EU_XML: {
     title: 'EU declaration',
     action: 'Produce the declaration',
+    // Nucleos's own XML layout. The Commission has not published an upload
+    // format for the annual declaration, so the file cannot go to the registry
+    // as it is. Say so, or an importer will try.
     detail:
-      'The quarterly XML declaration you lodge with the EU registry, built from this case.',
+      'The figures for your annual EU declaration, built from this case, as an XML file for your declarant. ' +
+      "It is not in the EU registry's upload format, which the Commission has not yet published; " +
+      'your declarant enters these figures in the registry.',
   },
 }
 
