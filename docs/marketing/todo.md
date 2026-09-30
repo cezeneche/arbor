@@ -52,3 +52,9 @@ Started 30 September 2026. Decisions: CBAM is a **second audience** with its own
   - Add **Slack** to `src/lib/legal/subprocessors.ts` with its verified DPA link: enquiry alerts send organisation names, and Nucleos's CBAM review alert sends case details.
 - [ ] D5. Apply the pilot-enquiry migration to production before the form goes live.
 - [ ] D6. Full check before publishing: build, every page at phone to desktop widths, keyboard pass, form submission against a non-production database.
+  - Done 30 September 2026:
+    - 2208 tests pass and TypeScript is clean.
+    - The default `npm run build` (Turbopack) passes; `/cbam-compliance` is prerendered as static.
+    - The built site returned 200 for all 13 public pages, and redirected signed-out visitors from `/cbam` and `/admin/enquiries` to `/login`.
+    - Rendered HTML confirmed the CBAM nav link, the home band, the Verified example, `#limits`, the CBAM page's dates and boundary, the importer request page, and the Pricing and About changes.
+  - Still open: visual review at 320/390/768/1024/desktop (the new colour tokens especially), keyboard and screen-reader pass, and a form submission against a **non-production** database. Local `.env` points at production, so don't submit forms from a local server.
