@@ -163,7 +163,7 @@ export function SupplierForm({
           padding: `${spacing[2]} ${spacing[4]}`,
           fontSize: typography.sizes.sm,
           fontWeight: typography.weights.medium,
-          color: '#FFFFFF',
+          color: colours.surface,
           backgroundColor: colours.navy,
           border: 'none',
           borderRadius: '4px',

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { fieldLabel } from '@/lib/layer3/field-label'
-import { colours, typography, spacing, textStyles } from '@/lib/design-system'
+import { colours, typography, spacing, textStyles, trustTierConfig } from '@/lib/design-system'
 
 const DOMAINS = [
   { value: 'ENERGY', label: 'Energy' },
@@ -16,7 +16,6 @@ const DOMAINS = [
 ]
 
 const TIER_LABELS: Record<string, string> = { A: 'Verified', B: 'Declared', C: 'Estimated' }
-const TIER_COLOURS: Record<string, string> = { A: '#2A6048', B: '#8A3C0A', C: '#9ca3af' }
 
 interface Supplier { id: string; name: string }
 
@@ -323,7 +322,7 @@ export function ExportBuilder({
                         {new Date(r.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
                       </td>
                       <td style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: TIER_COLOURS[r.trustTier] ?? colours.textTertiary }}>
+                        <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: trustTierConfig[r.trustTier as keyof typeof trustTierConfig]?.colour ?? colours.textTertiary }}>
                           {TIER_LABELS[r.trustTier] ?? r.trustTier}
                         </span>
                       </td>

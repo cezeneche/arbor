@@ -12,7 +12,7 @@ Suggested order: A1 and A3 first (small; A1 corrects wrong information shown to 
   - Exchange rates: Nucleos's table (`nucleos/api/app/services/cpr_reference.py`) holds only 2026 rates for EUR and USD (and January 2026 only for CNY, TRY and INR), and none for CHF or SEK. The relief form therefore says "not held" for every 2027 claim.
   - UK CBAM rates: the same will apply to the quarterly rates once HMRC publishes them.
   - Build a monthly import from HMRC's published exchange rates into the versioned table (insert-never-update, new table version), with a test and an alert when a month is missing.
-- [ ] **A3. Remove hardcoded colours from product screens.** Ten raw colour values across eight files break the design-system rule: `Nav.tsx`, `CbamScopeChecker.tsx`, `SupplierForm.tsx`, `CbamStartCase.tsx`, `CbamRequestData.tsx`, `settings/TwoFactorSetup.tsx`, `requests/page.tsx`, `export/ExportBuilder.tsx`. Replace them with design-system tokens.
+- [x] **A3. Remove hardcoded colours from product screens.** Ten raw colour values across eight files break the design-system rule: `Nav.tsx`, `CbamScopeChecker.tsx`, `SupplierForm.tsx`, `CbamStartCase.tsx`, `CbamRequestData.tsx`, `settings/TwoFactorSetup.tsx`, `requests/page.tsx`, `export/ExportBuilder.tsx`. Replace them with design-system tokens.
 - [ ] **A4. Stop readiness failing after every deploy.** `/api/health/ready` returns 503 for about 15–30 seconds while Nucleos cold-starts, which an uptime monitor will read as an outage on every deploy. Tell a slow cold start apart from Nucleos being down.
 
 ## B. Review (needs a real run)

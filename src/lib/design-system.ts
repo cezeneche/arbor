@@ -17,6 +17,20 @@ export const colours = {
   slateBg: '#EFEEE9',
 } as const
 
+// Text and lines on navy surfaces (the portal sidebar, the records query panel).
+export const onNavy = {
+  text: colours.surface,
+  textStrong: 'rgba(255,255,255,0.75)',
+  textSoft: 'rgba(255,255,255,0.6)',
+  textSubtle: 'rgba(255,255,255,0.5)',
+  textMuted: 'rgba(255,255,255,0.45)',
+  textFaint: 'rgba(255,255,255,0.3)',
+  activeBorder: 'rgba(255,255,255,0.7)',
+  activeBg: 'rgba(255,255,255,0.09)',
+  border: 'rgba(255,255,255,0.12)',
+  divider: 'rgba(255,255,255,0.08)',
+} as const
+
 export const typography = {
   fontFamily: 'Inter, -apple-system, sans-serif',
   weights: { light: 300, medium: 500 } as const,

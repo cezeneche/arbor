@@ -145,7 +145,7 @@ export default async function RequestsPage({
               padding: `${spacing[2]} ${spacing[4]}`,
               fontSize: typography.sizes.sm,
               fontWeight: typography.weights.medium,
-              color: '#FFFFFF',
+              color: colours.surface,
               backgroundColor: colours.navy,
               borderRadius: '4px',
               textDecoration: 'none',

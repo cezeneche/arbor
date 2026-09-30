@@ -182,7 +182,7 @@ function CaseRequest({ caseId }: { caseId: string }) {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
     fontFamily: 'inherit',
-    color: '#FFFFFF',
+    color: colours.surface,
     backgroundColor: colours.navy,
     border: 'none',
     borderRadius: '4px',
