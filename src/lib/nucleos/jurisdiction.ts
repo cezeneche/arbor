@@ -10,8 +10,9 @@
 //   UK   — charges direct (Scope 1) emissions only; indirect emissions are out
 //          of scope until 2029 at the earliest. UK-produced precursor goods are
 //          excluded entirely. Output is a tax return filed with HMRC.
-//   EU   — charges direct and indirect emissions. Output is a quarterly XML
-//          declaration lodged with the EU registry, and certificates rather
+//   EU   — direct emissions for every good; indirect emissions only for
+//          cement and fertilisers (EU 2023/956 Art. 7(1), Annex II). Output is
+//          an annual declaration to the EU registry, with certificates rather
 //          than a tax charge.
 //
 // An importer can be exposed to both, which is why BOTH exists — Nucleos's case
@@ -54,8 +55,9 @@ export const CBAM_JURISDICTIONS: readonly JurisdictionOption[] = [
     id: 'EU',
     label: 'European Union',
     detail:
-      'You import into the EU and lodge a quarterly declaration with the EU ' +
-      'registry. Both direct and indirect emissions are counted.',
+      'You import into the EU and make an annual declaration to the EU registry, ' +
+      'with certificates to cover it. Direct emissions count for every good; ' +
+      'indirect emissions count only for cement and fertilisers.',
   },
   {
     id: 'BOTH',

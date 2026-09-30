@@ -100,3 +100,20 @@ describe('CBAM jurisdiction', () => {
     })
   })
 })
+
+// What importers are told about each regime. EU 2023/956: an annual declaration
+// in the definitive period, and indirect emissions count only for cement and
+// fertilisers (Annex II lists the direct-only goods).
+describe('what each regime is described as', () => {
+  it('describes the EU declaration as annual, with indirect emissions for cement and fertilisers only', () => {
+    const eu = describeJurisdiction('EU').detail
+    expect(eu).toMatch(/annual/i)
+    expect(eu).not.toMatch(/quarterly/i)
+    expect(eu).toMatch(/cement and fertilisers/)
+    expect(eu).not.toMatch(/Both direct and indirect emissions are counted/)
+  })
+
+  it('describes the UK as direct emissions only', () => {
+    expect(describeJurisdiction('UK').detail).toMatch(/Only direct emissions are charged/)
+  })
+})
