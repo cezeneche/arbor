@@ -302,8 +302,7 @@ export async function POST(
     ? replacementsByField(duplicates)
     : new Map<string, string[]>()
 
-  // scopes whose prior records were superseded, so we can notify buyers.
-  const supersededScopes: { domain: string; periodStart: Date; periodEnd: Date }[] = []
+  type SupersededScope = { domain: string; periodStart: Date; periodEnd: Date }
 
   // A sentinel rather than a returned error, so a second confirmation aborts the
   // transaction instead of half-writing. runSerializable rethrows anything that
@@ -344,10 +343,16 @@ export async function POST(
       }
     : null
 
+  // Everything the transaction decides comes back as its return value.
+  // runSerializable reruns the callback after a write conflict, so state kept
+  // outside it would carry over from an attempt that never committed.
   let createdRecords: string[]
+  // Scopes whose prior records were superseded, so buyers can be told.
+  let supersededScopes: SupersededScope[]
   try {
-    createdRecords = await runSerializable(async (tx) => {
+    ;({ recordIds: createdRecords, supersededScopes } = await runSerializable(async (tx) => {
     const recordIds: string[] = []
+    const supersededScopes: SupersededScope[] = []
 
     // The interactive confirm path wrote records without ever consulting the
     // plan cap. Counted inside the transaction that writes, so concurrent
@@ -459,8 +464,8 @@ export async function POST(
 
     if (cbamHandoff) await enqueueCbamHandoff(tx, cbamHandoff)
 
-    return recordIds
-    })
+    return { recordIds, supersededScopes }
+    }))
   } catch (e) {
     if (e instanceof AlreadyConfirmed) {
       return err('Document already confirmed', 'ALREADY_CONFIRMED', 409)
