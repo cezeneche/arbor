@@ -58,6 +58,8 @@ from typing import Any
 from xml.dom import minidom
 from xml.etree import ElementTree as ET
 
+from ledger_app.services.cbam_indirect_scope import counts_indirect_emissions
+
 _CBAM_NS = "urn:ec.europa.eu:taxud:cbam:declaration:v1"
 _XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 
@@ -329,6 +331,7 @@ def build_quarterly_declaration(
     goods_el = _sub(root, "goodsImported")
     total_direct = _ZERO
     total_indirect = _ZERO
+    total_counted = _ZERO
     total_mass = _ZERO
 
     for idx, gl in enumerate(goods_lines, start=1):
@@ -363,7 +366,11 @@ def build_quarterly_declaration(
         emissions_el = _sub(line_el, "embeddedEmissions")
         _sub(emissions_el, "directEmissions", _fmt(direct, 6))
         _sub(emissions_el, "indirectEmissions", _fmt(indirect, 6))
-        _sub(emissions_el, "totalEmbedded", _fmt(direct + indirect, 6))
+        # EU 2023/956 Art. 7(1), Annex II: indirect emissions are reported on
+        # every line but count towards the embedded total only for cement and
+        # fertilisers.
+        counted = direct + indirect if counts_indirect_emissions(raw_cn, "EU") else direct
+        _sub(emissions_el, "totalEmbedded", _fmt(counted, 6))
         _sub(emissions_el, "specificEmbeddedEmissions", _fmt(see, 6))
         _sub(emissions_el, "calculationMethod", mapped_method)
 
@@ -387,11 +394,12 @@ def build_quarterly_declaration(
 
         total_direct += direct
         total_indirect += indirect
+        total_counted += counted
         total_mass += mass_t
 
     # Aggregated embedded emissions
     agg_el = _sub(root, "embeddedEmissions")
-    computed_total = total_direct + total_indirect
+    computed_total = total_counted
     reported_total = (
         _to_decimal(total_embedded_tco2e)
         if total_embedded_tco2e is not None

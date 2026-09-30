@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { colours, typography, spacing } from '@/lib/design-system'
+import { colours, typography, spacing, onNavy } from '@/lib/design-system'
 import { getNavLinks, isLinkActive } from '@/lib/nav'
 
 export function Nav({
@@ -40,7 +40,7 @@ export function Nav({
           style={{
             fontSize: typography.sizes.base,
             fontWeight: typography.weights.medium,
-            color: '#FFFFFF',
+            color: onNavy.text,
             letterSpacing: typography.tracking.tight,
             marginBottom: '6px',
           }}
@@ -51,7 +51,7 @@ export function Nav({
           style={{
             fontSize: typography.sizes.xs,
             fontWeight: typography.weights.light,
-            color: 'rgba(255,255,255,0.45)',
+            color: onNavy.textMuted,
             letterSpacing: typography.tracking.wide,
             textTransform: 'uppercase',
             overflow: 'hidden',
@@ -63,7 +63,7 @@ export function Nav({
         </div>
       </div>
 
-      <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.08)', margin: `0 ${spacing[2]}` }} />
+      <div style={{ height: '1px', backgroundColor: onNavy.divider, margin: `0 ${spacing[2]}` }} />
 
       {/* Navigation links */}
       <div style={{ flex: 1, paddingTop: spacing[1] }}>
@@ -78,10 +78,10 @@ export function Nav({
                 padding: '9px 20px',
                 fontSize: typography.sizes.sm,
                 fontWeight: active ? typography.weights.medium : typography.weights.light,
-                color: active ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+                color: active ? onNavy.text : onNavy.textSubtle,
                 textDecoration: 'none',
-                backgroundColor: active ? 'rgba(255,255,255,0.09)' : 'transparent',
-                borderLeft: active ? '2px solid rgba(255,255,255,0.7)' : '2px solid transparent',
+                backgroundColor: active ? onNavy.activeBg : 'transparent',
+                borderLeft: active ? `2px solid ${onNavy.activeBorder}` : '2px solid transparent',
                 letterSpacing: typography.tracking.normal,
               }}
             >
@@ -95,7 +95,7 @@ export function Nav({
       <div
         style={{
           padding: spacing[2],
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          borderTop: `1px solid ${onNavy.divider}`,
         }}
       >
         {recordCount !== undefined && (
@@ -103,7 +103,7 @@ export function Nav({
             style={{
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.light,
-              color: 'rgba(255,255,255,0.3)',
+              color: onNavy.textFaint,
               marginBottom: spacing[1],
               letterSpacing: typography.tracking.wide,
               fontVariantNumeric: 'tabular-nums',
@@ -119,9 +119,9 @@ export function Nav({
             padding: '7px 12px',
             fontSize: typography.sizes.xs,
             fontWeight: typography.weights.light,
-            color: 'rgba(255,255,255,0.4)',
+            color: onNavy.textMuted,
             backgroundColor: 'transparent',
-            border: '1px solid rgba(255,255,255,0.12)',
+            border: `1px solid ${onNavy.border}`,
             borderRadius: '3px',
             cursor: 'pointer',
             textAlign: 'left' as const,

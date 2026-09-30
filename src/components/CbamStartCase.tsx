@@ -57,7 +57,7 @@ export function CbamStartCase({ documents }: { documents: ReusableDocument[] }) 
                 padding: `${spacing[2]} ${spacing[4]}`,
                 fontSize: textStyles.rowTitle.fontSize,
                 fontWeight: textStyles.rowTitle.fontWeight,
-                color: '#FFFFFF',
+                color: colours.surface,
                 backgroundColor: colours.navy,
                 borderRadius: '4px',
               }}

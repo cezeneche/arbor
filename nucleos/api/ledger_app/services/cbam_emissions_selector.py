@@ -51,6 +51,7 @@ from app.services.cbam_default_markup import (
     apply_default_value_markup,
     get_default_value_markup,
 )
+from ledger_app.services.cbam_indirect_scope import counts_indirect_emissions
 from ledger_app.services.cbam_emission_factors import (
     FACTOR_METADATA,
     get_default_see,
@@ -415,6 +416,7 @@ def select_and_calculate(
         )
 
         return _build_result(
+            jurisdiction=jurisdiction,
             method=method,
             direct_kgco2e=direct_kgco2e,
             indirect_kgco2e=indirect_kgco2e,
@@ -609,6 +611,7 @@ def select_and_calculate(
         )
 
     return _build_result(
+        jurisdiction=jurisdiction,
         method=method,
         direct_kgco2e=direct_sup,
         indirect_kgco2e=indirect_kgco2e,
@@ -684,6 +687,7 @@ def _apply_default(
     )
 
     return _build_result(
+        jurisdiction=jurisdiction,
         method=METHOD_DEFAULT,
         direct_kgco2e=direct_kgco2e,
         indirect_kgco2e=indirect_kgco2e,
@@ -701,6 +705,7 @@ def _apply_default(
 
 def _build_result(
     *,
+    jurisdiction: str,
     method: str,
     direct_kgco2e: Decimal,
     indirect_kgco2e: Decimal,
@@ -718,7 +723,11 @@ def _build_result(
     if mass_kg > _ZERO:
         see_d, see_i, see_t = compute_see(direct_kgco2e, indirect_kgco2e, mass_kg)
         mass_t = (mass_kg / _D("1000")).quantize(_D("0.000001"))
-        embedded = (see_t * mass_t).quantize(_D("0.000001"))
+        # EU 2023/956 Art. 7(1), Annex II; UK CBAM direct-only until 2029 —
+        # indirect emissions stay recorded (SEE total included) but count
+        # towards the embedded total only where the regime charges them.
+        see_counted = see_t if counts_indirect_emissions(cn_code, jurisdiction) else see_d
+        embedded = (see_counted * mass_t).quantize(_D("0.000001"))
     else:
         see_d = see_i = see_t = embedded = _ZERO
 

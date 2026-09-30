@@ -7,7 +7,8 @@ export const TOKEN_WARNING_DAYS = 14
 export interface ReadinessFacts {
   missingEnv: string[]
   database: { ok: boolean; detail?: string }
-  nucleos: { ok: boolean; detail?: string }
+  /** slow: Nucleos did not answer in time, which a cold start explains. Not a failure. */
+  nucleos: { ok: boolean; slow?: boolean; detail?: string }
   rateLimiter: { ok: boolean; detail?: string }
   serviceToken: TokenExpiry
 }
@@ -32,6 +33,10 @@ export function evaluateReadiness(facts: ReadinessFacts): Readiness {
       `The Nucleos service token expires in ${token.daysLeft} day(s), on ${token.expiresAt}. ` +
         'Mint a new one and set NUCLEOS_INTERNAL_TOKEN before then.',
     )
+  }
+
+  if (facts.nucleos.ok && facts.nucleos.slow) {
+    warnings.push(`${facts.nucleos.detail ?? 'Nucleos was slow to answer.'} It is probably starting up.`)
   }
 
   const checks: Readiness['checks'] = {

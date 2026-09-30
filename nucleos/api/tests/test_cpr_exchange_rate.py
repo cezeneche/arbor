@@ -25,20 +25,21 @@ def test_the_rate_for_the_month_of_the_date():
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["currency"] == "EUR"
-    assert body["rate"] == "0.8365"
+    assert body["rate"] == "0.864304"  # HMRC, April 2026: EUR 1.1570 per £1
     assert body["effective_from"] == "2026-04-01"
     assert body["table_version"]
 
 
 def test_an_earlier_months_rate_is_not_offered_as_this_months():
-    # The table holds April; May's rate is HMRC's May figure, which it does not hold.
-    res = _get("EUR", "2026-05-15")
+    # The table holds October; November's rate is HMRC's November figure, which
+    # is not published yet. October's must not stand in for it.
+    res = _get("EUR", "2026-11-15")
     assert res.status_code == 404
-    assert "May 2026" in res.json()["detail"]
+    assert "November 2026" in res.json()["detail"]
 
 
-def test_a_currency_the_table_does_not_hold():
-    assert _get("SEK", "2026-04-15").status_code == 404
+def test_a_currency_hmrc_does_not_publish():
+    assert _get("ZWL", "2026-04-15").status_code == 404
 
 
 def test_a_malformed_date_is_refused():

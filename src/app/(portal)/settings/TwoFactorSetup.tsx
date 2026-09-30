@@ -294,7 +294,7 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
             </div>
             {error && <p style={{ color: colours.red, fontSize: typography.sizes.sm, margin: 0 }}>{error}</p>}
             <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
-              <button type="submit" disabled={loading} style={{ ...btnPrimary(loading), backgroundColor: loading ? '#c0a0a0' : colours.red }}>
+              <button type="submit" disabled={loading} style={{ ...btnPrimary(loading), backgroundColor: colours.red, opacity: loading ? 0.6 : 1 }}>
                 {loading ? 'Removing…' : 'Remove 2FA'}
               </button>
               <button type="button" onClick={() => { setStep('idle'); setError(null) }} style={btnGhost}>

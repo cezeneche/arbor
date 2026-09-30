@@ -10,6 +10,7 @@ import { missingProductionEnv } from '@/lib/production-env'
 import { evaluateReadiness } from '@/lib/readiness'
 import { rateLimiterHealth } from '@/lib/rate-limit'
 import { serviceTokenExpiry } from '@/lib/nucleos/service-auth'
+import { probeNucleos } from '@/lib/nucleos/readiness-probe'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,19 +25,12 @@ async function checkDatabase(): Promise<{ ok: boolean; detail?: string }> {
   }
 }
 
-async function checkNucleos(): Promise<{ ok: boolean; detail?: string }> {
-  const url = process.env.NUCLEOS_URL
-  if (!url) return { ok: false, detail: 'NUCLEOS_URL is not set.' }
-  try {
-    const res = await fetch(`${url}/ready`, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: 'no-store' })
-    return res.ok ? { ok: true } : { ok: false, detail: `Nucleos reported ${res.status}.` }
-  } catch {
-    return { ok: false, detail: 'Nucleos did not answer.' }
-  }
-}
-
 export async function GET(req: NextRequest) {
-  const [database, nucleos, rateLimiter] = await Promise.all([checkDatabase(), checkNucleos(), rateLimiterHealth()])
+  const [database, nucleos, rateLimiter] = await Promise.all([
+    checkDatabase(),
+    probeNucleos(process.env.NUCLEOS_URL, { timeoutMs: TIMEOUT_MS }),
+    rateLimiterHealth(),
+  ])
   const readiness = evaluateReadiness({
     missingEnv: missingProductionEnv(process.env),
     database,

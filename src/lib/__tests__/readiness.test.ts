@@ -49,3 +49,16 @@ describe('evaluateReadiness', () => {
     expect(r.checks.environment).toEqual({ ok: false, missing: ['RESEND_API_KEY'] })
   })
 })
+
+// A cold Nucleos takes 20–45 s to answer, longer than the probe waits. Slow is
+// not down: readiness stays green and says so, so a deploy is not an outage.
+describe('a slow Nucleos', () => {
+  it('stays ready, with a warning', () => {
+    const r = evaluateReadiness({
+      ...good,
+      nucleos: { ok: true, slow: true, detail: 'Nucleos did not answer within 3 s.' },
+    })
+    expect(r.ready).toBe(true)
+    expect(r.warnings).toEqual(['Nucleos did not answer within 3 s. It is probably starting up.'])
+  })
+})

@@ -46,7 +46,7 @@
       }
     ],
     "direct_kgco2e": "44100",
-    "embedded_tco2e": "47.299994",
+    "embedded_tco2e": "44.100000",
     "factor_metadata": {
       "annex": "Annex VI \u2014 Default values for specific embedded emissions",
       "effective_date": "2023-10-01",

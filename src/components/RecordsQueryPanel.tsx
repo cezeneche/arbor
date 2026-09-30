@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { QueryGapResult, type QueryGapResultData } from './QueryGapResult'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
-import { colours, typography, spacing, layout } from '@/lib/design-system'
+import { colours, typography, spacing, layout, onNavy } from '@/lib/design-system'
 import { TierBadge } from '@/components/TierBadge'
 
 // Tall enough for an answer plus the first few records that back it up.
@@ -132,7 +132,7 @@ export function RecordsQueryPanel({
           cursor: 'pointer',
           zIndex: 40,
           userSelect: 'none',
-          borderTop: open ? `1px solid rgba(255,255,255,0.1)` : 'none',
+          borderTop: open ? `1px solid ${onNavy.divider}` : 'none',
           transition: 'bottom 0.18s ease',
         }}
       >
@@ -140,7 +140,7 @@ export function RecordsQueryPanel({
         <span
           style={{
             fontSize: '10px',
-            color: 'rgba(255,255,255,0.6)',
+            color: onNavy.textSoft,
             display: 'inline-block',
             transform: open ? 'rotate(0deg)' : 'rotate(180deg)',
             transition: 'transform 0.18s ease',
@@ -153,7 +153,7 @@ export function RecordsQueryPanel({
           style={{
             fontSize: typography.sizes.xs,
             fontWeight: typography.weights.medium,
-            color: 'rgba(255,255,255,0.75)',
+            color: onNavy.textStrong,
             letterSpacing: typography.tracking.wider,
             textTransform: 'uppercase',
           }}
@@ -165,7 +165,7 @@ export function RecordsQueryPanel({
             style={{
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.light,
-              color: 'rgba(255,255,255,0.4)',
+              color: onNavy.textMuted,
               marginLeft: '4px',
             }}
           >
@@ -180,7 +180,7 @@ export function RecordsQueryPanel({
               marginLeft: 'auto',
               fontSize: typography.sizes.xs,
               fontWeight: typography.weights.light,
-              color: 'rgba(255,255,255,0.3)',
+              color: onNavy.textFaint,
               letterSpacing: typography.tracking.wide,
             }}
           >
