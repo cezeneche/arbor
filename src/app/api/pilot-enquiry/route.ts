@@ -9,7 +9,7 @@ const schema = z.object({
   orgName: z.string().trim().min(1).max(200),
   contactName: z.string().trim().min(1).max(120),
   email: z.email().max(200),
-  audience: z.enum(['supplier', 'buyer', 'general']),
+  audience: z.enum(['supplier', 'buyer', 'importer', 'general']),
   plan: z.string().trim().max(80).optional(),
   message: z.string().trim().max(2000).optional(),
   website: z.string().max(200).optional(),

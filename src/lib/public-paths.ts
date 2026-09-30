@@ -14,6 +14,7 @@ const PUBLIC_PREFIXES = [
   '/docs',
   '/about',
   '/how-it-works',
+  '/cbam-compliance',
   '/institutional',
   '/request-access',
   // Auth entry points

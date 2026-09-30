@@ -21,6 +21,14 @@ describe('isPublicPath', () => {
     expect(isPublicPath('/api/cron/calibrate')).toBe(true)
   })
 
+  // The CBAM marketing page sits beside the product's own /cbam pages, which
+  // hold an importer's cases and must stay behind sign-in.
+  it('makes the CBAM marketing page public without exposing the CBAM product pages', () => {
+    expect(isPublicPath('/cbam-compliance')).toBe(true)
+    expect(isPublicPath('/cbam')).toBe(false)
+    expect(isPublicPath('/cbam/case-1')).toBe(false)
+  })
+
   it('exposes the offline Merkle verifier (client-only, fetches no data)', () => {
     expect(isPublicPath('/verify-merkle')).toBe(true)
   })

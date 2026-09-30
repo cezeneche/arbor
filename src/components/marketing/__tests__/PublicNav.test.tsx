@@ -61,3 +61,12 @@ test('route changes reset the disclosure, including when returning to an earlier
   rerender(<PublicNav />)
   expect(screen.getByRole('button', { name: 'Menu' })).toHaveAttribute('aria-expanded', 'false')
 })
+
+// Importers are the site's second audience; their page is one click from anywhere.
+test('offers the CBAM page for importers', () => {
+  pathname = '/cbam-compliance'
+  render(<PublicNav />)
+  const cbam = screen.getByRole('link', { name: 'CBAM' })
+  expect(cbam).toHaveAttribute('href', '/cbam-compliance')
+  expect(cbam).toHaveAttribute('aria-current', 'page')
+})

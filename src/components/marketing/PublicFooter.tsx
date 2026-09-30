@@ -70,6 +70,7 @@ export function PublicFooter() {
           <div>
             <p style={headingStyle}>Product</p>
             <Link href="/how-it-works" style={linkStyle}>How it works</Link>
+            <Link href="/cbam-compliance" style={linkStyle}>CBAM for importers</Link>
             <Link href="/pricing" style={linkStyle}>Pricing</Link>
             <Link href="/about" style={linkStyle}>About</Link>
             <Link href="/institutional" style={linkStyle}>Institutional enquiries</Link>

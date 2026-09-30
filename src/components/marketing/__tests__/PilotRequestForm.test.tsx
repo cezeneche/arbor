@@ -61,3 +61,24 @@ test('uses a new request ID when details change after an uncertain response', as
   expect(secondPayload.orgName).toBe('Example Ltd Updated')
   expect(secondPayload.requestId).not.toBe(firstPayload.requestId)
 })
+
+// Importers arrive from the CBAM page. They have no planned plan to choose,
+// and the request has to say it is about CBAM so the right person picks it up.
+test('an importer request says it is about CBAM', async () => {
+  const user = userEvent.setup()
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true })
+  global.fetch = fetchMock
+
+  render(<PilotRequestForm initialAudience="importer" initialPlan="" />)
+  expect(screen.getByLabelText(/what best describes you/i)).toHaveValue('importer')
+  expect(screen.getByRole('option', { name: 'Importer with CBAM obligations' })).toBeInTheDocument()
+  expect(screen.queryByLabelText(/plan of interest/i)).not.toBeInTheDocument()
+
+  await user.type(screen.getByLabelText(/organisation/i), 'Example Imports Ltd')
+  await user.type(screen.getByLabelText(/your name/i), 'Sam Lee')
+  await user.type(screen.getByLabelText(/work email/i), 'sam@example.com')
+  await user.click(screen.getByRole('button', { name: 'Send request' }))
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ audience: 'importer' })
+})

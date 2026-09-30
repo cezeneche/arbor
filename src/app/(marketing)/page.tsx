@@ -60,6 +60,19 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="mk-section" aria-label="CBAM for importers">
+        <div className="mk-container mk-editorial-grid">
+          <div>
+            <span className="mk-eyebrow">For importers</span>
+            <h2>Importing steel, aluminium, cement, fertilisers or hydrogen?</h2>
+          </div>
+          <div className="mk-editorial-copy">
+            <p>UK CBAM charges begin on 1 January 2027. Arbor prepares your UK and EU CBAM figures from your customs declarations and supplier data, with every figure traceable to its source.</p>
+            <Link className="mk-text-link" href="/cbam-compliance">CBAM for importers <span aria-hidden="true">→</span></Link>
+          </div>
+        </div>
+      </section>
+
       <section className="mk-section mk-section-warm">
         <div className="mk-container mk-editorial-grid">
           <div>

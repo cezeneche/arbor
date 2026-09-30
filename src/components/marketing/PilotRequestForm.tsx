@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-type Audience = 'supplier' | 'buyer' | 'general'
+type Audience = 'supplier' | 'buyer' | 'importer' | 'general'
 
 const plans: Record<Audience, string[]> = {
   supplier: ['Starter', 'Micro', 'Small', 'Growth'],
   buyer: ['Standard', 'Business', 'Enterprise'],
+  importer: [],
   general: [],
 }
 
@@ -75,7 +76,7 @@ export function PilotRequestForm({ initialAudience, initialPlan }: { initialAudi
             <div><label htmlFor="pilot-name">Your name *</label><input id="pilot-name" name="name" autoComplete="name" maxLength={120} required value={form.contactName} onChange={e => set('contactName', e.target.value)} /></div>
           </div>
           <div><label htmlFor="pilot-email">Work email *</label><input id="pilot-email" name="email" type="email" autoComplete="email" maxLength={200} required value={form.email} onChange={e => set('email', e.target.value)} /></div>
-          <div><label htmlFor="pilot-audience">What best describes you? *</label><select id="pilot-audience" value={form.audience} required onChange={e => { setForm(previous => ({ ...previous, audience: e.target.value as Audience, plan: '' })); requestId.current = null; setError(null) }}><option value="general">Exploring Arbor</option><option value="supplier">Supplier or manufacturer</option><option value="buyer">Buyer or procurement team</option></select></div>
+          <div><label htmlFor="pilot-audience">What best describes you? *</label><select id="pilot-audience" value={form.audience} required onChange={e => { setForm(previous => ({ ...previous, audience: e.target.value as Audience, plan: '' })); requestId.current = null; setError(null) }}><option value="general">Exploring Arbor</option><option value="supplier">Supplier or manufacturer</option><option value="buyer">Buyer or procurement team</option><option value="importer">Importer with CBAM obligations</option></select></div>
           {plans[form.audience].length > 0 && <div><label htmlFor="pilot-plan">Plan of interest <span>(optional, indicative plans)</span></label><select id="pilot-plan" value={form.plan} onChange={e => set('plan', e.target.value)}><option value="">No plan selected</option>{plans[form.audience].map(plan => <option key={plan} value={plan}>{plan}</option>)}</select></div>}
           <div><label htmlFor="pilot-message">What would you like to use Arbor for? <span>(optional)</span></label><textarea id="pilot-message" rows={5} maxLength={2000} value={form.message} onChange={e => set('message', e.target.value)} placeholder="For example, the documents you process or the supplier data you request" /></div>
           <div className="mk-honeypot" aria-hidden="true"><label htmlFor="pilot-website">Website</label><input id="pilot-website" tabIndex={-1} autoComplete="off" value={form.website} onChange={e => set('website', e.target.value)} /></div>

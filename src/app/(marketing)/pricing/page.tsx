@@ -59,6 +59,16 @@ export default function PricingPage() {
         </div>
       </section>
 
+      <section className="mk-section">
+        <div className="mk-container mk-editorial-grid">
+          <div><span className="mk-eyebrow">For importers</span><h2>CBAM terms are agreed in the pilot.</h2></div>
+          <div className="mk-editorial-copy">
+            <p>Preparing UK and EU CBAM returns is priced separately from the supplier and buyer plans, and agreed directly with each importer during the pilot. Tell us what you import and where you file.</p>
+            <a className="mk-text-link" href={pilotRequestHref('importer')}>Request importer pilot access <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
+      </section>
+
       <section className="mk-section mk-section-sage">
         <div className="mk-container mk-pricing-explain">
           <div><span className="mk-eyebrow">A practical example</span><h2>What is an active record?</h2></div>

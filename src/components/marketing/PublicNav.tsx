@@ -8,6 +8,7 @@ import { pilotRequestHref } from '@/lib/marketing/pilot'
 
 const links = [
   { href: '/how-it-works', label: 'How it works' },
+  { href: '/cbam-compliance', label: 'CBAM' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/about', label: 'About' },
 ]
