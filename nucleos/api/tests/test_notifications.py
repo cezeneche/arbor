@@ -290,3 +290,46 @@ class TestNotifyReportReady:
         payload = client.post.call_args[1]["json"]
         assert "https://my-instance.nucleos.io/cases/case-010/download" in payload["text"]
         assert "https://my-instance.nucleos.io/cases/case-010/download" in payload["html"]
+
+
+# Case links point at Arbor
+
+class TestCaseLinksPointAtArbor:
+    """Case pages are Arbor's, at /cbam/{id}. /cases/{id} was the retired
+    nucleos-web front end, so a link there lands on a page that does not exist."""
+
+    def test_the_review_alert_links_to_the_arbor_case_page(self):
+        from app.services.notifications import notify_review_required
+
+        client = _mock_client()
+        with patch("app.services.notifications.httpx.AsyncClient", return_value=client):
+            with patch.dict(os.environ, {"SLACK_WEBHOOK_URL": "https://hooks.slack.com/test-webhook"}):
+                asyncio.run(
+                    notify_review_required(
+                        case_id="case-001", tenant_name="Acme", flags=["x"], base_url="https://arbor.example"
+                    )
+                )
+        blocks = client.post.call_args[1]["json"]["attachments"][0]["blocks"]
+        button = next(b for b in blocks if b["type"] == "actions")["elements"][0]
+        assert button["url"] == "https://arbor.example/cbam/case-001"
+
+    def test_the_supplier_submitted_email_links_to_the_arbor_case_page(self):
+        from app.services.notifications import notify_importer_supplier_submitted
+
+        client = _mock_client()
+        with patch("app.services.notifications.httpx.AsyncClient", return_value=client):
+            with patch.dict(os.environ, {"RESEND_API_KEY": "re_test"}):
+                asyncio.run(
+                    notify_importer_supplier_submitted(
+                        recipient_email="importer@example.com",
+                        case_id="case-009",
+                        cn_code="72081000",
+                        see_tco2e_per_t=1.9,
+                        production_route=None,
+                        installation_name=None,
+                        base_url="https://arbor.example",
+                    )
+                )
+        payload = client.post.call_args[1]["json"]
+        assert "https://arbor.example/cbam/case-009" in payload["text"]
+        assert "/cases/" not in payload["text"]

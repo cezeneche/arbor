@@ -83,11 +83,11 @@ async function waitForReady(proc) {
   throw new Error('Nucleos did not become ready within 60s')
 }
 
-async function mintToken() {
+async function mintToken(scopes = ['cbam:read', 'cbam:write']) {
   const res = await fetch(`${BASE}/api/auth/token`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ sub: 'boundary-check', tenant_id: 'boundary', scopes: ['cbam:read', 'cbam:write'] }),
+    body: JSON.stringify({ sub: 'boundary-check', tenant_id: 'boundary', scopes }),
   })
   if (!res.ok) throw new Error(`Could not mint a dev token: ${res.status} ${await res.text()}`)
   const body = await res.json()
@@ -130,6 +130,7 @@ try {
       'src/lib/nucleos/relief-client.ts',
       'src/lib/nucleos/supplier-history-client.ts',
       'src/lib/nucleos/supplier-history-presenter.ts',
+      'src/lib/nucleos/narrative-client.ts',
       '--outDir', outDir, '--rootDir', 'src/lib/nucleos',
       '--module', 'commonjs', '--target', 'es2020',
       '--esModuleInterop', '--skipLibCheck',
@@ -147,6 +148,7 @@ try {
   const { explainGoodsLineField } = require(path.join(compiled, 'explain-client.js'))
   const relief = require(path.join(compiled, 'relief-client.js'))
   const { getSupplierHistory } = require(path.join(compiled, 'supplier-history-client.js'))
+  const narrativeClient = require(path.join(compiled, 'narrative-client.js'))
 
   console.log('── Extraction boundary ──')
   const result = await extractCbamFields({
@@ -362,6 +364,42 @@ try {
     explainStatus !== null && explainStatus !== 400 && explainStatus !== 422 &&
       explainBody.trim() !== '{"detail":"Not Found"}',
     `${explainStatus} ${explainBody.slice(0, 100)}`)
+
+  console.log('\n── Audit narrative ──')
+  // The token above carries what production's does: cbam:read and cbam:write.
+  // Without narrative:run, Nucleos refuses, and the client must say that
+  // rather than report Nucleos as down.
+  let narrativeErr = null
+  try {
+    await narrativeClient.runCompliancePack(aCase)
+  } catch (e) {
+    narrativeErr = e
+  }
+  check('without narrative:run, the refusal is reported as a missing scope',
+    narrativeErr instanceof narrativeClient.NarrativeNotAllowedError,
+    narrativeErr?.message?.slice(0, 100))
+
+  // With the scope, the route has to exist. On SQLite the handler fails; a
+  // bare "Not Found" would mean the client calls a path Nucleos does not serve.
+  const narrativeToken = await mintToken(['cbam:read', 'cbam:write', 'narrative:run'])
+  let packStatus = null
+  let packBody = ''
+  process.env.NUCLEOS_INTERNAL_TOKEN = narrativeToken
+  try {
+    await narrativeClient.runCompliancePack(aCase, async (url, init) => {
+      const res = await fetch(url, init)
+      packStatus = res.status
+      packBody = await res.clone().text()
+      return res
+    })
+  } catch {
+    // Expected on SQLite.
+  } finally {
+    process.env.NUCLEOS_INTERNAL_TOKEN = token
+  }
+  check('with narrative:run, the compliance pack reaches a real route',
+    packStatus !== null && packStatus !== 403 && packBody.trim() !== '{"detail":"Not Found"}',
+    `${packStatus} ${packBody.slice(0, 100)}`)
 
   console.log('\n── Calculation boundary ──')
   const calcRes = await fetch(`${BASE}/api/internal/calculate`, {

@@ -18,6 +18,8 @@ import { CbamReturnBuilder } from '@/components/CbamReturnBuilder'
 import { CbamVerification } from '@/components/CbamVerification'
 import { CbamWhyThisNumber } from '@/components/CbamWhyThisNumber'
 import { CbamSupplierHistory } from '@/components/CbamSupplierHistory'
+import { CbamAuditNarrative } from '@/components/CbamAuditNarrative'
+import { presentNarrative } from '@/lib/nucleos/narrative-presenter'
 import { prisma } from '@/lib/prisma'
 import { latestStatements, presentVerification } from '@/lib/nucleos/verification-presenter'
 
@@ -122,6 +124,17 @@ export default async function CbamCasePage({
   const usesDefault = new Set(
     rawGoodsLines.filter(raw => String(raw.method ?? '').toLowerCase() === 'default').map(raw => String(raw.id ?? '')),
   )
+  const keptNarrative = await prisma.cbamNarrative.findFirst({
+    where: { entityId, nucleosCaseId: caseId },
+    orderBy: { generatedAt: 'desc' },
+  })
+  const narrativeAuthor = keptNarrative
+    ? await prisma.user.findUnique({ where: { id: keptNarrative.generatedById }, select: { name: true, email: true } })
+    : null
+  const narrative = keptNarrative
+    ? presentNarrative(keptNarrative, narrativeAuthor ? narrativeAuthor.name || narrativeAuthor.email : null)
+    : null
+
   // Only a supplier's own figure has a history to compare against.
   const hasSupplierFigure = new Set(
     rawGoodsLines
@@ -459,6 +472,16 @@ export default async function CbamCasePage({
                     : null
                 }
               />
+            </div>
+
+            {/* What it says about itself. */}
+            <div style={section}>
+              <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>Audit narrative</p>
+              <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[3] }}>
+                A written account of how this case&apos;s figures were reached, checked against the figures
+                themselves. Kept each time it is written.
+              </p>
+              <CbamAuditNarrative caseId={caseId} narrative={narrative} />
             </div>
 
             {/* What has happened to it. */}

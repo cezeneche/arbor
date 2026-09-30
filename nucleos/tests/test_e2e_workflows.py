@@ -223,6 +223,9 @@ def test_steel_importer_clean_data_email_trigger(
         "results.total_direct_embedded_kgco2e must be hard-overridden from the report package"
     )
 
+    # The pack carries the validator's verdict; a clean case needs no review.
+    assert (pack.get("review") or {}).get("required") is False, pack.get("review")
+
     # Slack must NOT be called for a clean case
     # Slack fires only when the deterministic validator sets human_review_required=True.
     assert len(slack_mock.calls) == 0, (

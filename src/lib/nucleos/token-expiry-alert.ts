@@ -19,7 +19,7 @@ export interface TokenExpiryMessage {
 
 export function tokenExpiryAlert(expiry: TokenExpiry): TokenExpiryMessage | null {
   const on = expiry.expiresAt?.slice(0, 10)
-  const renew = 'Mint a new token with cbam:read and cbam:write, set NUCLEOS_INTERNAL_TOKEN in Vercel, and redeploy.'
+  const renew = 'Mint a new token with cbam:read, cbam:write and narrative:run, set NUCLEOS_INTERNAL_TOKEN in Vercel, and redeploy.'
   if (expiry.expired) {
     return {
       subject: 'The Nucleos service token has expired',
