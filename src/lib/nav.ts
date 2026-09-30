@@ -75,9 +75,14 @@ export function showsCbam(org: { enabled: boolean; cbamDocuments: number; caseLi
   return org.enabled || org.cbamDocuments > 0 || org.caseLinks > 0
 }
 
-export function getNavLinks(entityType: EntityType, opts: { showCbam?: boolean } = {}): NavLink[] {
+export function getNavLinks(
+  entityType: EntityType,
+  opts: { showCbam?: boolean; isPlatformAdmin?: boolean } = {},
+): NavLink[] {
   const showCbam = opts.showCbam ?? false
-  return entityType === 'BUYER' ? buyerLinks(showCbam) : supplierLinks(showCbam)
+  const links = entityType === 'BUYER' ? buyerLinks(showCbam) : supplierLinks(showCbam)
+  // Operators review pilot and institutional enquiries; nobody else sees the link.
+  return opts.isPlatformAdmin ? [...links, { href: '/admin/enquiries', label: 'Enquiry review' }] : links
 }
 
 export function isLinkActive(link: NavLink, pathname: string): boolean {

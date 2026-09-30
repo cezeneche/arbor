@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { requirePageSession } from '@/lib/page-auth'
 import { getSessionUser } from '@/lib/session'
+import { colours, spacing, textStyles, typography } from '@/lib/design-system'
 
 export const metadata: Metadata = { title: 'Enquiry review | Arbor' }
 
@@ -50,25 +51,25 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
   ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', color: '#1b2f4a' }}>
-      <h1 style={{ fontSize: 32, marginBottom: 8 }}>Enquiry review</h1>
-      <p style={{ marginTop: 0 }}>Platform operators can review saved pilot and institutional enquiries here. New submissions are not emailed automatically.</p>
-      <nav aria-label="Enquiry status" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '24px 0' }}>
+    <div style={{ maxWidth: 1000, margin: '0 auto', color: colours.textPrimary }}>
+      <h1 style={{ ...textStyles.pageTitle, marginBottom: spacing[1] }}>Enquiry review</h1>
+      <p style={{ ...textStyles.sectionSubtitle, marginTop: 0 }}>Platform operators can review saved pilot and institutional enquiries here. New submissions are not emailed automatically.</p>
+      <nav aria-label="Enquiry status" style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap', margin: `${spacing[3]} 0`, fontSize: typography.sizes.sm }}>
         {statuses.map(value => <a key={value} href={`/admin/enquiries?status=${value}`} aria-current={status === value ? 'page' : undefined}>{value.replace('_', ' ')}</a>)}
       </nav>
       <p>{enquiries.length} {status.toLowerCase().replace('_', ' ')} enquiries shown (up to 100 per type).</p>
       {enquiries.length === 0 && <p>No enquiries in this status.</p>}
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div style={{ display: 'grid', gap: spacing[2] }}>
         {enquiries.map(item => (
-          <article key={`${item.type}-${item.id}`} style={{ background: '#fff', border: '1px solid #d6dfdb', borderRadius: 6, padding: 20, overflowWrap: 'anywhere' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-              <h2 style={{ fontSize: 20, margin: 0 }}>{item.orgName}</h2>
-              <span>{item.type === 'pilot' ? 'Pilot' : 'Institutional'} · {item.createdAt.toLocaleString('en-GB', { timeZone: 'Europe/London' })}</span>
+          <article key={`${item.type}-${item.id}`} style={{ background: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', padding: spacing[3], overflowWrap: 'anywhere', fontSize: typography.sizes.sm, fontWeight: typography.weights.light }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[2], flexWrap: 'wrap' }}>
+              <h2 style={{ ...textStyles.sectionTitle, margin: 0 }}>{item.orgName}</h2>
+              <span style={{ ...textStyles.caption, color: colours.textTertiary }}>{item.type === 'pilot' ? 'Pilot' : 'Institutional'} · {item.createdAt.toLocaleString('en-GB', { timeZone: 'Europe/London' })}</span>
             </div>
             <p>{item.contactName} · <a href={`mailto:${item.email}`}>{item.email}</a></p>
             <p>{item.category}</p>
             {item.message && <p style={{ whiteSpace: 'pre-wrap' }}>{item.message}</p>}
-            <form action={updateEnquiry} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <form action={updateEnquiry} style={{ display: 'flex', alignItems: 'center', gap: spacing[1], flexWrap: 'wrap' }}>
               <input type="hidden" name="type" value={item.type} />
               <input type="hidden" name="id" value={item.id} />
               <label htmlFor={`status-${item.type}-${item.id}`}>Status</label>

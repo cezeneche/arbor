@@ -35,9 +35,11 @@ Started 30 September 2026. Decisions: CBAM is a **second audience** with its own
 
 ## C. Design rules
 
-- [ ] C1. Record the marketing-site exemption in `CLAUDE.md`.
-- [ ] C2. Turn the scattered colour values in `marketing.css` into `--mk-` tokens defined once.
-- [ ] C3. Admin enquiry page and its nav link: design-system tokens and weights only (they are product screens).
+- [x] C1. Record the marketing-site exemption in `CLAUDE.md`.
+- [x] C2. Turn the scattered colour values in `marketing.css` into `--mk-` tokens defined once.
+- [x] C3. Admin enquiry page and its nav link: design-system tokens and weights only (they are product screens).
+  - `marketing.css`: about 70 one-off colour values reduced to 31 named `--mk-` tokens defined once. Each value was mapped to its nearest token; the largest shift is 19 on a 0–441 RGB distance (a muted grey), and merged greys move darker, not lighter. Needs a visual check (D6).
+  - The operator link is now an ordinary `getNavLinks` entry, tested, with the same styling and active state as other links.
 
 ## D. Publishing blockers
 

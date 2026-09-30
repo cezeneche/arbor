@@ -152,3 +152,14 @@ describe('showsCbam', () => {
     expect(showsCbam({ enabled: false, cbamDocuments: 0, caseLinks: 1 })).toBe(true)
   })
 })
+
+// Enquiry review is for platform operators only, and sits in the nav like any
+// other link so it looks and behaves the same.
+describe('operator links', () => {
+  it('adds Enquiry review for platform operators only', () => {
+    const operator = getNavLinks('SUPPLIER', { isPlatformAdmin: true })
+    expect(operator[operator.length - 1]).toEqual({ href: '/admin/enquiries', label: 'Enquiry review' })
+    expect(getNavLinks('BUYER', { isPlatformAdmin: true }).some(l => l.href === '/admin/enquiries')).toBe(true)
+    expect(getNavLinks('SUPPLIER').some(l => l.href === '/admin/enquiries')).toBe(false)
+  })
+})
