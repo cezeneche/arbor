@@ -183,6 +183,9 @@ export default function PrivacyPolicyPage() {
             providers, processing locations and contractual terms must be verified before this policy is approved:
           </p>
           <div
+            tabIndex={0}
+            role="region"
+            aria-label="Third-party processors"
             style={{
               border: `1px solid ${colours.border}`,
               borderRadius: '4px',

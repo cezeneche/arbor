@@ -90,7 +90,7 @@ export default function CbamCompliancePage() {
               threshold pay a charge on the carbon embedded in those goods. The figures come from customs entries you hold and from suppliers who may not
               have them ready.
             </p>
-            <div className="mk-domain-grid">
+            <div className="mk-domain-grid mk-date-grid">
               {dates.map(d => (
                 <div className="mk-domain-row" key={d.name}>
                   <strong>{d.name}</strong>

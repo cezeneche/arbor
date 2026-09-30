@@ -36,6 +36,9 @@
   overflow-wrap: anywhere;
 }
 
+.mk-site .mk-skip-link { position: absolute; left: 16px; top: -100px; z-index: 100; padding: 12px 18px; border-radius: 5px; background: var(--mk-navy); color: var(--mk-surface); font-size: 15px; font-weight: 600; text-decoration: none; }
+.mk-site .mk-skip-link:focus { top: 12px; }
+.mk-site main:focus { outline: none; }
 .mk-site :is(a, button, input, select, textarea, summary):focus-visible {
   outline: 2px solid var(--mk-ink);
   outline-offset: 4px;
@@ -145,6 +148,10 @@
 .mk-site .mk-domain-row { display: flex; justify-content: space-between; gap: 20px; padding: 19px 0; border-top: 1px solid var(--mk-sage-strong); }
 .mk-site .mk-domain-row strong { color: var(--mk-navy); font-size: 16px; }
 .mk-site .mk-domain-row span { color: var(--mk-muted); font-size: 14px; text-align: right; }
+/* Dates and their meaning share a narrow column: stack them, and never break a date. */
+.mk-site .mk-date-grid .mk-domain-row { flex-direction: column; justify-content: flex-start; gap: 5px; }
+.mk-site .mk-date-grid .mk-domain-row strong { white-space: nowrap; }
+.mk-site .mk-date-grid .mk-domain-row span { text-align: left; }
 .mk-site .mk-close { padding: clamp(62px,7vw,96px) 0; }
 .mk-site .mk-close-inner { display: flex; align-items: end; justify-content: space-between; gap: 40px; }
 .mk-site .mk-close h2 { color: var(--mk-surface); }
@@ -180,7 +187,7 @@
 .mk-site .mk-honeypot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .mk-site .mk-form-error { margin: 0; padding: 12px 14px; border-left: 3px solid var(--mk-red); background: var(--mk-red-bg); color: var(--mk-red-deep); font-size: 14px; }
 .mk-site .mk-form-privacy, .mk-site .mk-section .mk-form-privacy { margin: 0; color: var(--mk-muted); font-size: 13px; }
-.mk-site .mk-form-privacy a { color: var(--mk-navy); }
+.mk-site .mk-form-privacy a { color: var(--mk-navy); text-decoration: underline; text-underline-offset: 3px; }
 .mk-site .mk-button-navy { border: 1px solid var(--mk-navy); background: var(--mk-navy); color: var(--mk-surface); cursor: pointer; }
 .mk-site .mk-button-navy:hover { background: var(--mk-navy-hover); }
 .mk-site .mk-button-navy:disabled { cursor: wait; opacity: .65; transform: none; }
