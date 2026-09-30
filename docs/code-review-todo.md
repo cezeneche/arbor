@@ -22,12 +22,15 @@ The owner's own items and the engineering backlog are in `docs/engineering-todo.
 
 ## Maintainability
 
-- [ ] **R5. Two page widths on the marketing site.** The header and footer frame is 1140 px with up to 40 px padding (1060 px of content); sections use a 1160 px container. At 1440 px the section content starts about 50 px further left than the header.
+- [x] **R5. Two page widths on the marketing site.** The header and footer frame is 1140 px with up to 40 px padding (1060 px of content); sections use a 1160 px container. At 1440 px the section content starts about 50 px further left than the header.
   - Fix: one width, used by both.
-- [ ] **R6. Presentation drifts between screens.** The three legal pages each define the same typography and spacing objects; the enquiry review screen (`admin/enquiries`) uses browser-default form controls unlike the rest of the portal.
+  - Done. The frame now uses the sections' width (`min(100% - 40px, 1160px)`). Measured in a browser: header, headings and footer start at the same x on every page, at 20 px (390 and 768 wide) and 140 px (1440). The mismatch was 50 px at desktop and 18 px at tablet. Left alone, as deliberate: the legal pages' narrower centred reading column. Open: `/institutional` still uses its own 960 px column (starts at 272 px on a 1440 screen); aligning it is a small design call.
+- [x] **R6. Presentation drifts between screens.** The three legal pages each define the same typography and spacing objects; the enquiry review screen (`admin/enquiries`) uses browser-default form controls unlike the rest of the portal.
   - Fix: one shared set of legal-page styles; the enquiry screen uses the portal's input and button styles.
-- [ ] **R7. Formatting and lint aren't enforced.** Some marketing JSX puts whole sections on one line (`docs/api/page.tsx`, `PilotRequestForm.tsx`). There is no formatter or format check. `npm run lint` fails with six errors, all in `docs/audits/2026-09-16-reproductions.cjs`, an audit evidence script (`npx eslint src` passes).
+  - Done. The three pages' style blocks were identical and now live in `components/marketing/legal-styles.ts`. The design system gains `controls.input` and `controls.primaryButton` (the portal's existing look), used by the enquiry screen along with styled status links and text. Other screens still carry inline copies of those styles; moving them is gradual clean-up, not a fix.
+- [x] **R7. Formatting and lint aren't enforced.** Some marketing JSX puts whole sections on one line (`docs/api/page.tsx`, `PilotRequestForm.tsx`). There is no formatter or format check. `npm run lint` fails with six errors, all in `docs/audits/2026-09-16-reproductions.cjs`, an audit evidence script (`npx eslint src` passes).
   - Fix: lint ignores the audit evidence folder (evidence stays as recorded); reflow the long JSX lines. A formatter across the whole repo is a larger diff and an owner call.
+  - Done. `npm run lint` passes: `docs/audits/**` is ignored, with the reason in `eslint.config.mjs`. The API guide, pilot form and code block were reflowed once with Prettier in the repo's style (no semicolons, single quotes); Prettier itself was not added. The remaining long lines are prose (email templates, comments), which is fine. Adding a formatter and format check is still open for the owner.
 
 ## Not a code defect
 

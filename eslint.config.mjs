@@ -16,6 +16,10 @@ const eslintConfig = defineConfig([
     // Next/React versions and lockfiles. Arbor's rules are not theirs; they are
     // linted and built in their own CI job.
     "nucleos/**",
+    // Audit evidence: scripts kept exactly as they ran when an audit was
+    // written. They are records, not code the app runs, and are not rewritten
+    // to satisfy rules that postdate them.
+    "docs/audits/**",
   ]),
 ]);
 
