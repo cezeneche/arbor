@@ -26,9 +26,12 @@ Started 30 September 2026. Decisions: CBAM is a **second audience** with its own
 
 ## B. Tone
 
-- [ ] B1. Gather the repeated caveats (what labels, extraction and exports do not prove) into one clear section on How it works; keep the legal detail in the legal pages. Trim repeats on Home, How it works, Pricing and Security.
-- [ ] B2. Home hero example: lead with a record that shows the product at its best, and keep the explanation honest.
-- [ ] B3. Re-read every page for defensive phrasing; keep every fact that the claims register requires.
+- [x] B1. Gather the repeated caveats (what labels, extraction and exports do not prove) into one clear section on How it works; keep the legal detail in the legal pages. Trim repeats on Home, How it works, Pricing and Security.
+- [x] B2. Home hero example: lead with a record that shows the product at its best, and keep the explanation honest.
+- [x] B3. Re-read every page for defensive phrasing; keep every fact that the claims register requires.
+  - Caveats now live once, in "What labels and checks don't claim" on How it works (`#limits`); Home and About link to it. Each fact from claims C04–C10 and C27 is kept there or in the step text.
+  - The example record is now Verified (read from its source and confirmed on review), with the honest explanation behind "View source".
+  - Security keeps its precision for procurement readers; two phrasings softened, no claims changed.
 
 ## C. Design rules
 

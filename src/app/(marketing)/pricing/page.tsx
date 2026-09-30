@@ -12,13 +12,13 @@ const supplierPlans: Plan[] = [
   { name: 'Starter', price: 'Free', description: 'Respond to buyer requests using manual declarations.', capacity: 'Up to 5 active records', detail: 'No document uploads.' },
   { name: 'Micro', price: '£29', description: 'Start building a document-backed operational record.', capacity: 'Up to 500 active records', detail: 'Up to 10 document uploads each calendar month.' },
   { name: 'Small', price: '£79', description: 'For teams handling documents more regularly.', capacity: 'Up to 2,500 active records', detail: 'Up to 50 document uploads each calendar month.', highlighted: true },
-  { name: 'Growth', price: '£149', description: 'For a larger record and document workload.', capacity: 'Up to 10,000 active records', detail: 'No monthly document-upload cap in the plan configuration.' },
+  { name: 'Growth', price: '£149', description: 'For a larger record and document workload.', capacity: 'Up to 10,000 active records', detail: 'No monthly cap on document uploads.' },
 ]
 
 const buyerPlans: Plan[] = [
   { name: 'Standard', price: '£299', description: 'Begin requesting and reviewing supplier records.', capacity: 'Up to 10 connected suppliers', detail: 'A connection is a distinct supplier organisation.' },
   { name: 'Business', price: '£699', description: 'Work across a wider supplier portfolio.', capacity: 'Up to 50 connected suppliers', detail: 'Requests to an already-connected supplier do not use another connection.', highlighted: true },
-  { name: 'Enterprise', price: '£1,499', description: 'Discuss larger-scale supplier access and integration needs.', capacity: 'No supplier-connection cap in the plan configuration', detail: 'Service and support terms are agreed separately.' },
+  { name: 'Enterprise', price: '£1,499', description: 'Discuss larger-scale supplier access and integration needs.', capacity: 'No cap on connected suppliers', detail: 'Service and support terms are agreed separately.' },
 ]
 
 function PlanCard({ plan, audience }: { plan: Plan; audience: 'supplier' | 'buyer' }) {
@@ -40,7 +40,7 @@ export default function PricingPage() {
         <div className="mk-container">
           <span className="mk-eyebrow">Pricing</span>
           <h1>Pilot terms first. Planned pricing for what follows.</h1>
-          <p>Arbor is in a private pilot. Access is by invitation and pilot terms are agreed directly. The plans and prices below describe a proposed public offering; they are not a checkout or a commitment to current pilot pricing.</p>
+          <p>Arbor is in a private pilot. Access is by invitation and pilot terms are agreed directly. The plans below are planned for after the pilot. They are not a checkout, and pilot terms are agreed separately.</p>
           <a className="mk-button mk-button-navy" href={pilotRequestHref()}>Request pilot access</a>
         </div>
       </section>

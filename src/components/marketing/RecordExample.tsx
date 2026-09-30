@@ -29,12 +29,12 @@ export function RecordExample({ compact = false }: { compact?: boolean }) {
         <div className="mk-example-record">
           <div className="mk-example-record-head">
             <span>Operational record</span>
-            <span className="mk-example-tier">Declared</span>
+            <span className="mk-example-tier mk-tier-verified">Verified</span>
           </div>
           <strong className="mk-example-value">12,480 <small>kWh</small></strong>
           <span className="mk-example-metric">Electricity consumption · April 2026</span>
           <div className="mk-example-record-bottom">
-            <span>Source attached · Review status visible</span>
+            <span>Source attached · Confirmed on review</span>
             <button type="button" aria-expanded={showSource} aria-controls={evidenceId} onClick={() => setShowSource(value => !value)}>
               {showSource ? 'Hide source' : 'View source'}
             </button>
@@ -43,7 +43,7 @@ export function RecordExample({ compact = false }: { compact?: boolean }) {
       </div>
       <div id={evidenceId} className="mk-example-evidence" hidden={!showSource}>
         <strong>Source evidence</strong>
-        <p>“Electricity used: 12,480 kWh” appears in the example statement. The Declared label indicates that the record has not met the requirements for Verified status. A source document alone does not prove the underlying activity.</p>
+        <p>“Electricity used: 12,480 kWh” was read from the statement and confirmed on review, so the record is Verified: it matches its source document. It is not an audit of the site’s electricity use.</p>
       </div>
     </div>
   )

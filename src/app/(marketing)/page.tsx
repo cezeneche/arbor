@@ -10,15 +10,15 @@ export const metadata: Metadata = {
 
 const workflow = [
   { number: '01', title: 'Bring your documents together', body: 'Upload supported bills, invoices, production logs and other operational documents.' },
-  { number: '02', title: 'Extract and review figures', body: 'Arbor structures the fields and flags review needs. Some eligible documents create Declared records automatically; others require review first.' },
-  { number: '03', title: 'Keep a usable record', body: 'Each stored figure has an evidence-quality label. Available source information and later corrections stay connected to its history.' },
-  { number: '04', title: 'Share with permission', body: 'Give customers access to the current records they need. Their view includes the evidence quality Arbor can provide.' },
+  { number: '02', title: 'Extract and review figures', body: 'Arbor reads the fields and shows where each came from. Clear documents are stored straight away as Declared; anything uncertain waits for your review.' },
+  { number: '03', title: 'Keep a usable record', body: 'Each figure carries a label for the evidence behind it, and keeps its source and correction history.' },
+  { number: '04', title: 'Share with permission', body: 'Give customers access to the records they need, with the evidence labels attached.' },
 ]
 
 const tiers = [
-  { name: 'Verified', className: 'verified', body: 'Document-derived data that meets the applicable source and review requirements. This is not independent assurance of the underlying business activity.' },
-  { name: 'Declared', className: 'declared', body: 'Self-reported, imported, or document-derived data that has not met Verified requirements. It can still have a source document.' },
-  { name: 'Estimated', className: 'estimated', body: 'A cited reference value used in place of measured activity. It is labelled so it is not mistaken for an observed figure.' },
+  { name: 'Verified', className: 'verified', body: 'Read from a source document and confirmed through review.' },
+  { name: 'Declared', className: 'declared', body: 'Entered or imported by you, or read from a document without meeting the Verified requirements.' },
+  { name: 'Estimated', className: 'estimated', body: 'A published reference value used where no measured figure exists, with its source cited.' },
 ]
 
 const domains = [
@@ -111,7 +111,7 @@ export default function HomePage() {
           <div className="mk-section-head">
             <span className="mk-eyebrow">Evidence quality</span>
             <h2>A label that tells you what sits behind the figure.</h2>
-            <p>Arbor’s tiers describe evidence and review status. They do not certify that a supplier’s underlying activity happened exactly as stated.</p>
+            <p>Each label says what sits behind a figure: its source and whether it was reviewed. <Link href="/how-it-works#limits">What labels don’t claim</Link>.</p>
           </div>
           <div className="mk-tier-grid">
             {tiers.map(tier => (
@@ -146,7 +146,7 @@ export default function HomePage() {
 
       <section className="mk-section mk-section-warm">
         <div className="mk-container">
-          <div className="mk-section-head"><span className="mk-eyebrow">Operational domains</span><h2>Make different kinds of operational data easier to find.</h2><p>Records are grouped into eight domains. The examples show the kinds of material the categories can organise; support for a specific field depends on its document and workflow.</p></div>
+          <div className="mk-section-head"><span className="mk-eyebrow">Operational domains</span><h2>Make different kinds of operational data easier to find.</h2><p>Records are grouped into eight domains, so figures are easy to find again. Which figures Arbor can read depends on the document type.</p></div>
           <div className="mk-domain-grid">
             {domains.map(domain => <div className="mk-domain-row" key={domain.name}><strong>{domain.name}</strong><span>{domain.examples}</span></div>)}
           </div>

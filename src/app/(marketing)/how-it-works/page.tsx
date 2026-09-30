@@ -12,12 +12,12 @@ const steps = [
   {
     number: '01', title: 'Upload a supported document',
     body: 'Choose the document type and upload a PDF, JPEG or PNG up to 50 MB. You can add a reporting period where it helps place the figures in context.',
-    detail: 'Electricity bills, freight invoices and production logs are examples. A supported document type does not mean every statement in that file is extracted or validated.',
+    detail: 'Electricity bills, freight invoices and production logs are typical examples.',
   },
   {
     number: '02', title: 'Review what was extracted',
     body: 'Arbor identifies relevant fields, preserves available source text and flags extraction or document-quality concerns for review.',
-    detail: 'An extraction confidence score describes how clearly a field was read. It is not a measure of whether the supplier’s underlying claim is true.',
+    detail: 'Each field shows the text it was read from and how clearly it was read. Anything uncertain is flagged for you to check.',
   },
   {
     number: '03', title: 'Keep a labelled record',
@@ -27,14 +27,14 @@ const steps = [
   {
     number: '04', title: 'Share what you choose',
     body: 'Authorised buyers can see records you grant access to, including the evidence-quality information Arbor holds. The same stored data can be queried or exported for another request.',
-    detail: 'Arbor includes labels in its outputs. Copies downloaded and changed elsewhere are outside Arbor’s control.',
+    detail: 'Labels travel with every record Arbor shares or exports.',
   },
 ]
 
 const tiers = [
-  { name: 'Verified', style: 'verified', example: 'A document-derived figure that satisfies the applicable source and review checks.', caveat: 'It does not mean Arbor has independently audited the business activity.' },
-  { name: 'Declared', style: 'declared', example: 'A self-reported value, or a figure extracted from a document that has not met Verified requirements.', caveat: 'A Declared record may still be linked to a source document.' },
-  { name: 'Estimated', style: 'estimated', example: 'A published default reference value used where measured activity is unavailable.', caveat: 'The reference source is cited; the estimate is not presented as observed activity.' },
+  { name: 'Verified', style: 'verified', example: 'Read from a source document and confirmed through review.' },
+  { name: 'Declared', style: 'declared', example: 'Entered or imported by you, or read from a document without meeting the Verified requirements. It can still link to its source.' },
+  { name: 'Estimated', style: 'estimated', example: 'A published reference value used where no measured figure exists, with its source cited.' },
 ]
 
 export default function HowItWorksPage() {
@@ -70,7 +70,7 @@ export default function HowItWorksPage() {
         <div className="mk-container">
           <div className="mk-section-head"><span className="mk-eyebrow">Evidence quality</span><h2>What each label tells you.</h2><p>The label belongs to the record and can change only through a new qualifying record, such as after further evidence and review. It is not a user-selected badge.</p></div>
           <div className="mk-tier-grid">
-            {tiers.map(tier => <article className="mk-tier-card" key={tier.name}><span className={`mk-tier-pill mk-tier-${tier.style}`}>{tier.name}</span><p>{tier.example}</p><p className="mk-step-note">{tier.caveat}</p></article>)}
+            {tiers.map(tier => <article className="mk-tier-card" key={tier.name}><span className={`mk-tier-pill mk-tier-${tier.style}`}>{tier.name}</span><p>{tier.example}</p></article>)}
           </div>
         </div>
       </section>
@@ -78,14 +78,29 @@ export default function HowItWorksPage() {
       <section className="mk-section mk-section-warm">
         <div className="mk-container mk-editorial-grid">
           <div><span className="mk-eyebrow">Correction history</span><h2>A record can change without losing its history.</h2></div>
-          <div className="mk-editorial-copy"><p>If a figure needs correction, Arbor creates a superseding record. Teams can inspect the newer value and the history of the change inside the service.</p><p>Retention and deletion after account closure are governed by the applicable agreements and policies. They should not be confused with correction history while an account is active.</p></div>
+          <div className="mk-editorial-copy"><p>If a figure needs correction, Arbor creates a new record that supersedes it. You can see the current value and every earlier one.</p></div>
         </div>
       </section>
 
       <section className="mk-section">
         <div className="mk-container mk-editorial-grid">
           <div><span className="mk-eyebrow">Technical assurance</span><h2>Changes to stored records can be checked.</h2></div>
-          <div className="mk-editorial-copy"><p>An HMAC audit chain links stored records. Verification can detect alteration to historical chain content at the time the chain is checked.</p><p>The chain supports provenance within Arbor; it does not independently prove that a source document or its underlying business activity was accurate. Audit packages have separate inclusion-proof checks.</p><Link className="mk-text-link" href="/security">Read about security <span aria-hidden="true">→</span></Link></div>
+          <div className="mk-editorial-copy"><p>An HMAC audit chain links stored records, so a change to a historical record is detected when the chain is checked. Audit packages carry their own inclusion proofs.</p><Link className="mk-text-link" href="/security">Read about security <span aria-hidden="true">→</span></Link></div>
+        </div>
+      </section>
+
+      <section className="mk-section mk-section-warm" id="limits">
+        <div className="mk-container mk-editorial-grid">
+          <div><span className="mk-eyebrow">Plain limits</span><h2>What labels and checks don’t claim.</h2></div>
+          <div className="mk-editorial-copy">
+            <ul className="mk-limits">
+              <li>A label describes the evidence and review behind a figure. It is not an audit of the activity the figure records.</li>
+              <li>A confidence score says how clearly a field was read, not whether the figure is true.</li>
+              <li>A supported document type does not mean every figure in it is read.</li>
+              <li>The audit chain detects changes to records inside Arbor. It cannot show that a source document was accurate.</li>
+              <li>Labels travel with Arbor’s exports, but a copy changed after download is outside Arbor’s control.</li>
+            </ul>
+          </div>
         </div>
       </section>
 
