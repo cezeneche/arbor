@@ -288,7 +288,7 @@ try {
   } catch (e) {
     hmrcRate = { error: e.message }
   }
-  check("HMRC's exchange rate for the month comes back", hmrcRate?.rate === '0.8365', JSON.stringify(hmrcRate))
+  check("HMRC's exchange rate for the month comes back", hmrcRate?.rate === '0.864304', JSON.stringify(hmrcRate))
 
   // The relief client reads a 404 as "no claim waiting", so a wrong path would
   // pass through it unnoticed. Watch what Nucleos actually answers instead.

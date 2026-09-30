@@ -25,6 +25,10 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
+from app.services.hmrc_exchange_rates import SOURCE as HMRC_SOURCE
+from app.services.hmrc_exchange_rates import gbp_per_unit
+from app.services.hmrc_exchange_rates_data import HMRC_MONTHLY_UNITS_PER_GBP
+
 __all__ = [
     "CPR_REFERENCE_VERSION",
     "CPR_REFERENCE_METADATA",
@@ -34,7 +38,7 @@ __all__ = [
     "ExchangeRateUnavailable",
 ]
 
-CPR_REFERENCE_VERSION = "2026-uk-v1"
+
 
 
 class ExchangeRateUnavailable(LookupError):
@@ -61,22 +65,27 @@ class ExchangeRate:
     effective_from: date
     rate: Decimal
     source: str
+    # HMRC's own published figure, from which rate is derived.
+    units_per_gbp: Decimal | None = None
 
 
-# Insert-never-update. A corrected rate is a new row with a later effective_from
-# and a new CPR_REFERENCE_VERSION, never an edit to an existing one — a return
-# filed against the old figure must stay reproducible.
-EXCHANGE_RATES: tuple[ExchangeRate, ...] = (
-    ExchangeRate("EUR", "GBP", date(2026, 1, 1), Decimal("0.8420"), "HMRC monthly rates"),
-    ExchangeRate("EUR", "GBP", date(2026, 4, 1), Decimal("0.8365"), "HMRC monthly rates"),
-    ExchangeRate("EUR", "GBP", date(2026, 7, 1), Decimal("0.8390"), "HMRC monthly rates"),
-    ExchangeRate("USD", "GBP", date(2026, 1, 1), Decimal("0.7910"), "HMRC monthly rates"),
-    ExchangeRate("USD", "GBP", date(2026, 4, 1), Decimal("0.7845"), "HMRC monthly rates"),
-    ExchangeRate("USD", "GBP", date(2026, 7, 1), Decimal("0.7880"), "HMRC monthly rates"),
-    ExchangeRate("CNY", "GBP", date(2026, 1, 1), Decimal("0.1095"), "HMRC monthly rates"),
-    ExchangeRate("TRY", "GBP", date(2026, 1, 1), Decimal("0.0231"), "HMRC monthly rates"),
-    ExchangeRate("INR", "GBP", date(2026, 1, 1), Decimal("0.0094"), "HMRC monthly rates"),
+# HMRC's published monthly rates, one row per currency per month, loaded from
+# the generated module scripts/update_hmrc_rates.py maintains. Insert-never-
+# update: a month once held is never rewritten, and the version names the
+# latest month, so a relief figure stamped with it can be reproduced later.
+EXCHANGE_RATES: tuple[ExchangeRate, ...] = tuple(
+    ExchangeRate(
+        from_currency=code,
+        to_currency="GBP",
+        effective_from=date(int(month[:4]), int(month[5:]), 1),
+        rate=gbp_per_unit(Decimal(units)),
+        source=HMRC_SOURCE,
+        units_per_gbp=Decimal(units),
+    )
+    for month, code, units in HMRC_MONTHLY_UNITS_PER_GBP
 )
+
+CPR_REFERENCE_VERSION = f"hmrc-monthly-{max(month for month, _, _ in HMRC_MONTHLY_UNITS_PER_GBP)}"
 
 _TABLE_SHA256 = hashlib.sha256(
     json.dumps(

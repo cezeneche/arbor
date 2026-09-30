@@ -25,9 +25,10 @@ pytestmark = pytest.mark.regulatory
 
 class TestLookup:
     def test_returns_the_rate_effective_on_the_date(self):
+        # HMRC, May 2026: EUR 1.1506 per £1, so £0.869112 per euro.
         rate, effective, source = get_reference_exchange_rate("EUR", date(2026, 5, 15))
-        assert rate == Decimal("0.8365")
-        assert effective == date(2026, 4, 1)
+        assert rate == Decimal("0.869112")
+        assert effective == date(2026, 5, 1)
         assert "HMRC" in source
 
     def test_uses_the_most_recent_rate_on_or_before_the_date(self):
@@ -37,8 +38,8 @@ class TestLookup:
     def test_the_effective_date_travels_with_the_rate(self):
         """A figure has to record which published rate produced it, not merely
         that some conversion happened."""
-        _, effective, _ = get_reference_exchange_rate("USD", date(2026, 2, 1))
-        assert effective == date(2026, 1, 1)
+        _, effective, _ = get_reference_exchange_rate("USD", date(2026, 2, 14))
+        assert effective == date(2026, 2, 1)
 
     def test_same_currency_needs_no_conversion(self):
         rate, _, source = get_reference_exchange_rate("GBP", date(2026, 5, 1))
@@ -92,3 +93,24 @@ class TestVersioning:
             ).encode("utf-8")
         ).hexdigest()
         assert recomputed == CPR_REFERENCE_METADATA["table_sha256"]
+
+
+class TestSource:
+    """The table holds HMRC's published figures, not estimates. It once held
+    rows labelled "HMRC monthly rates" that matched none of HMRC's files."""
+
+    def test_every_rate_is_derived_from_hmrcs_published_units_per_pound(self):
+        from app.services.hmrc_exchange_rates import gbp_per_unit
+
+        for r in EXCHANGE_RATES:
+            assert r.units_per_gbp is not None
+            assert r.rate == gbp_per_unit(r.units_per_gbp)
+
+    def test_holds_hmrcs_april_2026_euro_rate(self):
+        april = next(r for r in EXCHANGE_RATES if r.from_currency == "EUR" and r.effective_from == date(2026, 4, 1))
+        assert april.units_per_gbp == Decimal("1.1570")
+        assert april.rate == Decimal("0.864304")
+
+    def test_covers_the_currencies_relief_claims_use(self):
+        october = {r.from_currency for r in EXCHANGE_RATES if r.effective_from == date(2026, 10, 1)}
+        assert {"EUR", "CHF", "SEK", "NOK", "USD", "CNY", "TRY", "INR"} <= october
