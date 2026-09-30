@@ -6,7 +6,12 @@ to be right before it reaches the return:
 - the scheme is one the UK recognises for the goods' country of origin;
 - the claim is against a goods line this tenant owns, from that country;
 - only the latest claim on a line counts. Claiming again replaces the earlier
-  claim — it used to be added to it, doubling the relief.
+  claim — it used to be added to it, doubling the relief;
+- only a claim with its verifier's statement counts. Relief requires independent
+  verification of the carbon price paid (Finance (No.2) Bill 2025-26); a claim
+  without a statement stays on record but does not reduce the return;
+- a claim is not capped against a guess at the liability. The return caps each
+  line's relief at that line's own charge, where the charge is actually known.
 """
 # ruff: noqa: F811 — fixtures are imported from test_full_pipeline and requested by name.
 from __future__ import annotations
@@ -65,27 +70,72 @@ def _claim(line_id: str, **over) -> dict:
     }
 
 
-def test_only_the_latest_claim_on_a_line_reduces_the_return(api_client, cleanup_cases):
-    from app.services.cpr_repository import get_cpr_by_consignment_db
+SHA = "c3" * 32
+
+
+def _relief(case_id: str, tenant: str) -> dict:
+    from app.services.cpr_repository import get_cpr_by_goods_line_db
     from ledger_app.api.cbam._shared import engine, set_tenant_context
 
+    with engine.begin() as conn:
+        set_tenant_context(conn, tenant)
+        return get_cpr_by_goods_line_db(conn, case_id, tenant)
+
+
+def _attach_statement(client, headers, line_id: str) -> None:
+    res = client.post(
+        f"/api/cbam/cpr/upload-verification/{line_id}",
+        json={"document_ref": "arbor:verification:test", "document_sha256": SHA},
+        headers=headers,
+    )
+    assert res.status_code == 200, res.text
+
+
+def test_a_claim_counts_only_once_its_verifiers_statement_is_attached(api_client, cleanup_cases):
     tenant = str(uuid4())
     headers = _auth_headers(tenant)
     case_id, line_id = _goods_line(api_client, headers)
     cleanup_cases.append(case_id)
 
-    first = api_client.post("/api/cbam/cpr/claims", json=_claim(line_id), headers=headers)
-    assert first.status_code == 201, first.text
+    claim = api_client.post("/api/cbam/cpr/claims", json=_claim(line_id), headers=headers)
+    assert claim.status_code == 201, claim.text
+    assert _relief(case_id, tenant) == {}
+
+    _attach_statement(api_client, headers, line_id)
+    assert _relief(case_id, tenant) == {line_id: Decimal(str(claim.json()["cpr_amount_gbp"])).quantize(Decimal("0.01"))}
+
+
+def test_only_the_latest_claim_on_a_line_reduces_the_return(api_client, cleanup_cases):
+    tenant = str(uuid4())
+    headers = _auth_headers(tenant)
+    case_id, line_id = _goods_line(api_client, headers)
+    cleanup_cases.append(case_id)
+
+    assert api_client.post("/api/cbam/cpr/claims", json=_claim(line_id), headers=headers).status_code == 201
     # The importer mistyped the price and claims again.
     second = api_client.post(
         "/api/cbam/cpr/claims", json=_claim(line_id, carbon_price_local_currency="60"), headers=headers
     )
     assert second.status_code == 201, second.text
+    _attach_statement(api_client, headers, line_id)
 
-    with engine.begin() as conn:
-        set_tenant_context(conn, tenant)
-        relief = get_cpr_by_consignment_db(conn, case_id, tenant)
-    assert relief == {"MRN-CPR-1": Decimal(str(second.json()["cpr_amount_gbp"])).quantize(Decimal("0.01"))}
+    assert _relief(case_id, tenant) == {line_id: Decimal(str(second.json()["cpr_amount_gbp"])).quantize(Decimal("0.01"))}
+
+
+def test_a_claim_without_a_liability_is_stored_uncapped(api_client, cleanup_cases):
+    headers = _auth_headers(str(uuid4()))
+    case_id, line_id = _goods_line(api_client, headers)
+    cleanup_cases.append(case_id)
+
+    body = _claim(line_id)
+    del body["cbam_liability_gbp"]
+    res = api_client.post("/api/cbam/cpr/claims", json=body, headers=headers)
+    assert res.status_code == 201, res.text
+    claim = res.json()
+    # 100 tCO2e x EUR 70 x 0.85 = £5,950, with nothing to cap it against yet.
+    assert Decimal(str(claim["cpr_amount_gbp"])) == Decimal("5950.00")
+    assert claim["cpr_capped"] is False
+    assert claim["cbam_liability_gbp"] is None
 
 
 def test_a_scheme_the_uk_does_not_recognise_for_the_origin_is_refused(api_client, cleanup_cases):

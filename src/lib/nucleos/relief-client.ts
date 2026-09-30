@@ -92,6 +92,40 @@ export async function listReliefClaims(goodsLineId: string, fetchImpl: typeof fe
   return Array.isArray(body.claims) ? body.claims : []
 }
 
+export interface HmrcExchangeRate {
+  rate: string
+  /** The first of the month the rate applies to. */
+  effectiveFrom: string
+  source: string
+  /** The version of Nucleos's reference table the rate came from. */
+  tableVersion: string
+}
+
+/**
+ * HMRC's rate for a currency in the calendar month of a date, or null when
+ * Nucleos does not hold that month. Never the nearest month it does hold:
+ * HMRC publishes one rate a month, and last month's is a different figure.
+ */
+export async function getHmrcExchangeRate(
+  currency: string,
+  date: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<HmrcExchangeRate | null> {
+  const query = new URLSearchParams({ currency: currency.trim().toUpperCase(), date })
+  const path = `/api/cbam/cpr/exchange-rate?${query.toString()}`
+  let res: Response
+  try {
+    res = await fetchImpl(`${base()}${path}`, { headers: nucleosHeaders(), cache: 'no-store' })
+  } catch (err) {
+    if (err instanceof NucleosUnavailableError) throw err
+    throw new NucleosUnavailableError(`Nucleos request failed for ${path}: ${(err as Error).message}`)
+  }
+  if (res.status === 404) return null
+  if (!res.ok) throw new NucleosUnavailableError(`Nucleos returned ${res.status} for ${path}`)
+  const body = (await res.json()) as { rate: string; effective_from: string; source: string; table_version: string }
+  return { rate: body.rate, effectiveFrom: body.effective_from, source: body.source, tableVersion: body.table_version }
+}
+
 /** Attaches the verifier's statement to the line's claims that have none. */
 export async function recordReliefStatement(
   goodsLineId: string,

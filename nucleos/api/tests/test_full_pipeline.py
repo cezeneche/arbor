@@ -277,6 +277,7 @@ def _make_hmrc_input(
     *,
     cbam_rate:             Decimal            = _UK_ETS_RATE,
     cpr_by_consignment:    dict[str, Decimal] | None = None,
+    cpr_by_goods_line:     dict[str, Decimal] | None = None,
     verification_refs:     dict[str, str]     | None = None,
     cn8_overrides:         dict[str, str]     | None = None,
     narrative_limitations: str | None         = None,
@@ -289,6 +290,7 @@ def _make_hmrc_input(
         accuracy_declaration=accuracy_declaration,
         narrative_limitations=narrative_limitations,
         cpr_by_consignment=cpr_by_consignment or {},
+        cpr_by_goods_line=cpr_by_goods_line or {},
         verification_refs=verification_refs or {},
         cn8_overrides=cn8_overrides or {},
     )

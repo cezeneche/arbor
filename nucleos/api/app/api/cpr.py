@@ -5,6 +5,7 @@ Route prefix: /api/cbam/cpr  (registered in main.py with prefix="/api")
 Endpoints
 ---------
 GET  /cbam/cpr/qualifying-schemes          List/check recognised CPR schemes
+GET  /cbam/cpr/exchange-rate               HMRC's rate for a currency in the month of a date
 POST /cbam/cpr/calculate                   Pure CPR calculation (no DB write)
 POST /cbam/cpr/claims                      Create a CPR claim and persist to DB
 GET  /cbam/cpr/claims/{goods_line_id}      List all CPR claims for a goods line
@@ -33,6 +34,11 @@ from app.services.cpr_calculator import (
     calculate_cpr,
     get_qualifying_schemes,
     scheme_currency,
+)
+from app.services.cpr_reference import (
+    CPR_REFERENCE_VERSION,
+    ExchangeRateUnavailable,
+    get_reference_exchange_rate,
 )
 from app.services.cpr_repository import (
     lookup_qualifying_schemes_db,
@@ -91,9 +97,12 @@ class CPRCalculateRequest(BaseModel):
             "Retrieve via GET /cbam/cpr/exchange-rates or supply your own with the import date."
         ),
     )
-    cbam_liability_gbp: Decimal = Field(
-        ..., ge=0,
-        description="CBAM liability (£) for this goods line — CPR cannot exceed this.",
+    cbam_liability_gbp: Decimal | None = Field(
+        default=None, ge=0,
+        description=(
+            "CBAM liability (£) for this goods line — CPR cannot exceed this. "
+            "Omit to preview the relief uncapped; the HMRC return caps it at the line's charge."
+        ),
     )
 
 
@@ -147,9 +156,12 @@ class CPRClaimCreate(BaseModel):
     exchange_rate_date: date = Field(
         ..., description="Date on which the exchange rate applies (typically import date).",
     )
-    cbam_liability_gbp: Decimal = Field(
-        ..., ge=0,
-        description="CBAM liability (£) for this goods line — CPR cap.",
+    cbam_liability_gbp: Decimal | None = Field(
+        default=None, ge=0,
+        description=(
+            "CBAM liability (£) for this goods line — CPR cap. Omit to store the "
+            "claim uncapped: the HMRC return caps relief at the line's own charge."
+        ),
     )
     verifier_name: str | None = Field(
         default=None, max_length=200,
@@ -296,6 +308,40 @@ def list_qualifying_schemes(
         }
 
 
+@router.get("/exchange-rate")
+def get_exchange_rate(
+    currency: str = Query(..., min_length=3, max_length=3, description="ISO 4217 code, e.g. 'EUR'."),
+    on: date = Query(..., alias="date", description="The date the rate applies to, normally the import date."),
+):
+    """HMRC's rate for *currency* in the calendar month of *date*.
+
+    HMRC publishes one rate per currency per month, so only that month's rate
+    is HMRC's rate for the date. The reference table falls back to the latest
+    earlier rate it holds; an earlier month's rate is a different figure, so it
+    is refused here rather than offered as this month's.
+    """
+    code = currency.strip().upper()
+    month = on.replace(day=1)
+    not_held = HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"HMRC's {code} rate for {on.strftime('%B %Y')} is not held in reference table {CPR_REFERENCE_VERSION}.",
+    )
+    try:
+        rate, effective_from, source = get_reference_exchange_rate(code, on)
+    except ExchangeRateUnavailable as exc:
+        raise not_held from exc
+    if code != "GBP" and effective_from != month:
+        raise not_held
+    return {
+        "currency": code,
+        "date": on.isoformat(),
+        "rate": str(rate),
+        "effective_from": effective_from.isoformat(),
+        "source": source,
+        "table_version": CPR_REFERENCE_VERSION,
+    }
+
+
 @router.post("/calculate")
 def calculate_cpr_endpoint(payload: CPRCalculateRequest):
     """Pure CPR calculation — returns all intermediate values.  No DB write.
@@ -332,7 +378,7 @@ def calculate_cpr_endpoint(payload: CPRCalculateRequest):
         "cpr_raw_gbp":              str(result.cpr_raw_gbp),
         "cpr_capped":               result.cpr_capped,
         "cpr_amount_gbp":           str(result.cpr_amount_gbp),
-        "cbam_liability_gbp":       str(result.cbam_liability_gbp),
+        "cbam_liability_gbp":       None if result.cbam_liability_gbp is None else str(result.cbam_liability_gbp),
         "warnings":                 result.warnings,
     }
 
@@ -392,7 +438,7 @@ def create_cpr_claim(
             "cpr_raw_gbp":                  str(result.cpr_raw_gbp),
             "cpr_capped":                   result.cpr_capped,
             "cpr_amount_gbp":               str(result.cpr_amount_gbp),
-            "cbam_liability_gbp":           str(result.cbam_liability_gbp),
+            "cbam_liability_gbp":           None if result.cbam_liability_gbp is None else str(result.cbam_liability_gbp),
         }
 
         if "verifier_name" in columns and payload.verifier_name:

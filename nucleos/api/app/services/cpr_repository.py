@@ -113,37 +113,28 @@ def get_exchange_rate_db(
     return Decimal(str(row["rate"])), row["effective_date"], str(row["source"])
 
 
-def get_cpr_by_consignment_db(
+def get_cpr_by_goods_line_db(
     conn: Any,
     case_id: str,
     tenant_id: str,
 ) -> dict[str, Decimal]:
-    """Sum the relief on each consignment of a case, one claim per goods line.
+    """The relief each goods line of a case carries onto the HMRC return.
 
-    Only the latest claim on a goods line counts. Claiming again for a line —
-    to correct a mistyped price, say — replaces the earlier claim; summing every
-    claim ever made added the correction to the mistake and doubled the relief.
+    One claim per goods line: the latest. Claiming again for a line — to
+    correct a mistyped price, say — replaces the earlier claim; summing every
+    claim added the correction to the mistake and doubled the relief.
 
-    Joins cbam_cpr_claims → cbam_goods_lines → cbam_shipments to resolve
-    each claim to its consignment reference.  Replicates the same fallback
-    priority used by hmrc_return_builder._consignment_ref:
-      1. cbam_shipments.consignment_reference  (migration 008)
-      2. cbam_shipments.entry_reference
-      3. 'SHIP-' + first 12 chars of shipment UUID
+    Only a claim with its verifier's statement attached counts. Relief requires
+    independent verification of the carbon price paid (Finance (No.2) Bill
+    2025-26); an unverified claim stays on record but does not reduce the return.
+
+    The amounts are as claimed. The HMRC return builder caps each at the line's
+    own CBAM charge.
 
     Returns
     -------
-    dict mapping consignment_ref → total cpr_amount_gbp (Decimal).
-    Empty dict when no CPR claims exist for the case.
-
-    Parameters
-    ----------
-    conn:
-        Open SQLAlchemy ``Connection`` with tenant context already set.
-    case_id:
-        UUID string of the cbam_case.
-    tenant_id:
-        Caller's tenant UUID — filters claims to the correct tenant.
+    dict mapping goods_line_id → cpr_amount_gbp (Decimal). Empty when no line
+    carries verified relief.
     """
     from sqlalchemy import text as _text  # local import — keeps module importable without SA
 
@@ -152,26 +143,20 @@ def get_cpr_by_consignment_db(
             """
             WITH latest AS (
                 SELECT DISTINCT ON (c.goods_line_id)
-                       c.goods_line_id, c.cpr_amount_gbp
+                       c.goods_line_id, c.cpr_amount_gbp, c.verification_document_hash
                 FROM   cbam.cbam_cpr_claims c
                 WHERE  c.tenant_id = :tenant_id
                 ORDER  BY c.goods_line_id, c.created_at DESC, c.id DESC
             )
-            SELECT
-                COALESCE(
-                    sh.consignment_reference,
-                    sh.entry_reference,
-                    'SHIP-' || LEFT(sh.id::text, 12)
-                )                        AS consignment_ref,
-                SUM(l.cpr_amount_gbp)    AS total_cpr_gbp
+            SELECT l.goods_line_id, l.cpr_amount_gbp
             FROM   latest                 l
             JOIN   cbam.cbam_goods_lines  gl ON gl.id = l.goods_line_id
             JOIN   cbam.cbam_shipments    sh ON sh.id = gl.shipment_id
             WHERE  sh.case_id = :case_id
-            GROUP  BY consignment_ref
+              AND  l.verification_document_hash IS NOT NULL
             """
         ),
         {"case_id": case_id, "tenant_id": tenant_id},
     ).mappings().all()
 
-    return {str(r["consignment_ref"]): _gbp(Decimal(str(r["total_cpr_gbp"]))) for r in rows}
+    return {str(r["goods_line_id"]): _gbp(Decimal(str(r["cpr_amount_gbp"]))) for r in rows}

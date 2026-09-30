@@ -2,29 +2,9 @@
 // network, no calculation of the relief itself — that is Nucleos's engine, and
 // duplicating its formula here would produce a second answer that disagrees.
 //
-// What this does own is the two questions the screen has to answer before the
-// engine is called at all: what does the relief leave owing, and what is still
-// missing. Which schemes qualify, and in which currency, is Nucleos's reference
+// What this does own is the question the screen has to answer before the
+// engine is called at all: what is still missing. Which schemes qualify, and in which currency, is Nucleos's reference
 // data (relief-client, relief-presenter) — Arbor's own copy had drifted.
-
-/**
- * What is left owing after relief.
- *
- * Floored at zero. Relief reduces a bill; it does not pay one out, and a
- * negative figure on screen reads as money back from HMRC.
- *
- * Null when the liability is not yet known — which is a different statement
- * from zero. Zero says "you owe nothing"; null says "we cannot tell you yet".
- */
-export function netLiability(
-  liabilityGbp: number | null | undefined,
-  reliefGbp: number,
-): number | null {
-  if (liabilityGbp === null || liabilityGbp === undefined || !Number.isFinite(liabilityGbp)) {
-    return null
-  }
-  return Math.max(0, liabilityGbp - reliefGbp)
-}
 
 export interface CprInputs {
   verifiedEmissions: string

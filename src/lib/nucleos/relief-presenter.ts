@@ -2,8 +2,9 @@
 //
 // Three questions: can relief be claimed here, and under which scheme; which
 // claim counts on the return; and does a verifier's statement stand behind it.
-// Only the newest claim counts — claiming again replaces the earlier claim,
-// which is how a mistyped price is corrected. Nucleos sums the same way.
+// Only the newest claim can count — claiming again replaces the earlier claim,
+// which is how a mistyped price is corrected — and only once its verifier's
+// statement is attached. Nucleos applies the same rule to the return.
 
 import { cprDisplay } from './cpr-display'
 import type { QualifyingSchemes, ReliefClaim } from './relief-client'
@@ -49,9 +50,11 @@ export interface ReliefStatementRef {
 
 export interface PresentedReliefClaim {
   id: string
-  /** True for the one claim the return carries. */
+  /** The newest claim: the only one that can count. */
+  latest: boolean
+  /** True when the return carries it: the newest claim, with its statement attached. */
   counts: boolean
-  status: 'Counts on the return' | 'Replaced by a later claim'
+  status: 'Counts on the return' | 'Not counted until the verifier’s statement is attached' | 'Replaced by a later claim'
   amount: string
   scheme: string
   /** The figures the relief was worked out from. */
@@ -107,10 +110,17 @@ export function presentReliefClaims(
       capped: claim.cpr_capped === true,
       uncappedAmount: num(claim.cpr_raw_gbp),
     })
+    const latest = index === 0
+    const counts = latest && hash !== null
     return {
       id: claim.id,
-      counts: index === 0,
-      status: index === 0 ? 'Counts on the return' : 'Replaced by a later claim',
+      latest,
+      counts,
+      status: counts
+        ? 'Counts on the return'
+        : latest
+          ? 'Not counted until the verifier’s statement is attached'
+          : 'Replaced by a later claim',
       amount: display.amount,
       scheme: claim.qualifying_scheme_name ?? '—',
       basis: basis(claim),

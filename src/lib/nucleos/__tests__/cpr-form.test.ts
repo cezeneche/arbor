@@ -1,26 +1,9 @@
-import { netLiability, missingForCalculation } from '../cpr-form'
+import { missingForCalculation } from '../cpr-form'
 
 // Carbon price relief reduces what an importer owes, so every one of these
 // answers is money. Which schemes qualify is Nucleos's reference data now (see
-// relief-presenter); what stays here is that a relief larger than the liability
-// does not produce a refund, and that a claim is not made on missing figures.
-
-describe('netLiability', () => {
-  it('subtracts the relief from what is owed', () => {
-    expect(netLiability(1000, 250)).toBe(750)
-  })
-
-  it('floors at zero — relief reduces a bill, it does not pay one out', () => {
-    // A negative net liability rendered on screen reads as money back from HMRC.
-    expect(netLiability(1000, 1500)).toBe(0)
-  })
-
-  it('returns null when the liability is not yet known', () => {
-    // Showing 0 here would say "you owe nothing", which is a different claim
-    // from "we cannot tell you yet".
-    expect(netLiability(null, 250)).toBeNull()
-  })
-})
+// relief-presenter), and the return caps relief at each line's charge; what
+// stays here is that a claim is not made on missing figures.
 
 describe('missingForCalculation', () => {
   const complete = {
