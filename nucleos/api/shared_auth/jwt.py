@@ -164,6 +164,20 @@ def decode_access_token(token: str) -> AuthContext:
     )
 
 
+def decode_bearer_token(token: str) -> AuthContext:
+    """Every service credential Nucleos accepts, in one place.
+
+    Arbor's Vercel OIDC identity first (see shared_auth.vercel_service), then
+    the HS256 tokens Nucleos signs itself. Raises ValueError("invalid_token").
+    """
+    from shared_auth.vercel_service import try_decode_service_token
+
+    context = try_decode_service_token(token)
+    if context is not None:
+        return context
+    return decode_access_token(token)
+
+
 def _b64url_encode(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
