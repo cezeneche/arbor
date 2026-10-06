@@ -205,9 +205,9 @@ try {
   console.log('\n── Scope check ──')
   const scope = await checkCbamScope({ cn_code: '72071111', origin_country: 'TR' })
   check('scope check answers', Boolean(scope?.status), JSON.stringify(scope)?.slice(0, 120))
-  // Without an EORI and a consignment value the determination is deliberately
-  // "requires_review" rather than a confident yes — the CN code is covered but
-  // a factor is missing. What matters here is that it is not out_of_scope.
+  // Without an EORI the determination is deliberately "requires_review" rather
+  // than a confident yes — the CN code is covered but a factor is missing. What
+  // matters here is that it is not out_of_scope.
   check('a covered CN code is not written off as out of scope',
     scope?.status === 'in_scope' || scope?.status === 'requires_review', scope?.status)
   check('the answer cites its provisions', (scope?.regulation_refs ?? []).length > 0)

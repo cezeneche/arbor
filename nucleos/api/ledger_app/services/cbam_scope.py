@@ -8,7 +8,9 @@ Regulation references
 EU Regulation 2023/956 (CBAM framework):
   - Article 2(1)  — CBAM applies to goods listed in Annex I imported from third countries
   - Article 2(2)  — Exclusions: goods from countries/territories listed in Annex II
-  - Article 2(3)  — De minimis: consignments with intrinsic value ≤ EUR 150 are excluded
+  - Article 2a    — De minimis: an importer of 50 tonnes or less a year is exempt
+                    (inserted by Regulation (EU) 2025/2083; replaced the EUR 150
+                    consignment rule of Article 2(3) from 1 January 2026)
   - Article 2(4)  — Goods in transit or temporary admission are excluded
   - Article 3(16) — 'Authorised CBAM Declarant': importer registered with national authority
   - Article 5     — Authorisation to file CBAM declarations (required from 2026)
@@ -17,8 +19,10 @@ EU Regulation 2023/956 (CBAM framework):
 
 Determination outcomes
 ----------------------
-in_scope        All checks passed; a CBAM declaration is required.
-out_of_scope    One or more definitive exclusions apply (Annex I, Annex II, de minimis).
+in_scope        The goods are covered and no exclusion applies. The importer
+                may still be under the annual de minimis threshold (Art. 2a),
+                which this check reports and cannot decide.
+out_of_scope    One or more definitive exclusions apply (Annex I, Annex II, EU origin).
 requires_review Annex I code is covered but a condition cannot be resolved without
                 additional information (e.g. missing origin, EORI format invalid,
                 customs procedure unclear).
@@ -28,7 +32,7 @@ Public API
 determine_cbam_scope(cn_code, origin_country, ...) -> ScopeDetermination
 ScopeDetermination                                  — result dataclass
 ScopeStatus                                         — enum: IN_SCOPE / OUT_OF_SCOPE / REQUIRES_REVIEW
-DE_MINIMIS_THRESHOLD_EUR                            — Decimal("150")
+DE_MINIMIS_ANNUAL_MASS_TONNES                       — Decimal("50")
 ANNEX_II_COUNTRIES                                  — frozenset of excluded ISO-2 codes
 EU_MEMBER_STATES                                    — frozenset of EU-27 ISO-2 codes
 """
@@ -42,7 +46,13 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
 
-from ledger_app.services.cbam_taric import lookup_sector
+from ledger_app.services.cbam_taric import (
+    SECTOR_ALUMINIUM,
+    SECTOR_CEMENT,
+    SECTOR_FERTILISERS,
+    SECTOR_IRON_STEEL,
+    lookup_sector,
+)
 
 __all__ = [
     "ScopeStatus",
@@ -50,7 +60,7 @@ __all__ = [
     "DeclarantValidationResult",
     "determine_cbam_scope",
     "validate_declarant_registration",
-    "DE_MINIMIS_THRESHOLD_EUR",
+    "DE_MINIMIS_ANNUAL_MASS_TONNES",
     "ANNEX_II_COUNTRIES",
     "EU_MEMBER_STATES",
 ]
@@ -59,8 +69,14 @@ _logger = logging.getLogger("ledger.cbam_scope")
 
 # Constants
 
-DE_MINIMIS_THRESHOLD_EUR: Decimal = Decimal("150")
-"""Intrinsic-value threshold below which CBAM does not apply (Art. 2(3))."""
+DE_MINIMIS_ANNUAL_MASS_TONNES: Decimal = Decimal("50")
+"""Net mass an importer may bring in per calendar year and stay exempt (Art. 2a)."""
+
+# The sectors whose goods count toward, and are covered by, the 50-tonne
+# threshold. Hydrogen and electricity are outside it: covered at any quantity.
+_DE_MINIMIS_SECTORS: frozenset[str] = frozenset({
+    SECTOR_IRON_STEEL, SECTOR_ALUMINIUM, SECTOR_FERTILISERS, SECTOR_CEMENT,
+})
 
 # EU-27 member states (not third countries; CBAM never applies to domestic origin)
 EU_MEMBER_STATES: frozenset[str] = frozenset({
@@ -111,8 +127,6 @@ class ScopeDetermination:
         Input CN code (normalised, digits only).
     origin_country : str | None
         Input origin country (upper-cased ISO 3166-1 alpha-2).
-    consignment_value_eur : Decimal | None
-        Input consignment value (intrinsic value, EUR).
     importer_eori : str | None
         Input importer EORI (upper-cased).
     """
@@ -122,7 +136,6 @@ class ScopeDetermination:
     regulation_refs: list[str]
     cn_code: str
     origin_country: str | None
-    consignment_value_eur: Decimal | None
     importer_eori: str | None
 
 
@@ -232,7 +245,6 @@ def validate_declarant_registration(
 def determine_cbam_scope(
     cn_code: str,
     origin_country: str | None = None,
-    consignment_value_eur: Decimal | None = None,
     importer_eori: str | None = None,
 ) -> ScopeDetermination:
     """Determine whether CBAM applies to a given importation.
@@ -245,9 +257,6 @@ def determine_cbam_scope(
     origin_country:
         ISO 3166-1 alpha-2 code of the country of origin.  Case-insensitive.
         None → cannot determine origin → triggers requires_review.
-    consignment_value_eur:
-        Intrinsic value of the consignment in EUR (excluding transport/insurance
-        costs). None → de minimis check is skipped.
     importer_eori:
         EU Economic Operators Registration and Identification number of the
         importer or their customs representative.  None → triggers requires_review.
@@ -311,30 +320,33 @@ def determine_cbam_scope(
             f"third-country origin; CBAM applies unless another exclusion applies"
         )
 
-    # Step 3: De minimis — intrinsic value ≤ EUR 150?
-    if consignment_value_eur is not None:
-        value = Decimal(str(consignment_value_eur))
-        if value <= DE_MINIMIS_THRESHOLD_EUR:
-            reasons.append(
-                f"de_minimis:below_threshold:{value}EUR — "
-                f"intrinsic value ≤ EUR {DE_MINIMIS_THRESHOLD_EUR}; "
-                f"CBAM does not apply (EU 2023/956, Art. 2(3))"
-            )
-            reg_refs.append(
-                "EU Regulation 2023/956, Article 2(3) "
-                f"(de minimis threshold EUR {DE_MINIMIS_THRESHOLD_EUR})"
-            )
-            out_of_scope_definitive = True
-        else:
-            reasons.append(
-                f"de_minimis:above_threshold:{value}EUR — "
-                f"intrinsic value > EUR {DE_MINIMIS_THRESHOLD_EUR}; "
-                f"de minimis exclusion does not apply"
-            )
-    else:
+    # Step 3: De minimis (Art. 2a). The exemption is 50 tonnes of net mass per
+    # importer per calendar year across four sectors together. One importation
+    # cannot show whether an importer is under it, so it is reported and never
+    # applied: calling liable goods exempt is the costly mistake.
+    if sector in _DE_MINIMIS_SECTORS:
         reasons.append(
-            "de_minimis:value_not_provided — "
-            "consignment value not provided; de minimis check skipped"
+            f"de_minimis:annual_mass_threshold:{DE_MINIMIS_ANNUAL_MASS_TONNES}t — "
+            f"an importer is exempt only if its iron and steel, aluminium, fertiliser "
+            f"and cement imports total {DE_MINIMIS_ANNUAL_MASS_TONNES} tonnes or less "
+            f"in the calendar year; one importation cannot settle that "
+            f"(EU 2023/956, Art. 2a)"
+        )
+        reg_refs.append(
+            "EU Regulation 2023/956, Article 2a "
+            f"(de minimis: {DE_MINIMIS_ANNUAL_MASS_TONNES} tonnes per calendar year; "
+            "inserted by Regulation (EU) 2025/2083)"
+        )
+    elif sector is not None:
+        reasons.append(
+            f"de_minimis:not_available:{sector} — "
+            f"the {DE_MINIMIS_ANNUAL_MASS_TONNES}-tonne annual exemption does not "
+            f"cover {sector}; it is covered at any quantity (EU 2023/956, Art. 2a)"
+        )
+        reg_refs.append(
+            "EU Regulation 2023/956, Article 2a "
+            f"(de minimis: {DE_MINIMIS_ANNUAL_MASS_TONNES} tonnes per calendar year; "
+            "inserted by Regulation (EU) 2025/2083)"
         )
 
     # Step 4: Importer EORI validation
@@ -395,8 +407,5 @@ def determine_cbam_scope(
         regulation_refs=unique_refs,
         cn_code=norm_cn,
         origin_country=norm_origin,
-        consignment_value_eur=(
-            Decimal(str(consignment_value_eur)) if consignment_value_eur is not None else None
-        ),
         importer_eori=norm_eori,
     )

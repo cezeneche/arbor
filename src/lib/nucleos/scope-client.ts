@@ -14,7 +14,6 @@ export type ScopeStatus = 'in_scope' | 'out_of_scope' | 'requires_review'
 export interface ScopeCheckRequest {
   cn_code: string
   origin_country?: string | null
-  consignment_value_eur?: number | null
   importer_eori?: string | null
 }
 
@@ -23,7 +22,6 @@ export interface ScopeCheckResult {
   sector: string | null
   cn_code: string
   origin_country: string | null
-  consignment_value_eur: number | null
   importer_eori: string | null
   /** Why the determination came out this way, in order. */
   reasons: string[]

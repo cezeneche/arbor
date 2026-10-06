@@ -5,10 +5,10 @@ Coverage:
     - CN code not in Annex I → out_of_scope
     - CN code in Annex I, EU member state origin → out_of_scope
     - CN code in Annex I, Annex II country (IS/LI/NO/CH) → out_of_scope
-    - CN code in Annex I, third-country origin, above de minimis, valid EORI → in_scope
-    - De minimis: value ≤ EUR 150 → out_of_scope
-    - De minimis: value > EUR 150 → not excluded
-    - De minimis: value not provided → skipped (no out_of_scope from this rule)
+    - CN code in Annex I, third-country origin, valid EORI → in_scope
+    - De minimis: no consignment value decides scope (the EUR 150 rule was repealed)
+    - De minimis: the 50-tonne annual threshold is reported, never applied
+    - De minimis: hydrogen and electricity are outside the threshold
     - Missing origin → requires_review
     - Missing EORI → requires_review
     - Invalid EORI format → requires_review
@@ -18,7 +18,7 @@ Coverage:
     - Origin country normalisation (lower → upper)
     - EORI normalisation (lower → upper)
 - ScopeStatus enum values
-- DE_MINIMIS_THRESHOLD_EUR constant
+- DE_MINIMIS_ANNUAL_MASS_TONNES constant
 - ANNEX_II_COUNTRIES and EU_MEMBER_STATES completeness spot-checks
 - POST /cbam/scope-check API endpoint:
     - in_scope response
@@ -33,7 +33,7 @@ from decimal import Decimal
 
 from ledger_app.services.cbam_scope import (
     ANNEX_II_COUNTRIES,
-    DE_MINIMIS_THRESHOLD_EUR,
+    DE_MINIMIS_ANNUAL_MASS_TONNES,
     EU_MEMBER_STATES,
     ScopeStatus,
     determine_cbam_scope,
@@ -53,7 +53,8 @@ _THIRD_COUNTRY = "CN"
 
 class TestConstants:
     def test_de_minimis_threshold(self):
-        assert DE_MINIMIS_THRESHOLD_EUR == _D("150")
+        # EU 2023/956 Art. 2a, inserted by EU 2025/2083: 50 tonnes per calendar year.
+        assert DE_MINIMIS_ANNUAL_MASS_TONNES == _D("50")
 
     def test_annex_ii_contains_eea(self):
         for code in ("IS", "LI", "NO"):
@@ -113,31 +114,11 @@ class TestOutOfScope:
         result = determine_cbam_scope(_CEMENT_CN, origin_country="LI")
         assert result.status == ScopeStatus.OUT_OF_SCOPE
 
-    def test_de_minimis_exactly_150_excluded(self):
-        result = determine_cbam_scope(
-            _CEMENT_CN, origin_country=_THIRD_COUNTRY,
-            consignment_value_eur=_D("150"),
-            importer_eori=_VALID_EORI,
-        )
-        assert result.status == ScopeStatus.OUT_OF_SCOPE
-        assert any("de_minimis:below_threshold" in r for r in result.reasons)
-
-    def test_de_minimis_below_150_excluded(self):
-        result = determine_cbam_scope(
-            _CEMENT_CN, origin_country=_THIRD_COUNTRY,
-            consignment_value_eur=_D("49.99"),
-            importer_eori=_VALID_EORI,
-        )
-        assert result.status == ScopeStatus.OUT_OF_SCOPE
-
-    def test_annex_i_false_takes_priority_over_de_minimis(self):
-        """Non-Annex-I code stays out_of_scope even above de minimis."""
-        result = determine_cbam_scope(
-            _OUT_OF_SCOPE_CN, origin_country=_THIRD_COUNTRY,
-            consignment_value_eur=_D("5000"),
-        )
+    def test_a_code_outside_annex_i_gets_no_threshold_reason(self):
+        result = determine_cbam_scope(_OUT_OF_SCOPE_CN, origin_country=_THIRD_COUNTRY)
         assert result.status == ScopeStatus.OUT_OF_SCOPE
         assert any("annex_i:not_covered" in r for r in result.reasons)
+        assert not any(r.startswith("de_minimis:") for r in result.reasons)
 
 
 # determine_cbam_scope — in_scope path
@@ -148,7 +129,6 @@ class TestInScope:
         result = determine_cbam_scope(
             _CEMENT_CN,
             origin_country=_THIRD_COUNTRY,
-            consignment_value_eur=_D("5000"),
             importer_eori=_VALID_EORI,
         )
         assert result.status == ScopeStatus.IN_SCOPE
@@ -158,25 +138,22 @@ class TestInScope:
         result = determine_cbam_scope(
             _STEEL_CN,
             origin_country="IN",
-            consignment_value_eur=_D("10000"),
             importer_eori="FR123456789012",
         )
         assert result.status == ScopeStatus.IN_SCOPE
         assert result.sector == "iron_steel"
 
-    def test_in_scope_above_de_minimis(self):
+    def test_in_scope_cement(self):
         result = determine_cbam_scope(
             _CEMENT_CN, origin_country="TR",
-            consignment_value_eur=_D("150.01"),
             importer_eori=_VALID_EORI,
         )
         assert result.status == ScopeStatus.IN_SCOPE
-        assert any("above_threshold" in r for r in result.reasons)
+        assert any("annual_mass_threshold" in r for r in result.reasons)
 
     def test_in_scope_regulation_ref_present(self):
         result = determine_cbam_scope(
             _CEMENT_CN, origin_country="CN",
-            consignment_value_eur=_D("1000"),
             importer_eori=_VALID_EORI,
         )
         assert result.status == ScopeStatus.IN_SCOPE
@@ -216,15 +193,46 @@ class TestRequiresReview:
         assert "origin:missing" in reasons_joined
         assert "eori:missing" in reasons_joined
 
-    def test_no_value_does_not_cause_requires_review(self):
-        """Missing consignment value skips de minimis but doesn't force requires_review."""
-        result = determine_cbam_scope(
-            _CEMENT_CN, origin_country=_THIRD_COUNTRY,
-            consignment_value_eur=None,
-            importer_eori=_VALID_EORI,
-        )
+
+
+# De minimis (EU 2023/956 Art. 2a, inserted by EU 2025/2083)
+#
+# Until the end of 2025 a consignment worth EUR 150 or less was outside CBAM.
+# From 1 January 2026 the exemption is 50 tonnes of net mass per importer per
+# calendar year, across iron and steel, aluminium, fertilisers and cement
+# together. One importation cannot show whether an importer is under it, so the
+# scope check reports the threshold and never applies it: telling a liable
+# importer their goods are exempt is the costly mistake.
+
+class TestDeMinimis:
+    def test_no_consignment_is_exempt_for_being_small(self):
+        import inspect
+
+        assert "consignment_value_eur" not in inspect.signature(determine_cbam_scope).parameters
+        result = determine_cbam_scope(_CEMENT_CN, origin_country=_THIRD_COUNTRY, importer_eori=_VALID_EORI)
         assert result.status == ScopeStatus.IN_SCOPE
-        assert any("de_minimis:value_not_provided" in r for r in result.reasons)
+        assert not hasattr(result, "consignment_value_eur")
+
+    def test_the_annual_threshold_is_reported_for_the_four_sectors(self):
+        for cn in (_CEMENT_CN, _STEEL_CN, "76011000", "31021012"):
+            result = determine_cbam_scope(cn, origin_country=_THIRD_COUNTRY, importer_eori=_VALID_EORI)
+            assert result.status == ScopeStatus.IN_SCOPE, cn
+            assert any(r.startswith("de_minimis:annual_mass_threshold:50t") for r in result.reasons), cn
+            assert any("Article 2a" in ref for ref in result.regulation_refs), cn
+
+    def test_hydrogen_and_electricity_are_outside_the_threshold(self):
+        for cn, sector in (("28041000", "hydrogen"), ("27160000", "electricity")):
+            result = determine_cbam_scope(cn, origin_country=_THIRD_COUNTRY, importer_eori=_VALID_EORI)
+            assert result.status == ScopeStatus.IN_SCOPE, cn
+            assert any(r.startswith(f"de_minimis:not_available:{sector}") for r in result.reasons), cn
+            assert not any("annual_mass_threshold" in r for r in result.reasons), cn
+
+    def test_the_threshold_never_changes_the_status(self):
+        result = determine_cbam_scope(_STEEL_CN, origin_country="NO", importer_eori=_VALID_EORI)
+        assert result.status == ScopeStatus.OUT_OF_SCOPE
+        review = determine_cbam_scope(_STEEL_CN)
+        assert review.status == ScopeStatus.REQUIRES_REVIEW
+        assert any(r.startswith("de_minimis:annual_mass_threshold") for r in review.reasons)
 
 
 # Normalisation
@@ -247,8 +255,7 @@ class TestNormalisation:
 
     def test_eori_uppercased(self):
         result = determine_cbam_scope(_CEMENT_CN, origin_country=_THIRD_COUNTRY,
-                                      importer_eori="de123456789",
-                                      consignment_value_eur=_D("1000"))
+                                      importer_eori="de123456789")
         assert result.importer_eori == "DE123456789"
         assert result.status == ScopeStatus.IN_SCOPE
 
@@ -259,12 +266,10 @@ class TestScopeDetermination:
     def test_result_echoes_inputs(self):
         result = determine_cbam_scope(
             _CEMENT_CN, origin_country="CN",
-            consignment_value_eur=_D("999"),
             importer_eori=_VALID_EORI,
         )
         assert result.cn_code == _CEMENT_CN
         assert result.origin_country == "CN"
-        assert result.consignment_value_eur == _D("999")
         assert result.importer_eori == _VALID_EORI
 
     def test_sector_none_for_out_of_scope_cn(self):
@@ -274,7 +279,6 @@ class TestScopeDetermination:
     def test_regulation_refs_no_duplicates(self):
         result = determine_cbam_scope(
             _CEMENT_CN, origin_country=_THIRD_COUNTRY,
-            consignment_value_eur=_D("5000"),
             importer_eori=_VALID_EORI,
         )
         assert len(result.regulation_refs) == len(set(result.regulation_refs))
@@ -295,7 +299,6 @@ class TestScopeCheckAPI:
         resp = client.post("/api/cbam/scope-check", json={
             "cn_code": "25232900",
             "origin_country": "CN",
-            "consignment_value_eur": "5000",
             "importer_eori": "DE123456789",
         })
         assert resp.status_code == 200
@@ -332,7 +335,9 @@ class TestScopeCheckAPI:
         assert resp.status_code == 200
         assert resp.json()["status"] == "requires_review"
 
-    def test_out_of_scope_de_minimis(self):
+    def test_a_small_consignment_is_not_exempt(self):
+        # The field is no longer part of the request; a caller still sending it
+        # must not get the old EUR 150 exemption back.
         client = self._client()
         resp = client.post("/api/cbam/scope-check", json={
             "cn_code": "25232900",
@@ -341,14 +346,16 @@ class TestScopeCheckAPI:
             "importer_eori": "DE123456789",
         })
         assert resp.status_code == 200
-        assert resp.json()["status"] == "out_of_scope"
+        data = resp.json()
+        assert data["status"] == "in_scope"
+        assert "consignment_value_eur" not in data
+        assert any(r.startswith("de_minimis:annual_mass_threshold") for r in data["reasons"])
 
     def test_response_includes_reasons_and_refs(self):
         client = self._client()
         resp = client.post("/api/cbam/scope-check", json={
             "cn_code": "25232900",
             "origin_country": "CN",
-            "consignment_value_eur": "5000",
             "importer_eori": "DE123456789",
         })
         data = resp.json()

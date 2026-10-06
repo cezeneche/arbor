@@ -97,10 +97,6 @@ class CBAMScopeCheckRequest(BaseModel):
         default=None,
         description="ISO 3166-1 alpha-2 country of origin (e.g. 'CN', 'IN').",
     )
-    consignment_value_eur: Decimal | None = Field(
-        default=None, ge=0,
-        description="Intrinsic value of the consignment in EUR (excl. transport/insurance).",
-    )
     importer_eori: str | None = Field(
         default=None,
         description="EU EORI of the importer or their customs representative.",

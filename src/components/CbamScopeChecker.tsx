@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { scopeExposure } from '@/lib/nucleos/scope-exposure'
-import { relevantScopeReasons } from '@/lib/nucleos/scope-reasons'
+import { relevantScopeReasons, scopeAnswer } from '@/lib/nucleos/scope-reasons'
+import { scopeThresholdNotes } from '@/lib/nucleos/scope-threshold'
+import type { CbamJurisdiction } from '@/lib/nucleos/jurisdiction'
 import type { ScopeCheckResult } from '@/lib/nucleos/scope-client'
 
 // The question a user actually arrives with: does this even apply to me?
@@ -27,7 +29,7 @@ const STATUS_COPY: Record<
 > = {
   in_scope: {
     headline: 'These goods are in scope',
-    body: 'A CBAM declaration will be required. Upload the customs declaration or supplier invoice to start building one.',
+    body: 'CBAM covers this commodity code. Upload the customs declaration or supplier invoice to start building a return.',
     tone: 'in',
   },
   out_of_scope: {
@@ -42,7 +44,7 @@ const STATUS_COPY: Record<
   },
 }
 
-export function CbamScopeChecker() {
+export function CbamScopeChecker({ jurisdiction }: { jurisdiction: CbamJurisdiction }) {
   const [cnCode, setCnCode] = useState('')
   const [tonnes, setTonnes] = useState('')
   const [result, setResult] = useState<ScopeCheckResult | null>(null)
@@ -95,7 +97,10 @@ export function CbamScopeChecker() {
     boxSizing: 'border-box',
   }
 
-  const copy = result ? STATUS_COPY[result.status] : null
+  const answer = result
+    ? scopeAnswer(result.status, result.reasons ?? [], { sector: result.sector, jurisdiction })
+    : null
+  const copy = answer ? STATUS_COPY[answer] : null
   const toneColour =
     copy?.tone === 'in' ? colours.navy : copy?.tone === 'review' ? colours.amber : colours.textSecondary
 
@@ -111,6 +116,13 @@ export function CbamScopeChecker() {
       : null
 
   const reasons = result ? relevantScopeReasons(result.reasons ?? []) : []
+  // Covered is not the whole answer: a small importer may be exempt. Stated for
+  // the regime the organisation files under, and never as "you are exempt".
+  const ukElectricity = jurisdiction === 'UK' && result?.sector === 'electricity'
+  const thresholdNotes =
+    result && (answer !== 'out_of_scope' || ukElectricity)
+      ? scopeThresholdNotes({ reasons: result.reasons ?? [], jurisdiction })
+      : []
 
   return (
     <div style={{ maxWidth: '720px' }}>
@@ -257,7 +269,13 @@ export function CbamScopeChecker() {
             </p>
           )}
 
-          {result.status === 'in_scope' && (
+          {thresholdNotes.map(note => (
+            <p key={note} style={{ ...textStyles.sectionSubtitle, margin: `${spacing[2]} 0 0`, lineHeight: 1.6 }}>
+              {note}
+            </p>
+          ))}
+
+          {answer === 'in_scope' && (
             <div
               style={{
                 marginTop: spacing[3],
