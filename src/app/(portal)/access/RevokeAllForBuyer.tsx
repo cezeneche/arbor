@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation'
 import { colours, typography, spacing } from '@/lib/design-system'
 
 // one "Revoke all access" action per buyer. Inline confirm (no modal).
-export function RevokeAllForBuyer({ granteeEntityId, buyerName }: { granteeEntityId: string; buyerName: string }) {
+export function RevokeAllForBuyer({
+  granteeEntityId,
+  buyerName,
+}: {
+  granteeEntityId: string
+  buyerName: string
+}) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -45,7 +51,13 @@ export function RevokeAllForBuyer({ granteeEntityId, buyerName }: { granteeEntit
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-      <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+      <span
+        style={{
+          fontSize: typography.sizes.xs,
+          fontWeight: typography.weights.light,
+          color: colours.textSecondary,
+        }}
+      >
         Revoke all access for {buyerName}?
       </span>
       <button

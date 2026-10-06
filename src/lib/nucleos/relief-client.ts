@@ -43,7 +43,9 @@ export interface ReliefClaim {
 
 function base(): string {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
+    throw new NucleosUnavailableError(
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
+    )
   }
   return process.env.NUCLEOS_URL as string
 }
@@ -84,7 +86,10 @@ export async function listQualifyingSchemes(
 }
 
 /** Every claim on a goods line, newest first. */
-export async function listReliefClaims(goodsLineId: string, fetchImpl: typeof fetch = fetch): Promise<ReliefClaim[]> {
+export async function listReliefClaims(
+  goodsLineId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ReliefClaim[]> {
   const body = await get<{ claims?: ReliefClaim[] }>(
     `/api/cbam/cpr/claims/${encodeURIComponent(goodsLineId)}`,
     fetchImpl,
@@ -122,8 +127,18 @@ export async function getHmrcExchangeRate(
   }
   if (res.status === 404) return null
   if (!res.ok) throw new NucleosUnavailableError(`Nucleos returned ${res.status} for ${path}`)
-  const body = (await res.json()) as { rate: string; effective_from: string; source: string; table_version: string }
-  return { rate: body.rate, effectiveFrom: body.effective_from, source: body.source, tableVersion: body.table_version }
+  const body = (await res.json()) as {
+    rate: string
+    effective_from: string
+    source: string
+    table_version: string
+  }
+  return {
+    rate: body.rate,
+    effectiveFrom: body.effective_from,
+    source: body.source,
+    tableVersion: body.table_version,
+  }
 }
 
 /** Attaches the verifier's statement to the line's claims that have none. */

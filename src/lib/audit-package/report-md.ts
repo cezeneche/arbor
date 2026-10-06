@@ -45,9 +45,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
 
   lines.push(`# Audit package — ${pkg.entityName}`)
   lines.push('')
-  lines.push(
-    `**Period covered:** ${longDate(pkg.periodStart)} to ${longDate(pkg.periodEnd)}  `,
-  )
+  lines.push(`**Period covered:** ${longDate(pkg.periodStart)} to ${longDate(pkg.periodEnd)}  `)
   lines.push(`**Generated:** ${isoInstant(pkg.generatedAt)}  `)
   lines.push(`**Entity reference:** \`${pkg.entityId}\``)
   lines.push('')
@@ -64,7 +62,9 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   lines.push('| File | What it is |')
   lines.push('| --- | --- |')
   lines.push('| `README.md` | This report. |')
-  lines.push('| `package.json` | The same package as structured data, including the Merkle inclusion proofs. Check this one with tooling. |')
+  lines.push(
+    '| `package.json` | The same package as structured data, including the Merkle inclusion proofs. Check this one with tooling. |',
+  )
   lines.push('| `documents/` | The original source documents the records were extracted from. |')
   lines.push('')
 
@@ -102,7 +102,9 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
       : '**Proof check:** at least one inclusion proof did NOT recompute to the root. Treat this package as suspect.',
   )
   lines.push('')
-  lines.push('Each record carries an HMAC hash chained to the record written before it, so altering any stored value breaks the chain. The Merkle root additionally commits every record hash in this package at once: `package.json` includes a per-record inclusion proof, which lets you confirm a single record belongs to this package without being shown the others.')
+  lines.push(
+    'Each record carries an HMAC hash chained to the record written before it, so altering any stored value breaks the chain. The Merkle root additionally commits every record hash in this package at once: `package.json` includes a per-record inclusion proof, which lets you confirm a single record belongs to this package without being shown the others.',
+  )
   lines.push('')
   lines.push('### Verifying this package independently')
   lines.push('')
@@ -214,7 +216,7 @@ export function renderAuditReportMarkdown(pkg: AuditPackage): string {
   )
   lines.push('')
   lines.push(
-    'Arbor does **not** certify that the submitted documents accurately reflect the entity\'s ' +
+    "Arbor does **not** certify that the submitted documents accurately reflect the entity's " +
       'real-world operations, nor that the figures within them are correct. The entity remains ' +
       'responsible for the accuracy of what it submits, and any party using this data for a ' +
       'calculation, compliance submission or disclosure is responsible for the correctness of that ' +

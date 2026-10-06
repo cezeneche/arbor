@@ -7,9 +7,7 @@
 // so they are decided here rather than inferred from the profile.
 
 export type SsoProvisionDecision =
-  | { action: 'SIGN_IN'; userId: string }
-  | { action: 'CREATE' }
-  | { action: 'REJECT'; reason: SsoRejectReason }
+  { action: 'SIGN_IN'; userId: string } | { action: 'CREATE' } | { action: 'REJECT'; reason: SsoRejectReason }
 
 export type SsoRejectReason = 'account_disabled' | 'email_other_org'
 

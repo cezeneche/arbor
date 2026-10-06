@@ -1,9 +1,4 @@
-import {
-  evaluatePredicate,
-  statementDigest,
-  type Predicate,
-  type EvalRecord,
-} from '../predicate'
+import { evaluatePredicate, statementDigest, type Predicate, type EvalRecord } from '../predicate'
 
 // the statement layer a ZK proof attests to (proving system aside).
 // The predicate templates evaluate over the witness records, and a predicate
@@ -15,13 +10,25 @@ describe('evaluatePredicate — numeric inequality', () => {
     { field: 'scope1_tco2e', value: 45 },
   ]
   it('satisfies when the aggregate meets the threshold', () => {
-    const p: Predicate = { kind: 'numeric_inequality', field: 'scope1_tco2e', aggregate: 'sum', op: '<', threshold: 100 }
+    const p: Predicate = {
+      kind: 'numeric_inequality',
+      field: 'scope1_tco2e',
+      aggregate: 'sum',
+      op: '<',
+      threshold: 100,
+    }
     const r = evaluatePredicate(p, records)
     expect(r.observed).toBe(75)
     expect(r.satisfied).toBe(true)
   })
   it('fails when it does not', () => {
-    const p: Predicate = { kind: 'numeric_inequality', field: 'scope1_tco2e', aggregate: 'sum', op: '<', threshold: 50 }
+    const p: Predicate = {
+      kind: 'numeric_inequality',
+      field: 'scope1_tco2e',
+      aggregate: 'sum',
+      op: '<',
+      threshold: 50,
+    }
     expect(evaluatePredicate(p, records).satisfied).toBe(false)
   })
 })
@@ -48,19 +55,37 @@ describe('evaluatePredicate — weighted sum threshold', () => {
       { field: 'renewable_kwh', value: 60 },
       { field: 'total_kwh', value: 100 },
     ]
-    const p: Predicate = { kind: 'weighted_sum_threshold', numeratorField: 'renewable_kwh', denominatorField: 'total_kwh', op: '>', threshold: 0.5 }
+    const p: Predicate = {
+      kind: 'weighted_sum_threshold',
+      numeratorField: 'renewable_kwh',
+      denominatorField: 'total_kwh',
+      op: '>',
+      threshold: 0.5,
+    }
     const r = evaluatePredicate(p, records)
     expect(r.observed).toBeCloseTo(0.6)
     expect(r.satisfied).toBe(true)
   })
   it('is safe when the denominator is zero', () => {
-    const p: Predicate = { kind: 'weighted_sum_threshold', numeratorField: 'renewable_kwh', denominatorField: 'total_kwh', op: '>', threshold: 0.5 }
+    const p: Predicate = {
+      kind: 'weighted_sum_threshold',
+      numeratorField: 'renewable_kwh',
+      denominatorField: 'total_kwh',
+      op: '>',
+      threshold: 0.5,
+    }
     expect(evaluatePredicate(p, []).observed).toBe(0)
   })
 })
 
 describe('statementDigest', () => {
-  const p: Predicate = { kind: 'numeric_inequality', field: 'scope1_tco2e', aggregate: 'sum', op: '<', threshold: 100 }
+  const p: Predicate = {
+    kind: 'numeric_inequality',
+    field: 'scope1_tco2e',
+    aggregate: 'sum',
+    op: '<',
+    threshold: 100,
+  }
 
   it('is deterministic for the same root + predicate', () => {
     expect(statementDigest({ merkleRoot: 'abc', predicate: p })).toBe(

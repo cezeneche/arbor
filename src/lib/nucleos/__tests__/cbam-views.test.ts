@@ -44,12 +44,7 @@ describe('CBAM views', () => {
   // builds one yet. A tab that is always empty teaches a user the section is
   // broken rather than that the feature is not here.
   it('carries the views the section is for', () => {
-    expect(CBAM_VIEWS.map(v => v.id)).toEqual([
-      'scope',
-      'cases',
-            'relief',
-      'request',
-    ])
+    expect(CBAM_VIEWS.map(v => v.id)).toEqual(['scope', 'cases', 'relief', 'request'])
   })
 })
 

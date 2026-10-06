@@ -42,8 +42,7 @@ const TRANSITIONS: Record<RequestStatus, Transition[]> = {
 export type TransitionRefusal = 'terminal' | 'not_from_this_status' | 'not_this_party'
 
 export type TransitionVerdict =
-  | { allowed: true }
-  | { allowed: false; reason: TransitionRefusal; message: string }
+  { allowed: true } | { allowed: false; reason: TransitionRefusal; message: string }
 
 export function canTransitionRequest(
   from: RequestStatus,
@@ -87,6 +86,6 @@ export function canSubmitAgainstStatus(status: RequestStatus): boolean {
 }
 
 /** Statuses a submission may claim from, for the atomic `updateMany` guard. */
-export const SUBMITTABLE_STATUSES: RequestStatus[] = (
-  Object.keys(TRANSITIONS) as RequestStatus[]
-).filter(canSubmitAgainstStatus)
+export const SUBMITTABLE_STATUSES: RequestStatus[] = (Object.keys(TRANSITIONS) as RequestStatus[]).filter(
+  canSubmitAgainstStatus,
+)

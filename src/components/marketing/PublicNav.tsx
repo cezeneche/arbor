@@ -52,7 +52,17 @@ function Navigation({ pathname }: { pathname: string }) {
       style={{ backgroundColor: colours.surface, borderBottom: `1px solid ${colours.border}` }}
     >
       <div className="mk-site-frame mk-nav-inner">
-        <Link href="/" onClick={() => setOpen(false)} style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.navy, textDecoration: 'none' }} aria-label="arbor home">
+        <Link
+          href="/"
+          onClick={() => setOpen(false)}
+          style={{
+            fontSize: typography.sizes.base,
+            fontWeight: typography.weights.medium,
+            color: colours.navy,
+            textDecoration: 'none',
+          }}
+          aria-label="arbor home"
+        >
           arbor
         </Link>
         <button
@@ -68,14 +78,23 @@ function Navigation({ pathname }: { pathname: string }) {
         <div id="mk-nav-menu" className="mk-nav-menu" data-open={open}>
           <div className="mk-nav-links">
             {links.map(link => (
-              <Link key={link.href} href={link.href} aria-current={pathname === link.href ? 'page' : undefined} onClick={() => setOpen(false)}>
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={pathname === link.href ? 'page' : undefined}
+                onClick={() => setOpen(false)}
+              >
                 {link.label}
               </Link>
             ))}
           </div>
           <div className="mk-nav-actions">
-            <Link href="/login" onClick={() => setOpen(false)}>Sign in</Link>
-            <a href={pilotRequestHref()} className="mk-nav-cta" onClick={() => setOpen(false)}>Request pilot access</a>
+            <Link href="/login" onClick={() => setOpen(false)}>
+              Sign in
+            </Link>
+            <a href={pilotRequestHref()} className="mk-nav-cta" onClick={() => setOpen(false)}>
+              Request pilot access
+            </a>
           </div>
         </div>
       </div>

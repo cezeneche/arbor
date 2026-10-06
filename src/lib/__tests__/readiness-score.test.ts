@@ -45,7 +45,10 @@ describe('supplierReadiness', () => {
 
   it('counts a figure supplied but only Declared as supplied, not verified', () => {
     expect(
-      supplierReadiness({ requests: [request({ requiredFields: ['total_consumption_kwh'] })], records: [record('total_consumption_kwh', 'B')] }),
+      supplierReadiness({
+        requests: [request({ requiredFields: ['total_consumption_kwh'] })],
+        records: [record('total_consumption_kwh', 'B')],
+      }),
     ).toEqual({ requested: 1, supplied: 1, verified: 0 })
   })
 

@@ -18,10 +18,7 @@ export type StalledAction = 'REQUEUE' | 'MARK_FOR_REVIEW'
  * already done, so it is handed to the user instead, which is also the honest
  * answer: something went wrong and somebody should look.
  */
-export function classifyStalledDocument(doc: {
-  status: string
-  hasExtractionJob: boolean
-}): StalledAction {
+export function classifyStalledDocument(doc: { status: string; hasExtractionJob: boolean }): StalledAction {
   if (doc.status === 'PENDING' && !doc.hasExtractionJob) return 'REQUEUE'
   return 'MARK_FOR_REVIEW'
 }

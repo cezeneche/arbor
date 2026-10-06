@@ -16,13 +16,10 @@ export interface SupplierGaps {
 // null domain is unbounded (all domains); otherwise only the named domains are in
 // scope. Gaps are never reported outside these domains, so a buyer cannot infer
 // coverage for a domain they were not granted.
-export function grantedDomains(
-  grants: GrantScope[],
-  allDomains: readonly DataDomain[],
-): DataDomain[] {
-  if (grants.some((g) => g.domain === null)) return [...allDomains]
-  const named = new Set(grants.map((g) => g.domain).filter((d): d is DataDomain => d !== null))
-  return allDomains.filter((d) => named.has(d))
+export function grantedDomains(grants: GrantScope[], allDomains: readonly DataDomain[]): DataDomain[] {
+  if (grants.some(g => g.domain === null)) return [...allDomains]
+  const named = new Set(grants.map(g => g.domain).filter((d): d is DataDomain => d !== null))
+  return allDomains.filter(d => named.has(d))
 }
 
 // Coverage gaps computed strictly within grant scope: records outside a grant's
@@ -34,13 +31,13 @@ export function computeScopedGaps(
   records: GapRecord[],
   allDomains: readonly DataDomain[],
 ): SupplierGaps {
-  const covered = records.filter((r) => grants.some((g) => grantCoversRecord(g, r)))
+  const covered = records.filter(r => grants.some(g => grantCoversRecord(g, r)))
   const missingDomains: DataDomain[] = []
   const estimatedOnlyDomains: DataDomain[] = []
   for (const domain of grantedDomains(grants, allDomains)) {
-    const inDomain = covered.filter((r) => r.domain === domain)
+    const inDomain = covered.filter(r => r.domain === domain)
     if (inDomain.length === 0) missingDomains.push(domain)
-    else if (inDomain.every((r) => r.trustTier === 'C')) estimatedOnlyDomains.push(domain)
+    else if (inDomain.every(r => r.trustTier === 'C')) estimatedOnlyDomains.push(domain)
   }
   return { missingDomains, estimatedOnlyDomains }
 }

@@ -1,8 +1,4 @@
-import {
-  canonicaliseMeasurement,
-  resolveUnit,
-  UnsupportedUnitError,
-} from '../canonical-measurement'
+import { canonicaliseMeasurement, resolveUnit, UnsupportedUnitError } from '../canonical-measurement'
 
 // Every record is stored in its dimension's SI unit, whichever way it arrived —
 // document, manual entry, API, integration or submission link. The conversion

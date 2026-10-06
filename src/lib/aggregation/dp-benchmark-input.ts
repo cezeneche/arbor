@@ -18,10 +18,7 @@ export interface BenchmarkRow {
   unit: string
 }
 
-export function buildDpGroups(
-  rows: BenchmarkRow[],
-  canonicalMap: Map<string, string>,
-): DPGroupInput[] {
+export function buildDpGroups(rows: BenchmarkRow[], canonicalMap: Map<string, string>): DPGroupInput[] {
   interface Group {
     bounds: [number, number]
     units: Map<string, { sum: number; count: number }>

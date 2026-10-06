@@ -7,11 +7,7 @@
 // are scoped to the buyer and the suppliers actually in the result set.
 
 import { prisma } from '@/lib/prisma'
-import {
-  attachDefinitions,
-  type DecorableRecord,
-  type RecordWithDefinition,
-} from './attach-definitions'
+import { attachDefinitions, type DecorableRecord, type RecordWithDefinition } from './attach-definitions'
 import type { StoredFieldDefinition } from '@/lib/definitions/registry'
 import type { StoredAgreement } from '@/lib/definitions/agreement'
 import type { DataDomain } from '@/lib/constants'

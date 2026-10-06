@@ -7,7 +7,15 @@ import { z } from 'zod'
 import { describeVocabulary, resolveFieldName, type VocabularyEntry } from './field-vocabulary'
 
 export type QueryType = 'entity' | 'supply_chain' | 'gap' | 'historical'
-export type DataDomain = 'ENERGY' | 'MATERIALS' | 'PRODUCTION' | 'LOGISTICS' | 'EMISSIONS' | 'AGRICULTURE' | 'WASTE_AND_WATER' | 'COMPLIANCE'
+export type DataDomain =
+  | 'ENERGY'
+  | 'MATERIALS'
+  | 'PRODUCTION'
+  | 'LOGISTICS'
+  | 'EMISSIONS'
+  | 'AGRICULTURE'
+  | 'WASTE_AND_WATER'
+  | 'COMPLIANCE'
 export type TrustTier = 'A' | 'B' | 'C'
 
 export interface ParsedQuery {
@@ -35,7 +43,19 @@ const parsedQuerySchema = z.object({
   isCalculation: z.boolean(),
   calculationNote: z.string().optional(),
   queryType: z.enum(['entity', 'supply_chain', 'gap', 'historical']),
-  domain: z.enum(['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']).nullable().optional(),
+  domain: z
+    .enum([
+      'ENERGY',
+      'MATERIALS',
+      'PRODUCTION',
+      'LOGISTICS',
+      'EMISSIONS',
+      'AGRICULTURE',
+      'WASTE_AND_WATER',
+      'COMPLIANCE',
+    ])
+    .nullable()
+    .optional(),
   fieldName: z.string().nullable().optional(),
   periodStart: z.string().nullable().optional(),
   periodEnd: z.string().nullable().optional(),

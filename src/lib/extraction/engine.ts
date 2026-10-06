@@ -17,11 +17,7 @@ import { parseLooseJson } from './parse-json'
 import { collectFieldSamples, buildFusedFields } from './fusion'
 import { fuseFields, type FusionInputField } from '@/lib/brain/fusion-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
-import {
-  isGenericExtraction,
-  buildGenericExtractionPrompt,
-  parseGenericExtractionResponse,
-} from './generic'
+import { isGenericExtraction, buildGenericExtractionPrompt, parseGenericExtractionResponse } from './generic'
 import { EXTRACTION_MODEL } from './extractor-version'
 import { normaliseExtractionResponse, readPositiveIntEnv } from './response-schema'
 import { renderCorrectionHints } from './correction-exemplars'
@@ -40,10 +36,7 @@ function getClient(): Anthropic {
 }
 
 // Build the document content block once — shared by all three Layer 1 calls.
-function documentContentBlock(
-  base64: string,
-  mediaType: ExtractionInput['mediaType'],
-): ContentBlockParam {
+function documentContentBlock(base64: string, mediaType: ExtractionInput['mediaType']): ContentBlockParam {
   return mediaType === 'application/pdf'
     ? {
         type: 'document' as const,
@@ -58,7 +51,7 @@ function documentContentBlock(
 function textFromResponse(response: Anthropic.Message): string {
   return response.content
     .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
+    .map(block => block.text)
     .join('')
 }
 
@@ -75,7 +68,10 @@ export async function detectLanguage(
       messages: [
         {
           role: 'user',
-          content: [documentContentBlock(base64, mediaType), { type: 'text', text: buildLanguageDetectionPrompt() }],
+          content: [
+            documentContentBlock(base64, mediaType),
+            { type: 'text', text: buildLanguageDetectionPrompt() },
+          ],
         },
       ],
     })
@@ -103,7 +99,10 @@ export async function assessImageQuality(
       messages: [
         {
           role: 'user',
-          content: [documentContentBlock(base64, mediaType), { type: 'text', text: buildQualityAssessmentPrompt() }],
+          content: [
+            documentContentBlock(base64, mediaType),
+            { type: 'text', text: buildQualityAssessmentPrompt() },
+          ],
         },
       ],
     })
@@ -129,9 +128,7 @@ export async function extractDocumentWithConsistency(
   const k = Number.isInteger(opts.samples) && opts.samples! >= 1 ? opts.samples! : EXTRACTION_SAMPLES
   if (k <= 1) return extractDocument(input)
 
-  const settled = await Promise.allSettled(
-    Array.from({ length: k }, () => extractDocument(input)),
-  )
+  const settled = await Promise.allSettled(Array.from({ length: k }, () => extractDocument(input)))
   const results = settled
     .filter((r): r is PromiseFulfilledResult<ExtractionResult> => r.status === 'fulfilled')
     .map(r => r.value)
@@ -176,7 +173,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
   }
 
   const fieldDefs = DOCUMENT_FIELD_DEFINITIONS[input.documentType] ?? []
-  const requiredFields = fieldDefs.map((f) => f.name)
+  const requiredFields = fieldDefs.map(f => f.name)
   // Relearning: fold the tenant's own past-correction attention hints into the
   // prompt. Rendered here (pure) from hints the orchestrator passed in — the
   // engine never reads the DB. Empty when absent, so the prompt is unchanged.
@@ -189,9 +186,7 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
   )
 
   const isForeign =
-    !!input.detectedLanguage &&
-    input.detectedLanguage !== 'en' &&
-    input.detectedLanguage !== 'unknown'
+    !!input.detectedLanguage && input.detectedLanguage !== 'en' && input.detectedLanguage !== 'unknown'
   const languageNote = isForeign
     ? `This document appears to be in ${input.detectedLanguage}. Values have been extracted as written — check numeric fields and units carefully.`
     : null
@@ -199,7 +194,10 @@ export async function extractDocument(input: ExtractionInput): Promise<Extractio
   const messages: MessageParam[] = [
     {
       role: 'user',
-      content: [documentContentBlock(input.documentBase64, input.mediaType), { type: 'text', text: userPrompt }],
+      content: [
+        documentContentBlock(input.documentBase64, input.mediaType),
+        { type: 'text', text: userPrompt },
+      ],
     },
   ]
 
@@ -270,9 +268,7 @@ async function extractGenericDocument(input: ExtractionInput): Promise<Extractio
   const response = await getClient().messages.create({
     model: EXTRACTION_MODEL,
     max_tokens: 4096,
-    system: [
-      { type: 'text', text: EXTRACTION_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-    ],
+    system: [{ type: 'text', text: EXTRACTION_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
     messages: [
       {
         role: 'user',

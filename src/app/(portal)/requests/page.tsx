@@ -13,11 +13,7 @@ import { REQUEST_VIEWS, resolveRequestView, type RequestView } from '@/lib/reque
 // and here's what I've given" - instead of four separate destinations. Rows route
 // into the focused screens (/requests/data, /inbound-requests, /shares) where the
 // actual respond / manage actions live.
-export default async function RequestsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string }>
-}) {
+export default async function RequestsPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const session = await requirePageSession()
   const { view: rawView } = await searchParams
   const view: RequestView = resolveRequestView(rawView)
@@ -27,7 +23,10 @@ export default async function RequestsPage({
   const [dataRequests, inboundRequests, sharedExports] = await Promise.all([
     prisma.dataRequest.findMany({
       where: { OR: [{ buyerEntityId: entityId }, { supplierEntityId: entityId }] },
-      include: { buyerEntity: { select: { legalName: true } }, supplierEntity: { select: { legalName: true } } },
+      include: {
+        buyerEntity: { select: { legalName: true } },
+        supplierEntity: { select: { legalName: true } },
+      },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.inboundRequest.findMany({ where: { entityId }, orderBy: { createdAt: 'desc' } }),
@@ -64,11 +63,7 @@ export default async function RequestsPage({
   return (
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Requests
-        </h1>
+        <h1 style={textStyles.pageTitle}>Requests</h1>
         <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           {REQUEST_VIEWS.find(v => v.id === view)?.description}
         </p>
@@ -102,18 +97,11 @@ export default async function RequestsPage({
       </div>
 
       {view === 'waiting' && (
-        <RequestSectionList
-          items={waiting}
-          emptyText="You're all caught up, nothing to respond to."
-          accent
-        />
+        <RequestSectionList items={waiting} emptyText="You're all caught up, nothing to respond to." accent />
       )}
 
       {view === 'shared' && (
-        <RequestSectionList
-          items={shared}
-          emptyText="You haven't shared any data yet."
-        />
+        <RequestSectionList items={shared} emptyText="You haven't shared any data yet." />
       )}
 
       {/* Asking, and what has already been asked. The list is context for the
@@ -135,8 +123,8 @@ export default async function RequestsPage({
       {view === 'questionnaires' && (
         <div>
           <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}` }}>
-            Answer a buyer&apos;s questionnaire from the data you already hold. Nothing is
-            sent until you have reviewed every answer.
+            Answer a buyer&apos;s questionnaire from the data you already hold. Nothing is sent until you have
+            reviewed every answer.
           </p>
           <Link
             href="/questionnaires"
@@ -155,7 +143,6 @@ export default async function RequestsPage({
           </Link>
         </div>
       )}
-
     </div>
   )
 }

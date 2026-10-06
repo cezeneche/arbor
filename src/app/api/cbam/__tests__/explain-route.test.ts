@@ -35,7 +35,13 @@ describe('GET explain', () => {
     explain.mockResolvedValue({
       chosen_value: 5000,
       evidence: [
-        { field: 'goods_lines.gl-1.net_mass_kg', source: 'arbor_extraction', confidence: 0.9, snippet: 'Net 5 000 kg', source_ref: 'arbor:document:doc-1' },
+        {
+          field: 'goods_lines.gl-1.net_mass_kg',
+          source: 'arbor_extraction',
+          confidence: 0.9,
+          snippet: 'Net 5 000 kg',
+          source_ref: 'arbor:document:doc-1',
+        },
       ],
     })
     const res = await GET(req('net_mass_kg'), params)
@@ -44,7 +50,13 @@ describe('GET explain', () => {
     expect(explain).toHaveBeenCalledWith('case-1', 'gl-1', 'net_mass_kg')
     expect(await res.json()).toEqual({
       available: true,
-      sources: [{ text: 'Net 5 000 kg', how: 'Read from the document (90% sure).', documentHref: '/upload/doc-1/review' }],
+      sources: [
+        {
+          text: 'Net 5 000 kg',
+          how: 'Read from the document (90% sure).',
+          documentHref: '/upload/doc-1/review',
+        },
+      ],
     })
   })
 
@@ -61,7 +73,7 @@ describe('GET explain', () => {
     expect(explain).not.toHaveBeenCalled()
   })
 
-  it("refuses a goods line the caller does not own, before asking Nucleos", async () => {
+  it('refuses a goods line the caller does not own, before asking Nucleos', async () => {
     access.mockResolvedValue({ ok: false, status: 404, error: 'This goods line could not be found.' })
     const res = await GET(req('net_mass_kg'), params)
     expect(res.status).toBe(404)

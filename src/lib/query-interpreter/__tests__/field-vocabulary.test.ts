@@ -4,11 +4,7 @@
 // nothing. The vocabulary is the fix — the model is shown the fields that exist
 // and anything it invents anyway is dropped rather than filtered on.
 
-import {
-  describeVocabulary,
-  resolveFieldName,
-  type VocabularyEntry,
-} from '../field-vocabulary'
+import { describeVocabulary, resolveFieldName, type VocabularyEntry } from '../field-vocabulary'
 
 const vocab: VocabularyEntry[] = [
   { domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'mj' },
@@ -73,7 +69,9 @@ describe('describeVocabulary', () => {
       { domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'mj' },
       { domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'kWh' },
     ]
-    const lines = describeVocabulary(dupes).split('\n').filter(l => l.includes('total_consumption_kwh'))
+    const lines = describeVocabulary(dupes)
+      .split('\n')
+      .filter(l => l.includes('total_consumption_kwh'))
     expect(lines).toHaveLength(1)
   })
 })

@@ -18,8 +18,8 @@ export function CbamCaseList({ cases }: { cases: CbamCaseSummary[] }) {
           ...textStyles.sectionSubtitle,
         }}
       >
-        No CBAM cases yet. They appear here when a customs declaration, supplier
-        invoice or CBAM declaration is uploaded.
+        No CBAM cases yet. They appear here when a customs declaration, supplier invoice or CBAM declaration
+        is uploaded.
       </p>
     )
   }

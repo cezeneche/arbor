@@ -37,7 +37,7 @@ ${text}`
     })
     const raw = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
+      .map(b => b.text)
       .join('')
     return parseRequestResponse(raw.trim())
   } catch {

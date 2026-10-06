@@ -12,11 +12,7 @@ export default async function QuestionnairesPage() {
   return (
     <div style={{ width: '100%' }}>
       <BackLink current="Questionnaires" />
-      <h1
-        style={textStyles.pageTitle}
-      >
-        Questionnaires
-      </h1>
+      <h1 style={textStyles.pageTitle}>Questionnaires</h1>
       <p
         style={{
           fontSize: typography.sizes.sm,
@@ -26,12 +22,12 @@ export default async function QuestionnairesPage() {
           maxWidth: '640px',
         }}
       >
-        Pick a questionnaire and Arbor fills in the answers from the documents you have already uploaded -
-        so you answer the question once. Each answer shows where it came from and how trustworthy it is.
+        Pick a questionnaire and Arbor fills in the answers from the documents you have already uploaded - so
+        you answer the question once. Each answer shows where it came from and how trustworthy it is.
       </p>
 
       <div style={{ display: 'grid', gap: spacing[2], width: '100%' }}>
-        {templates.map((t) => {
+        {templates.map(t => {
           const available = t.status === 'available'
           const card = (
             <div
@@ -76,11 +72,7 @@ export default async function QuestionnairesPage() {
                     </span>
                   )}
                 </div>
-                <p
-                  style={{ ...textStyles.sectionSubtitle, margin: `6px 0 0` }}
-                >
-                  {t.description}
-                </p>
+                <p style={{ ...textStyles.sectionSubtitle, margin: `6px 0 0` }}>{t.description}</p>
               </div>
               {available && (
                 <span

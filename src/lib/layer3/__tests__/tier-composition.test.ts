@@ -1,9 +1,4 @@
-import {
-  composeTiers,
-  meetTier,
-  aggregateMeetsThreshold,
-  type Tier,
-} from '../tier-composition'
+import { composeTiers, meetTier, aggregateMeetsThreshold, type Tier } from '../tier-composition'
 
 // Lattice-theoretic tier composition.
 //
@@ -81,8 +76,7 @@ describe('composeTiers — aggregate meet + distribution', () => {
 
   it('distribution fractions sum to 1 for any non-empty aggregate', () => {
     const result = composeTiers(['A', 'B', 'B', 'C', 'C', 'C'])
-    const sum =
-      result.distribution.A + result.distribution.B + result.distribution.C
+    const sum = result.distribution.A + result.distribution.B + result.distribution.C
     expect(sum).toBeCloseTo(1, 10)
   })
 })

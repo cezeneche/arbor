@@ -16,7 +16,7 @@ const respondSchema = z.object({
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   // Answering a proposal is ADMIN-only for the same reason as making one — accepting
-// commits the organisation to that wording.
+  // commits the organisation to that wording.
   const { session, response } = await requireAdmin()
   if (!session) return response!
   const user = getSessionUser(session)

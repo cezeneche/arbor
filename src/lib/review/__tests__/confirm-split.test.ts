@@ -31,10 +31,7 @@ describe('splitConfirmFields', () => {
 
   it('puts measurements in records and everything else in context', () => {
     const { records, context } = splitConfirmFields(fields)
-    expect(records.map(f => f.fieldName)).toEqual([
-      'lines[0].net_mass_kg',
-      'lines[0].direct_embedded_kgco2e',
-    ])
+    expect(records.map(f => f.fieldName)).toEqual(['lines[0].net_mass_kg', 'lines[0].direct_embedded_kgco2e'])
     expect(context.map(f => f.fieldName)).toEqual(['importer_eori', 'lines[0].cn_code'])
   })
 

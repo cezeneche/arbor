@@ -39,7 +39,13 @@ const body: React.CSSProperties = {
   whiteSpace: 'pre-wrap',
 }
 
-export function CbamAuditNarrative({ caseId, narrative }: { caseId: string; narrative: PresentedNarrative | null }) {
+export function CbamAuditNarrative({
+  caseId,
+  narrative,
+}: {
+  caseId: string
+  narrative: PresentedNarrative | null
+}) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -140,7 +146,14 @@ export function CbamAuditNarrative({ caseId, narrative }: { caseId: string; narr
             </>
           )}
           {narrative.packHash && (
-            <p style={{ ...textStyles.caption, color: colours.textTertiary, margin: `${spacing[2]} 0 0`, wordBreak: 'break-all' }}>
+            <p
+              style={{
+                ...textStyles.caption,
+                color: colours.textTertiary,
+                margin: `${spacing[2]} 0 0`,
+                wordBreak: 'break-all',
+              }}
+            >
               Compliance pack {narrative.packHash}
             </p>
           )}
@@ -148,10 +161,21 @@ export function CbamAuditNarrative({ caseId, narrative }: { caseId: string; narr
       )}
 
       <button onClick={write} disabled={busy} style={button(busy)}>
-        {busy ? 'Writing… this can take a minute' : narrative ? 'Write it again' : 'Write the audit narrative'}
+        {busy
+          ? 'Writing… this can take a minute'
+          : narrative
+            ? 'Write it again'
+            : 'Write the audit narrative'}
       </button>
       {message && (
-        <p style={{ ...textStyles.caption, color: colours.amber, margin: `${spacing[1]} 0 0`, maxWidth: '520px' }}>
+        <p
+          style={{
+            ...textStyles.caption,
+            color: colours.amber,
+            margin: `${spacing[1]} 0 0`,
+            maxWidth: '520px',
+          }}
+        >
           {message}
         </p>
       )}

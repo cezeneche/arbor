@@ -35,8 +35,7 @@ export type SubmitResult =
   | { ok: false; code: 'NOT_PDF' | 'TOO_LARGE' | 'INVALID' | 'AWAITING_DECISION'; message: string }
 
 export type DecideResult =
-  | { ok: true }
-  | { ok: false; code: 'NOT_FOUND' | 'INVALID' | 'REFUSED' | 'UNAVAILABLE'; message: string }
+  { ok: true } | { ok: false; code: 'NOT_FOUND' | 'INVALID' | 'REFUSED' | 'UNAVAILABLE'; message: string }
 
 export const statementRef = (statementId: string) => `arbor:verification:${statementId}`
 
@@ -59,7 +58,11 @@ export function checkStatement(input: {
   const verifierName = clean(input.verifierName, 200)
   const verifierAccreditation = clean(input.verifierAccreditation, 200)
   if (!verifierName || !verifierAccreditation) {
-    return { ok: false, code: 'INVALID', message: 'Name the verifier and their accreditation, for example "UKAS 9876".' }
+    return {
+      ok: false,
+      code: 'INVALID',
+      message: 'Name the verifier and their accreditation, for example "UKAS 9876".',
+    }
   }
   if (input.bytes.length === 0 || input.bytes.length > MAX_STATEMENT_BYTES) {
     return { ok: false, code: 'TOO_LARGE', message: 'The statement must be a PDF of up to 20 MB.' }
@@ -187,7 +190,11 @@ export async function decideStatement(
   const now = deps.now ?? (() => new Date())
   const reason = input.decision === 'reject' ? clean(input.reason, 1000) : null
   if (input.decision === 'reject' && !reason) {
-    return { ok: false, code: 'INVALID', message: 'Say why the statement is rejected — the reason is kept with it.' }
+    return {
+      ok: false,
+      code: 'INVALID',
+      message: 'Say why the statement is rejected — the reason is kept with it.',
+    }
   }
 
   // Only a statement Nucleos has recorded and nobody has decided yet.
@@ -210,7 +217,11 @@ export async function decideStatement(
     if (err instanceof VerificationRejectedError) {
       return { ok: false, code: 'REFUSED', message: err.message }
     }
-    return { ok: false, code: 'UNAVAILABLE', message: 'The case could not be updated just now. Try again shortly.' }
+    return {
+      ok: false,
+      code: 'UNAVAILABLE',
+      message: 'The case could not be updated just now. Try again shortly.',
+    }
   }
 
   await deps.db.cbamVerificationStatement.update({

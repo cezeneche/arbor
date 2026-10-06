@@ -11,9 +11,7 @@ function fakeDb(links: Link[]) {
   return {
     cbamCaseLink: {
       findFirst: jest.fn(async ({ where }: { where: { nucleosCaseId: string; entityId: string } }) => {
-        const hit = links.find(
-          l => l.nucleosCaseId === where.nucleosCaseId && l.entityId === where.entityId,
-        )
+        const hit = links.find(l => l.nucleosCaseId === where.nucleosCaseId && l.entityId === where.entityId)
         return hit ? { documentId: hit.documentId } : null
       }),
       findMany: jest.fn(async ({ where }: { where: { entityId: string } }) =>
@@ -32,7 +30,7 @@ const LINKS: Link[] = [
 ]
 
 describe('resolveCaseAccess', () => {
-  it("allows an organisation its own linked case, and names the document behind it", async () => {
+  it('allows an organisation its own linked case, and names the document behind it', async () => {
     const access = await resolveCaseAccess('case-A', 'entity-A', fakeDb(LINKS))
     expect(access).toEqual({ allowed: true, documentId: 'doc-A' })
   })

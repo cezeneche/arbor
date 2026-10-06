@@ -25,7 +25,10 @@ describe('selectReviewableFields', () => {
   it('falls back to whatever the document has when no numeric field matches', () => {
     // This is the customs declaration case. Its fields are named
     // lines[0].net_mass_kg and friends, which no fixed set can enumerate.
-    const picked = selectReviewableFields([f('lines[0].cn_code', '72071111'), f('lines[0].net_mass_kg', '172')])
+    const picked = selectReviewableFields([
+      f('lines[0].cn_code', '72071111'),
+      f('lines[0].net_mass_kg', '172'),
+    ])
     expect(picked).toHaveLength(2)
   })
 

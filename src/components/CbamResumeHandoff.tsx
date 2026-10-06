@@ -66,7 +66,9 @@ export function CbamResumeHandoff({
         {busy ? 'Resuming…' : 'Resume'}
       </button>
       {error && (
-        <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red }}>
+        <span
+          style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red }}
+        >
           {error}
         </span>
       )}

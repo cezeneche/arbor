@@ -83,9 +83,30 @@ describe('scoreCase', () => {
 describe('aggregateByGroup', () => {
   it('collapses many field scores into per-group accuracy and flags kill-signal groups', () => {
     const scores: FieldScore[] = [
-      { caseId: 'a', fieldName: 'supplier_name', group: 'supplier_identity', expected: 'A', actual: 'A', correct: true },
-      { caseId: 'b', fieldName: 'account_holder_name', group: 'supplier_identity', expected: 'B', actual: 'X', correct: false },
-      { caseId: 'a', fieldName: 'invoice_number', group: 'invoice_number', expected: 'I', actual: 'I', correct: true },
+      {
+        caseId: 'a',
+        fieldName: 'supplier_name',
+        group: 'supplier_identity',
+        expected: 'A',
+        actual: 'A',
+        correct: true,
+      },
+      {
+        caseId: 'b',
+        fieldName: 'account_holder_name',
+        group: 'supplier_identity',
+        expected: 'B',
+        actual: 'X',
+        correct: false,
+      },
+      {
+        caseId: 'a',
+        fieldName: 'invoice_number',
+        group: 'invoice_number',
+        expected: 'I',
+        actual: 'I',
+        correct: true,
+      },
     ]
     const groups = aggregateByGroup(scores)
     const identity = groups.find(g => g.group === 'supplier_identity')!

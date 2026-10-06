@@ -41,6 +41,7 @@ export async function POST(
     },
     await defaultVerificationDeps(),
   )
-  if (!result.ok) return NextResponse.json({ error: result.message, code: result.code }, { status: STATUS[result.code] })
+  if (!result.ok)
+    return NextResponse.json({ error: result.message, code: result.code }, { status: STATUS[result.code] })
   return NextResponse.json(result, { status: 201 })
 }

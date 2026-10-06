@@ -33,9 +33,14 @@ export interface CompliancePackResult {
 // One Claude call of up to a minute, after Nucleos's own cold start.
 const TIMEOUT_MS = 110_000
 
-export async function runCompliancePack(caseId: string, fetchImpl: typeof fetch = fetch): Promise<CompliancePackResult> {
+export async function runCompliancePack(
+  caseId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CompliancePackResult> {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
+    throw new NucleosUnavailableError(
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
+    )
   }
   const path = `/api/cbam/cases/${encodeURIComponent(caseId)}/compliance-pack`
   let res: Response

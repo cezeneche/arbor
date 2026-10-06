@@ -115,9 +115,10 @@ export function buildAttention(input: AttentionInput): AttentionResult {
   // costs: the period reports as Estimated rather than Verified.
   if (period.daysToClose <= BLOCKING_WINDOW_DAYS) {
     for (const domain of keptDomains) {
-      const covered = records.some(r =>
-        r.domain === domain &&
-        overlaps(new Date(r.periodStart), new Date(r.periodEnd), period.start, period.end),
+      const covered = records.some(
+        r =>
+          r.domain === domain &&
+          overlaps(new Date(r.periodStart), new Date(r.periodEnd), period.start, period.end),
       )
       if (covered) continue
       blocking.push({
@@ -264,10 +265,7 @@ export function buildAttention(input: AttentionInput): AttentionResult {
   }
 }
 
-function buildClearLine(
-  keptDomains: string[],
-  period: ReturnType<typeof currentDeclarationPeriod>,
-): string {
+function buildClearLine(keptDomains: string[], period: ReturnType<typeof currentDeclarationPeriod>): string {
   if (keptDomains.length === 0) {
     return 'Nothing needs you yet. Upload a document to start your record.'
   }

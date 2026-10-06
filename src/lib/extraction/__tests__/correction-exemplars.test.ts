@@ -79,8 +79,12 @@ describe('renderCorrectionHints', () => {
   })
 
   it('distinguishes mis-read guidance from over-extraction guidance', () => {
-    const misread = renderCorrectionHints([{ fieldName: 'f', timesCorrected: 2, misreadCount: 2, clearedCount: 0 }])
-    const cleared = renderCorrectionHints([{ fieldName: 'g', timesCorrected: 2, misreadCount: 0, clearedCount: 2 }])
+    const misread = renderCorrectionHints([
+      { fieldName: 'f', timesCorrected: 2, misreadCount: 2, clearedCount: 0 },
+    ])
+    const cleared = renderCorrectionHints([
+      { fieldName: 'g', timesCorrected: 2, misreadCount: 0, clearedCount: 2 },
+    ])
     expect(misread).not.toBe(cleared)
   })
 })

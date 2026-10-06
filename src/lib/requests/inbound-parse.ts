@@ -74,7 +74,7 @@ export function matchRequestToRecords(parsed: ParsedRequest, records: MatchRecor
   const reqStart = parsed.periodStart ? Date.parse(parsed.periodStart) : null
   const reqEnd = parsed.periodEnd ? Date.parse(parsed.periodEnd) : null
 
-  const inScope = records.filter((r) => {
+  const inScope = records.filter(r => {
     if (parsed.domain && r.domain !== parsed.domain) return false
     // Period overlap, only when a bound was supplied and parses.
     if (reqStart !== null && !isNaN(reqStart) && toTime(r.periodEnd) < reqStart) return false
@@ -90,7 +90,7 @@ export function matchRequestToRecords(parsed: ParsedRequest, records: MatchRecor
   const answers: FieldAnswer[] = []
   const missingFields: string[] = []
   for (const field of parsed.fields) {
-    const matched = inScope.filter((r) => r.fieldName === field)
+    const matched = inScope.filter(r => r.fieldName === field)
     if (matched.length === 0) {
       missingFields.push(field)
     } else {
@@ -104,8 +104,8 @@ export function matchRequestToRecords(parsed: ParsedRequest, records: MatchRecor
 function toFieldAnswer(fieldName: string, records: MatchRecord[]): FieldAnswer {
   return {
     fieldName,
-    recordIds: records.map((r) => r.id),
-    records: records.map((r) => ({ recordId: r.id, value: r.value, unit: r.unit, trustTier: r.trustTier })),
+    recordIds: records.map(r => r.id),
+    records: records.map(r => ({ recordId: r.id, value: r.value, unit: r.unit, trustTier: r.trustTier })),
   }
 }
 

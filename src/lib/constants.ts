@@ -92,11 +92,7 @@ export const MAX_BATCH_ENTRIES = 200
 // batch/mill records go stale this many days after the period they cover.
 export const BATCH_RECORD_STALE_DAYS = 90
 
-export const ALLOWED_MIME_TYPES = new Set([
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-])
+export const ALLOWED_MIME_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png'])
 
 /** Canonical mapping from DocumentType to DataDomain.
  *  Single source of truth — used by ExtractionReview, review page, and cross-validation.

@@ -62,7 +62,10 @@ describe('CSV export carries the agreed definition', () => {
   it('quotes definition text containing commas so the CSV stays valid', () => {
     const withComma: ExportRecord = {
       ...record,
-      definition: { ...record.definition!, boundary: 'Includes metered supply, all of it. Excludes exports.' },
+      definition: {
+        ...record.definition!,
+        boundary: 'Includes metered supply, all of it. Excludes exports.',
+      },
     }
     const row = formatRecordsAsCSV([withComma]).split('\r\n')[1]
     expect(row).toContain('"Includes metered supply, all of it. Excludes exports."')

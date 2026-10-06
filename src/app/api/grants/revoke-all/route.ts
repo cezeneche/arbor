@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       entityId: granteeEntityId,
       type: 'ACCESS_REVOKED',
       payload: { grantId: 'all', grantorEntityId: entityId },
-    }).catch((e) => console.error('[grants/revoke-all] notify failed:', e))
+    }).catch(e => console.error('[grants/revoke-all] notify failed:', e))
     await dispatchWebhook(granteeEntityId, 'access.revoked', { grantId: 'all', grantorEntityId: entityId })
   }
 

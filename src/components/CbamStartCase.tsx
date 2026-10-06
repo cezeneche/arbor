@@ -47,9 +47,7 @@ export function CbamStartCase({ documents }: { documents: ReusableDocument[] }) 
           >
             <div>
               <p style={textStyles.sectionTitle}>Upload a document</p>
-              <p style={{ ...textStyles.caption, margin: '4px 0 0' }}>
-                PDF, JPEG or PNG
-              </p>
+              <p style={{ ...textStyles.caption, margin: '4px 0 0' }}>PDF, JPEG or PNG</p>
             </div>
             <span
               style={{

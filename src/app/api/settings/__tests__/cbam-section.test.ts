@@ -31,7 +31,10 @@ it('refuses anything but a boolean', async () => {
 })
 
 it('is for admins only', async () => {
-  requireAdmin.mockResolvedValueOnce({ session: null, response: new Response(null, { status: 403 }) } as never)
+  requireAdmin.mockResolvedValueOnce({
+    session: null,
+    response: new Response(null, { status: 403 }),
+  } as never)
   const res = await post({ enabled: true })
   expect(res.status).toBe(403)
   expect(update).not.toHaveBeenCalled()

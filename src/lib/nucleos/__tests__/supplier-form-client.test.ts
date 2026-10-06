@@ -36,7 +36,9 @@ describe('getSupplierFormContext', () => {
     process.env.NUCLEOS_URL = 'https://nucleos.test'
     process.env.NUCLEOS_INTERNAL_TOKEN = 'token'
   })
-  afterEach(() => { process.env = { ...ORIGINAL } })
+  afterEach(() => {
+    process.env = { ...ORIGINAL }
+  })
 
   it('returns the context for a live token', async () => {
     const f = jest.fn().mockResolvedValue(res(200, CONTEXT))
@@ -69,9 +71,7 @@ describe('getSupplierFormContext', () => {
 
   it('treats a rejected-token 404 as a dead link', async () => {
     const f = jest.fn().mockResolvedValue(res(404, TOKEN_REJECTED))
-    await expect(getSupplierFormContext('tok', f as never)).rejects.toBeInstanceOf(
-      SupplierTokenInvalidError,
-    )
+    await expect(getSupplierFormContext('tok', f as never)).rejects.toBeInstanceOf(SupplierTokenInvalidError)
   })
 
   it('does NOT treat a missing route as a dead link', async () => {
@@ -79,16 +79,12 @@ describe('getSupplierFormContext', () => {
     // path sends them to chase a new link that fails identically, while the
     // actual bug stays invisible. This is how that shipped once already.
     const f = jest.fn().mockResolvedValue(res(404, ROUTE_MISSING))
-    await expect(getSupplierFormContext('tok', f as never)).rejects.toBeInstanceOf(
-      NucleosUnavailableError,
-    )
+    await expect(getSupplierFormContext('tok', f as never)).rejects.toBeInstanceOf(NucleosUnavailableError)
   })
 
   it('tells the supplier what to do about a dead link', async () => {
     const f = jest.fn().mockResolvedValue(res(410, TOKEN_REJECTED))
-    await expect(getSupplierFormContext('tok', f as never)).rejects.toThrow(
-      /ask the company that sent it/i,
-    )
+    await expect(getSupplierFormContext('tok', f as never)).rejects.toThrow(/ask the company that sent it/i)
   })
 
   it('never puts the token in an error', async () => {
@@ -106,7 +102,9 @@ describe('submitSupplierForm', () => {
     process.env.NUCLEOS_URL = 'https://nucleos.test'
     process.env.NUCLEOS_INTERNAL_TOKEN = 'token'
   })
-  afterEach(() => { process.env = { ...ORIGINAL } })
+  afterEach(() => {
+    process.env = { ...ORIGINAL }
+  })
 
   it('posts the three fields', async () => {
     const f = jest.fn().mockResolvedValue(res(200, { status: 'received' }))

@@ -35,16 +35,10 @@ export default async function ApiKeysPage() {
     <div>
       <BackLink current="Integrations & API keys" />
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Integrations &amp; API keys
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
-          Connect your accounting or ERP system to push data into arbor automatically.
-          Create an API key and configure your system to POST to the ingest endpoint below.
+        <h1 style={textStyles.pageTitle}>Integrations &amp; API keys</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
+          Connect your accounting or ERP system to push data into arbor automatically. Create an API key and
+          configure your system to POST to the ingest endpoint below.
         </p>
       </div>
 
@@ -77,13 +71,15 @@ export default async function ApiKeysPage() {
               label: 'Push operational data',
               method: 'POST',
               path: '/api/v1/ingest',
-              description: 'Send structured records from your ERP or accounting system. Returns per-record status. Records are created as Declared (Tier B). Submit supporting documents to upgrade to Verified.',
+              description:
+                'Send structured records from your ERP or accounting system. Returns per-record status. Records are created as Declared (Tier B). Submit supporting documents to upgrade to Verified.',
             },
             {
               label: 'Read your records',
               method: 'GET',
               path: '/api/v1/records',
-              description: 'Query your stored records. Supports domain, tier, and period filters. Returns JSON, CSV, or XML.',
+              description:
+                'Query your stored records. Supports domain, tier, and period filters. Returns JSON, CSV, or XML.',
             },
           ].map(ep => (
             <div key={ep.path}>
@@ -109,7 +105,8 @@ export default async function ApiKeysPage() {
                     color: colours.textPrimary,
                   }}
                 >
-                  {baseUrl}{ep.path}
+                  {baseUrl}
+                  {ep.path}
                 </code>
               </div>
               <p
@@ -177,7 +174,15 @@ export default async function ApiKeysPage() {
       </div>
 
       <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[4]}` }}>
-        Read the full <a href="/docs/api" style={{ color: colours.navy }}>API reference</a>, including buyer query endpoints. Set up event callbacks in <a href="/settings/webhooks" style={{ color: colours.navy }}>Webhooks</a>.
+        Read the full{' '}
+        <a href="/docs/api" style={{ color: colours.navy }}>
+          API reference
+        </a>
+        , including buyer query endpoints. Set up event callbacks in{' '}
+        <a href="/settings/webhooks" style={{ color: colours.navy }}>
+          Webhooks
+        </a>
+        .
       </p>
 
       <ApiKeyManager initialKeys={serialised} />

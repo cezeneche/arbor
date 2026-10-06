@@ -75,7 +75,7 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
   const fields = job?.extractedFields ?? []
 
   const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(fields.map(f => [f.fieldName, f.rawValue ?? '']))
+    Object.fromEntries(fields.map(f => [f.fieldName, f.rawValue ?? ''])),
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -112,7 +112,7 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
   const isWithdrawn = document.status === 'WITHDRAWN'
 
   const criticalFlags = fields.filter(
-    f => f.admissibility === 'COMPULSORY' && (f.rawValue === null || f.rawValue === '')
+    f => f.admissibility === 'COMPULSORY' && (f.rawValue === null || f.rawValue === ''),
   )
   // The tier this would be saved at: the confirm route calls reviewTier with
   // the same inputs — the source text, the organisation name, and the period
@@ -158,7 +158,9 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
     const periodEnd = derived.periodEnd.toISOString()
 
     if (missingDate) {
-      setError('Add the import date before saving. The import case is filed for the quarter that date falls in.')
+      setError(
+        'Add the import date before saving. The import case is filed for the quarter that date falls in.',
+      )
       return
     }
 
@@ -381,7 +383,15 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
           gridColumn: spansRow ? '1 / -1' : undefined,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[1], marginBottom: '8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: spacing[1],
+            marginBottom: '8px',
+          }}
+        >
           <label htmlFor={field.id} style={labelStyle}>
             {fieldLabel(field.fieldName)}
           </label>
@@ -436,12 +446,9 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
             {/* Plain English first, then the flag itself. The sentence is what a
                 reviewer acts on; the token is what they quote when they ask why. */}
             {flag.explanation ?? flag.raw}
-            {flag.explanation && (
-              <span style={{ color: colours.textTertiary }}> ({flag.raw})</span>
-            )}
+            {flag.explanation && <span style={{ color: colours.textTertiary }}> ({flag.raw})</span>}
           </p>
         ))}
-
       </div>
     )
   }
@@ -483,14 +490,13 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
         }}
       >
         <div>
-          <p
-            style={textStyles.sectionSubtitle}
-          >
-            Document type: <strong style={{ fontWeight: typography.weights.medium }}>{document.documentType.replace(/_/g, ' ')}</strong>
+          <p style={textStyles.sectionSubtitle}>
+            Document type:{' '}
+            <strong style={{ fontWeight: typography.weights.medium }}>
+              {document.documentType.replace(/_/g, ' ')}
+            </strong>
           </p>
-          <p
-            style={{ ...textStyles.sectionSubtitle, margin: `4px 0 0` }}
-          >
+          <p style={{ ...textStyles.sectionSubtitle, margin: `4px 0 0` }}>
             {fields.length} fields extracted · {criticalFlags.length} critical missing
           </p>
         </div>
@@ -540,8 +546,8 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
               lineHeight: '1.5',
             }}
           >
-            The following records already exist for this domain and period. Review for consistency before confirming.
-            Both will be stored. The newer record will be marked as the current version.
+            The following records already exist for this domain and period. Review for consistency before
+            confirming. Both will be stored. The newer record will be marked as the current version.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {existingConflicts.map((c, i) => (
@@ -610,7 +616,12 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
           <label style={{ display: 'block' }}>
             <span style={textStyles.rowTitle}>Import date</span>
             <span
-              style={{ ...textStyles.caption, display: 'block', color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[2]}` }}
+              style={{
+                ...textStyles.caption,
+                display: 'block',
+                color: colours.textSecondary,
+                margin: `${spacing[1]} 0 ${spacing[2]}`,
+              }}
             >
               We could not find a date on this document. Enter the date the goods were imported: the import
               case is filed for the quarter it falls in.
@@ -753,9 +764,7 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
             marginBottom: spacing[3],
           }}
         >
-          <p style={{ ...textStyles.rowTitle, margin: 0 }}>
-            These figures already exist for this period
-          </p>
+          <p style={{ ...textStyles.rowTitle, margin: 0 }}>These figures already exist for this period</p>
           <ul
             style={{
               margin: `${spacing[1]} 0 0`,
@@ -780,8 +789,8 @@ export function ExtractionReview({ document, entityName, existingConflicts = [] 
               lineHeight: typography.lineHeight.body,
             }}
           >
-            Replacing keeps the original in your audit trail and marks it as superseded. Keeping
-            both leaves two figures for the same period, which will double-count on any total.
+            Replacing keeps the original in your audit trail and marks it as superseded. Keeping both leaves
+            two figures for the same period, which will double-count on any total.
           </p>
           <div style={{ display: 'flex', gap: spacing[1], flexWrap: 'wrap' }}>
             <button

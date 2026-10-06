@@ -5,7 +5,15 @@ import type { RecordQualitySummary as Summary } from '@/lib/layer3/record-qualit
 // "see what I have" and "how good is it" live in one place. Plain English only,
 // so it reads the same for an SME supplier and a buyer.
 
-function Stat({ label, value, tone = 'neutral' }: { label: string; value: number; tone?: 'good' | 'warn' | 'neutral' }) {
+function Stat({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string
+  value: number
+  tone?: 'good' | 'warn' | 'neutral'
+}) {
   const colour = tone === 'good' ? colours.green : tone === 'warn' ? colours.amber : colours.textSecondary
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
@@ -19,7 +27,13 @@ function Stat({ label, value, tone = 'neutral' }: { label: string; value: number
       >
         {value.toLocaleString()}
       </span>
-      <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+      <span
+        style={{
+          fontSize: typography.sizes.xs,
+          fontWeight: typography.weights.light,
+          color: colours.textSecondary,
+        }}
+      >
         {label}
       </span>
     </div>
@@ -52,9 +66,7 @@ export function RecordQualitySummary({ summary }: { summary: Summary }) {
       {summary.missingCompulsoryFields > 0 && (
         <Stat label="missing compulsory" value={summary.missingCompulsoryFields} tone="warn" />
       )}
-      {summary.expiringSoon > 0 && (
-        <Stat label="expiring soon" value={summary.expiringSoon} tone="warn" />
-      )}
+      {summary.expiringSoon > 0 && <Stat label="expiring soon" value={summary.expiringSoon} tone="warn" />}
     </div>
   )
 }

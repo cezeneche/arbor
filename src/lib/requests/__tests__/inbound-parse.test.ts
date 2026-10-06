@@ -20,7 +20,12 @@ describe('extractRequestToken', () => {
 
 describe('parseRequestResponse', () => {
   it('parses a well-formed structured response', () => {
-    const raw = JSON.stringify({ domain: 'ENERGY', fields: ['total_consumption_kwh'], periodStart: '2026-01-01', periodEnd: '2026-03-31' })
+    const raw = JSON.stringify({
+      domain: 'ENERGY',
+      fields: ['total_consumption_kwh'],
+      periodStart: '2026-01-01',
+      periodEnd: '2026-03-31',
+    })
     expect(parseRequestResponse(raw)).toEqual({
       domain: 'ENERGY',
       fields: ['total_consumption_kwh'],
@@ -29,7 +34,12 @@ describe('parseRequestResponse', () => {
     })
   })
   it('defaults missing keys safely', () => {
-    expect(parseRequestResponse('{}')).toEqual({ domain: null, fields: [], periodStart: null, periodEnd: null })
+    expect(parseRequestResponse('{}')).toEqual({
+      domain: null,
+      fields: [],
+      periodStart: null,
+      periodEnd: null,
+    })
   })
   it('returns null on non-JSON', () => {
     expect(parseRequestResponse('nope')).toBeNull()
@@ -51,7 +61,12 @@ function rec(over: Partial<MatchRecord>): MatchRecord {
 }
 
 describe('matchRequestToRecords', () => {
-  const parsed: ParsedRequest = { domain: 'ENERGY', fields: ['total_consumption_kwh'], periodStart: '2026-01-01', periodEnd: '2026-12-31' }
+  const parsed: ParsedRequest = {
+    domain: 'ENERGY',
+    fields: ['total_consumption_kwh'],
+    periodStart: '2026-01-01',
+    periodEnd: '2026-12-31',
+  }
 
   it('is covered when every requested field has a matching record', () => {
     const res = matchRequestToRecords(parsed, [rec({ id: 'e1' })])
@@ -62,10 +77,9 @@ describe('matchRequestToRecords', () => {
   })
 
   it('is not covered when a requested field has no record', () => {
-    const res = matchRequestToRecords(
-      { ...parsed, fields: ['total_consumption_kwh', 'quantity_m3'] },
-      [rec({ id: 'e1' })],
-    )
+    const res = matchRequestToRecords({ ...parsed, fields: ['total_consumption_kwh', 'quantity_m3'] }, [
+      rec({ id: 'e1' }),
+    ])
     expect(res.covered).toBe(false)
     expect(res.missingFields).toEqual(['quantity_m3'])
   })

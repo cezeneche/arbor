@@ -62,7 +62,12 @@ describe('writeRecordWithAuditEntry', () => {
   it('chains the canonical figure, so the audit entry matches the stored record', async () => {
     const tx = fakeTx()
     await writeRecordWithAuditEntry(tx as never, input())
-    expect(tx.audits[0].payload).toMatchObject({ value: 360, unit: 'mj', originalValue: 100, originalUnit: 'kwh' })
+    expect(tx.audits[0].payload).toMatchObject({
+      value: 360,
+      unit: 'mj',
+      originalValue: 100,
+      originalUnit: 'kwh',
+    })
   })
 
   it('leaves an already-normalised figure from the document path unchanged', async () => {

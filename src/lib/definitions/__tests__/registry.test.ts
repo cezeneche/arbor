@@ -36,8 +36,7 @@ const v2: StoredFieldDefinition = {
   version: 2,
   effectiveFrom: iso('2026-06-01T00:00:00.000Z'),
   effectiveTo: null,
-  boundary:
-    'Includes all metered import AND on-site generation consumed directly. Excludes exported energy.',
+  boundary: 'Includes all metered import AND on-site generation consumed directly. Excludes exported energy.',
 }
 
 const otherDomain: StoredFieldDefinition = {
@@ -159,8 +158,8 @@ describe('planNewVersion', () => {
 
   it('refuses an effectiveFrom at or before the current version started', () => {
     // Backdating would retroactively rewrite what already-certified records mean.
-    expect(() =>
-      planNewVersion([v1, v2], { effectiveFrom: iso('2026-05-01T00:00:00.000Z') }),
-    ).toThrow(/effectiveFrom/i)
+    expect(() => planNewVersion([v1, v2], { effectiveFrom: iso('2026-05-01T00:00:00.000Z') })).toThrow(
+      /effectiveFrom/i,
+    )
   })
 })

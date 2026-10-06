@@ -107,7 +107,9 @@ function money(value: number | string | null): string {
 
 function Row({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0' }}>
+    <div
+      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0' }}
+    >
       <span style={textStyles.sectionSubtitle}>{label}</span>
       <span
         style={{
@@ -129,15 +131,34 @@ function lineBase(caseId: string, lineId: string) {
 
 // ── The claims already made ─────────────────────────────────────────────────
 
-function ClaimList({ caseId, lineId, claims }: { caseId: string; lineId: string; claims: PresentedReliefClaim[] }) {
+function ClaimList({
+  caseId,
+  lineId,
+  claims,
+}: {
+  caseId: string
+  lineId: string
+  claims: PresentedReliefClaim[]
+}) {
   return (
     <div style={{ maxWidth: '620px', marginBottom: spacing[3] }}>
       {claims.map(claim => (
         <div
           key={claim.id}
-          style={{ padding: `${spacing[2]} 0`, borderBottom: `1px solid ${colours.border}`, opacity: claim.latest ? 1 : 0.7 }}
+          style={{
+            padding: `${spacing[2]} 0`,
+            borderBottom: `1px solid ${colours.border}`,
+            opacity: claim.latest ? 1 : 0.7,
+          }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing[2] }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              gap: spacing[2],
+            }}
+          >
             <span
               style={{
                 fontSize: typography.sizes.sm,
@@ -163,7 +184,13 @@ function ClaimList({ caseId, lineId, claims }: { caseId: string; lineId: string;
           </p>
           {claim.latest && (
             <>
-              <p style={{ ...textStyles.caption, color: claim.statement.attached ? colours.green : colours.amber, margin: '4px 0 0' }}>
+              <p
+                style={{
+                  ...textStyles.caption,
+                  color: claim.statement.attached ? colours.green : colours.amber,
+                  margin: '4px 0 0',
+                }}
+              >
                 {claim.statement.label}
                 {claim.statement.statementId && (
                   <>
@@ -228,14 +255,34 @@ function StatementForm({ caseId, lineId, onDone }: { caseId: string; lineId: str
 
   return (
     <div>
-      <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}`, lineHeight: 1.6, maxWidth: '520px' }}>
-        Attach the accredited verifier&apos;s statement confirming the carbon price paid. Until it is attached, the
-        relief is not counted on the return.
+      <p
+        style={{
+          ...textStyles.sectionSubtitle,
+          margin: `0 0 ${spacing[3]}`,
+          lineHeight: 1.6,
+          maxWidth: '520px',
+        }}
+      >
+        Attach the accredited verifier&apos;s statement confirming the carbon price paid. Until it is
+        attached, the relief is not counted on the return.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3], maxWidth: '620px', marginBottom: spacing[3] }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: spacing[3],
+          maxWidth: '620px',
+          marginBottom: spacing[3],
+        }}
+      >
         <div>
           <p style={labelStyle}>Verifier</p>
-          <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} aria-label="Verifier" />
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            style={inputStyle}
+            aria-label="Verifier"
+          />
         </div>
         <div>
           <p style={labelStyle}>Accreditation, for example UKAS 9876</p>
@@ -295,14 +342,17 @@ function ClaimForm({
   // HMRC's rate for the month of the rate date, kept with the currency and date
   // it answers, so a changed currency or date never shows a stale answer.
   const [hmrc, setHmrc] = useState<{ key: string; answer: HmrcRateAnswer } | null>(null)
-  const rateKey = /^[A-Z]{3}$/.test(currency) && /^\d{4}-\d{2}-\d{2}$/.test(rateDate) ? `${currency}|${rateDate}` : null
+  const rateKey =
+    /^[A-Z]{3}$/.test(currency) && /^\d{4}-\d{2}-\d{2}$/.test(rateDate) ? `${currency}|${rateDate}` : null
   const hmrcAnswer = hmrc && hmrc.key === rateKey ? hmrc.answer : null
 
   useEffect(() => {
     if (!rateKey) return
     let cancelled = false
     const [code, day] = rateKey.split('|')
-    fetch(`/api/cbam/relief/exchange-rate?currency=${encodeURIComponent(code)}&date=${encodeURIComponent(day)}`)
+    fetch(
+      `/api/cbam/relief/exchange-rate?currency=${encodeURIComponent(code)}&date=${encodeURIComponent(day)}`,
+    )
       .then(res => (res.ok ? res.json() : null))
       .then((answer: HmrcRateAnswer | null) => {
         if (cancelled || !answer) return
@@ -402,8 +452,8 @@ function ClaimForm({
         <Row label="Effective carbon price" value={money(result.effective_carbon_price_gbp)} />
         <Row label="Relief claimed" value={money(result.cpr_amount_gbp)} emphasis />
         <p style={note(colours.textSecondary)}>
-          On the return, relief is capped at the CBAM charge on these goods: it reduces what is owed, and is never
-          refunded beyond it.
+          On the return, relief is capped at the CBAM charge on these goods: it reduces what is owed, and is
+          never refunded beyond it.
         </p>
         {result.warnings?.map(w => (
           <p key={w} style={note(colours.amber)}>
@@ -429,13 +479,28 @@ function ClaimForm({
 
   return (
     <div>
-      <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[4]}`, lineHeight: 1.6, maxWidth: '520px' }}>
+      <p
+        style={{
+          ...textStyles.sectionSubtitle,
+          margin: `0 0 ${spacing[4]}`,
+          lineHeight: 1.6,
+          maxWidth: '520px',
+        }}
+      >
         {options.length === 1
           ? `Carbon paid under the ${scheme?.name} can be set against the CBAM liability on these goods.`
           : `Goods from ${origin} can carry relief under more than one scheme. Choose the one the carbon price was paid under.`}
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3], maxWidth: '620px', marginBottom: spacing[4] }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: spacing[3],
+          maxWidth: '620px',
+          marginBottom: spacing[4],
+        }}
+      >
         {options.length > 1 && (
           <div style={{ gridColumn: '1 / -1' }}>
             <p style={labelStyle}>Scheme</p>
@@ -469,15 +534,41 @@ function ClaimForm({
 
         <div>
           <p style={labelStyle}>Verified emissions (tCO₂e)</p>
-          <input type="number" min={0} step="0.01" value={emissions} onChange={e => setEmissions(e.target.value)} placeholder="e.g. 12.50" style={inputStyle} aria-label="Verified emissions" />
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={emissions}
+            onChange={e => setEmissions(e.target.value)}
+            placeholder="e.g. 12.50"
+            style={inputStyle}
+            aria-label="Verified emissions"
+          />
         </div>
         <div>
           <p style={labelStyle}>Carbon price paid ({currency || '…'} per tCO₂e)</p>
-          <input type="number" min={0} step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 72.40" style={inputStyle} aria-label="Carbon price" />
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={price}
+            onChange={e => setPrice(e.target.value)}
+            placeholder="e.g. 72.40"
+            style={inputStyle}
+            aria-label="Carbon price"
+          />
         </div>
         <div>
           <p style={labelStyle}>Free allocations received (tCO₂e)</p>
-          <input type="number" min={0} step="0.01" value={allocations} onChange={e => setAllocations(e.target.value)} style={inputStyle} aria-label="Free allocations" />
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={allocations}
+            onChange={e => setAllocations(e.target.value)}
+            style={inputStyle}
+            aria-label="Free allocations"
+          />
         </div>
         <div>
           <p style={labelStyle}>Exchange rate to GBP</p>
@@ -499,7 +590,10 @@ function ClaimForm({
               style={{
                 ...textStyles.caption,
                 margin: '4px 0 0',
-                color: hmrcAnswer.held && rate !== '' && Number(rate) !== Number(hmrcAnswer.rate) ? colours.amber : colours.textTertiary,
+                color:
+                  hmrcAnswer.held && rate !== '' && Number(rate) !== Number(hmrcAnswer.rate)
+                    ? colours.amber
+                    : colours.textTertiary,
               }}
             >
               {!hmrcAnswer.held
@@ -512,15 +606,31 @@ function ClaimForm({
         </div>
         <div>
           <p style={labelStyle}>Date of the rate (normally the import date)</p>
-          <input type="date" value={rateDate} onChange={e => setRateDate(e.target.value)} style={inputStyle} aria-label="Date of the exchange rate" />
+          <input
+            type="date"
+            value={rateDate}
+            onChange={e => setRateDate(e.target.value)}
+            style={inputStyle}
+            aria-label="Date of the exchange rate"
+          />
         </div>
         <div>
           <p style={labelStyle}>Verifier (optional)</p>
-          <input value={verifier} onChange={e => setVerifier(e.target.value)} style={inputStyle} aria-label="Claim verifier" />
+          <input
+            value={verifier}
+            onChange={e => setVerifier(e.target.value)}
+            style={inputStyle}
+            aria-label="Claim verifier"
+          />
         </div>
         <div>
           <p style={labelStyle}>Accreditation body (optional)</p>
-          <input value={verifierBody} onChange={e => setVerifierBody(e.target.value)} style={inputStyle} aria-label="Accreditation body" />
+          <input
+            value={verifierBody}
+            onChange={e => setVerifierBody(e.target.value)}
+            style={inputStyle}
+            aria-label="Accreditation body"
+          />
         </div>
       </div>
 
@@ -553,7 +663,8 @@ export function LineRelief({ case_, lineId }: { case_: CbamCaseSummary; lineId: 
     try {
       const res = await fetch(`${lineBase(case_.id, lineId)}/relief`)
       const body = await res.json().catch(() => ({}))
-      if (!res.ok) return { error: (body as { error?: string }).error ?? 'Relief for these goods could not be loaded.' }
+      if (!res.ok)
+        return { error: (body as { error?: string }).error ?? 'Relief for these goods could not be loaded.' }
       return { view: body as ReliefView }
     } catch {
       return { error: 'Relief for these goods could not be loaded. Check your connection and try again.' }
@@ -585,9 +696,12 @@ export function LineRelief({ case_, lineId }: { case_: CbamCaseSummary; lineId: 
   async function retry(statementId: string) {
     setBusy(true)
     try {
-      const res = await fetch(`${lineBase(case_.id, lineId)}/verification/${encodeURIComponent(statementId)}/sync`, {
-        method: 'POST',
-      })
+      const res = await fetch(
+        `${lineBase(case_.id, lineId)}/verification/${encodeURIComponent(statementId)}/sync`,
+        {
+          method: 'POST',
+        },
+      )
       const body = await res.json().catch(() => ({}))
       if (!res.ok) setError((body as { error?: string }).error ?? 'The statement could not be added yet.')
       else await load()
@@ -612,14 +726,28 @@ export function LineRelief({ case_, lineId }: { case_: CbamCaseSummary; lineId: 
       )}
 
       {canClaim && view.next === 'claim' && (
-        <ClaimForm case_={case_} lineId={lineId} origin={view.origin!} options={view.schemes.options} replacing={false} onDone={load} />
+        <ClaimForm
+          case_={case_}
+          lineId={lineId}
+          origin={view.origin!}
+          options={view.schemes.options}
+          replacing={false}
+          onDone={load}
+        />
       )}
 
       {view.next === 'statement' && <StatementForm caseId={case_.id} lineId={lineId} onDone={load} />}
 
       {view.next === 'retry' && view.retryStatementId && (
         <div>
-          <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}`, maxWidth: '520px', lineHeight: 1.6 }}>
+          <p
+            style={{
+              ...textStyles.sectionSubtitle,
+              margin: `0 0 ${spacing[3]}`,
+              maxWidth: '520px',
+              lineHeight: 1.6,
+            }}
+          >
             The verifier&apos;s statement is saved but has not been added to the claim yet. Nothing needs
             uploading again.
           </p>
@@ -632,7 +760,14 @@ export function LineRelief({ case_, lineId }: { case_: CbamCaseSummary; lineId: 
       {canClaim && view.claims.length > 0 && (
         <div style={{ marginTop: spacing[4] }}>
           {claimingAgain ? (
-            <ClaimForm case_={case_} lineId={lineId} origin={view.origin!} options={view.schemes.options} replacing onDone={load} />
+            <ClaimForm
+              case_={case_}
+              lineId={lineId}
+              origin={view.origin!}
+              options={view.schemes.options}
+              replacing
+              onDone={load}
+            />
           ) : (
             <button onClick={() => setClaimingAgain(true)} style={secondary}>
               Claim again (replaces the claim that counts)
@@ -692,7 +827,12 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
       {lines.length > 1 && (
         <div style={{ maxWidth: '620px', marginBottom: spacing[4] }}>
           <p style={labelStyle}>Goods line</p>
-          <select value={lineId} onChange={e => setLineId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }} aria-label="Goods line">
+          <select
+            value={lineId}
+            onChange={e => setLineId(e.target.value)}
+            style={{ ...inputStyle, cursor: 'pointer' }}
+            aria-label="Goods line"
+          >
             {lines.map(l => (
               <option key={l.id} value={l.id}>
                 {l.cn_code ?? 'No code'} · {l.product_description || l.description || 'No description'}

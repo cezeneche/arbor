@@ -7,7 +7,16 @@ describe('parseGoldenSet', () => {
   it('parses a well-formed golden set', () => {
     const cases = parseGoldenSet({
       cases: [
-        { id: 'bill', documentType: 'ELECTRICITY_BILL', fixture: 'bill.pdf', mediaType: 'application/pdf', expected: [{ fieldName: 'supplier_name', expectedValue: 'Acme' }, { fieldName: 'vat_number', expectedValue: null }] },
+        {
+          id: 'bill',
+          documentType: 'ELECTRICITY_BILL',
+          fixture: 'bill.pdf',
+          mediaType: 'application/pdf',
+          expected: [
+            { fieldName: 'supplier_name', expectedValue: 'Acme' },
+            { fieldName: 'vat_number', expectedValue: null },
+          ],
+        },
       ],
     })
     expect(cases).toHaveLength(1)
@@ -20,7 +29,9 @@ describe('parseGoldenSet', () => {
 
   it('rejects an unknown media type', () => {
     expect(() =>
-      parseGoldenSet({ cases: [{ id: 'x', documentType: 'T', fixture: 'x.tiff', mediaType: 'image/tiff', expected: [] }] }),
+      parseGoldenSet({
+        cases: [{ id: 'x', documentType: 'T', fixture: 'x.tiff', mediaType: 'image/tiff', expected: [] }],
+      }),
     ).toThrow()
   })
 

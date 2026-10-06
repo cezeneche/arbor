@@ -28,7 +28,9 @@ export function CbamSupplierHistory({ caseId, goodsLineId }: { caseId: string; g
 
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/cbam/cases/${encodeURIComponent(caseId)}/goods-lines/${encodeURIComponent(goodsLineId)}/supplier-history`)
+    fetch(
+      `/api/cbam/cases/${encodeURIComponent(caseId)}/goods-lines/${encodeURIComponent(goodsLineId)}/supplier-history`,
+    )
       .then(async res => {
         if (cancelled) return
         if (!res.ok) {

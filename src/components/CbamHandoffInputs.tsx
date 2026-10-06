@@ -45,7 +45,8 @@ export function CbamHandoffInputs({
       if (!res.ok) {
         const errors = (body.fields ?? []) as { fieldName: string; message: string }[]
         setFieldErrors(Object.fromEntries(errors.map(e => [e.fieldName, e.message])))
-        if (errors.length === 0) setError(body.error ?? 'The case could not be opened. Please try again shortly.')
+        if (errors.length === 0)
+          setError(body.error ?? 'The case could not be opened. Please try again shortly.')
         return
       }
       onResult(body as HandoffState)

@@ -28,7 +28,7 @@ import type { PlannedFlag } from './plan-flags'
 
 /** Pure policy: route an auto-accepted doc to review iff any CRITICAL constraint flag was raised. */
 export function routeAutoAcceptToReview(flags: PlannedFlag[]): boolean {
-  return flags.some((f) => f.severity === 'CRITICAL')
+  return flags.some(f => f.severity === 'CRITICAL')
 }
 
 export interface AutoAcceptGateResult {

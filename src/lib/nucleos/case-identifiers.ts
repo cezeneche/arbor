@@ -48,7 +48,10 @@ export function missingCaseIdentifiers(confirmed: ReadonlyMap<string, string>): 
     // Only a line whose weight was certified can reach the case once coded.
     if (!has(confirmed, goodsLineFieldName(i, 'net_mass_kg'))) continue
     if (!has(confirmed, goodsLineFieldName(i, 'cn_code'))) {
-      needs.push({ fieldName: goodsLineFieldName(i, 'cn_code'), label: `Commodity code for goods line ${i + 1}` })
+      needs.push({
+        fieldName: goodsLineFieldName(i, 'cn_code'),
+        label: `Commodity code for goods line ${i + 1}`,
+      })
     }
   }
   return needs
@@ -83,7 +86,10 @@ export function amendCaseIdentifiers(
 
   for (const { fieldName, value } of amendments) {
     if (has(confirmed, fieldName)) {
-      errors.push({ fieldName, message: 'This was already confirmed from the document and cannot be changed here.' })
+      errors.push({
+        fieldName,
+        message: 'This was already confirmed from the document and cannot be changed here.',
+      })
       continue
     }
     if (!askable.has(fieldName)) {

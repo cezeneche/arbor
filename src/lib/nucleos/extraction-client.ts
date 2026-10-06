@@ -11,10 +11,7 @@
 // CBAM data in it, and the reviewer confirms an empty extraction. That is a
 // silent under-declaration, so a Nucleos failure has to surface as a failure.
 
-import type {
-  CbamExtractionRequest,
-  CbamExtractionResult,
-} from './contract'
+import type { CbamExtractionRequest, CbamExtractionResult } from './contract'
 import { nucleosHeaders } from './service-auth'
 
 export class NucleosUnavailableError extends Error {
@@ -87,9 +84,7 @@ export async function extractCbamFields(
     if ((err as Error)?.name === 'AbortError') {
       throw new NucleosUnavailableError('Nucleos extraction timed out')
     }
-    throw new NucleosUnavailableError(
-      `Nucleos extraction failed: ${(err as Error).message}`,
-    )
+    throw new NucleosUnavailableError(`Nucleos extraction failed: ${(err as Error).message}`)
   } finally {
     clearTimeout(timeout)
   }

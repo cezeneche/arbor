@@ -7,13 +7,37 @@ import { colours, typography, spacing } from '@/lib/design-system'
 
 function Status({ message, error }: { message: string; error: boolean }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: colours.background }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colours.background,
+      }}
+    >
       <div style={{ textAlign: 'center', padding: spacing[5] }}>
-        <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: error ? colours.red : colours.textSecondary, margin: 0 }}>
+        <p
+          style={{
+            fontSize: typography.sizes.base,
+            fontWeight: typography.weights.light,
+            color: error ? colours.red : colours.textSecondary,
+            margin: 0,
+          }}
+        >
           {message}
         </p>
         {error && (
-          <a href="/login" style={{ display: 'inline-block', marginTop: spacing[2], fontSize: typography.sizes.sm, color: colours.navy, textDecoration: 'none' }}>
+          <a
+            href="/login"
+            style={{
+              display: 'inline-block',
+              marginTop: spacing[2],
+              fontSize: typography.sizes.sm,
+              color: colours.navy,
+              textDecoration: 'none',
+            }}
+          >
             Back to sign in
           </a>
         )}
@@ -32,7 +56,7 @@ function SsoCompleteInner() {
 
   useEffect(() => {
     if (!token) return
-    signIn('workos', { token, redirect: false }).then((res) => {
+    signIn('workos', { token, redirect: false }).then(res => {
       if (res?.ok) router.push('/dashboard')
       else setFailed(true)
     })

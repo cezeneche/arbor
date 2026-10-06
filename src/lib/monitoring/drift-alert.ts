@@ -82,11 +82,7 @@ export interface AccuracyDriftGroup {
 }
 
 /** Build the alert for an accuracy-degradation and/or confidence-drift breach. */
-export function buildAccuracyAlert(
-  runId: string,
-  groups: AccuracyDriftGroup[],
-  now: Date,
-): DriftAlert {
+export function buildAccuracyAlert(runId: string, groups: AccuracyDriftGroup[], now: Date): DriftAlert {
   const tripped = groups.filter(g => g.accuracyDegraded || g.confidenceDrift)
   const names = tripped.map(g => g.group).join(', ')
   return {

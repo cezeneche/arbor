@@ -147,10 +147,7 @@ export function CbamScopeChecker({ jurisdiction }: { jurisdiction: CbamJurisdict
         <div className="sc-row">
           <div className="sc-code">
             <p style={fieldLabel}>Commodity code</p>
-            <div
-              className="sc-box"
-              style={{ ...boxBase, borderRight: 'none', borderRadius: '4px 0 0 4px' }}
-            >
+            <div className="sc-box" style={{ ...boxBase, borderRight: 'none', borderRadius: '4px 0 0 4px' }}>
               <input
                 value={cnCode}
                 onChange={e => setCnCode(e.target.value)}
@@ -237,8 +234,7 @@ export function CbamScopeChecker({ jurisdiction }: { jurisdiction: CbamJurisdict
       </form>
 
       <p style={{ ...textStyles.caption, margin: `${spacing[2]} 0 0`, lineHeight: 1.5 }}>
-        The code is on your customs paperwork. Tonnes are optional and change the estimate,
-        not the answer.
+        The code is on your customs paperwork. Tonnes are optional and change the estimate, not the answer.
       </p>
 
       {error && (
@@ -259,9 +255,7 @@ export function CbamScopeChecker({ jurisdiction }: { jurisdiction: CbamJurisdict
           }}
         >
           <p style={textStyles.sectionTitle}>{copy.headline}</p>
-          <p style={{ ...textStyles.sectionSubtitle, margin: `6px 0 0`, lineHeight: 1.6 }}>
-            {copy.body}
-          </p>
+          <p style={{ ...textStyles.sectionSubtitle, margin: `6px 0 0`, lineHeight: 1.6 }}>{copy.body}</p>
 
           {result.sector && (
             <p style={{ ...textStyles.value, margin: `${spacing[2]} 0 0` }}>
@@ -270,7 +264,10 @@ export function CbamScopeChecker({ jurisdiction }: { jurisdiction: CbamJurisdict
           )}
 
           {thresholdNotes.map(note => (
-            <p key={note} style={{ ...textStyles.sectionSubtitle, margin: `${spacing[2]} 0 0`, lineHeight: 1.6 }}>
+            <p
+              key={note}
+              style={{ ...textStyles.sectionSubtitle, margin: `${spacing[2]} 0 0`, lineHeight: 1.6 }}
+            >
               {note}
             </p>
           ))}
@@ -347,8 +344,8 @@ export function CbamScopeChecker({ jurisdiction }: { jurisdiction: CbamJurisdict
               lineHeight: 1.5,
             }}
           >
-            Based on the commodity code alone. Goods originating in the EU, EEA or a
-            linked-ETS country are excluded regardless of code.
+            Based on the commodity code alone. Goods originating in the EU, EEA or a linked-ETS country are
+            excluded regardless of code.
           </p>
 
           {result.regulation_refs?.length > 0 && (

@@ -45,7 +45,16 @@ describe('parentOf', () => {
   })
 
   it('returns null for a top-level nav destination', () => {
-    for (const href of ['/dashboard', '/upload', '/review', '/records', '/requests', '/settings', '/export', '/supply-chain']) {
+    for (const href of [
+      '/dashboard',
+      '/upload',
+      '/review',
+      '/records',
+      '/requests',
+      '/settings',
+      '/export',
+      '/supply-chain',
+    ]) {
       expect(parentOf(href)).toBeNull()
     }
   })

@@ -22,6 +22,9 @@ describe('checkSignupAccess', () => {
 
   it('is closed when no codes are configured and signup is not open', () => {
     expect(checkSignupAccess('anything', {})).toEqual({ allowed: false, reason: 'closed' })
-    expect(checkSignupAccess('anything', { PILOT_INVITE_CODES: ' , ' })).toEqual({ allowed: false, reason: 'closed' })
+    expect(checkSignupAccess('anything', { PILOT_INVITE_CODES: ' , ' })).toEqual({
+      allowed: false,
+      reason: 'closed',
+    })
   })
 })

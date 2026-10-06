@@ -6,12 +6,7 @@ import { join, relative } from 'path'
 // in marketing.css), and tests may use literal colours.
 
 const ROOT = join(__dirname, '..', '..')
-const EXEMPT = [
-  'lib/design-system.ts',
-  'app/(marketing)/',
-  'components/marketing/',
-  'app/institutional/',
-]
+const EXEMPT = ['lib/design-system.ts', 'app/(marketing)/', 'components/marketing/', 'app/institutional/']
 const RAW_COLOUR = /#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b(?=['"`])|rgba?\(/
 
 function files(dir: string): string[] {

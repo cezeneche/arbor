@@ -1,11 +1,5 @@
 export type SectorOption =
-  | 'Steel'
-  | 'Aluminium'
-  | 'Cement'
-  | 'Fertiliser'
-  | 'Hydrogen'
-  | 'Agriculture'
-  | 'Other'
+  'Steel' | 'Aluminium' | 'Cement' | 'Fertiliser' | 'Hydrogen' | 'Agriculture' | 'Other'
 
 export type TrustTier = 'A' | 'B' | 'C'
 

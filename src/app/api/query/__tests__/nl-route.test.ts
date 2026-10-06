@@ -45,10 +45,22 @@ jest.mock('@/lib/query-interpreter/answer', () => ({
 import { POST } from '../nl/route'
 
 const ask = (question: string) =>
-  POST(new Request('http://arbor.test/api/query/nl', { method: 'POST', body: JSON.stringify({ question }) }) as never)
+  POST(
+    new Request('http://arbor.test/api/query/nl', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    }) as never,
+  )
 
 const granted = {
-  OR: [{ entityId: 'sup-a', domain: 'ENERGY', periodEnd: { gte: new Date('2026-01-01') }, periodStart: { lte: new Date('2026-12-31') } }],
+  OR: [
+    {
+      entityId: 'sup-a',
+      domain: 'ENERGY',
+      periodEnd: { gte: new Date('2026-01-01') },
+      periodStart: { lte: new Date('2026-12-31') },
+    },
+  ],
 }
 
 beforeEach(() => {
@@ -85,8 +97,12 @@ describe('POST /api/query/nl', () => {
 
   it('applies the period and status to a history question', async () => {
     parse.mockResolvedValue({
-      interpretation: 'x', isCalculation: false, queryType: 'historical',
-      periodStart: '2025-01-01', periodEnd: '2025-12-31', trustTier: 'A',
+      interpretation: 'x',
+      isCalculation: false,
+      queryType: 'historical',
+      periodStart: '2025-01-01',
+      periodEnd: '2025-12-31',
+      trustTier: 'A',
     })
     await ask('verified history for 2025')
     const [args] = retrieval()
@@ -99,18 +115,26 @@ describe('POST /api/query/nl', () => {
 
   it('answers plainly when a named supplier is not one the caller can see', async () => {
     parse.mockResolvedValue({
-      interpretation: 'x', isCalculation: false, queryType: 'supply_chain', supplierName: 'Brighton Metals',
+      interpretation: 'x',
+      isCalculation: false,
+      queryType: 'supply_chain',
+      supplierName: 'Brighton Metals',
     })
     const res = await ask("Brighton Metals' energy")
     const body = await res.json()
-    expect(body.data?.answer ?? body.answer).toMatch(/no shared data from a supplier called “Brighton Metals”/)
+    expect(body.data?.answer ?? body.answer).toMatch(
+      /no shared data from a supplier called “Brighton Metals”/,
+    )
     expect(retrieval()).toHaveLength(0)
   })
 
   it('tells the user what was searched, from the filters that ran', async () => {
     parse.mockResolvedValue({
-      interpretation: 'the model’s own account', isCalculation: false, queryType: 'supply_chain',
-      supplierName: 'acme steel', domain: 'ENERGY',
+      interpretation: 'the model’s own account',
+      isCalculation: false,
+      queryType: 'supply_chain',
+      supplierName: 'acme steel',
+      domain: 'ENERGY',
     })
     const res = await ask('acme energy')
     const body = await res.json()

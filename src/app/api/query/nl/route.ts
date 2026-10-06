@@ -61,13 +61,22 @@ export async function POST(req: NextRequest) {
   const [grantRows, entity] = await Promise.all([
     prisma.dataAccessGrant.findMany({
       where: { granteeEntityId: entityId, isActive: true, revokedAt: null },
-      select: { grantorEntityId: true, grantorEntity: { select: { legalName: true } }, ...GRANT_SCOPE_SELECT },
+      select: {
+        grantorEntityId: true,
+        grantorEntity: { select: { legalName: true } },
+        ...GRANT_SCOPE_SELECT,
+      },
     }),
     prisma.entity.findUnique({ where: { id: entityId }, select: { entityType: true } }),
   ])
-  const grants: SupplierGrant[] = grantRows.map(g => ({ grantorEntityId: g.grantorEntityId, ...toGrantScope(g) }))
+  const grants: SupplierGrant[] = grantRows.map(g => ({
+    grantorEntityId: g.grantorEntityId,
+    ...toGrantScope(g),
+  }))
   const suppliers: AuthorisedSupplier[] = [
-    ...new Map(grantRows.map(g => [g.grantorEntityId, { id: g.grantorEntityId, name: g.grantorEntity.legalName }])).values(),
+    ...new Map(
+      grantRows.map(g => [g.grantorEntityId, { id: g.grantorEntityId, name: g.grantorEntity.legalName }]),
+    ).values(),
   ]
   const granted = grantedRecordsWhere(grants)
 
@@ -93,7 +102,16 @@ export async function POST(req: NextRequest) {
     return err(e instanceof Error ? e.message : 'Failed to parse question', 'PARSE_ERROR', 422)
   }
 
-  const { interpretation, isCalculation, calculationNote, domain, fieldName, periodStart, periodEnd, trustTier } = parsed
+  const {
+    interpretation,
+    isCalculation,
+    calculationNote,
+    domain,
+    fieldName,
+    periodStart,
+    periodEnd,
+    trustTier,
+  } = parsed
   const supplier = resolveSupplierScope(parsed, suppliers)
   // A question about one supplier is a question about their shared records,
   // whatever the parser called it.
@@ -108,11 +126,20 @@ export async function POST(req: NextRequest) {
   if (supplier.kind === 'unmatched') {
     const answer = `You have no shared data from a supplier called “${supplier.name}”. Check the name, or ask them to share their records with you.`
     return ok({
-      interpretation, scope, answer, isCalculation: false, queryType, summary: answer,
-      recordCount: 0, hasMore: false, tierDistribution: { A: 0, B: 0, C: 0 }, records: [],
+      interpretation,
+      scope,
+      answer,
+      isCalculation: false,
+      queryType,
+      summary: answer,
+      recordCount: 0,
+      hasMore: false,
+      tierDistribution: { A: 0, B: 0, C: 0 },
+      records: [],
     })
   }
-  const scopedGrants = supplier.kind === 'one' ? grants.filter(g => g.grantorEntityId === supplier.id) : grants
+  const scopedGrants =
+    supplier.kind === 'one' ? grants.filter(g => g.grantorEntityId === supplier.id) : grants
 
   // Execute the appropriate query
   let records: NlRecord[] = []
@@ -120,16 +147,40 @@ export async function POST(req: NextRequest) {
 
   if (queryType === 'gap') {
     gapResult = await runGapQuery({
-      entityId, domain: domain ?? undefined, periodStart, periodEnd,
+      entityId,
+      domain: domain ?? undefined,
+      periodStart,
+      periodEnd,
       grants: scopedGrants,
       suppliers: supplier.kind === 'one' ? suppliers.filter(s => s.id === supplier.id) : suppliers,
     })
   } else if (queryType === 'supply_chain') {
-    records = await runSupplyChainQuery({ domain: domain ?? undefined, fieldName, periodStart, periodEnd, trustTier: trustTier ?? undefined, grants: scopedGrants })
+    records = await runSupplyChainQuery({
+      domain: domain ?? undefined,
+      fieldName,
+      periodStart,
+      periodEnd,
+      trustTier: trustTier ?? undefined,
+      grants: scopedGrants,
+    })
   } else if (queryType === 'historical') {
-    records = await runHistoricalQuery({ entityId, domain: domain ?? undefined, fieldName, periodStart, periodEnd, trustTier: trustTier ?? undefined })
+    records = await runHistoricalQuery({
+      entityId,
+      domain: domain ?? undefined,
+      fieldName,
+      periodStart,
+      periodEnd,
+      trustTier: trustTier ?? undefined,
+    })
   } else {
-    records = await runEntityQuery({ entityId, domain: domain ?? undefined, fieldName, periodStart, periodEnd, trustTier: trustTier ?? undefined })
+    records = await runEntityQuery({
+      entityId,
+      domain: domain ?? undefined,
+      fieldName,
+      periodStart,
+      periodEnd,
+      trustTier: trustTier ?? undefined,
+    })
   }
 
   const hasMore = records.length > 200
@@ -196,7 +247,16 @@ type GapResult = {
   supplierGaps: Array<{ supplierEntityId: string; supplierName: string; missingDomains: string[] }>
 }
 
-const ALL_DOMAINS: DataDomain[] = ['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']
+const ALL_DOMAINS: DataDomain[] = [
+  'ENERGY',
+  'MATERIALS',
+  'PRODUCTION',
+  'LOGISTICS',
+  'EMISSIONS',
+  'AGRICULTURE',
+  'WASTE_AND_WATER',
+  'COMPLIANCE',
+]
 
 async function runEntityQuery(params: {
   entityId: string
@@ -221,9 +281,17 @@ async function runEntityQuery(params: {
       ...periodOverlapWhere(periodStart, periodEnd),
     },
     select: {
-      id: true, domain: true, fieldName: true, value: true, unit: true,
-      periodStart: true, periodEnd: true, trustTier: true,
-      confidenceScore: true, sourceText: true, submittedAt: true,
+      id: true,
+      domain: true,
+      fieldName: true,
+      value: true,
+      unit: true,
+      periodStart: true,
+      periodEnd: true,
+      trustTier: true,
+      confidenceScore: true,
+      sourceText: true,
+      submittedAt: true,
     },
     orderBy: [{ periodEnd: 'desc' }, { domain: 'asc' }],
     take: 201,
@@ -262,9 +330,18 @@ async function runSupplyChainQuery(params: {
       ],
     },
     select: {
-      id: true, entityId: true, domain: true, fieldName: true, value: true, unit: true,
-      periodStart: true, periodEnd: true, trustTier: true,
-      confidenceScore: true, sourceText: true, submittedAt: true,
+      id: true,
+      entityId: true,
+      domain: true,
+      fieldName: true,
+      value: true,
+      unit: true,
+      periodStart: true,
+      periodEnd: true,
+      trustTier: true,
+      confidenceScore: true,
+      sourceText: true,
+      submittedAt: true,
       entity: { select: { legalName: true } },
     },
     orderBy: [{ entityId: 'asc' }, { domain: 'asc' }, { periodEnd: 'desc' }],
@@ -312,9 +389,17 @@ async function runHistoricalQuery(params: {
       ...periodOverlapWhere(periodStart, periodEnd),
     },
     select: {
-      id: true, domain: true, fieldName: true, value: true, unit: true,
-      periodStart: true, periodEnd: true, trustTier: true,
-      confidenceScore: true, sourceText: true, submittedAt: true,
+      id: true,
+      domain: true,
+      fieldName: true,
+      value: true,
+      unit: true,
+      periodStart: true,
+      periodEnd: true,
+      trustTier: true,
+      confidenceScore: true,
+      sourceText: true,
+      submittedAt: true,
     },
     orderBy: { periodStart: 'asc' },
     take: 201,
@@ -335,7 +420,8 @@ async function runGapQuery(params: {
 
   const ownRecords = await prisma.dataRecord.findMany({
     where: {
-      entityId, isActive: true,
+      entityId,
+      isActive: true,
       ...(domain ? { domain } : {}),
       ...periodOverlapWhere(periodStart, periodEnd),
     },
@@ -378,15 +464,28 @@ async function runGapQuery(params: {
 
 // SUMMARY BUILDER
 
-function buildSummary(count: number, hasMore: boolean, queryType: QueryType, domain: string | undefined | null, gapResult: GapResult | null): string {
+function buildSummary(
+  count: number,
+  hasMore: boolean,
+  queryType: QueryType,
+  domain: string | undefined | null,
+  gapResult: GapResult | null,
+): string {
   const DOMAIN_LABELS: Record<string, string> = {
-    ENERGY: 'energy', MATERIALS: 'materials', PRODUCTION: 'production',
-    LOGISTICS: 'logistics', EMISSIONS: 'emissions', AGRICULTURE: 'agriculture',
-    WASTE_AND_WATER: 'waste and water', COMPLIANCE: 'compliance',
+    ENERGY: 'energy',
+    MATERIALS: 'materials',
+    PRODUCTION: 'production',
+    LOGISTICS: 'logistics',
+    EMISSIONS: 'emissions',
+    AGRICULTURE: 'agriculture',
+    WASTE_AND_WATER: 'waste and water',
+    COMPLIANCE: 'compliance',
   }
 
   if (queryType === 'gap' && gapResult) {
-    const totalGaps = gapResult.ownMissingDomains.length + gapResult.supplierGaps.reduce((n, g) => n + g.missingDomains.length, 0)
+    const totalGaps =
+      gapResult.ownMissingDomains.length +
+      gapResult.supplierGaps.reduce((n, g) => n + g.missingDomains.length, 0)
     return totalGaps === 0
       ? 'No gaps found — all expected domains have records.'
       : `Found ${totalGaps} data gap${totalGaps === 1 ? '' : 's'} across your organisation and supplier network.`

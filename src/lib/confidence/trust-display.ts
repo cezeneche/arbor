@@ -76,13 +76,10 @@ export function trustDisplay(input: TrustDisplayInput): TrustDisplay {
 
   const posterior = input.confidencePosterior ?? null
   const value = posterior ? posterior.posteriorMean : input.confidenceScore
-  const interval = posterior
-    ? { low: posterior.ciLow, high: posterior.ciHigh, mass: posterior.ciMass }
-    : null
+  const interval = posterior ? { low: posterior.ciLow, high: posterior.ciHigh, mass: posterior.ciMass } : null
   const wide = interval !== null && interval.high - interval.low >= WIDE_INTERVAL
 
-  const rawBand: TrustBand =
-    value >= TRUST_HIGH ? 'high' : value >= TRUST_MODERATE ? 'moderate' : 'low'
+  const rawBand: TrustBand = value >= TRUST_HIGH ? 'high' : value >= TRUST_MODERATE ? 'moderate' : 'low'
   // Honest uncertainty: a wide interval never reads as high confidence.
   const band: TrustBand = wide && rawBand === 'high' ? 'moderate' : rawBand
 

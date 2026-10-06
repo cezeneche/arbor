@@ -215,9 +215,7 @@ export function buildCasePayload(input: BuildCasePayloadInput): BuildCasePayload
   }
 
   if (lines.length === 0) {
-    problems.push(
-      'No goods line had both a commodity code and a weight, so no case was opened.',
-    )
+    problems.push('No goods line had both a commodity code and a weight, so no case was opened.')
     return { payload: null, problems }
   }
 

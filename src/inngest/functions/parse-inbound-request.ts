@@ -10,7 +10,12 @@ import type { Prisma } from '@prisma/client'
 import type { DataDomain } from '@prisma/client'
 
 export const parseInboundRequestFunction = inngest.createFunction(
-  { id: 'parse-inbound-request', retries: 2, concurrency: { limit: 5 }, triggers: [{ event: 'request/inbound' }] },
+  {
+    id: 'parse-inbound-request',
+    retries: 2,
+    concurrency: { limit: 5 },
+    triggers: [{ event: 'request/inbound' }],
+  },
   async ({ event, step }) => {
     const { entityToken, fromEmail, text } = event.data as {
       entityToken: string
@@ -19,7 +24,10 @@ export const parseInboundRequestFunction = inngest.createFunction(
     }
 
     const entity = await step.run('resolve-entity', async () =>
-      prisma.entity.findUnique({ where: { uploadEmailToken: entityToken }, select: { id: true, legalName: true } }),
+      prisma.entity.findUnique({
+        where: { uploadEmailToken: entityToken },
+        select: { id: true, legalName: true },
+      }),
     )
     if (!entity) return { dropped: true, reason: 'unknown_token' }
 
@@ -37,7 +45,10 @@ export const parseInboundRequestFunction = inngest.createFunction(
       await step.run('mark-needs-data-unparsed', async () => {
         await prisma.inboundRequest.update({
           where: { id: requestId },
-          data: { status: 'NEEDS_DATA', parsedFields: { reason: 'could_not_parse' } as Prisma.InputJsonValue },
+          data: {
+            status: 'NEEDS_DATA',
+            parsedFields: { reason: 'could_not_parse' } as Prisma.InputJsonValue,
+          },
         })
       })
       return { requestId, status: 'NEEDS_DATA', reason: 'unparsed' }
@@ -50,7 +61,16 @@ export const parseInboundRequestFunction = inngest.createFunction(
           isActive: true,
           ...(parsed.domain ? { domain: parsed.domain as DataDomain } : {}),
         },
-        select: { id: true, domain: true, fieldName: true, value: true, unit: true, trustTier: true, periodStart: true, periodEnd: true },
+        select: {
+          id: true,
+          domain: true,
+          fieldName: true,
+          value: true,
+          unit: true,
+          trustTier: true,
+          periodStart: true,
+          periodEnd: true,
+        },
       })
       return matchRequestToRecords(parsed, records as unknown as MatchRecord[])
     })
@@ -65,7 +85,11 @@ export const parseInboundRequestFunction = inngest.createFunction(
           where: { id: requestId },
           data: {
             status: 'NEEDS_DATA',
-            parsedFields: { parsed, answers: match.answers, awaiting: 'supplier_review' } as unknown as Prisma.InputJsonValue,
+            parsedFields: {
+              parsed,
+              answers: match.answers,
+              awaiting: 'supplier_review',
+            } as unknown as Prisma.InputJsonValue,
           },
         })
       })

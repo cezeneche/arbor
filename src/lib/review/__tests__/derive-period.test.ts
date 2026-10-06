@@ -224,7 +224,10 @@ describe('documentPeriod', () => {
 
   it('answers from an anchor date', () => {
     expect(
-      documentPeriod({ import_date: '2026-03-14' }, { documentType: 'CUSTOMS_DECLARATION' })?.periodEnd.toISOString(),
+      documentPeriod(
+        { import_date: '2026-03-14' },
+        { documentType: 'CUSTOMS_DECLARATION' },
+      )?.periodEnd.toISOString(),
     ).toBe('2026-03-14T23:59:59.999Z')
   })
 
@@ -239,7 +242,10 @@ describe('documentPeriod', () => {
   // the CBAM vocabulary's dates.
   it('dates a CBAM declaration by its import date', () => {
     expect(
-      documentPeriod({ import_date: '2026-02-02' }, { documentType: 'CBAM_DECLARATION' })?.periodEnd.toISOString(),
+      documentPeriod(
+        { import_date: '2026-02-02' },
+        { documentType: 'CBAM_DECLARATION' },
+      )?.periodEnd.toISOString(),
     ).toBe('2026-02-02T23:59:59.999Z')
   })
 })

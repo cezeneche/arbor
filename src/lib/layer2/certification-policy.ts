@@ -83,12 +83,7 @@ export function certifyTier(input: CertificationInput): CertificationResult {
     flagReason: null,
   }))
 
-  const result = evaluateAdmissibility(
-    input.documentType,
-    fields,
-    input.entityName,
-    input.reportingPeriodEnd,
-  )
+  const result = evaluateAdmissibility(input.documentType, fields, input.entityName, input.reportingPeriodEnd)
 
   if (result.tier === 'A') {
     const unconfirmable = unconfirmableCompulsoryFields(input)

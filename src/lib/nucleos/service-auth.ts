@@ -35,11 +35,14 @@ async function nucleosCredential(env: Env): Promise<string> {
     try {
       return await getVercelOidcToken({ audience })
     } catch (err) {
-      console.warn(`[nucleos] OIDC token unavailable, ${staticToken ? 'using the static token' : 'no fallback'}: ${(err as Error).message}`)
+      console.warn(
+        `[nucleos] OIDC token unavailable, ${staticToken ? 'using the static token' : 'no fallback'}: ${(err as Error).message}`,
+      )
       if (!staticToken) throw new NucleosUnavailableError(`No Nucleos credential: ${(err as Error).message}`)
     }
   }
-  if (!staticToken) throw new NucleosUnavailableError('NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN is not configured')
+  if (!staticToken)
+    throw new NucleosUnavailableError('NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN is not configured')
   return staticToken
 }
 

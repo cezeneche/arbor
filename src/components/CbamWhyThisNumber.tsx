@@ -53,7 +53,9 @@ export function CbamWhyThisNumber({
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [results, setResults] = useState<{ figure: ExplainedFigure; explanation: PresentedExplanation }[] | null>(null)
+  const [results, setResults] = useState<
+    { figure: ExplainedFigure; explanation: PresentedExplanation }[] | null
+  >(null)
 
   async function load() {
     setLoading(true)
@@ -92,7 +94,9 @@ export function CbamWhyThisNumber({
       {open && (
         <div style={{ marginTop: spacing[1] }}>
           {defaultNote ? (
-            <p style={{ ...textStyles.caption, color: colours.textSecondary, maxWidth: '320px' }}>{defaultNote}</p>
+            <p style={{ ...textStyles.caption, color: colours.textSecondary, maxWidth: '320px' }}>
+              {defaultNote}
+            </p>
           ) : loading ? (
             <p style={{ ...textStyles.caption, color: colours.textTertiary }}>Loading…</p>
           ) : error ? (
@@ -104,7 +108,8 @@ export function CbamWhyThisNumber({
             </p>
           ) : nothing ? (
             <p style={{ ...textStyles.caption, color: colours.textSecondary, maxWidth: '320px' }}>
-              No document text was recorded for this figure. Cases opened before this was added do not have it.
+              No document text was recorded for this figure. Cases opened before this was added do not have
+              it.
             </p>
           ) : (
             results?.map(({ figure, explanation }) =>

@@ -36,7 +36,8 @@ describe('parseLooseJson', () => {
   })
 
   it('parses a realistic extraction shape', () => {
-    const raw = '```json\n{"documentTypeConfirmed":"ELECTRICITY_BILL","fields":[{"fieldName":"total_consumption_kwh","rawValue":"48250"}]}\n```'
+    const raw =
+      '```json\n{"documentTypeConfirmed":"ELECTRICITY_BILL","fields":[{"fieldName":"total_consumption_kwh","rawValue":"48250"}]}\n```'
     expect(parseLooseJson(raw)).toMatchObject({
       documentTypeConfirmed: 'ELECTRICITY_BILL',
       fields: [{ fieldName: 'total_consumption_kwh', rawValue: '48250' }],

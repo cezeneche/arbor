@@ -24,8 +24,7 @@ const LABELS: Record<ReturnFormat, { title: string; action: string; detail: stri
   HMRC_RETURN: {
     title: 'HMRC return',
     action: 'Produce the return',
-    detail:
-      'The CBAM return you file with HMRC, built from the goods lines and emissions on this case.',
+    detail: 'The CBAM return you file with HMRC, built from the goods lines and emissions on this case.',
   },
   EU_XML: {
     title: 'EU declaration',
@@ -107,9 +106,7 @@ export function CbamReturnBuilder({
       const a = window.document.createElement('a')
       a.href = url
       a.download =
-        format === 'EU_XML'
-          ? `cbam-eu-declaration-${caseId}.xml`
-          : `hmrc-cbam-return-${caseId}.json`
+        format === 'EU_XML' ? `cbam-eu-declaration-${caseId}.xml` : `hmrc-cbam-return-${caseId}.json`
       a.click()
       URL.revokeObjectURL(url)
     } catch {
@@ -223,8 +220,8 @@ export function CbamReturnBuilder({
               style={{ marginTop: '4px' }}
             />
             <span>
-              I certify that the information in this return is correct and complete to the best
-              of my knowledge.
+              I certify that the information in this return is correct and complete to the best of my
+              knowledge.
             </span>
           </label>
         </div>

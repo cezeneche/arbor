@@ -62,7 +62,15 @@ export async function POST(req: NextRequest) {
 
   let userId: string
   try {
-    ;({ userId } = await createAccount(prisma, { companyName, sector, country, entityType, name, email, passwordHash }))
+    ;({ userId } = await createAccount(prisma, {
+      companyName,
+      sector,
+      country,
+      entityType,
+      name,
+      email,
+      passwordHash,
+    }))
   } catch (e) {
     if (e instanceof EmailTakenError) {
       return NextResponse.json({ error: e.message }, { status: 409 })

@@ -44,10 +44,7 @@ function atMidnight(date: Date): number {
 export function currentDeclarationPeriod(now: Date): DeclarationPeriod {
   const { year, quarter } = quarterOf(now)
   const period = quarterFor(year, quarter)
-  const daysToClose = Math.max(
-    0,
-    Math.round((atMidnight(period.end) - atMidnight(now)) / MS_PER_DAY),
-  )
+  const daysToClose = Math.max(0, Math.round((atMidnight(period.end) - atMidnight(now)) / MS_PER_DAY))
   return {
     ...period,
     quarterLabel: `Q${quarter}`,

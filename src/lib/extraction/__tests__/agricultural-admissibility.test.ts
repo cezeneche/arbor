@@ -2,11 +2,7 @@ import { evaluateAdmissibility } from '../admissibility'
 import { buildExtractionPrompt } from '../prompts'
 import type { ExtractedFieldResult } from '../types'
 
-function field(
-  fieldName: string,
-  rawValue: string | null,
-  confidenceScore = 0.95,
-): ExtractedFieldResult {
+function field(fieldName: string, rawValue: string | null, confidenceScore = 0.95): ExtractedFieldResult {
   return {
     fieldName,
     rawValue,
@@ -42,25 +38,23 @@ describe('evaluateAdmissibility  -  fertiliser record', () => {
     expect(result.criticalCount).toBe(0)
   })
 
-  // [Admissibility Spec 6.2] nitrogen_content_percent is compulsory  - 
+  // [Admissibility Spec 6.2] nitrogen_content_percent is compulsory  -
   // N2O emissions calculated from N content; without it emissions calculation is impossible
   it('missing nitrogen_content_percent → CRITICAL flag → Tier B', () => {
     const fields = baseFertiliserFields({ nitrogen_content_percent: null })
     const result = evaluateAdmissibility('FERTILISER_RECORD', fields, 'Green Farm Ltd')
     expect(result.tier).toBe('B')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'nitrogen_content_percent' && f.severity === 'CRITICAL',
+      f => f.fieldName === 'nitrogen_content_percent' && f.severity === 'CRITICAL',
     )
     expect(flag).toBeDefined()
   })
 
   it('missing total_quantity_applied → CRITICAL flag → Tier B', () => {
-    const fields = baseFertiliserFields().filter((f) => f.fieldName !== 'total_quantity_applied')
+    const fields = baseFertiliserFields().filter(f => f.fieldName !== 'total_quantity_applied')
     const result = evaluateAdmissibility('FERTILISER_RECORD', fields, 'Green Farm Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'total_quantity_applied' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'total_quantity_applied' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -69,7 +63,7 @@ describe('evaluateAdmissibility  -  fertiliser record', () => {
     const fields = baseFertiliserFields({ product_name: 'NPK 15-15-15' })
     const result = evaluateAdmissibility('FERTILISER_RECORD', fields, 'Green Farm Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'phosphorus_content_percent' && f.severity === 'WARNING',
+      f => f.fieldName === 'phosphorus_content_percent' && f.severity === 'WARNING',
     )
     expect(flag).toBeDefined()
   })
@@ -79,7 +73,7 @@ describe('evaluateAdmissibility  -  fertiliser record', () => {
     const fields = baseFertiliserFields({ product_name: 'NPK 15-15-15' })
     const result = evaluateAdmissibility('FERTILISER_RECORD', fields, 'Green Farm Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'potassium_content_percent' && f.severity === 'WARNING',
+      f => f.fieldName === 'potassium_content_percent' && f.severity === 'WARNING',
     )
     expect(flag).toBeDefined()
   })
@@ -92,14 +86,10 @@ describe('evaluateAdmissibility  -  fertiliser record', () => {
     ]
     const result = evaluateAdmissibility('FERTILISER_RECORD', fields, 'Green Farm Ltd')
     const phosphorusFlag = result.flags.find(
-      (f) =>
-        f.fieldName === 'phosphorus_content_percent' &&
-        f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'phosphorus_content_percent' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     const potassiumFlag = result.flags.find(
-      (f) =>
-        f.fieldName === 'potassium_content_percent' &&
-        f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'potassium_content_percent' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(phosphorusFlag).toBeUndefined()
     expect(potassiumFlag).toBeUndefined()
@@ -109,9 +99,7 @@ describe('evaluateAdmissibility  -  fertiliser record', () => {
     const fields = baseFertiliserFields({ product_name: 'Ammonium Nitrate 34.5%' })
     const result = evaluateAdmissibility('FERTILISER_RECORD', fields, 'Green Farm Ltd')
     const flag = result.flags.find(
-      (f) =>
-        f.fieldName === 'phosphorus_content_percent' &&
-        f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'phosphorus_content_percent' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag).toBeUndefined()
   })
@@ -143,25 +131,23 @@ describe('evaluateAdmissibility  -  crop yield record', () => {
     const fields = baseCropYieldFields({ harvest_date: null })
     const result = evaluateAdmissibility('CROP_YIELD_RECORD', fields, 'Green Farm Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'harvest_date' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'harvest_date' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
   it('missing area_hectares → CRITICAL flag → Tier B', () => {
-    const fields = baseCropYieldFields().filter((f) => f.fieldName !== 'area_hectares')
+    const fields = baseCropYieldFields().filter(f => f.fieldName !== 'area_hectares')
     const result = evaluateAdmissibility('CROP_YIELD_RECORD', fields, 'Green Farm Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'area_hectares' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'area_hectares' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
   it('optional crop_variety absent → no CRITICAL flag', () => {
     const result = evaluateAdmissibility('CROP_YIELD_RECORD', baseCropYieldFields(), 'Green Farm Ltd')
-    expect(result.flags.find((f) => f.fieldName === 'crop_variety' && f.severity === 'CRITICAL')).toBeUndefined()
+    expect(
+      result.flags.find(f => f.fieldName === 'crop_variety' && f.severity === 'CRITICAL'),
+    ).toBeUndefined()
   })
 })
 
@@ -187,13 +173,10 @@ describe('evaluateAdmissibility  -  livestock record', () => {
   })
 
   it('feed_quantity present without feed_unit → WARNING flag', () => {
-    const fields = [
-      ...baseLivestockFields(),
-      field('feed_quantity', '50000'),
-    ]
+    const fields = [...baseLivestockFields(), field('feed_quantity', '50000')]
     const result = evaluateAdmissibility('LIVESTOCK_RECORD', fields, 'Green Farm Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'feed_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'feed_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag).toBeDefined()
     expect(flag?.severity).toBe('WARNING')
@@ -201,30 +184,24 @@ describe('evaluateAdmissibility  -  livestock record', () => {
 
   it('feed_quantity absent → no feed_unit WARNING', () => {
     const result = evaluateAdmissibility('LIVESTOCK_RECORD', baseLivestockFields(), 'Green Farm Ltd')
-    const flag = result.flags.find((f) => f.fieldName === 'feed_unit')
+    const flag = result.flags.find(f => f.fieldName === 'feed_unit')
     expect(flag).toBeUndefined()
   })
 
   it('feed_quantity and feed_unit both present → no MISSING_CONDITIONAL_FIELD flag', () => {
-    const fields = [
-      ...baseLivestockFields(),
-      field('feed_quantity', '50000'),
-      field('feed_unit', 'kg'),
-    ]
+    const fields = [...baseLivestockFields(), field('feed_quantity', '50000'), field('feed_unit', 'kg')]
     const result = evaluateAdmissibility('LIVESTOCK_RECORD', fields, 'Green Farm Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'feed_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'feed_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag).toBeUndefined()
   })
 
   it('missing average_herd_size → CRITICAL flag → Tier B', () => {
-    const fields = baseLivestockFields().filter((f) => f.fieldName !== 'average_herd_size')
+    const fields = baseLivestockFields().filter(f => f.fieldName !== 'average_herd_size')
     const result = evaluateAdmissibility('LIVESTOCK_RECORD', fields, 'Green Farm Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'average_herd_size' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'average_herd_size' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 })
@@ -262,9 +239,7 @@ describe('evaluateAdmissibility  -  land use certificate', () => {
     const fields = fullLandUseCertFields({ land_parcel_reference: null })
     const result = evaluateAdmissibility('LAND_USE_CERTIFICATE', fields, 'Green Farm Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'land_parcel_reference' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'land_parcel_reference' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -278,9 +253,7 @@ describe('evaluateAdmissibility  -  land use certificate', () => {
       new Date('2024-06-30'),
     )
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'expiry_date' && f.flagType === 'EXPIRED_CERTIFICATE',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'expiry_date' && f.flagType === 'EXPIRED_CERTIFICATE')
     expect(flag).toBeDefined()
     expect(flag?.severity).toBe('CRITICAL')
   })
@@ -289,9 +262,7 @@ describe('evaluateAdmissibility  -  land use certificate', () => {
   it('entity_name mismatch → WARNING ENTITY_MISMATCH flag', () => {
     const fields = fullLandUseCertFields({ entity_name: 'Different Farm Co' })
     const result = evaluateAdmissibility('LAND_USE_CERTIFICATE', fields, 'Green Farm Ltd')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'entity_name' && f.flagType === 'ENTITY_MISMATCH',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'entity_name' && f.flagType === 'ENTITY_MISMATCH')
     expect(flag).toBeDefined()
     expect(flag?.severity).toBe('WARNING')
   })
@@ -306,7 +277,10 @@ describe('buildExtractionPrompt  -  agricultural document types', () => {
   })
 
   it('FERTILISER_RECORD prompt includes NPK conditional guidance', () => {
-    const prompt = buildExtractionPrompt('FERTILISER_RECORD', ['phosphorus_content_percent', 'potassium_content_percent'])
+    const prompt = buildExtractionPrompt('FERTILISER_RECORD', [
+      'phosphorus_content_percent',
+      'potassium_content_percent',
+    ])
     expect(prompt).toContain('NPK')
   })
 

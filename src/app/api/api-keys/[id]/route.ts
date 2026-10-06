@@ -3,10 +3,7 @@ import { getSessionUser } from '@/lib/session'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireAdmin()
   if (!session) return response!
   const entityId = getSessionUser(session).entityId as string

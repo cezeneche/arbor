@@ -128,9 +128,7 @@ export const extractDocumentFunction = inngest.createFunction(
           text: documentText.text,
           pages: documentText.pages,
           reporting_period_end: reportingPeriodEnd ?? null,
-          reporting_year: reportingPeriodEnd
-            ? new Date(reportingPeriodEnd).getUTCFullYear()
-            : null,
+          reporting_year: reportingPeriodEnd ? new Date(reportingPeriodEnd).getUTCFullYear() : null,
           jurisdiction,
           ocr_quality: {
             truncated: documentText.truncated,
@@ -178,7 +176,14 @@ export const extractDocumentFunction = inngest.createFunction(
       : []
 
     const extractionResult = await step.run('run-extraction', async () => {
-      return extractDocumentWithConsistency({ documentBase64: base64, mediaType, documentType, entityName, detectedLanguage, correctionHints })
+      return extractDocumentWithConsistency({
+        documentBase64: base64,
+        mediaType,
+        documentType,
+        entityName,
+        detectedLanguage,
+        correctionHints,
+      })
     })
 
     if (!extractionResult.success) {
@@ -225,7 +230,7 @@ export const extractDocumentFunction = inngest.createFunction(
           rawOutput: extractionResult as unknown as Prisma.InputJsonValue,
           extractedFields: {
             create: extractionResult.fields.map((f: ExtractedFieldResult) => {
-              const def = defs.find((d) => d.name === f.fieldName)
+              const def = defs.find(d => d.name === f.fieldName)
               return {
                 fieldName: f.fieldName,
                 admissibility:
@@ -290,6 +295,12 @@ export const extractDocumentFunction = inngest.createFunction(
       })
     })
 
-    return { success: true, jobId: job.id, tier: admissibility.tier, autoAcceptedCount, routedToReviewByConstraints }
+    return {
+      success: true,
+      jobId: job.id,
+      tier: admissibility.tier,
+      autoAcceptedCount,
+      routedToReviewByConstraints,
+    }
   },
 )

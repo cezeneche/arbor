@@ -32,13 +32,7 @@ export function hashLeaf(data: string): string {
 
 /** Internal node hash: SHA256(0x01 || left || right), children given as hex. */
 export function hashInternal(leftHex: string, rightHex: string): string {
-  return sha256Hex(
-    Buffer.concat([
-      NODE_PREFIX,
-      Buffer.from(leftHex, 'hex'),
-      Buffer.from(rightHex, 'hex'),
-    ]),
-  )
+  return sha256Hex(Buffer.concat([NODE_PREFIX, Buffer.from(leftHex, 'hex'), Buffer.from(rightHex, 'hex')]))
 }
 
 /** Largest power of two strictly less than n (n > 1). RFC 6962's split point. */
@@ -119,9 +113,7 @@ export function verifyInclusionProof(proof: MerkleInclusionProof): boolean {
   let node = hashLeaf(proof.leaf)
   for (const step of proof.path) {
     node =
-      step.position === 'left'
-        ? hashInternal(step.siblingHash, node)
-        : hashInternal(node, step.siblingHash)
+      step.position === 'left' ? hashInternal(step.siblingHash, node) : hashInternal(node, step.siblingHash)
   }
   return node === proof.root
 }

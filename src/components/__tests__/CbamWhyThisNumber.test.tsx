@@ -29,7 +29,13 @@ describe('CbamWhyThisNumber', () => {
     fetchMock.mockReturnValue(
       answer({
         available: true,
-        sources: [{ text: 'Net mass | 24 000 kg', how: 'Read from the document (92% sure).', documentHref: '/upload/doc-1/review' }],
+        sources: [
+          {
+            text: 'Net mass | 24 000 kg',
+            how: 'Read from the document (92% sure).',
+            documentHref: '/upload/doc-1/review',
+          },
+        ],
       }),
     )
     render(<CbamWhyThisNumber caseId="case-1" goodsLineId="gl-1" figures={[{ field: 'net_mass_kg' }]} />)
@@ -39,8 +45,13 @@ describe('CbamWhyThisNumber', () => {
 
     expect(await screen.findByText('Net mass | 24 000 kg')).toBeInTheDocument()
     expect(screen.getByText(/92% sure/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'View document' })).toHaveAttribute('href', '/upload/doc-1/review')
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/cbam/cases/case-1/goods-lines/gl-1/explain?field=net_mass_kg')
+    expect(screen.getByRole('link', { name: 'View document' })).toHaveAttribute(
+      'href',
+      '/upload/doc-1/review',
+    )
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      '/api/cbam/cases/case-1/goods-lines/gl-1/explain?field=net_mass_kg',
+    )
   })
 
   it('says plainly when nothing was recorded', async () => {

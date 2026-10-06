@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 jest.mock('@/lib/prisma', () => ({ prisma: { pilotEnquiry: { create: jest.fn() } } }))
-jest.mock('@/lib/rate-limit', () => ({ checkRateLimit: jest.fn(), RATE_LIMITS: { pilotEnquiry: { prefix: 'pilot-enquiry', limit: 5, window: '60 m' } } }))
+jest.mock('@/lib/rate-limit', () => ({
+  checkRateLimit: jest.fn(),
+  RATE_LIMITS: { pilotEnquiry: { prefix: 'pilot-enquiry', limit: 5, window: '60 m' } },
+}))
 
 const create = prisma.pilotEnquiry.create as jest.Mock
 const limit = checkRateLimit as jest.Mock
@@ -17,7 +20,15 @@ function request(body: unknown) {
   })
 }
 
-const valid = { requestId: '11111111-1111-4111-8111-111111111111', orgName: 'Example Ltd', contactName: 'Alex Morgan', email: 'ALEX@example.com', audience: 'buyer', plan: 'Business', message: 'Supplier records' }
+const valid = {
+  requestId: '11111111-1111-4111-8111-111111111111',
+  orgName: 'Example Ltd',
+  contactName: 'Alex Morgan',
+  email: 'ALEX@example.com',
+  audience: 'buyer',
+  plan: 'Business',
+  message: 'Supplier records',
+}
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -28,7 +39,9 @@ beforeEach(() => {
 test('stores a validated pilot request and normalises the email', async () => {
   const response = await POST(request(valid))
   expect(response.status).toBe(201)
-  expect(create).toHaveBeenCalledWith({ data: expect.objectContaining({ audience: 'buyer', plan: 'Business', email: 'alex@example.com' }) })
+  expect(create).toHaveBeenCalledWith({
+    data: expect.objectContaining({ audience: 'buyer', plan: 'Business', email: 'alex@example.com' }),
+  })
 })
 
 test('rejects invalid input and rate-limited requests without storing data', async () => {

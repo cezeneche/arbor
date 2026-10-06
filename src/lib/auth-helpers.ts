@@ -28,10 +28,9 @@ const SECURITY_MESSAGES: Record<SessionSecurityCode, string> = {
  *  so a demotion or a tenant move takes effect on the next request rather than at
  *  JWT expiry. Returns null when the session must be rejected.
  */
-export async function resolveLiveSession(opts: SessionSecurityOptions = {}): Promise<
-  | { ok: true; session: Session }
-  | { ok: false; code: SessionSecurityCode | 'AUTH_REQUIRED' }
-> {
+export async function resolveLiveSession(
+  opts: SessionSecurityOptions = {},
+): Promise<{ ok: true; session: Session } | { ok: false; code: SessionSecurityCode | 'AUTH_REQUIRED' }> {
   const session = await auth()
   if (!session?.user) return { ok: false, code: 'AUTH_REQUIRED' }
 
@@ -80,9 +79,7 @@ export async function requireAuth(opts: SessionSecurityOptions = {}) {
     }
     // Enrolment is a policy gate on an otherwise-valid session → 403, not 401.
     const status =
-      resolved.code === 'ADMIN_TWO_FACTOR_SETUP_REQUIRED' || resolved.code === 'ACCOUNT_DISABLED'
-        ? 403
-        : 401
+      resolved.code === 'ADMIN_TWO_FACTOR_SETUP_REQUIRED' || resolved.code === 'ACCOUNT_DISABLED' ? 403 : 401
     return unauthorised(SECURITY_MESSAGES[resolved.code], resolved.code, status)
   }
 
@@ -120,7 +117,7 @@ export async function requireAdmin() {
       session: null,
       response: NextResponse.json(
         { error: 'Forbidden — ADMIN role required', code: 'FORBIDDEN' },
-        { status: 403 }
+        { status: 403 },
       ),
     }
   }

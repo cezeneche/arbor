@@ -11,7 +11,9 @@ const row = {
     executive_summary: 'Summary.',
     methodology: 'Method.',
     limitations: 'One limitation.',
-    open_gaps: [{ field: 'installation_id', issue: 'Ask the supplier for the installation.', current_confidence: 0 }],
+    open_gaps: [
+      { field: 'installation_id', issue: 'Ask the supplier for the installation.', current_confidence: 0 },
+    ],
     results: {},
   },
   emailedAt: new Date('2027-05-01T09:06:00Z'),
@@ -34,7 +36,10 @@ describe('presentNarrative', () => {
   })
 
   it('accepts limitations written as a list, and drops empty ones', () => {
-    const out = presentNarrative({ ...row, narrative: { ...row.narrative, limitations: ['A.', '', 'B.'] } }, null)
+    const out = presentNarrative(
+      { ...row, narrative: { ...row.narrative, limitations: ['A.', '', 'B.'] } },
+      null,
+    )
     expect(out.limitations).toEqual(['A.', 'B.'])
     expect(out.byline).toBe('Written 1 May 2027, 10:05')
   })

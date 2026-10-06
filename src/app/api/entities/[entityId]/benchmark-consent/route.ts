@@ -9,12 +9,9 @@ const schema = z.object({ allow: z.boolean() })
 // Changing consent is a write that must be audit-logged. Gate on write access
 // (a read-only VIEWER cannot flip it) and record the change via the shared Layer 2
 // helper so this route matches /api/settings/benchmark-consent exactly.
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ entityId: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ entityId: string }> }) {
   // ADMIN-only for the same reason as the settings route: consent to aggregation
-// binds the whole entity.
+  // binds the whole entity.
   const { session, response } = await requireAdmin()
   if (!session) return response!
   const sessionUser = getSessionUser(session)

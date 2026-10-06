@@ -30,7 +30,14 @@ export default async function SupplyChainPage({
           sector: true,
           dataRecords: {
             where: { isActive: true },
-            select: { domain: true, fieldName: true, trustTier: true, periodEnd: true, periodStart: true, staleAfterDate: true },
+            select: {
+              domain: true,
+              fieldName: true,
+              trustTier: true,
+              periodEnd: true,
+              periodStart: true,
+              staleAfterDate: true,
+            },
           },
           documents: {
             orderBy: { submittedAt: 'desc' },
@@ -45,8 +52,17 @@ export default async function SupplyChainPage({
   // What this buyer has asked each supplier for — the only thing a supplier can
   // be "ready" against.
   const requests = await prisma.dataRequest.findMany({
-    where: { buyerEntityId: entityId, supplierEntityId: { in: [...new Set(grants.map(g => g.grantorEntityId))] } },
-    select: { supplierEntityId: true, domain: true, periodStart: true, periodEnd: true, requiredFields: true },
+    where: {
+      buyerEntityId: entityId,
+      supplierEntityId: { in: [...new Set(grants.map(g => g.grantorEntityId))] },
+    },
+    select: {
+      supplierEntityId: true,
+      domain: true,
+      periodStart: true,
+      periodEnd: true,
+      requiredFields: true,
+    },
   })
 
   // Group grants by supplier and build one summary row per supplier
@@ -75,15 +91,18 @@ export default async function SupplyChainPage({
         })),
       records: allRecords,
     })
-    const expiringCount = allRecords.filter(
-      (r) => r.staleAfterDate && new Date(r.staleAfterDate) < now,
-    ).length
-    return { grantorEntityId, grantorEntity: { ...first.grantorEntity, dataRecords: allRecords }, expiringCount, readiness }
+    const expiringCount = allRecords.filter(r => r.staleAfterDate && new Date(r.staleAfterDate) < now).length
+    return {
+      grantorEntityId,
+      grantorEntity: { ...first.grantorEntity, dataRecords: allRecords },
+      expiringCount,
+      readiness,
+    }
   })
 
   // buyer filter: show only suppliers with expiring/stale records.
-  const visibleSuppliers = expiringOnly ? suppliers.filter((s) => s.expiringCount > 0) : suppliers
-  const suppliersWithExpiring = suppliers.filter((s) => s.expiringCount > 0).length
+  const visibleSuppliers = expiringOnly ? suppliers.filter(s => s.expiringCount > 0) : suppliers
+  const suppliersWithExpiring = suppliers.filter(s => s.expiringCount > 0).length
 
   const sectionLabel = {
     fontSize: typography.sizes.xs,
@@ -94,7 +113,16 @@ export default async function SupplyChainPage({
     margin: `0 0 ${spacing[2]}`,
   }
 
-  const domains = ['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE'] as const
+  const domains = [
+    'ENERGY',
+    'MATERIALS',
+    'PRODUCTION',
+    'LOGISTICS',
+    'EMISSIONS',
+    'AGRICULTURE',
+    'WASTE_AND_WATER',
+    'COMPLIANCE',
+  ] as const
 
   return (
     <div>
@@ -107,14 +135,8 @@ export default async function SupplyChainPage({
         }}
       >
         <div>
-          <h1
-            style={textStyles.pageTitle}
-          >
-            Supply chain
-          </h1>
-          <p
-            style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-          >
+          <h1 style={textStyles.pageTitle}>Supply chain</h1>
+          <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
             {suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''} with data access grants
           </p>
         </div>
@@ -186,13 +208,15 @@ export default async function SupplyChainPage({
             const records = supplier.dataRecords
             const lastDoc = supplier.documents[0]
 
-            const domainCoverage = domains.map(domain => {
-              const domainRecords = records.filter(r => r.domain === domain)
-              const tierA = domainRecords.filter(r => r.trustTier === 'A').length
-              const tierB = domainRecords.filter(r => r.trustTier === 'B').length
-              const tierC = domainRecords.filter(r => r.trustTier === 'C').length
-              return { domain, total: domainRecords.length, tierA, tierB, tierC }
-            }).filter(d => d.total > 0)
+            const domainCoverage = domains
+              .map(domain => {
+                const domainRecords = records.filter(r => r.domain === domain)
+                const tierA = domainRecords.filter(r => r.trustTier === 'A').length
+                const tierB = domainRecords.filter(r => r.trustTier === 'B').length
+                const tierC = domainRecords.filter(r => r.trustTier === 'C').length
+                return { domain, total: domainRecords.length, tierA, tierB, tierC }
+              })
+              .filter(d => d.total > 0)
 
             // Completeness against what was asked, coloured by that alone.
             // Verification is a separate fact and is said separately.
@@ -253,11 +277,10 @@ export default async function SupplyChainPage({
                         </span>
                       )}
                     </p>
-                    <p
-                      style={{ ...textStyles.sectionSubtitle, margin: '2px 0 0' }}
-                    >
+                    <p style={{ ...textStyles.sectionSubtitle, margin: '2px 0 0' }}>
                       {supplier.country} · {supplier.sector}
-                      {lastDoc && ` · Last submission ${new Date(lastDoc.submittedAt).toLocaleDateString('en-GB')}`}
+                      {lastDoc &&
+                        ` · Last submission ${new Date(lastDoc.submittedAt).toLocaleDateString('en-GB')}`}
                     </p>
                   </div>
 

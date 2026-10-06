@@ -39,9 +39,22 @@ const payload = (over: Partial<AuditPayload> = {}): AuditPayload => ({
 /** How Postgres hands the payload back: shortest key first, then bytewise. */
 function asReadBackFromJsonb(p: AuditPayload): AuditPayload {
   const order = [
-    'unit', 'value', 'domain', 'entityId', 'recordId', 'fieldName', 'periodEnd',
-    'trustTier', 'documentId', 'sourceText', 'periodStart', 'submittedAt',
-    'originalUnit', 'originalValue', 'submittedById', 'confidenceScore',
+    'unit',
+    'value',
+    'domain',
+    'entityId',
+    'recordId',
+    'fieldName',
+    'periodEnd',
+    'trustTier',
+    'documentId',
+    'sourceText',
+    'periodStart',
+    'submittedAt',
+    'originalUnit',
+    'originalValue',
+    'submittedById',
+    'confidenceScore',
     'extractionMethod',
   ] as const
   const out: Record<string, unknown> = {}
@@ -63,9 +76,7 @@ describe('computeRecordHash', () => {
   })
 
   it('does not depend on key order at all', () => {
-    const reversed = Object.fromEntries(
-      Object.entries(payload()).reverse(),
-    ) as unknown as AuditPayload
+    const reversed = Object.fromEntries(Object.entries(payload()).reverse()) as unknown as AuditPayload
     expect(computeRecordHash(reversed, 'prev')).toBe(computeRecordHash(payload(), 'prev'))
   })
 

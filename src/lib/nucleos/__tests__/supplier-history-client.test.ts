@@ -29,10 +29,14 @@ describe('getSupplierHistory', () => {
   })
 
   it('treats a line Nucleos cannot find as having no history', async () => {
-    await expect(getSupplierHistory('gl-1', fake(404, { detail: 'Goods line not found' }).impl)).resolves.toBeNull()
+    await expect(
+      getSupplierHistory('gl-1', fake(404, { detail: 'Goods line not found' }).impl),
+    ).resolves.toBeNull()
   })
 
   it('fails closed otherwise', async () => {
-    await expect(getSupplierHistory('gl-1', fake(500, {}).impl)).rejects.toBeInstanceOf(NucleosUnavailableError)
+    await expect(getSupplierHistory('gl-1', fake(500, {}).impl)).rejects.toBeInstanceOf(
+      NucleosUnavailableError,
+    )
   })
 })

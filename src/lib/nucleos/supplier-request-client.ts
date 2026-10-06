@@ -44,7 +44,9 @@ export interface SupplierTokenResult {
 
 function base(): string {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
+    throw new NucleosUnavailableError(
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
+    )
   }
   return process.env.NUCLEOS_URL as string
 }

@@ -66,11 +66,7 @@ export interface CaseWriteResult {
   problems: string[]
 }
 
-async function post<T>(
-  path: string,
-  body: unknown,
-  opts: CaseWriteOptions,
-): Promise<T> {
+async function post<T>(path: string, body: unknown, opts: CaseWriteOptions): Promise<T> {
   if (!isNucleosConfigured()) {
     throw new NucleosUnavailableError(
       'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
@@ -100,9 +96,7 @@ async function post<T>(
     if ((err as Error)?.name === 'AbortError') {
       throw new NucleosUnavailableError(`Nucleos timed out for ${path}`)
     }
-    throw new NucleosUnavailableError(
-      `Nucleos request failed for ${path}: ${(err as Error).message}`,
-    )
+    throw new NucleosUnavailableError(`Nucleos request failed for ${path}: ${(err as Error).message}`)
   } finally {
     clearTimeout(timeout)
   }
@@ -311,16 +305,20 @@ export async function writeCbamCase(
 
     if (!line.emissions || entry.emissionsRecorded) continue
     try {
-      await post('/api/cbam/emissions', {
-        goods_line_id: entry.goodsLineId,
-        direct_emissions_kgco2e: line.emissions.direct_emissions_kgco2e,
-        indirect_emissions_kgco2e: line.emissions.indirect_emissions_kgco2e,
-        calculation_method: line.emissions.calculation_method,
-        // First emissions record for this line. Nucleos versions them so a
-        // later supplier figure supersedes rather than overwrites.
-        version: 1,
-        production_route: line.emissions.production_route,
-      }, opts)
+      await post(
+        '/api/cbam/emissions',
+        {
+          goods_line_id: entry.goodsLineId,
+          direct_emissions_kgco2e: line.emissions.direct_emissions_kgco2e,
+          indirect_emissions_kgco2e: line.emissions.indirect_emissions_kgco2e,
+          calculation_method: line.emissions.calculation_method,
+          // First emissions record for this line. Nucleos versions them so a
+          // later supplier figure supersedes rather than overwrites.
+          version: 1,
+          production_route: line.emissions.production_route,
+        },
+        opts,
+      )
     } catch (err) {
       // The line is on the case; only its figure is missing. Said plainly,
       // because the line will otherwise fall to the published default and the

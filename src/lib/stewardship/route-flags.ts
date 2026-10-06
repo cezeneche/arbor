@@ -102,9 +102,7 @@ export async function stampFlagOwnership<T extends RoutableFlag>(
     }),
   ])
 
-  const domainByRecordId = new Map<string, DataDomain>(
-    records.map(r => [r.id, r.domain as DataDomain]),
-  )
+  const domainByRecordId = new Map<string, DataDomain>(records.map(r => [r.id, r.domain as DataDomain]))
   const stewards: StewardAssignment[] = stewardRows.map(s => ({
     entityId: s.entityId,
     domain: s.domain as DataDomain,

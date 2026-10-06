@@ -42,4 +42,3 @@ export async function storeDocumentBytes(
 
   return { url: pathname, pathname }
 }
-

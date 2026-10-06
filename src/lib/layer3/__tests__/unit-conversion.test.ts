@@ -119,7 +119,7 @@ describe('normaliseToSI  -  ingestion path', () => {
     it('ft² → m²', () => {
       const r = normaliseToSI(1, 'ft2')
       expect(r.siUnit).toBe('m2')
-      expect(r.value).toBeCloseTo(0.0929030, 5)
+      expect(r.value).toBeCloseTo(0.092903, 5)
     })
     it('yd² → m²', () => {
       const r = normaliseToSI(1, 'yd2')

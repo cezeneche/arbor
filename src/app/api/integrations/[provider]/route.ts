@@ -14,7 +14,9 @@ const PROVIDERS = ['CDS', 'SAP', 'NETSUITE', 'ORACLE'] as const
 const URL_CREDENTIAL_KEYS = ['baseUrl', 'accountUrl'] as const
 
 // Credentials are an opaque key→value blob, encrypted before storage.
-const bodySchema = z.object({ credentials: z.record(z.string(), z.string()).refine((c) => Object.keys(c).length > 0) })
+const bodySchema = z.object({
+  credentials: z.record(z.string(), z.string()).refine(c => Object.keys(c).length > 0),
+})
 
 function parseProvider(raw: string): IntegrationProvider | null {
   const upper = raw.toUpperCase()

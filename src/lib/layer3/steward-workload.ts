@@ -28,10 +28,7 @@ const UNASSIGNED_LABEL = 'Unassigned'
  * Open-flag counts per owner, worst queue first. "Open" excludes resolved flags;
  * "overdue" counts those past their deadline, escalated or not.
  */
-export function summariseStewardWorkload(
-  flags: WorkloadFlag[],
-  now: Date,
-): StewardWorkload[] {
+export function summariseStewardWorkload(flags: WorkloadFlag[], now: Date): StewardWorkload[] {
   const byOwner = new Map<string, StewardWorkload & { domainSet: Set<DataDomain> }>()
 
   for (const flag of flags) {

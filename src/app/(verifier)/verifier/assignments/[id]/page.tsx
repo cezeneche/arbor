@@ -20,20 +20,30 @@ export default async function VerifierAssignmentDetail({ params }: { params: Pro
   if (!assignment) notFound()
   if (assignment.verifierId !== verifierId) redirect('/verifier/assignments')
 
-  const { package: pkg, chainIntegrityVerified, auditEntryCount } = await assembleAuditPackage({
+  const {
+    package: pkg,
+    chainIntegrityVerified,
+    auditEntryCount,
+  } = await assembleAuditPackage({
     entityId: assignment.entityId,
     periodStart: assignment.periodStart,
     periodEnd: assignment.periodEnd,
   })
 
-  const fmt = (d: Date) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmt = (d: Date) =>
+    new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   const open = assignment.status === 'PENDING' || assignment.status === 'IN_REVIEW'
 
   return (
     <div>
       <Link
         href="/verifier/assignments"
-        style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.navy, textDecoration: 'none' }}
+        style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.light,
+          color: colours.navy,
+          textDecoration: 'none',
+        }}
       >
         ← All assignments
       </Link>
@@ -50,10 +60,15 @@ export default async function VerifierAssignmentDetail({ params }: { params: Pro
         {assignment.entity.legalName}
       </h1>
       <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 ${spacing[4]}` }}>
-        Period {fmt(assignment.periodStart)} – {fmt(assignment.periodEnd)} · status {assignment.status.replace('_', ' ')}
+        Period {fmt(assignment.periodStart)} – {fmt(assignment.periodEnd)} · status{' '}
+        {assignment.status.replace('_', ' ')}
       </p>
 
-      <AuditPackageView pkg={pkg} chainIntegrityVerified={chainIntegrityVerified} auditEntryCount={auditEntryCount} />
+      <AuditPackageView
+        pkg={pkg}
+        chainIntegrityVerified={chainIntegrityVerified}
+        auditEntryCount={auditEntryCount}
+      />
 
       {open ? (
         <VerifyActions assignmentId={assignment.id} />

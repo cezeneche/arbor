@@ -4,7 +4,9 @@ import { fetchCorrectionExemplars, exemplarsEnabled } from '../fetch-exemplars'
 // pure engine so Layer 1's AI path stays DB-free). Within-tenant only, fail-soft:
 // relearning must never block or degrade extraction.
 
-function fakePrisma(rows: { fieldName: string; extractedValue: string | null; confirmedValue: string | null }[]) {
+function fakePrisma(
+  rows: { fieldName: string; extractedValue: string | null; confirmedValue: string | null }[],
+) {
   const calls: { where: Record<string, unknown> }[] = []
   return {
     calls,
@@ -36,7 +38,11 @@ describe('fetchCorrectionExemplars', () => {
 
   it('fails soft to no hints if the read throws (never blocks extraction)', async () => {
     const throwing = {
-      groundTruthLabel: { findMany: async () => { throw new Error('db down') } },
+      groundTruthLabel: {
+        findMany: async () => {
+          throw new Error('db down')
+        },
+      },
     }
     await expect(fetchCorrectionExemplars('ent_1', 'X', { prisma: throwing })).resolves.toEqual([])
   })

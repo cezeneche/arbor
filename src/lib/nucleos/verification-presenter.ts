@@ -161,7 +161,7 @@ export function latestStatements(
         verifierAccreditation: row.verifierAccreditation,
         uploadedByName: names.get(row.uploadedById) ?? null,
         uploadedAt: row.uploadedAt.toISOString(),
-        decidedByName: row.decidedById ? names.get(row.decidedById) ?? null : null,
+        decidedByName: row.decidedById ? (names.get(row.decidedById) ?? null) : null,
         rejectionReason: row.rejectionReason,
         syncedToNucleos: row.syncedAt !== null,
       },

@@ -18,10 +18,22 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   BUYER: 'Buyer',
 }
 
-export function OrganisationEditor({ legalName, registrationNumber, country, sector, entityType, isAdmin }: Props) {
+export function OrganisationEditor({
+  legalName,
+  registrationNumber,
+  country,
+  sector,
+  entityType,
+  isAdmin,
+}: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
-  const [fields, setFields] = useState({ legalName, registrationNumber: registrationNumber ?? '', country, sector })
+  const [fields, setFields] = useState({
+    legalName,
+    registrationNumber: registrationNumber ?? '',
+    country,
+    sector,
+  })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -31,9 +43,18 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
   }
 
   async function handleSave() {
-    if (!fields.legalName.trim()) { setError('Company name cannot be empty.'); return }
-    if (fields.country.trim().length !== 2) { setError('Country must be a 2-letter ISO code (e.g. GB).'); return }
-    if (!fields.sector.trim()) { setError('Sector cannot be empty.'); return }
+    if (!fields.legalName.trim()) {
+      setError('Company name cannot be empty.')
+      return
+    }
+    if (fields.country.trim().length !== 2) {
+      setError('Country must be a 2-letter ISO code (e.g. GB).')
+      return
+    }
+    if (!fields.sector.trim()) {
+      setError('Sector cannot be empty.')
+      return
+    }
 
     setSaving(true)
     setError(null)
@@ -82,18 +103,28 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[3] }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: spacing[3],
+        }}
+      >
         <div>
-          <p style={textStyles.sectionTitle}>
-            Organisation
-          </p>
+          <p style={textStyles.sectionTitle}>Organisation</p>
           <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
-            {isAdmin ? 'Company registration and classification details.' : 'Contact your account administrator to update these details.'}
+            {isAdmin
+              ? 'Company registration and classification details.'
+              : 'Contact your account administrator to update these details.'}
           </p>
         </div>
         {isAdmin && !editing && (
           <button
-            onClick={() => { setEditing(true); setSuccess(false) }}
+            onClick={() => {
+              setEditing(true)
+              setSuccess(false)
+            }}
             style={{
               padding: '6px 14px',
               fontSize: typography.sizes.xs,
@@ -115,7 +146,13 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
         <div style={{ gridColumn: '1 / -1' }}>
           <p style={labelStyle}>Company name</p>
           {editing ? (
-            <input type="text" value={fields.legalName} onChange={e => setField('legalName', e.target.value)} style={inputStyle} autoFocus />
+            <input
+              type="text"
+              value={fields.legalName}
+              onChange={e => setField('legalName', e.target.value)}
+              style={inputStyle}
+              autoFocus
+            />
           ) : (
             <p style={valueStyle}>{legalName}</p>
           )}
@@ -123,15 +160,30 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
         <div>
           <p style={labelStyle}>Registration number</p>
           {editing ? (
-            <input type="text" value={fields.registrationNumber} onChange={e => setField('registrationNumber', e.target.value)} placeholder="e.g. 12345678" style={inputStyle} />
+            <input
+              type="text"
+              value={fields.registrationNumber}
+              onChange={e => setField('registrationNumber', e.target.value)}
+              placeholder="e.g. 12345678"
+              style={inputStyle}
+            />
           ) : (
-            <p style={valueStyle}>{registrationNumber ?? <span style={{ color: colours.textTertiary }}>Not provided</span>}</p>
+            <p style={valueStyle}>
+              {registrationNumber ?? <span style={{ color: colours.textTertiary }}>Not provided</span>}
+            </p>
           )}
         </div>
         <div>
           <p style={labelStyle}>Country</p>
           {editing ? (
-            <input type="text" value={fields.country} onChange={e => setField('country', e.target.value)} maxLength={2} placeholder="GB" style={{ ...inputStyle, textTransform: 'uppercase' }} />
+            <input
+              type="text"
+              value={fields.country}
+              onChange={e => setField('country', e.target.value)}
+              maxLength={2}
+              placeholder="GB"
+              style={{ ...inputStyle, textTransform: 'uppercase' }}
+            />
           ) : (
             <p style={valueStyle}>{country}</p>
           )}
@@ -139,14 +191,22 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
         <div>
           <p style={labelStyle}>Sector</p>
           {editing ? (
-            <input type="text" value={fields.sector} onChange={e => setField('sector', e.target.value)} placeholder="e.g. Steel manufacturing" style={inputStyle} />
+            <input
+              type="text"
+              value={fields.sector}
+              onChange={e => setField('sector', e.target.value)}
+              placeholder="e.g. Steel manufacturing"
+              style={inputStyle}
+            />
           ) : (
             <p style={valueStyle}>{sector}</p>
           )}
         </div>
         <div>
           <p style={labelStyle}>Account type</p>
-          <p style={{ ...valueStyle, color: colours.textSecondary }}>{ENTITY_TYPE_LABELS[entityType] ?? entityType}</p>
+          <p style={{ ...valueStyle, color: colours.textSecondary }}>
+            {ENTITY_TYPE_LABELS[entityType] ?? entityType}
+          </p>
         </div>
       </div>
 
@@ -170,7 +230,11 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
             {saving ? 'Saving…' : 'Save'}
           </button>
           <button
-            onClick={() => { setEditing(false); setFields({ legalName, registrationNumber: registrationNumber ?? '', country, sector }); setError(null) }}
+            onClick={() => {
+              setEditing(false)
+              setFields({ legalName, registrationNumber: registrationNumber ?? '', country, sector })
+              setError(null)
+            }}
             style={{
               padding: '7px 16px',
               fontSize: typography.sizes.sm,
@@ -185,7 +249,14 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
             Cancel
           </button>
           {error && (
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, margin: 0 }}>
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.red,
+                margin: 0,
+              }}
+            >
               {error}
             </p>
           )}
@@ -193,7 +264,14 @@ export function OrganisationEditor({ legalName, registrationNumber, country, sec
       )}
 
       {success && (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.green, margin: `${spacing[1]} 0 0` }}>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.green,
+            margin: `${spacing[1]} 0 0`,
+          }}
+        >
           Organisation details updated.
         </p>
       )}

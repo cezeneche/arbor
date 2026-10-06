@@ -139,7 +139,7 @@ export async function sendNotification<T extends NotificationType>(
   // Resend reports most failures (e.g. sandbox sender restrictions) in the
   // resolved result's `error`, not as a rejection, so check both.
   const results = await Promise.allSettled(
-    users.map((u) =>
+    users.map(u =>
       resend.emails.send({
         from: EMAIL_FROM,
         to: u.email,
@@ -157,7 +157,10 @@ export async function sendNotification<T extends NotificationType>(
   })
 }
 
-function notificationSubject(type: NotificationType, payload: NotificationPayloads[NotificationType]): string {
+function notificationSubject(
+  type: NotificationType,
+  payload: NotificationPayloads[NotificationType],
+): string {
   switch (type) {
     case 'DATA_REQUEST_RECEIVED':
       return `Data request from ${(payload as NotificationPayloads['DATA_REQUEST_RECEIVED']).buyerName}`
@@ -259,7 +262,9 @@ function notificationHtml(
     }
     case 'FLAG_ASSIGNED': {
       const p = payload as NotificationPayloads['FLAG_ASSIGNED']
-      const by = p.dueAt ? ` We have suggested getting to ${p.flagCount === 1 ? 'it' : 'them'} by ${escapeHtml(p.dueAt)}.` : ''
+      const by = p.dueAt
+        ? ` We have suggested getting to ${p.flagCount === 1 ? 'it' : 'them'} by ${escapeHtml(p.dueAt)}.`
+        : ''
       return `<p>There ${p.flagCount === 1 ? 'is' : 'are'} <strong>${escapeHtml(p.flagCount)}</strong> thing${p.flagCount === 1 ? '' : 's'} to check on your ${escapeHtml(p.domain.toLowerCase())} data, and you are the person who looks after it.${by}<br><a href="${appUrl}/records">See what needs checking</a></p>`
     }
     case 'FLAG_OVERDUE': {

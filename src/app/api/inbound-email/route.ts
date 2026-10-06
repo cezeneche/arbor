@@ -52,7 +52,10 @@ function extractToken(to: string): string | null {
 export async function POST(req: NextRequest) {
   const secret = process.env.INBOUND_EMAIL_WEBHOOK_SECRET
   if (!secret) {
-    return NextResponse.json({ error: 'Webhook secret not configured', code: 'MISCONFIGURED' }, { status: 503 })
+    return NextResponse.json(
+      { error: 'Webhook secret not configured', code: 'MISCONFIGURED' },
+      { status: 503 },
+    )
   }
 
   // Refuse an oversized body before reading it, where the provider tells us how
@@ -96,7 +99,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid payload', code: 'VALIDATION_ERROR' }, { status: 400 })
   }
   const parsed = bodySchema.safeParse(json)
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid payload', code: 'VALIDATION_ERROR' }, { status: 400 })
+  if (!parsed.success)
+    return NextResponse.json({ error: 'Invalid payload', code: 'VALIDATION_ERROR' }, { status: 400 })
 
   // Always 200 so the provider does not retry; unknown/empty messages are dropped.
   // a requests-<token>@ address routes to the data-request handler.

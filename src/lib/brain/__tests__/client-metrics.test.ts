@@ -1,10 +1,7 @@
 /**
  * @jest-environment node
  */
-import {
-  fitCalibration,
-  BrainUnavailableError,
-} from '../calibration-client'
+import { fitCalibration, BrainUnavailableError } from '../calibration-client'
 import { setBrainMetricSink, type BrainCallMetric } from '../metrics'
 
 // Locks in the brain seam's core invariant: down ⇒ degrade, never block. Every

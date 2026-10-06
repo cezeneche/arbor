@@ -29,7 +29,8 @@ export function tokenExpiryAlert(expiry: TokenExpiry): TokenExpiryMessage | null
     }
   }
   if (expiry.daysLeft === null || !REMINDER_DAYS.has(expiry.daysLeft)) return null
-  const when = expiry.daysLeft === 0 ? 'today' : `in ${expiry.daysLeft} day${expiry.daysLeft === 1 ? '' : 's'}`
+  const when =
+    expiry.daysLeft === 0 ? 'today' : `in ${expiry.daysLeft} day${expiry.daysLeft === 1 ? '' : 's'}`
   return {
     subject: `The Nucleos service token expires ${when}`,
     text: `The Nucleos service token expires ${when}, on ${on}. After that every CBAM call from Arbor will fail. ${renew}`,
@@ -49,17 +50,27 @@ export interface AlertResult {
 
 const defaultDeps: AlertDeps = {
   recipients: async () =>
-    (await prisma.user.findMany({ where: { isPlatformAdmin: true }, select: { email: true } })).map(u => u.email),
+    (await prisma.user.findMany({ where: { isPlatformAdmin: true }, select: { email: true } })).map(
+      u => u.email,
+    ),
   send: async ({ to, subject, text }) => {
     const resend = getResend()
     if (!resend) throw new Error('RESEND_API_KEY is not set')
-    const { error } = await resend.emails.send({ from: EMAIL_FROM, to, subject, html: `<p>${escapeHtml(text)}</p>` })
+    const { error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to,
+      subject,
+      html: `<p>${escapeHtml(text)}</p>`,
+    })
     if (error) throw new Error(error.message)
   },
 }
 
 /** Never throws: a cron calling this must still report its own work. */
-export async function sendTokenExpiryAlert(expiry: TokenExpiry, deps: AlertDeps = defaultDeps): Promise<AlertResult> {
+export async function sendTokenExpiryAlert(
+  expiry: TokenExpiry,
+  deps: AlertDeps = defaultDeps,
+): Promise<AlertResult> {
   const message = tokenExpiryAlert(expiry)
   if (!message) return { sent: 0 }
 

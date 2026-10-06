@@ -12,7 +12,13 @@ function group(name: string, sufficient: boolean): GroupCalibration {
     brier: 0.1,
     ece: 0.03,
     reliability: [
-      { bin_lower: 0.5, bin_upper: 1.0, mean_predicted: 0.8, empirical_accuracy: 0.7, count: sufficient ? 30 : 3 },
+      {
+        bin_lower: 0.5,
+        bin_upper: 1.0,
+        mean_predicted: 0.8,
+        empirical_accuracy: 0.7,
+        count: sufficient ? 30 : 3,
+      },
     ],
     calibration_map: { method: 'isotonic', x: [0.5, 0.9], y: [0.6, 0.8] },
     sufficient,
@@ -59,11 +65,9 @@ describe('buildPosteriorUpdates', () => {
   })
 
   it('includes insufficient groups when requireSufficient is false', () => {
-    const updates = buildPosteriorUpdates(
-      records,
-      [group('supplier_identity', true), group('mass', false)],
-      { requireSufficient: false },
-    )
+    const updates = buildPosteriorUpdates(records, [group('supplier_identity', true), group('mass', false)], {
+      requireSufficient: false,
+    })
     expect(updates.map(u => u.recordId).sort()).toEqual(['r_mass', 'r_supplier'])
   })
 

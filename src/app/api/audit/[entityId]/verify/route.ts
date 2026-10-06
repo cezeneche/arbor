@@ -7,10 +7,7 @@ import { verifyChain } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
 import { auditPayloadMismatches } from '@/lib/layer2/audit-record-match'
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ entityId: string }> },
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ entityId: string }> }) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 
@@ -48,7 +45,7 @@ export async function GET(
 
   const recordMap = new Map(records.map(r => [r.id, r]))
 
-  const chainEntries = entries.map((e) => ({
+  const chainEntries = entries.map(e => ({
     eventType: e.eventType,
     hash: e.hash,
     previousHash: e.previousHash,

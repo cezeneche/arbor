@@ -22,19 +22,22 @@ const steps = [
     number: '01',
     title: 'Upload your customs declarations',
     body: 'Arbor reads each goods line — commodity code, net mass, country of origin and installation — and shows the text it read each figure from.',
-    detail: 'You confirm the figures before a case is opened. A six-digit code or a missing field is flagged, not guessed.',
+    detail:
+      'You confirm the figures before a case is opened. A six-digit code or a missing field is flagged, not guessed.',
   },
   {
     number: '02',
     title: 'Collect emissions from your suppliers',
     body: 'Send a supplier a secure form for the emissions figure a goods line needs. They fill it in without creating an account.',
-    detail: 'Where no supplier figure is available, the published default value can be applied, and the case shows which method each line uses.',
+    detail:
+      'Where no supplier figure is available, the published default value can be applied, and the case shows which method each line uses.',
   },
   {
     number: '03',
     title: 'Back the figures with evidence',
     body: 'Attach an accredited verifier’s statement to a supplier’s figure, and claim relief for carbon price already paid in the country of origin under a recognised scheme.',
-    detail: 'Relief only counts once the verifier’s statement for the claim is attached, and it is capped at the CBAM charge on those goods.',
+    detail:
+      'Relief only counts once the verifier’s statement for the claim is attached, and it is capped at the CBAM charge on those goods.',
   },
   {
     number: '04',
@@ -45,9 +48,18 @@ const steps = [
 ]
 
 const evidence = [
-  { name: 'Why this number?', body: 'Open any weight or emissions figure to see the words on the document it was read from, and whether a person corrected it.' },
-  { name: 'Supplier history', body: 'A supplier’s figure is compared with the same installation’s earlier figures for the same goods, and flagged when it is far out of line.' },
-  { name: 'Audit narrative', body: 'A written account of how the case’s figures were reached, checked against the figures themselves. When they disagree, it is flagged for review.' },
+  {
+    name: 'Why this number?',
+    body: 'Open any weight or emissions figure to see the words on the document it was read from, and whether a person corrected it.',
+  },
+  {
+    name: 'Supplier history',
+    body: 'A supplier’s figure is compared with the same installation’s earlier figures for the same goods, and flagged when it is far out of line.',
+  },
+  {
+    name: 'Audit narrative',
+    body: 'A written account of how the case’s figures were reached, checked against the figures themselves. When they disagree, it is flagged for review.',
+  },
 ]
 
 const goods = [
@@ -67,13 +79,17 @@ export default function CbamCompliancePage() {
           <span className="mk-eyebrow">For importers</span>
           <h1>Your CBAM return, from the documents you already have.</h1>
           <p>
-            UK CBAM charges begin on 1 January 2027, and the first return is due on 31 May 2028. Arbor turns your
-            customs declarations and supplier emissions data into the figures your UK and EU returns need, with every
-            figure traceable to where it came from.
+            UK CBAM charges begin on 1 January 2027, and the first return is due on 31 May 2028. Arbor turns
+            your customs declarations and supplier emissions data into the figures your UK and EU returns
+            need, with every figure traceable to where it came from.
           </p>
           <div className="mk-actions">
-            <a className="mk-button mk-button-navy" href={request}>Request pilot access</a>
-            <Link className="mk-text-link" href="#how">See how it works <span aria-hidden="true">→</span></Link>
+            <a className="mk-button mk-button-navy" href={request}>
+              Request pilot access
+            </a>
+            <Link className="mk-text-link" href="#how">
+              See how it works <span aria-hidden="true">→</span>
+            </Link>
           </div>
         </div>
       </section>
@@ -86,9 +102,9 @@ export default function CbamCompliancePage() {
           </div>
           <div className="mk-editorial-copy">
             <p>
-              Importers of iron and steel, aluminium, cement, fertilisers and hydrogen above HMRC’s registration
-              threshold pay a charge on the carbon embedded in those goods. The figures come from customs entries you hold and from suppliers who may not
-              have them ready.
+              Importers of iron and steel, aluminium, cement, fertilisers and hydrogen above HMRC’s
+              registration threshold pay a charge on the carbon embedded in those goods. The figures come from
+              customs entries you hold and from suppliers who may not have them ready.
             </p>
             <div className="mk-domain-grid mk-date-grid">
               {dates.map(d => (
@@ -100,8 +116,8 @@ export default function CbamCompliancePage() {
             </div>
             <p className="mk-step-note">
               Dates from HMRC’s published guidance. EU importers of more than 50 tonnes a year need authorised
-              declarant status and make an annual declaration; check the European Commission’s guidance for current
-              EU deadlines.
+              declarant status and make an annual declaration; check the European Commission’s guidance for
+              current EU deadlines.
             </p>
           </div>
         </div>
@@ -133,7 +149,10 @@ export default function CbamCompliancePage() {
           <div className="mk-section-head">
             <span className="mk-eyebrow">Evidence</span>
             <h2>Every figure can answer for itself.</h2>
-            <p>When HMRC, an auditor or your own finance team asks where a number came from, the answer is in the case.</p>
+            <p>
+              When HMRC, an auditor or your own finance team asks where a number came from, the answer is in
+              the case.
+            </p>
           </div>
           <div className="mk-tier-grid">
             {evidence.map(item => (
@@ -151,7 +170,10 @@ export default function CbamCompliancePage() {
           <div className="mk-section-head">
             <span className="mk-eyebrow">Covered goods</span>
             <h2>The UK and EU cover the same five sectors; the EU adds electricity.</h2>
-            <p>Arbor calculates each regime under its own rules. The UK charges direct emissions only; an importer into both gets a separate calculation for each.</p>
+            <p>
+              Arbor calculates each regime under its own rules. The UK charges direct emissions only; an
+              importer into both gets a separate calculation for each.
+            </p>
           </div>
           <div className="mk-domain-grid">
             {goods.map(g => (
@@ -171,7 +193,9 @@ export default function CbamCompliancePage() {
             <h2>Start with this year’s imports.</h2>
             <p>Tell us what you import, where from, and whether you file in the UK, the EU or both.</p>
           </div>
-          <a className="mk-button mk-button-light" href={request}>Request pilot access</a>
+          <a className="mk-button mk-button-light" href={request}>
+            Request pilot access
+          </a>
         </div>
       </section>
     </>

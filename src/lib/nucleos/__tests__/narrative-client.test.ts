@@ -50,21 +50,26 @@ describe('runCompliancePack', () => {
   })
 
   it('says the service token lacks the narrative scope, rather than that Nucleos is down', async () => {
-    await expect(runCompliancePack('case-1', fake(403, { detail: 'Missing scope' }).impl)).rejects.toBeInstanceOf(
-      NarrativeNotAllowedError,
-    )
+    await expect(
+      runCompliancePack('case-1', fake(403, { detail: 'Missing scope' }).impl),
+    ).rejects.toBeInstanceOf(NarrativeNotAllowedError)
   })
 
   it('names the gaps that stop a narrative being written', async () => {
     const err = await runCompliancePack(
       'case-1',
-      fake(422, { message: 'Data quality blocking issues', data_quality: { blocking: true, missing: ['direct_embedded_kgco2e'] } }).impl,
+      fake(422, {
+        message: 'Data quality blocking issues',
+        data_quality: { blocking: true, missing: ['direct_embedded_kgco2e'] },
+      }).impl,
     ).catch(e => e)
     expect(err).toBeInstanceOf(NarrativeBlockedError)
     expect((err as NarrativeBlockedError).missing).toEqual(['direct_embedded_kgco2e'])
   })
 
   it('fails closed otherwise', async () => {
-    await expect(runCompliancePack('case-1', fake(502, {}).impl)).rejects.toBeInstanceOf(NucleosUnavailableError)
+    await expect(runCompliancePack('case-1', fake(502, {}).impl)).rejects.toBeInstanceOf(
+      NucleosUnavailableError,
+    )
   })
 })

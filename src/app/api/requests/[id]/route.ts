@@ -13,10 +13,7 @@ const patchSchema = z.object({
   notes: z.string().optional(),
 })
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
@@ -37,9 +34,17 @@ export async function PATCH(
   // A status is a position in a lifecycle, not a permission. Checking only "may
   // this party ever set this value" let a buyer accept a request nobody had
   // answered, reopen a closed one, and let a supplier re-submit indefinitely.
-  const verdict = canTransitionRequest(dataRequest.status, parsed.data.status, isSupplier ? 'SUPPLIER' : 'BUYER')
+  const verdict = canTransitionRequest(
+    dataRequest.status,
+    parsed.data.status,
+    isSupplier ? 'SUPPLIER' : 'BUYER',
+  )
   if (!verdict.allowed) {
-    return err(verdict.message, verdict.reason === 'not_this_party' ? 'FORBIDDEN' : 'INVALID_TRANSITION', verdict.reason === 'not_this_party' ? 403 : 409)
+    return err(
+      verdict.message,
+      verdict.reason === 'not_this_party' ? 'FORBIDDEN' : 'INVALID_TRANSITION',
+      verdict.reason === 'not_this_party' ? 403 : 409,
+    )
   }
 
   // Conditional on the status we read, so two updates racing on the same request
@@ -61,7 +66,11 @@ export async function PATCH(
     // Both period fields must be set together — a grant with only one set is a misconfiguration
     // that would silently expand or eliminate period filtering on the buyer's export queries.
     if ((dataRequest.periodStart === null) !== (dataRequest.periodEnd === null)) {
-      return err('Request period is misconfigured: periodStart and periodEnd must both be set or both be null', 'INVALID_STATE', 500)
+      return err(
+        'Request period is misconfigured: periodStart and periodEnd must both be set or both be null',
+        'INVALID_STATE',
+        500,
+      )
     }
 
     // Scoped to the fields the buyer asked for, not the whole domain — see the

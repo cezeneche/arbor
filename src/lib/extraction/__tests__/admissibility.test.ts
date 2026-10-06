@@ -1,11 +1,7 @@
 import { evaluateAdmissibility } from '../admissibility'
 import type { ExtractedFieldResult } from '../types'
 
-function field(
-  fieldName: string,
-  rawValue: string | null,
-  confidenceScore = 0.95,
-): ExtractedFieldResult {
+function field(fieldName: string, rawValue: string | null, confidenceScore = 0.95): ExtractedFieldResult {
   return {
     fieldName,
     rawValue,
@@ -52,11 +48,7 @@ describe('evaluateAdmissibility  -  generic (schema-on-read)', () => {
 
 describe('evaluateAdmissibility  -  electricity bill', () => {
   it('ACTUAL read with all compulsory fields → Tier A', () => {
-    const result = evaluateAdmissibility(
-      'ELECTRICITY_BILL',
-      fullElectricityBillFields(),
-      'Acme Ltd',
-    )
+    const result = evaluateAdmissibility('ELECTRICITY_BILL', fullElectricityBillFields(), 'Acme Ltd')
     expect(result.tier).toBe('A')
     expect(result.criticalCount).toBe(0)
   })
@@ -69,18 +61,16 @@ describe('evaluateAdmissibility  -  electricity bill', () => {
     )
     expect(result.tier).toBe('B')
     expect(result.criticalCount).toBeGreaterThan(0)
-    const flag = result.flags.find((f) => f.fieldName === 'read_type')
+    const flag = result.flags.find(f => f.fieldName === 'read_type')
     expect(flag?.severity).toBe('CRITICAL')
   })
 
   it('missing compulsory field → Tier B with CRITICAL flag', () => {
     const fields = fullElectricityBillFields()
-    const withoutMeter = fields.filter((f) => f.fieldName !== 'meter_reference')
+    const withoutMeter = fields.filter(f => f.fieldName !== 'meter_reference')
     const result = evaluateAdmissibility('ELECTRICITY_BILL', withoutMeter, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const gap = result.flags.find(
-      (f) => f.fieldName === 'meter_reference' && f.severity === 'CRITICAL',
-    )
+    const gap = result.flags.find(f => f.fieldName === 'meter_reference' && f.severity === 'CRITICAL')
     expect(gap).toBeDefined()
   })
 })
@@ -100,7 +90,7 @@ describe('evaluateAdmissibility  -  customs declaration / CBAM', () => {
     ]
     const result = evaluateAdmissibility('CUSTOMS_DECLARATION', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find((f) => f.flagType === 'CODE_INSUFFICIENT')
+    const flag = result.flags.find(f => f.flagType === 'CODE_INSUFFICIENT')
     expect(flag?.severity).toBe('CRITICAL')
   })
 
@@ -117,7 +107,7 @@ describe('evaluateAdmissibility  -  customs declaration / CBAM', () => {
       field('declaration_date', '2024-01-15'),
     ]
     const result = evaluateAdmissibility('CUSTOMS_DECLARATION', fields, 'Acme Ltd')
-    expect(result.flags.find((f) => f.flagType === 'CODE_INSUFFICIENT')).toBeUndefined()
+    expect(result.flags.find(f => f.flagType === 'CODE_INSUFFICIENT')).toBeUndefined()
   })
 })
 
@@ -139,7 +129,7 @@ describe('evaluateAdmissibility  -  CBAM declaration', () => {
     ]
     const result = evaluateAdmissibility('CBAM_DECLARATION', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'supporting_data_reference' && f.severity === 'CRITICAL',
+      f => f.fieldName === 'supporting_data_reference' && f.severity === 'CRITICAL',
     )
     expect(flag).toBeDefined()
     expect(result.tier).toBe('B')
@@ -161,7 +151,7 @@ describe('evaluateAdmissibility  -  CBAM declaration', () => {
     ]
     const result = evaluateAdmissibility('CBAM_DECLARATION', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'supporting_data_reference' && f.severity === 'CRITICAL',
+      f => f.fieldName === 'supporting_data_reference' && f.severity === 'CRITICAL',
     )
     expect(flag).toBeUndefined()
   })
@@ -179,13 +169,8 @@ describe('evaluateAdmissibility  -  certificates', () => {
       field('expiry_date', '2023-12-31'),
     ]
     const reportingPeriodEnd = new Date('2024-03-31')
-    const result = evaluateAdmissibility(
-      'PRODUCT_CERTIFICATE',
-      fields,
-      'Acme Ltd',
-      reportingPeriodEnd,
-    )
-    const flag = result.flags.find((f) => f.flagType === 'EXPIRED_CERTIFICATE')
+    const result = evaluateAdmissibility('PRODUCT_CERTIFICATE', fields, 'Acme Ltd', reportingPeriodEnd)
+    const flag = result.flags.find(f => f.flagType === 'EXPIRED_CERTIFICATE')
     expect(flag?.severity).toBe('CRITICAL')
     expect(result.tier).toBe('B')
   })
@@ -201,13 +186,8 @@ describe('evaluateAdmissibility  -  certificates', () => {
       field('expiry_date', '2024-12-31'),
     ]
     const reportingPeriodEnd = new Date('2024-03-31')
-    const result = evaluateAdmissibility(
-      'PRODUCT_CERTIFICATE',
-      fields,
-      'Acme Ltd',
-      reportingPeriodEnd,
-    )
-    expect(result.flags.find((f) => f.flagType === 'EXPIRED_CERTIFICATE')).toBeUndefined()
+    const result = evaluateAdmissibility('PRODUCT_CERTIFICATE', fields, 'Acme Ltd', reportingPeriodEnd)
+    expect(result.flags.find(f => f.flagType === 'EXPIRED_CERTIFICATE')).toBeUndefined()
   })
 })
 
@@ -228,13 +208,10 @@ describe('evaluateAdmissibility  -  supplier questionnaire', () => {
 
 describe('evaluateAdmissibility  -  low confidence', () => {
   it('field with confidence below 0.85 → WARNING flag', () => {
-    const fields = [
-      ...fullElectricityBillFields(),
-      field('total_consumption_kwh', '150000', 0.72),
-    ]
+    const fields = [...fullElectricityBillFields(), field('total_consumption_kwh', '150000', 0.72)]
     const result = evaluateAdmissibility('ELECTRICITY_BILL', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'total_consumption_kwh' && f.flagType === 'LOW_CONFIDENCE',
+      f => f.fieldName === 'total_consumption_kwh' && f.flagType === 'LOW_CONFIDENCE',
     )
     expect(flag?.severity).toBe('WARNING')
   })
@@ -242,9 +219,7 @@ describe('evaluateAdmissibility  -  low confidence', () => {
 
 // 3.2 Delivery Note
 
-function fullDeliveryNoteFields(
-  overrides: Record<string, string | null> = {},
-): ExtractedFieldResult[] {
+function fullDeliveryNoteFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
     shipper_name: 'Acme Ltd',
     consignee_name: 'UK Steel Importer Ltd',
@@ -271,7 +246,7 @@ describe('evaluateAdmissibility  -  delivery note (3.2)', () => {
     const result = evaluateAdmissibility('DELIVERY_NOTE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'delivery_note_reference' && f.severity === 'CRITICAL',
+      f => f.fieldName === 'delivery_note_reference' && f.severity === 'CRITICAL',
     )
     expect(flag).toBeDefined()
   })
@@ -281,16 +256,14 @@ describe('evaluateAdmissibility  -  delivery note (3.2)', () => {
     const fields = fullDeliveryNoteFields({ line_items: '[]' })
     const result = evaluateAdmissibility('DELIVERY_NOTE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find((f) => f.fieldName === 'line_items' && f.severity === 'CRITICAL')
+    const flag = result.flags.find(f => f.fieldName === 'line_items' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 })
 
 // 3.3 Customs Declaration (comprehensive)
 
-function fullCustomsDeclarationFields(
-  overrides: Record<string, string | null> = {},
-): ExtractedFieldResult[] {
+function fullCustomsDeclarationFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
     importer_name: 'Acme Ltd',
     commodity_code: '72081010',
@@ -308,11 +281,7 @@ function fullCustomsDeclarationFields(
 describe('evaluateAdmissibility  -  customs declaration (3.3)', () => {
   it('all compulsory fields, 8-digit CN code → Tier A', () => {
     // Admissibility spec §3.3: all compulsory fields + valid 8-digit code → Tier A
-    const result = evaluateAdmissibility(
-      'CUSTOMS_DECLARATION',
-      fullCustomsDeclarationFields(),
-      'Acme Ltd',
-    )
+    const result = evaluateAdmissibility('CUSTOMS_DECLARATION', fullCustomsDeclarationFields(), 'Acme Ltd')
     expect(result.tier).toBe('A')
     expect(result.criticalCount).toBe(0)
   })
@@ -322,9 +291,7 @@ describe('evaluateAdmissibility  -  customs declaration (3.3)', () => {
     const fields = fullCustomsDeclarationFields({ declaration_reference: null })
     const result = evaluateAdmissibility('CUSTOMS_DECLARATION', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'declaration_reference' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'declaration_reference' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -333,37 +300,29 @@ describe('evaluateAdmissibility  -  customs declaration (3.3)', () => {
     const fields = [...fullCustomsDeclarationFields(), field('declared_value', '250000')]
     const result = evaluateAdmissibility('CUSTOMS_DECLARATION', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'currency' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'currency' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag?.severity).toBe('WARNING')
   })
 
   it('currency not flagged when declared_value is absent', () => {
     // Conditional only activates when declared_value is present
-    const result = evaluateAdmissibility(
-      'CUSTOMS_DECLARATION',
-      fullCustomsDeclarationFields(),
-      'Acme Ltd',
-    )
-    expect(result.flags.find((f) => f.fieldName === 'currency')).toBeUndefined()
+    const result = evaluateAdmissibility('CUSTOMS_DECLARATION', fullCustomsDeclarationFields(), 'Acme Ltd')
+    expect(result.flags.find(f => f.fieldName === 'currency')).toBeUndefined()
   })
 
   it('importer_name mismatch → WARNING entity mismatch flag', () => {
     // Universal quality check: entity name must match registered entity
     const fields = fullCustomsDeclarationFields({ importer_name: 'Different Importer GmbH' })
     const result = evaluateAdmissibility('CUSTOMS_DECLARATION', fields, 'Acme Ltd')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'importer_name' && f.flagType === 'ENTITY_MISMATCH',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'importer_name' && f.flagType === 'ENTITY_MISMATCH')
     expect(flag?.severity).toBe('WARNING')
   })
 })
 
 // 2.4 Process Data Sheet
 
-function fullProcessDataSheetFields(
-  overrides: Record<string, string | null> = {},
-): ExtractedFieldResult[] {
+function fullProcessDataSheetFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
     entity_name: 'Acme Ltd',
     site_name: 'Sheffield Steelworks',
@@ -374,9 +333,7 @@ function fullProcessDataSheetFields(
       { type: 'Scrap steel', quantity: 1000, unit: 'tonnes' },
       { type: 'Electricity', quantity: 400, unit: 'MWh' },
     ]),
-    outputs: JSON.stringify([
-      { type: 'Crude steel', quantity: 920, unit: 'tonnes' },
-    ]),
+    outputs: JSON.stringify([{ type: 'Crude steel', quantity: 920, unit: 'tonnes' }]),
   }
   return Object.entries({ ...defaults, ...overrides }).map(([k, v]) => field(k, v))
 }
@@ -384,11 +341,7 @@ function fullProcessDataSheetFields(
 describe('evaluateAdmissibility  -  process data sheet (2.4)', () => {
   it('all compulsory fields with valid inputs and outputs → Tier A', () => {
     // Admissibility spec §2.4: all compulsory fields with ≥1 input and ≥1 output → Tier A
-    const result = evaluateAdmissibility(
-      'PROCESS_DATA_SHEET',
-      fullProcessDataSheetFields(),
-      'Acme Ltd',
-    )
+    const result = evaluateAdmissibility('PROCESS_DATA_SHEET', fullProcessDataSheetFields(), 'Acme Ltd')
     expect(result.tier).toBe('A')
     expect(result.criticalCount).toBe(0)
   })
@@ -398,9 +351,7 @@ describe('evaluateAdmissibility  -  process data sheet (2.4)', () => {
     const fields = fullProcessDataSheetFields({ process_type: null })
     const result = evaluateAdmissibility('PROCESS_DATA_SHEET', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'process_type' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'process_type' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -409,7 +360,7 @@ describe('evaluateAdmissibility  -  process data sheet (2.4)', () => {
     const fields = fullProcessDataSheetFields({ inputs: '[]' })
     const result = evaluateAdmissibility('PROCESS_DATA_SHEET', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find((f) => f.fieldName === 'inputs' && f.severity === 'CRITICAL')
+    const flag = result.flags.find(f => f.fieldName === 'inputs' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -418,39 +369,30 @@ describe('evaluateAdmissibility  -  process data sheet (2.4)', () => {
     const fields = fullProcessDataSheetFields({ outputs: '[]' })
     const result = evaluateAdmissibility('PROCESS_DATA_SHEET', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find((f) => f.fieldName === 'outputs' && f.severity === 'CRITICAL')
+    const flag = result.flags.find(f => f.fieldName === 'outputs' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
   it('energy_unit absent when energy_consumption present → WARNING', () => {
     // Admissibility spec §2.4: energy_unit conditional on energy_consumption
-    const fields = [
-      ...fullProcessDataSheetFields(),
-      field('energy_consumption', '1440'),
-    ]
+    const fields = [...fullProcessDataSheetFields(), field('energy_consumption', '1440')]
     const result = evaluateAdmissibility('PROCESS_DATA_SHEET', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'energy_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'energy_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag?.severity).toBe('WARNING')
   })
 
   it('energy_unit not flagged when energy_consumption is absent', () => {
     // Conditional only activates when energy_consumption is present
-    const result = evaluateAdmissibility(
-      'PROCESS_DATA_SHEET',
-      fullProcessDataSheetFields(),
-      'Acme Ltd',
-    )
-    expect(result.flags.find((f) => f.fieldName === 'energy_unit')).toBeUndefined()
+    const result = evaluateAdmissibility('PROCESS_DATA_SHEET', fullProcessDataSheetFields(), 'Acme Ltd')
+    expect(result.flags.find(f => f.fieldName === 'energy_unit')).toBeUndefined()
   })
 })
 
 // 3.1 Freight Invoice
 
-function fullFreightInvoiceFields(
-  overrides: Record<string, string | null> = {},
-): ExtractedFieldResult[] {
+function fullFreightInvoiceFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
     carrier_name: 'Maersk Line',
     shipper_name: 'Acme Ltd',
@@ -472,11 +414,7 @@ function fullFreightInvoiceFields(
 describe('evaluateAdmissibility  -  freight invoice (3.1)', () => {
   it('all compulsory fields, SEA mode → Tier A', () => {
     // Admissibility spec §3.1: all compulsory fields → Tier A for non-MULTIMODAL
-    const result = evaluateAdmissibility(
-      'FREIGHT_INVOICE',
-      fullFreightInvoiceFields(),
-      'Acme Ltd',
-    )
+    const result = evaluateAdmissibility('FREIGHT_INVOICE', fullFreightInvoiceFields(), 'Acme Ltd')
     expect(result.tier).toBe('A')
     expect(result.criticalCount).toBe(0)
   })
@@ -486,9 +424,7 @@ describe('evaluateAdmissibility  -  freight invoice (3.1)', () => {
     const fields = fullFreightInvoiceFields({ invoice_number: null })
     const result = evaluateAdmissibility('FREIGHT_INVOICE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'invoice_number' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'invoice_number' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -497,9 +433,7 @@ describe('evaluateAdmissibility  -  freight invoice (3.1)', () => {
     const fields = fullFreightInvoiceFields({ shipment_weight: null })
     const result = evaluateAdmissibility('FREIGHT_INVOICE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'shipment_weight' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'shipment_weight' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -508,8 +442,7 @@ describe('evaluateAdmissibility  -  freight invoice (3.1)', () => {
     const fields = fullFreightInvoiceFields({ mode_of_transport: 'MULTIMODAL' })
     const result = evaluateAdmissibility('FREIGHT_INVOICE', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) =>
-        f.fieldName === 'multimodal_leg_breakdown' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'multimodal_leg_breakdown' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag?.severity).toBe('WARNING')
   })
@@ -518,17 +451,13 @@ describe('evaluateAdmissibility  -  freight invoice (3.1)', () => {
     // Conditional only activates for MULTIMODAL
     const fields = fullFreightInvoiceFields({ mode_of_transport: 'ROAD' })
     const result = evaluateAdmissibility('FREIGHT_INVOICE', fields, 'Acme Ltd')
-    expect(
-      result.flags.find((f) => f.fieldName === 'multimodal_leg_breakdown'),
-    ).toBeUndefined()
+    expect(result.flags.find(f => f.fieldName === 'multimodal_leg_breakdown')).toBeUndefined()
   })
 })
 
 // 2.2 Material Intake Record
 
-function fullMaterialIntakeFields(
-  overrides: Record<string, string | null> = {},
-): ExtractedFieldResult[] {
+function fullMaterialIntakeFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
     receiving_entity: 'Acme Ltd',
     receiving_site: 'Sheffield Steelworks',
@@ -557,7 +486,7 @@ describe('evaluateAdmissibility  -  material intake record (2.2)', () => {
     const result = evaluateAdmissibility('MATERIAL_INTAKE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'delivery_note_reference' && f.severity === 'CRITICAL',
+      f => f.fieldName === 'delivery_note_reference' && f.severity === 'CRITICAL',
     )
     expect(flag).toBeDefined()
   })
@@ -567,9 +496,7 @@ describe('evaluateAdmissibility  -  material intake record (2.2)', () => {
     const fields = fullMaterialIntakeFields({ material_specification: null })
     const result = evaluateAdmissibility('MATERIAL_INTAKE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'material_specification' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'material_specification' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -578,7 +505,7 @@ describe('evaluateAdmissibility  -  material intake record (2.2)', () => {
     const fields = fullMaterialIntakeFields({ receiving_entity: 'Different Company Ltd' })
     const result = evaluateAdmissibility('MATERIAL_INTAKE', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'receiving_entity' && f.flagType === 'ENTITY_MISMATCH',
+      f => f.fieldName === 'receiving_entity' && f.flagType === 'ENTITY_MISMATCH',
     )
     expect(flag?.severity).toBe('WARNING')
   })
@@ -618,18 +545,16 @@ describe('evaluateAdmissibility  -  gas bill (1.2)', () => {
       'Acme Ltd',
     )
     expect(result.tier).toBe('B')
-    const flag = result.flags.find((f) => f.fieldName === 'read_type')
+    const flag = result.flags.find(f => f.fieldName === 'read_type')
     expect(flag?.severity).toBe('CRITICAL')
   })
 
   it('missing meter_reference → Tier B with CRITICAL flag', () => {
     // Admissibility spec §1.2: meter_reference (MPRN or serial) is compulsory
-    const fields = fullGasBillFields().filter((f) => f.fieldName !== 'meter_reference')
+    const fields = fullGasBillFields().filter(f => f.fieldName !== 'meter_reference')
     const result = evaluateAdmissibility('GAS_BILL', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'meter_reference' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'meter_reference' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -642,7 +567,7 @@ describe('evaluateAdmissibility  -  gas bill (1.2)', () => {
     ]
     const result = evaluateAdmissibility('GAS_BILL', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'calorific_value_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'calorific_value_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag?.severity).toBe('WARNING')
   })
@@ -650,15 +575,13 @@ describe('evaluateAdmissibility  -  gas bill (1.2)', () => {
   it('calorific_value_unit not flagged when calorific_value is absent', () => {
     // Conditional only activates when calorific_value is present
     const result = evaluateAdmissibility('GAS_BILL', fullGasBillFields(), 'Acme Ltd')
-    expect(result.flags.find((f) => f.fieldName === 'calorific_value_unit')).toBeUndefined()
+    expect(result.flags.find(f => f.fieldName === 'calorific_value_unit')).toBeUndefined()
   })
 })
 
 // 1.3 Fuel Purchase Receipt
 
-function fullFuelReceiptFields(
-  overrides: Record<string, string | null> = {},
-): ExtractedFieldResult[] {
+function fullFuelReceiptFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
     purchaser_name: 'Acme Ltd',
     fuel_type: 'DIESEL',
@@ -686,9 +609,7 @@ describe('evaluateAdmissibility  -  fuel purchase receipt (1.3)', () => {
     const fields = fullFuelReceiptFields({ fuel_type: 'OTHER' })
     const result = evaluateAdmissibility('FUEL_RECEIPT', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'fuel_type' && f.flagType === 'GENERIC_VALUE',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'fuel_type' && f.flagType === 'GENERIC_VALUE')
     expect(flag?.severity).toBe('CRITICAL')
   })
 
@@ -697,8 +618,7 @@ describe('evaluateAdmissibility  -  fuel purchase receipt (1.3)', () => {
     const fields = fullFuelReceiptFields({ site_or_vehicle_reference: null })
     const result = evaluateAdmissibility('FUEL_RECEIPT', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) =>
-        f.fieldName === 'site_or_vehicle_reference' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'site_or_vehicle_reference' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag?.severity).toBe('WARNING')
   })
@@ -708,8 +628,7 @@ describe('evaluateAdmissibility  -  fuel purchase receipt (1.3)', () => {
     const fields = fullFuelReceiptFields({ use_type: 'TRANSPORT', site_or_vehicle_reference: null })
     const result = evaluateAdmissibility('FUEL_RECEIPT', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) =>
-        f.fieldName === 'site_or_vehicle_reference' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'site_or_vehicle_reference' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag?.severity).toBe('WARNING')
   })
@@ -718,18 +637,14 @@ describe('evaluateAdmissibility  -  fuel purchase receipt (1.3)', () => {
     // Universal quality check: entity name must match registered entity
     const fields = fullFuelReceiptFields({ purchaser_name: 'Different Company Ltd' })
     const result = evaluateAdmissibility('FUEL_RECEIPT', fields, 'Acme Ltd')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'purchaser_name' && f.flagType === 'ENTITY_MISMATCH',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'purchaser_name' && f.flagType === 'ENTITY_MISMATCH')
     expect(flag?.severity).toBe('WARNING')
   })
 })
 
 // 2.1 Production Log
 
-function fullProductionLogFields(
-  overrides: Record<string, string | null> = {},
-): ExtractedFieldResult[] {
+function fullProductionLogFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
     entity_name: 'Acme Ltd',
     site_name: 'Sheffield Steelworks',
@@ -758,9 +673,7 @@ describe('evaluateAdmissibility  -  production log (2.1)', () => {
     const fields = fullProductionLogFields({ log_or_batch_reference: null })
     const result = evaluateAdmissibility('PRODUCTION_LOG', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'log_or_batch_reference' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'log_or_batch_reference' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -769,9 +682,7 @@ describe('evaluateAdmissibility  -  production log (2.1)', () => {
     const fields = fullProductionLogFields({ product_specification: null })
     const result = evaluateAdmissibility('PRODUCTION_LOG', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'product_specification' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'product_specification' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -780,7 +691,7 @@ describe('evaluateAdmissibility  -  production log (2.1)', () => {
     const fields = [...fullProductionLogFields(), field('energy_consumption_total', '1440')]
     const result = evaluateAdmissibility('PRODUCTION_LOG', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'energy_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'energy_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag?.severity).toBe('WARNING')
   })
@@ -788,15 +699,13 @@ describe('evaluateAdmissibility  -  production log (2.1)', () => {
   it('energy_unit not flagged when energy_consumption_total is absent', () => {
     // Conditional only activates when energy_consumption_total is present
     const result = evaluateAdmissibility('PRODUCTION_LOG', fullProductionLogFields(), 'Acme Ltd')
-    expect(result.flags.find((f) => f.fieldName === 'energy_unit')).toBeUndefined()
+    expect(result.flags.find(f => f.fieldName === 'energy_unit')).toBeUndefined()
   })
 })
 
 // 4.1 Supplier Invoice
 
-function fullSupplierInvoiceFields(
-  overrides: Record<string, string | null> = {},
-): ExtractedFieldResult[] {
+function fullSupplierInvoiceFields(overrides: Record<string, string | null> = {}): ExtractedFieldResult[] {
   const defaults: Record<string, string> = {
     supplier_name: 'UK Steel Supplies Ltd',
     buyer_name: 'Acme Ltd',
@@ -829,9 +738,7 @@ describe('evaluateAdmissibility  -  supplier invoice (4.1)', () => {
     const fields = fullSupplierInvoiceFields({ invoice_number: null })
     const result = evaluateAdmissibility('SUPPLIER_INVOICE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'invoice_number' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'invoice_number' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -840,9 +747,7 @@ describe('evaluateAdmissibility  -  supplier invoice (4.1)', () => {
     const fields = fullSupplierInvoiceFields({ line_items: '[]' })
     const result = evaluateAdmissibility('SUPPLIER_INVOICE', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'line_items' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'line_items' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -850,9 +755,7 @@ describe('evaluateAdmissibility  -  supplier invoice (4.1)', () => {
     // Universal quality check: entity name must match registered entity
     const fields = fullSupplierInvoiceFields({ buyer_name: 'Different Company Ltd' })
     const result = evaluateAdmissibility('SUPPLIER_INVOICE', fields, 'Acme Ltd')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'buyer_name' && f.flagType === 'ENTITY_MISMATCH',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'buyer_name' && f.flagType === 'ENTITY_MISMATCH')
     expect(flag?.severity).toBe('WARNING')
   })
 })
@@ -884,9 +787,7 @@ describe('evaluateAdmissibility  -  bill of materials (2.3)', () => {
     const fields = fullBomFields({ bom_version: null })
     const result = evaluateAdmissibility('BILL_OF_MATERIALS', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'bom_version' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'bom_version' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -895,9 +796,7 @@ describe('evaluateAdmissibility  -  bill of materials (2.3)', () => {
     const fields = fullBomFields({ line_items: '[]' })
     const result = evaluateAdmissibility('BILL_OF_MATERIALS', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'line_items' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'line_items' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -906,7 +805,7 @@ describe('evaluateAdmissibility  -  bill of materials (2.3)', () => {
     const fields = [...fullBomFields(), field('total_mass_per_unit', '25.8')]
     const result = evaluateAdmissibility('BILL_OF_MATERIALS', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'total_mass_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'total_mass_unit' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag?.severity).toBe('WARNING')
   })
@@ -914,7 +813,7 @@ describe('evaluateAdmissibility  -  bill of materials (2.3)', () => {
   it('total_mass_unit not flagged when total_mass_per_unit is absent', () => {
     // Conditional only activates when total_mass_per_unit is present
     const result = evaluateAdmissibility('BILL_OF_MATERIALS', fullBomFields(), 'Acme Ltd')
-    expect(result.flags.find((f) => f.fieldName === 'total_mass_unit')).toBeUndefined()
+    expect(result.flags.find(f => f.fieldName === 'total_mass_unit')).toBeUndefined()
   })
 })
 
@@ -948,9 +847,7 @@ describe('evaluateAdmissibility  -  carbon footprint report', () => {
     const fields = fullCarbonFootprintFields({ total_co2e: null })
     const result = evaluateAdmissibility('CARBON_FOOTPRINT_REPORT', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'total_co2e' && f.severity === 'CRITICAL',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'total_co2e' && f.severity === 'CRITICAL')
     expect(flag).toBeDefined()
   })
 
@@ -958,7 +855,7 @@ describe('evaluateAdmissibility  -  carbon footprint report', () => {
     const fields = fullCarbonFootprintFields({ methodology: null })
     const result = evaluateAdmissibility('CARBON_FOOTPRINT_REPORT', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    expect(result.flags.find((f) => f.fieldName === 'methodology' && f.severity === 'CRITICAL')).toBeDefined()
+    expect(result.flags.find(f => f.fieldName === 'methodology' && f.severity === 'CRITICAL')).toBeDefined()
   })
 
   // [GHG Protocol Corporate Standard §9.4] third-party assurance requires naming the assurance body
@@ -966,7 +863,7 @@ describe('evaluateAdmissibility  -  carbon footprint report', () => {
     const fields = fullCarbonFootprintFields({ assurance_level: 'LIMITED' })
     const result = evaluateAdmissibility('CARBON_FOOTPRINT_REPORT', fields, 'Acme Ltd')
     const flag = result.flags.find(
-      (f) => f.fieldName === 'assurance_body' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
+      f => f.fieldName === 'assurance_body' && f.flagType === 'MISSING_CONDITIONAL_FIELD',
     )
     expect(flag).toBeDefined()
     expect(flag?.severity).toBe('WARNING')
@@ -974,15 +871,15 @@ describe('evaluateAdmissibility  -  carbon footprint report', () => {
 
   it('assurance_level NONE  -  assurance_body not required → no MISSING_CONDITIONAL_FIELD', () => {
     const result = evaluateAdmissibility('CARBON_FOOTPRINT_REPORT', fullCarbonFootprintFields(), 'Acme Ltd')
-    expect(result.flags.find((f) => f.fieldName === 'assurance_body' && f.flagType === 'MISSING_CONDITIONAL_FIELD')).toBeUndefined()
+    expect(
+      result.flags.find(f => f.fieldName === 'assurance_body' && f.flagType === 'MISSING_CONDITIONAL_FIELD'),
+    ).toBeUndefined()
   })
 
   it('entity_name mismatch → WARNING ENTITY_MISMATCH flag', () => {
     const fields = fullCarbonFootprintFields({ entity_name: 'Wrong Company PLC' })
     const result = evaluateAdmissibility('CARBON_FOOTPRINT_REPORT', fields, 'Acme Ltd')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'entity_name' && f.flagType === 'ENTITY_MISMATCH',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'entity_name' && f.flagType === 'ENTITY_MISMATCH')
     expect(flag).toBeDefined()
     expect(flag?.severity).toBe('WARNING')
   })
@@ -1017,7 +914,9 @@ describe('evaluateAdmissibility  -  chain of custody', () => {
     const fields = fullChainOfCustodyFields({ custody_stages: null })
     const result = evaluateAdmissibility('CHAIN_OF_CUSTODY', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    expect(result.flags.find((f) => f.fieldName === 'custody_stages' && f.severity === 'CRITICAL')).toBeDefined()
+    expect(
+      result.flags.find(f => f.fieldName === 'custody_stages' && f.severity === 'CRITICAL'),
+    ).toBeDefined()
   })
 
   // [Admissibility Spec §8.3] fewer than 2 stages cannot establish chain of custody  -  not admissible
@@ -1028,9 +927,7 @@ describe('evaluateAdmissibility  -  chain of custody', () => {
     const fields = fullChainOfCustodyFields({ custody_stages: oneStage })
     const result = evaluateAdmissibility('CHAIN_OF_CUSTODY', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    const flag = result.flags.find(
-      (f) => f.fieldName === 'custody_stages' && f.flagType === 'COMPLETENESS_GAP',
-    )
+    const flag = result.flags.find(f => f.fieldName === 'custody_stages' && f.flagType === 'COMPLETENESS_GAP')
     expect(flag).toBeDefined()
     expect(flag?.severity).toBe('CRITICAL')
   })
@@ -1039,13 +936,17 @@ describe('evaluateAdmissibility  -  chain of custody', () => {
     const fields = fullChainOfCustodyFields({ custody_stages: '[]' })
     const result = evaluateAdmissibility('CHAIN_OF_CUSTODY', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    expect(result.flags.find((f) => f.fieldName === 'custody_stages' && f.severity === 'CRITICAL')).toBeDefined()
+    expect(
+      result.flags.find(f => f.fieldName === 'custody_stages' && f.severity === 'CRITICAL'),
+    ).toBeDefined()
   })
 
   it('missing document_reference → CRITICAL → Tier B', () => {
     const fields = fullChainOfCustodyFields({ document_reference: null })
     const result = evaluateAdmissibility('CHAIN_OF_CUSTODY', fields, 'Acme Ltd')
     expect(result.tier).toBe('B')
-    expect(result.flags.find((f) => f.fieldName === 'document_reference' && f.severity === 'CRITICAL')).toBeDefined()
+    expect(
+      result.flags.find(f => f.fieldName === 'document_reference' && f.severity === 'CRITICAL'),
+    ).toBeDefined()
   })
 })

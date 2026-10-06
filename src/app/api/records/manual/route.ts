@@ -14,7 +14,10 @@ const bodySchema = z.object({
   domain: domainSchema,
   fieldName: z.string().min(1),
   value: z.number().finite(),
-  unit: z.string().min(1).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
+  unit: z.string().min(1).refine(isStorableUnit, {
+    message:
+      'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.',
+  }),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
   sourceText: z.string().optional(),
@@ -44,18 +47,18 @@ export async function POST(req: NextRequest) {
   // Counted inside the transaction that writes: counting first and writing after
   // let two requests both see room for the last record and both take it.
   class OverCapacity extends Error {
-    constructor(readonly detail: string) { super(detail) }
+    constructor(readonly detail: string) {
+      super(detail)
+    }
   }
 
   let recordId: string
   try {
-    ;({ recordId } = await runSerializable(async (tx) => {
-    const capacity = await assertRecordCapacity(entityId, 1, tx)
-    if (!capacity.allowed) throw new OverCapacity(capacity.reason!)
+    ;({ recordId } = await runSerializable(async tx => {
+      const capacity = await assertRecordCapacity(entityId, 1, tx)
+      if (!capacity.allowed) throw new OverCapacity(capacity.reason!)
 
-    return writeRecordWithAuditEntry(
-      tx,
-      {
+      return writeRecordWithAuditEntry(tx, {
         entityId,
         domain: parsed.data.domain,
         fieldName: parsed.data.fieldName,
@@ -69,8 +72,7 @@ export async function POST(req: NextRequest) {
         trustTier: TrustTier.B,
         extractionMethod: ExtractionMethod.MANUAL_ENTRY,
         submittedById: userId,
-      },
-    )
+      })
     }))
   } catch (e) {
     if (e instanceof OverCapacity) return err(e.detail, 'PLAN_LIMIT', 402)

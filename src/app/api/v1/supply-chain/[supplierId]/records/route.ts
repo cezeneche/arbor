@@ -27,7 +27,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ supp
   const { supplierId } = await params
 
   const { allowed } = await checkRateLimit(RATE_LIMITS.buyerApi, buyerEntityId)
-  if (!allowed) return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, { status: 429 })
+  if (!allowed)
+    return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, { status: 429 })
 
   const parsed = querySchema.safeParse(Object.fromEntries(req.nextUrl.searchParams))
   if (!parsed.success) {
@@ -40,7 +41,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ supp
     select: GRANT_SCOPE_SELECT,
   })
   if (grants.length === 0) {
-    return NextResponse.json({ error: 'No active data access grant for this supplier', code: 'FORBIDDEN' }, { status: 403 })
+    return NextResponse.json(
+      { error: 'No active data access grant for this supplier', code: 'FORBIDDEN' },
+      { status: 403 },
+    )
   }
 
   // Pull candidate records then enforce the union of grant scopes in memory.
@@ -60,14 +64,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ supp
   // used to restate it inline, which is how it kept working on the old, wider
   // rules when the field dimension was added.
   const scopes = grants.map(toGrantScope)
-  const scoped = candidates.filter((record) => anyGrantCoversRecord(scopes, record))
+  const scoped = candidates.filter(record => anyGrantCoversRecord(scopes, record))
 
   const total = scoped.length
   const start = (page - 1) * pageSize
   const pageRecords = scoped.slice(start, start + pageSize)
 
   // log API access to the returned records.
-  await logRecordAccess(pageRecords.map((r) => r.id), buyerEntityId, 'API')
+  await logRecordAccess(
+    pageRecords.map(r => r.id),
+    buyerEntityId,
+    'API',
+  )
 
   return NextResponse.json({
     supplierId,
@@ -75,7 +83,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ supp
     pageSize,
     total,
     totalPages: Math.ceil(total / pageSize),
-    records: pageRecords.map((r) => ({
+    records: pageRecords.map(r => ({
       id: r.id,
       domain: r.domain,
       fieldName: r.fieldName,

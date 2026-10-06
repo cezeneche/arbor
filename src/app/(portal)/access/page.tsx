@@ -52,14 +52,8 @@ export default async function AccessPage() {
     <div>
       <BackLink current="Access control" />
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Access
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <h1 style={textStyles.pageTitle}>Access</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           {buyers.length === 0
             ? "You haven't shared your data with anyone yet. When a buyer requests access, you'll see them here."
             : `You are sharing your data with ${buyers.length} buyer${buyers.length !== 1 ? 's' : ''}.`}
@@ -89,7 +83,8 @@ export default async function AccessPage() {
                 margin: 0,
               }}
             >
-              No active data shares. When a buyer requests your data and you respond, access is created automatically.
+              No active data shares. When a buyer requests your data and you respond, access is created
+              automatically.
             </p>
           </div>
         ) : (
@@ -109,20 +104,40 @@ export default async function AccessPage() {
                     padding: spacing[3],
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3] }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: spacing[3],
+                    }}
+                  >
                     <div>
-                      <p style={textStyles.sectionTitle}>
-                        {info.name}
-                      </p>
-                      <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0' }}>
-                        First granted {new Date(earliest).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · {info.grants.length} share{info.grants.length !== 1 ? 's' : ''}
+                      <p style={textStyles.sectionTitle}>{info.name}</p>
+                      <p
+                        style={{
+                          fontSize: typography.sizes.xs,
+                          fontWeight: typography.weights.light,
+                          color: colours.textTertiary,
+                          margin: '4px 0 0',
+                        }}
+                      >
+                        First granted{' '}
+                        {new Date(earliest).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}{' '}
+                        · {info.grants.length} share{info.grants.length !== 1 ? 's' : ''}
                       </p>
                     </div>
                     <RevokeAllForBuyer granteeEntityId={granteeEntityId} buyerName={info.name} />
                   </div>
 
-                  <div style={{ marginTop: spacing[2], display: 'flex', flexWrap: 'wrap' as const, gap: '8px' }}>
-                    {info.grants.map((grant) => {
+                  <div
+                    style={{ marginTop: spacing[2], display: 'flex', flexWrap: 'wrap' as const, gap: '8px' }}
+                  >
+                    {info.grants.map(grant => {
                       const scopeLabel = [
                         grant.domain ? (DOMAIN_LABELS[grant.domain] ?? grant.domain) : 'All domains',
                         grant.periodStart && grant.periodEnd

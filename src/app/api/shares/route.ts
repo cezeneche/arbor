@@ -87,7 +87,7 @@ export async function GET() {
 
   // The raw token is never returned in a list — it exists only at creation time.
   return ok({
-    shares: shares.map((s) => ({
+    shares: shares.map(s => ({
       id: s.id,
       domain: s.domain,
       periodStart: s.periodStart,

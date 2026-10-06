@@ -6,8 +6,20 @@ import type { EvalCase, EvalBaseline } from '../types'
 // gate spec supplies the real document loader and extractor.
 
 const cases: EvalCase[] = [
-  { id: 'bill', documentType: 'ELECTRICITY_BILL', fixture: 'bill.pdf', mediaType: 'application/pdf', expected: [{ fieldName: 'supplier_name', expectedValue: 'Acme' }] },
-  { id: 'customs', documentType: 'CUSTOMS_DECLARATION', fixture: 'customs.pdf', mediaType: 'application/pdf', expected: [{ fieldName: 'declared_weight', expectedValue: '10' }] },
+  {
+    id: 'bill',
+    documentType: 'ELECTRICITY_BILL',
+    fixture: 'bill.pdf',
+    mediaType: 'application/pdf',
+    expected: [{ fieldName: 'supplier_name', expectedValue: 'Acme' }],
+  },
+  {
+    id: 'customs',
+    documentType: 'CUSTOMS_DECLARATION',
+    fixture: 'customs.pdf',
+    mediaType: 'application/pdf',
+    expected: [{ fieldName: 'declared_weight', expectedValue: '10' }],
+  },
 ]
 const baseline: EvalBaseline = { groups: {}, overall: 0 }
 
@@ -18,7 +30,7 @@ describe('runEval', () => {
       'customs.pdf': [{ fieldName: 'declared_weight', rawValue: '10' }],
     }
     const report = await runEval('v1', cases, baseline, {
-      loadFixture: async (f) => `base64:${f}`,
+      loadFixture: async f => `base64:${f}`,
       extract: async ({ documentBase64 }) => extractByCase[documentBase64.replace('base64:', '')],
     })
     expect(report.caseCount).toBe(2)
@@ -43,13 +55,18 @@ describe('runEval', () => {
   })
 
   it('a wrong extraction on a kill-signal field fails the gate', async () => {
-    const report = await runEval('v1', cases, { groups: { mass: 1 }, overall: 1 }, {
-      loadFixture: async () => 'b64',
-      extract: async ({ documentType }) =>
-        documentType === 'CUSTOMS_DECLARATION'
-          ? [{ fieldName: 'declared_weight', rawValue: '999' }]
-          : [{ fieldName: 'supplier_name', rawValue: 'Acme' }],
-    })
+    const report = await runEval(
+      'v1',
+      cases,
+      { groups: { mass: 1 }, overall: 1 },
+      {
+        loadFixture: async () => 'b64',
+        extract: async ({ documentType }) =>
+          documentType === 'CUSTOMS_DECLARATION'
+            ? [{ fieldName: 'declared_weight', rawValue: '999' }]
+            : [{ fieldName: 'supplier_name', rawValue: 'Acme' }],
+      },
+    )
     expect(report.passed).toBe(false)
     expect(report.regressions.some(r => r.group === 'mass')).toBe(true)
   })

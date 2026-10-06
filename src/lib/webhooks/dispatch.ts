@@ -26,12 +26,12 @@ export async function dispatchWebhook(
       select: { id: true, events: true },
     })
     const enumValue = EVENT_ENUM[event]
-    const matching = subs.filter((s) => Array.isArray(s.events) && (s.events as string[]).includes(enumValue))
+    const matching = subs.filter(s => Array.isArray(s.events) && (s.events as string[]).includes(enumValue))
     if (matching.length === 0) return
 
     const payload = { event, ...data, occurredAt: new Date().toISOString() }
     await inngest.send(
-      matching.map((s) => ({ name: 'webhook/deliver', data: { subscriptionId: s.id, payload } })),
+      matching.map(s => ({ name: 'webhook/deliver', data: { subscriptionId: s.id, payload } })),
     )
   } catch (e) {
     console.error('[webhooks] dispatch failed:', e)

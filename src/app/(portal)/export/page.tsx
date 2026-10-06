@@ -38,16 +38,10 @@ export default async function ExportPage() {
   return (
     <div>
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Export data
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
-          Assemble records from across your supply chain and download with full provenance.
-          Trust tiers and source references are included on every record.
+        <h1 style={textStyles.pageTitle}>Export data</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
+          Assemble records from across your supply chain and download with full provenance. Trust tiers and
+          source references are included on every record.
         </p>
       </div>
 

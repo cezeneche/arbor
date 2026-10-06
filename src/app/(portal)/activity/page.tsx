@@ -62,8 +62,13 @@ export default async function ActivityPage({
   const records = await prisma.dataRecord.findMany({
     where: { id: { in: recordIds } },
     select: {
-      id: true, domain: true, fieldName: true, trustTier: true,
-      isActive: true, periodStart: true, periodEnd: true,
+      id: true,
+      domain: true,
+      fieldName: true,
+      trustTier: true,
+      isActive: true,
+      periodStart: true,
+      periodEnd: true,
     },
   })
   const recordMap = new Map(records.map(r => [r.id, r]))
@@ -73,7 +78,10 @@ export default async function ActivityPage({
   const seen = new Set<string>()
   for (const e of auditEntries) {
     const k = new Date(e.createdAt).toDateString()
-    if (!seen.has(k)) { seen.add(k); dateKeys.push(k) }
+    if (!seen.has(k)) {
+      seen.add(k)
+      dateKeys.push(k)
+    }
   }
 
   const sectionLabel = {
@@ -89,17 +97,30 @@ export default async function ActivityPage({
     <div>
       <BackLink current="Activity" />
       <div style={{ marginBottom: spacing[5] }}>
-        <h1 style={textStyles.pageTitle}>
-          Activity
-        </h1>
+        <h1 style={textStyles.pageTitle}>Activity</h1>
         <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Full history of document submissions, extractions, and data record changes.
         </p>
       </div>
 
       {total === 0 ? (
-        <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[5], textAlign: 'center' }}>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+        <div
+          style={{
+            backgroundColor: colours.surface,
+            border: `1px solid ${colours.border}`,
+            borderRadius: '8px',
+            padding: spacing[5],
+            textAlign: 'center',
+          }}
+        >
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textTertiary,
+              margin: 0,
+            }}
+          >
             No activity yet. Upload your first document to get started.
           </p>
         </div>
@@ -113,18 +134,34 @@ export default async function ActivityPage({
               return (
                 <div key={dateKey} style={{ marginBottom: spacing[4] }}>
                   <p style={sectionLabel}>{label}</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: colours.border, borderRadius: '8px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1px',
+                      backgroundColor: colours.border,
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                    }}
+                  >
                     {dayEntries.map(entry => {
                       const record = recordMap.get(entry.recordId)
                       const payload = entry.payload as Record<string, unknown>
-                      const eventLabel = EVENT_LABELS[entry.eventType] ?? entry.eventType.replace(/_/g, ' ').toLowerCase()
+                      const eventLabel =
+                        EVENT_LABELS[entry.eventType] ?? entry.eventType.replace(/_/g, ' ').toLowerCase()
                       const colour = eventColour(entry.eventType)
                       const domainLabel = record ? (DOMAIN_LABELS[record.domain] ?? record.domain) : null
                       const readableField = record ? fieldLabel(record.fieldName, record.domain) : null
                       const periodLabel = record
                         ? [
-                            new Date(record.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
-                            new Date(record.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+                            new Date(record.periodStart).toLocaleDateString('en-GB', {
+                              month: 'short',
+                              year: 'numeric',
+                            }),
+                            new Date(record.periodEnd).toLocaleDateString('en-GB', {
+                              month: 'short',
+                              year: 'numeric',
+                            }),
                           ].join(' – ')
                         : null
 
@@ -150,33 +187,63 @@ export default async function ActivityPage({
                             }}
                           />
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[2] }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                gap: spacing[2],
+                              }}
+                            >
                               <div>
-                                <p style={textStyles.rowTitle}>
-                                  {eventLabel}
-                                </p>
+                                <p style={textStyles.rowTitle}>{eventLabel}</p>
                                 {record && (
                                   <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
                                     {domainLabel}
                                     {readableField ? ` · ${readableField}` : ''}
                                     {periodLabel ? ` · ${periodLabel}` : ''}
                                     {!record.isActive && (
-                                      <span style={{ color: colours.amber, marginLeft: '6px' }}>(superseded)</span>
+                                      <span style={{ color: colours.amber, marginLeft: '6px' }}>
+                                        (superseded)
+                                      </span>
                                     )}
                                   </p>
                                 )}
                                 {!record && (payload.domain as string | undefined) && (
                                   <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
-                                    {DOMAIN_LABELS[payload.domain as string] ?? String(payload.domain as string)}
-                                    {(payload.fieldName as string | undefined) ? ` · ${String(payload.fieldName as string).replace(/_/g, ' ')}` : ''}
+                                    {DOMAIN_LABELS[payload.domain as string] ??
+                                      String(payload.domain as string)}
+                                    {(payload.fieldName as string | undefined)
+                                      ? ` · ${String(payload.fieldName as string).replace(/_/g, ' ')}`
+                                      : ''}
                                   </p>
                                 )}
                               </div>
-                              <p style={{ flexShrink: 0, fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0, whiteSpace: 'nowrap' }}>
-                                {new Date(entry.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                              <p
+                                style={{
+                                  flexShrink: 0,
+                                  fontSize: typography.sizes.xs,
+                                  fontWeight: typography.weights.light,
+                                  color: colours.textTertiary,
+                                  margin: 0,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {new Date(entry.createdAt).toLocaleTimeString('en-GB', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
                               </p>
                             </div>
-                            <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0', fontFamily: 'monospace' }}>
+                            <p
+                              style={{
+                                fontSize: typography.sizes.xs,
+                                fontWeight: typography.weights.light,
+                                color: colours.textTertiary,
+                                margin: '4px 0 0',
+                                fontFamily: 'monospace',
+                              }}
+                            >
                               {entry.hash.substring(0, 16)}…
                             </p>
                           </div>
@@ -192,11 +259,20 @@ export default async function ActivityPage({
           <Pagination
             page={page}
             totalPages={totalPages}
-            buildUrl={(p) => p > 1 ? `/activity?page=${p}` : '/activity'}
+            buildUrl={p => (p > 1 ? `/activity?page=${p}` : '/activity')}
           />
 
-          <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, textAlign: 'center', marginTop: spacing[2] }}>
-            {total.toLocaleString()} events total · Every event is part of an unbroken cryptographic audit chain
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textTertiary,
+              textAlign: 'center',
+              marginTop: spacing[2],
+            }}
+          >
+            {total.toLocaleString()} events total · Every event is part of an unbroken cryptographic audit
+            chain
           </p>
         </>
       )}

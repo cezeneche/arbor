@@ -15,7 +15,11 @@ const store = {
 }
 
 jest.mock('@/lib/api-key-auth', () => ({
-  authenticateApiKeyRequest: jest.fn(async () => ({ authorized: true, scope: 'READ_WRITE', entityId: 'ent-1' })),
+  authenticateApiKeyRequest: jest.fn(async () => ({
+    authorized: true,
+    scope: 'READ_WRITE',
+    entityId: 'ent-1',
+  })),
 }))
 
 jest.mock('@/lib/plan-guard', () => ({
@@ -42,16 +46,28 @@ function opsClient(target: Map<string, any>) {
     create: async ({ data }: any) => {
       const key = `${data.entityId}:${data.idempotencyKey}`
       if (target.has(key)) throw Object.assign(new Error('unique'), { code: 'P2002' })
-      const op = { ...data, id: `op-${target.size + 1}`, status: 'IN_PROGRESS', results: {}, updatedAt: new Date() }
+      const op = {
+        ...data,
+        id: `op-${target.size + 1}`,
+        status: 'IN_PROGRESS',
+        results: {},
+        updatedAt: new Date(),
+      }
       target.set(key, op)
       return op
     },
     findUnique: async ({ where }: any) =>
-      where.id ? byId(where.id) ?? null : target.get(`${where.entityId_idempotencyKey.entityId}:${where.entityId_idempotencyKey.idempotencyKey}`) ?? null,
+      where.id
+        ? (byId(where.id) ?? null)
+        : (target.get(
+            `${where.entityId_idempotencyKey.entityId}:${where.entityId_idempotencyKey.idempotencyKey}`,
+          ) ?? null),
     update: async ({ where, data }: any) => Object.assign(byId(where.id), data, { updatedAt: new Date() }),
     updateMany: async ({ where, data }: any) => {
       const op = byId(where.id)
-      const ok = op && where.OR.some((c: any) => c.status === op.status && (!c.updatedAt || op.updatedAt < c.updatedAt.lt))
+      const ok =
+        op &&
+        where.OR.some((c: any) => c.status === op.status && (!c.updatedAt || op.updatedAt < c.updatedAt.lt))
       if (!ok) return { count: 0 }
       Object.assign(op, data, { updatedAt: new Date() })
       return { count: 1 }
@@ -91,9 +107,14 @@ const record = (i: number) => ({
   periodStart: '2026-01-01T00:00:00.000Z',
   periodEnd: '2026-04-01T00:00:00.000Z',
 })
-const batch = (key?: string, n = 3) => ({ records: Array.from({ length: n }, (_, i) => record(i)), ...(key ? { idempotencyKey: key } : {}) })
+const batch = (key?: string, n = 3) => ({
+  records: Array.from({ length: n }, (_, i) => record(i)),
+  ...(key ? { idempotencyKey: key } : {}),
+})
 const call = (body: unknown) =>
-  POST(new Request('http://arbor.test/api/v1/ingest', { method: 'POST', body: JSON.stringify(body) }) as never)
+  POST(
+    new Request('http://arbor.test/api/v1/ingest', { method: 'POST', body: JSON.stringify(body) }) as never,
+  )
 
 beforeEach(() => {
   store.ops.clear()
@@ -134,8 +155,13 @@ describe('POST /api/v1/ingest with an idempotency key', () => {
 
   it('tells a concurrent copy of the request that the batch is still in progress', async () => {
     store.ops.set('ent-1:k3', {
-      id: 'op-x', entityId: 'ent-1', idempotencyKey: 'k3', requestDigest: 'irrelevant',
-      status: 'IN_PROGRESS', results: {}, updatedAt: new Date(),
+      id: 'op-x',
+      entityId: 'ent-1',
+      idempotencyKey: 'k3',
+      requestDigest: 'irrelevant',
+      status: 'IN_PROGRESS',
+      results: {},
+      updatedAt: new Date(),
     })
     // Same digest as the incoming request, so it is the same request in flight.
     const { requestDigest } = jest.requireActual('@/lib/layer2/ingest-operation')
@@ -165,8 +191,12 @@ describe('POST /api/v1/ingest after a request died without answering', () => {
   it('lets a retry take over once the abandoned attempt is stale', async () => {
     const { requestDigest } = jest.requireActual('@/lib/layer2/ingest-operation')
     store.ops.set('ent-1:k6', {
-      id: 'op-dead', entityId: 'ent-1', idempotencyKey: 'k6', requestDigest: requestDigest(batch('k6').records),
-      status: 'IN_PROGRESS', results: { '0': { index: 0, status: 'created', recordId: 'rec-0' } },
+      id: 'op-dead',
+      entityId: 'ent-1',
+      idempotencyKey: 'k6',
+      requestDigest: requestDigest(batch('k6').records),
+      status: 'IN_PROGRESS',
+      results: { '0': { index: 0, status: 'created', recordId: 'rec-0' } },
       updatedAt: new Date(0),
     })
     const res = await call(batch('k6'))

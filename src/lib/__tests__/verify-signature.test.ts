@@ -61,38 +61,33 @@ describe('verifyTimestampedBodyHmac', () => {
   const body = '{"to":"upload-abc@arbor.io"}'
   const NOW = new Date('2026-08-08T12:00:00Z')
   const nowSec = Math.floor(NOW.getTime() / 1000)
-  const sign = (b: string, t: number) =>
-    createHmac('sha256', SECRET).update(`${t}.${b}`).digest('hex')
+  const sign = (b: string, t: number) => createHmac('sha256', SECRET).update(`${t}.${b}`).digest('hex')
 
   it('accepts a fresh, correctly signed delivery', () => {
-    expect(
-      verifyTimestampedBodyHmac(body, String(nowSec), sign(body, nowSec), SECRET, { now: NOW }),
-    ).toBe(true)
+    expect(verifyTimestampedBodyHmac(body, String(nowSec), sign(body, nowSec), SECRET, { now: NOW })).toBe(
+      true,
+    )
   })
 
   // The defect: a body-only HMAC stays valid for ever, so one captured delivery
   // could be replayed indefinitely.
   it('rejects a delivery older than the tolerance', () => {
     const old = nowSec - 3600
-    expect(
-      verifyTimestampedBodyHmac(body, String(old), sign(body, old), SECRET, { now: NOW }),
-    ).toBe(false)
+    expect(verifyTimestampedBodyHmac(body, String(old), sign(body, old), SECRET, { now: NOW })).toBe(false)
   })
 
   it('rejects a delivery timestamped in the future beyond the tolerance', () => {
     const ahead = nowSec + 3600
-    expect(
-      verifyTimestampedBodyHmac(body, String(ahead), sign(body, ahead), SECRET, { now: NOW }),
-    ).toBe(false)
+    expect(verifyTimestampedBodyHmac(body, String(ahead), sign(body, ahead), SECRET, { now: NOW })).toBe(
+      false,
+    )
   })
 
   // Moving the timestamp to make an old capture look fresh breaks the signature,
   // because the timestamp is inside the signed material.
   it('rejects a replay whose timestamp was moved forward', () => {
     const old = nowSec - 3600
-    expect(
-      verifyTimestampedBodyHmac(body, String(nowSec), sign(body, old), SECRET, { now: NOW }),
-    ).toBe(false)
+    expect(verifyTimestampedBodyHmac(body, String(nowSec), sign(body, old), SECRET, { now: NOW })).toBe(false)
   })
 
   it('rejects a tampered body', () => {

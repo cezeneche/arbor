@@ -33,12 +33,28 @@ export function shouldAutoAccept(documentType: string, criticalCount: number): b
 // Numeric fields that become DataRecords. Single source of truth, shared by the
 // review UI and the Layer-2 auto-accept writer.
 export const NUMERIC_FIELDS = new Set([
-  'total_consumption_kwh', 'total_consumption_m3', 'calorific_value',
-  'quantity', 'quantity_produced', 'area_hectares', 'yield_quantity',
-  'quantity_mwh', 'shipment_weight', 'declared_weight', 'gross_weight',
-  'embedded_emissions_tco2e', 'embedded_emissions_per_tonne', 'quantity_tonnes',
-  'total_value', 'factor_value', 'total_co2e', 'quantity_m3', 'nitrogen_content_percent',
-  'energy_consumption', 'energy_consumption_total', 'average_herd_size',
+  'total_consumption_kwh',
+  'total_consumption_m3',
+  'calorific_value',
+  'quantity',
+  'quantity_produced',
+  'area_hectares',
+  'yield_quantity',
+  'quantity_mwh',
+  'shipment_weight',
+  'declared_weight',
+  'gross_weight',
+  'embedded_emissions_tco2e',
+  'embedded_emissions_per_tonne',
+  'quantity_tonnes',
+  'total_value',
+  'factor_value',
+  'total_co2e',
+  'quantity_m3',
+  'nitrogen_content_percent',
+  'energy_consumption',
+  'energy_consumption_total',
+  'average_herd_size',
 ])
 
 /**
@@ -160,14 +176,14 @@ export function documentPeriod(
   if (statedStart && statedEnd) return { periodStart: statedStart, periodEnd: statedEnd }
 
   // 2. A single activity date — the record covers that day.
-  const anchorFields = opts.documentType ? PERIOD_ANCHOR_FIELDS[opts.documentType] ?? [] : []
+  const anchorFields = opts.documentType ? (PERIOD_ANCHOR_FIELDS[opts.documentType] ?? []) : []
   for (const field of anchorFields) {
     const anchor = parseDate(values[field])
     if (anchor) return { periodStart: startOfDay(anchor), periodEnd: endOfDay(anchor) }
   }
 
   // 3. A year — the record covers that calendar year.
-  const yearFields = opts.documentType ? PERIOD_ANCHOR_YEAR_FIELDS[opts.documentType] ?? [] : []
+  const yearFields = opts.documentType ? (PERIOD_ANCHOR_YEAR_FIELDS[opts.documentType] ?? []) : []
   for (const field of yearFields) {
     const raw = values[field]?.trim()
     if (!raw) continue

@@ -9,12 +9,7 @@
 
 import { emitBrainMetric, type BrainOutcome } from './metrics'
 import { isBrainConfigured, BrainUnavailableError } from './calibration-client'
-import type {
-  ResolutionEntityName,
-  ResolutionPair,
-  ResolutionScoreResponse,
-  ScoredPair,
-} from './types'
+import type { ResolutionEntityName, ResolutionPair, ResolutionScoreResponse, ScoredPair } from './types'
 
 export interface ScorePairsOptions {
   ngram?: number

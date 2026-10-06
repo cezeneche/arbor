@@ -41,9 +41,7 @@ export function validateAnonymisation(entityCount: number, minThreshold = BENCHM
 
 function median(sorted: number[]): number {
   const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid]
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
 }
 
 function stddev(values: number[], mean: number): number {
@@ -52,9 +50,10 @@ function stddev(values: number[], mean: number): number {
   return Math.sqrt(variance)
 }
 
-export function computeSectorBenchmarks(
-  input: { records: BenchmarkRecord[]; year: number },
-): SectorBenchmarkResult[] {
+export function computeSectorBenchmarks(input: {
+  records: BenchmarkRecord[]
+  year: number
+}): SectorBenchmarkResult[] {
   // Group by sector + domain + fieldName
   type GroupKey = string
   const groups = new Map<GroupKey, BenchmarkRecord[]>()

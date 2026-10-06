@@ -26,7 +26,10 @@ export function ProfileEditor({ name, email, role }: Props) {
   const [success, setSuccess] = useState(false)
 
   async function handleSave() {
-    if (!value.trim()) { setError('Name cannot be empty.'); return }
+    if (!value.trim()) {
+      setError('Name cannot be empty.')
+      return
+    }
     setSaving(true)
     setError(null)
 
@@ -69,18 +72,24 @@ export function ProfileEditor({ name, email, role }: Props) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[3] }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: spacing[3],
+        }}
+      >
         <div>
-          <p style={textStyles.sectionTitle}>
-            Your profile
-          </p>
-          <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
-            Your name and contact details.
-          </p>
+          <p style={textStyles.sectionTitle}>Your profile</p>
+          <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>Your name and contact details.</p>
         </div>
         {!editing && (
           <button
-            onClick={() => { setEditing(true); setSuccess(false) }}
+            onClick={() => {
+              setEditing(true)
+              setSuccess(false)
+            }}
             style={{
               padding: '6px 14px',
               fontSize: typography.sizes.xs,
@@ -106,7 +115,9 @@ export function ProfileEditor({ name, email, role }: Props) {
               type="text"
               value={value}
               onChange={e => setValue(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleSave()
+              }}
               style={inputStyle}
               autoFocus
             />
@@ -144,7 +155,11 @@ export function ProfileEditor({ name, email, role }: Props) {
             {saving ? 'Saving…' : 'Save'}
           </button>
           <button
-            onClick={() => { setEditing(false); setValue(name); setError(null) }}
+            onClick={() => {
+              setEditing(false)
+              setValue(name)
+              setError(null)
+            }}
             style={{
               padding: '7px 16px',
               fontSize: typography.sizes.sm,
@@ -159,7 +174,14 @@ export function ProfileEditor({ name, email, role }: Props) {
             Cancel
           </button>
           {error && (
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, margin: 0 }}>
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.red,
+                margin: 0,
+              }}
+            >
               {error}
             </p>
           )}
@@ -167,7 +189,14 @@ export function ProfileEditor({ name, email, role }: Props) {
       )}
 
       {success && (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.green, margin: `${spacing[1]} 0 0` }}>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.green,
+            margin: `${spacing[1]} 0 0`,
+          }}
+        >
           Name updated. Changes take effect on your next sign-in.
         </p>
       )}

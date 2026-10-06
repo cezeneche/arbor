@@ -19,9 +19,9 @@ describe('enquiryAlertText', () => {
   })
 
   it('leaves out an empty detail', () => {
-    expect(enquiryAlertText({ kind: 'institutional', orgName: 'Uni', detail: '' }, 'https://arbor.test')).toBe(
-      'New institutional enquiry from Uni. Review it: https://arbor.test/admin/enquiries',
-    )
+    expect(
+      enquiryAlertText({ kind: 'institutional', orgName: 'Uni', detail: '' }, 'https://arbor.test'),
+    ).toBe('New institutional enquiry from Uni. Review it: https://arbor.test/admin/enquiries')
   })
 })
 

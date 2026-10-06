@@ -79,7 +79,10 @@ describe('scopeAnswer', () => {
 
   it('stays a review when Nucleos found something wrong', () => {
     expect(
-      scopeAnswer('requires_review', [...asCodeAlone, "eori:format_invalid:'X' — does not match EU EORI format"]),
+      scopeAnswer('requires_review', [
+        ...asCodeAlone,
+        "eori:format_invalid:'X' — does not match EU EORI format",
+      ]),
     ).toBe('requires_review')
   })
 
@@ -97,9 +100,17 @@ describe('scopeAnswer', () => {
   it('is out of scope for electricity when the organisation files in the UK only', () => {
     // The UK does not cover electricity; the code list Nucleos checks is the EU's.
     const electricity = ['annex_i:covered:27160000:sector=electricity — CN code is covered']
-    expect(scopeAnswer('requires_review', electricity, { sector: 'electricity', jurisdiction: 'UK' })).toBe('out_of_scope')
-    expect(scopeAnswer('requires_review', electricity, { sector: 'electricity', jurisdiction: 'BOTH' })).toBe('in_scope')
-    expect(scopeAnswer('requires_review', electricity, { sector: 'electricity', jurisdiction: 'EU' })).toBe('in_scope')
-    expect(scopeAnswer('requires_review', asCodeAlone, { sector: 'iron_steel', jurisdiction: 'UK' })).toBe('in_scope')
+    expect(scopeAnswer('requires_review', electricity, { sector: 'electricity', jurisdiction: 'UK' })).toBe(
+      'out_of_scope',
+    )
+    expect(scopeAnswer('requires_review', electricity, { sector: 'electricity', jurisdiction: 'BOTH' })).toBe(
+      'in_scope',
+    )
+    expect(scopeAnswer('requires_review', electricity, { sector: 'electricity', jurisdiction: 'EU' })).toBe(
+      'in_scope',
+    )
+    expect(scopeAnswer('requires_review', asCodeAlone, { sector: 'iron_steel', jurisdiction: 'UK' })).toBe(
+      'in_scope',
+    )
   })
 })

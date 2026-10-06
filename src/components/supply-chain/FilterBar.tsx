@@ -2,18 +2,18 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { colours, typography, spacing, shadows, trustTierConfig } from '@/lib/design-system'
-import type {
-  FilterState,
-  TrustTier,
-  DataDomain,
-  SectorOption,
-  QuarterValue,
-} from '@/types/filters'
+import type { FilterState, TrustTier, DataDomain, SectorOption, QuarterValue } from '@/types/filters'
 
 // Constants
 
 export const SECTOR_OPTIONS: SectorOption[] = [
-  'Steel', 'Aluminium', 'Cement', 'Fertiliser', 'Hydrogen', 'Agriculture', 'Other',
+  'Steel',
+  'Aluminium',
+  'Cement',
+  'Fertiliser',
+  'Hydrogen',
+  'Agriculture',
+  'Other',
 ]
 
 export const DOMAIN_OPTIONS: { value: DataDomain; label: string }[] = [
@@ -78,7 +78,10 @@ export function generateQuarterRange(from: QuarterValue, to: QuarterValue): Quar
   while (year < toYear || (year === toYear && qNum <= toQNum)) {
     quarters.push(`${year}-Q${qNum}`)
     qNum++
-    if (qNum > 4) { qNum = 1; year++ }
+    if (qNum > 4) {
+      qNum = 1
+      year++
+    }
   }
   return quarters
 }
@@ -144,7 +147,11 @@ export function buildSqlPreview(filters: FilterState, buyerId = '[BUYER_ID]'): s
 
 type FilterTag = { key: string; label: string; value: string; onRemove: () => void }
 
-export function buildFilterTags(filters: FilterState, onChange: (f: FilterState) => void, defaults = getDefaultFilters()): FilterTag[] {
+export function buildFilterTags(
+  filters: FilterState,
+  onChange: (f: FilterState) => void,
+  defaults = getDefaultFilters(),
+): FilterTag[] {
   const tags: FilterTag[] = []
 
   for (const s of filters.sectors) {
@@ -237,14 +244,10 @@ function MultiSelectDropdown<T extends string>({
   useClickOutside(ref, close)
 
   const toggle = (val: T) =>
-    selected.includes(val)
-      ? onChange(selected.filter(v => v !== val))
-      : onChange([...selected, val])
+    selected.includes(val) ? onChange(selected.filter(v => v !== val)) : onChange([...selected, val])
 
   const displayLabel =
-    selected.length === 0 ? 'All'
-    : selected.length === 1 ? selected[0]
-    : `${selected.length} selected`
+    selected.length === 0 ? 'All' : selected.length === 1 ? selected[0] : `${selected.length} selected`
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -348,7 +351,9 @@ function MultiSelectDropdown<T extends string>({
           })}
 
           {selected.length > 0 && (
-            <div style={{ borderTop: `1px solid ${colours.border}`, margin: '4px 0 0', padding: '6px 14px 2px' }}>
+            <div
+              style={{ borderTop: `1px solid ${colours.border}`, margin: '4px 0 0', padding: '6px 14px 2px' }}
+            >
               <button
                 onClick={() => onChange([])}
                 style={{
@@ -454,7 +459,10 @@ function SingleSelectDropdown({
                 key={opt.value}
                 role="option"
                 aria-selected={active}
-                onClick={() => { onChange(opt.value); setOpen(false) }}
+                onClick={() => {
+                  onChange(opt.value)
+                  setOpen(false)
+                }}
                 style={{
                   display: 'block',
                   width: '100%',
@@ -489,7 +497,7 @@ function TrustTierPills({
   const toggle = (tier: TrustTier) => {
     const next = selected.includes(tier)
       ? selected.filter(t => t !== tier)
-      : [...selected, tier].sort() as TrustTier[]
+      : ([...selected, tier].sort() as TrustTier[])
     // Never leave empty - if last tier is removed, restore all
     onChange(next.length === 0 ? ALL_TIERS : next)
   }
@@ -600,7 +608,9 @@ function PeriodPicker({
         style={selectStyle}
       >
         {fromOptions.map(q => (
-          <option key={q} value={q}>{quarterLabel(q)}</option>
+          <option key={q} value={q}>
+            {quarterLabel(q)}
+          </option>
         ))}
       </select>
       <span
@@ -612,14 +622,11 @@ function PeriodPicker({
       >
         –
       </span>
-      <select
-        aria-label="Period to"
-        value={to}
-        onChange={e => handleTo(e.target.value)}
-        style={selectStyle}
-      >
+      <select aria-label="Period to" value={to} onChange={e => handleTo(e.target.value)} style={selectStyle}>
         {toOptions.map(q => (
-          <option key={q} value={q}>{quarterLabel(q)}</option>
+          <option key={q} value={q}>
+            {quarterLabel(q)}
+          </option>
         ))}
       </select>
     </div>

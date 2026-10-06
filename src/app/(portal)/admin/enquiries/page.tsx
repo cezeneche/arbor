@@ -26,7 +26,12 @@ async function updateEnquiry(formData: FormData) {
   const type = formData.get('type')
   const id = formData.get('id')
   const status = formData.get('status')
-  if ((type !== 'pilot' && type !== 'institutional') || typeof id !== 'string' || !id || !statuses.includes(status as Status)) {
+  if (
+    (type !== 'pilot' && type !== 'institutional') ||
+    typeof id !== 'string' ||
+    !id ||
+    !statuses.includes(status as Status)
+  ) {
     throw new Error('Invalid enquiry update')
   }
   if (type === 'pilot') {
@@ -37,24 +42,48 @@ async function updateEnquiry(formData: FormData) {
   revalidatePath('/admin/enquiries')
 }
 
-export default async function EnquiriesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function EnquiriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
   await requireOperator()
   const params = await searchParams
-  const status: Status = statuses.includes(params.status as Status) ? params.status as Status : 'NEW'
+  const status: Status = statuses.includes(params.status as Status) ? (params.status as Status) : 'NEW'
   const [pilot, institutional] = await Promise.all([
     prisma.pilotEnquiry.findMany({ where: { status }, orderBy: { createdAt: 'desc' }, take: 100 }),
     prisma.institutionalEnquiry.findMany({ where: { status }, orderBy: { createdAt: 'desc' }, take: 100 }),
   ])
   const enquiries = [
-    ...pilot.map(item => ({ ...item, type: 'pilot' as const, category: [item.audience, item.plan].filter(Boolean).join(' · ') })),
-    ...institutional.map(item => ({ ...item, type: 'institutional' as const, category: [item.interestArea, item.role].filter(Boolean).join(' · ') })),
+    ...pilot.map(item => ({
+      ...item,
+      type: 'pilot' as const,
+      category: [item.audience, item.plan].filter(Boolean).join(' · '),
+    })),
+    ...institutional.map(item => ({
+      ...item,
+      type: 'institutional' as const,
+      category: [item.interestArea, item.role].filter(Boolean).join(' · '),
+    })),
   ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', color: colours.textPrimary }}>
       <h1 style={{ ...textStyles.pageTitle, marginBottom: spacing[1] }}>Enquiry review</h1>
-      <p style={{ ...textStyles.sectionSubtitle, marginTop: 0 }}>Platform operators can review saved pilot and institutional enquiries here. New submissions are not emailed automatically.</p>
-      <nav aria-label="Enquiry status" style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap', margin: `${spacing[3]} 0`, fontSize: typography.sizes.sm }}>
+      <p style={{ ...textStyles.sectionSubtitle, marginTop: 0 }}>
+        Platform operators can review saved pilot and institutional enquiries here. New submissions are not
+        emailed automatically.
+      </p>
+      <nav
+        aria-label="Enquiry status"
+        style={{
+          display: 'flex',
+          gap: spacing[2],
+          flexWrap: 'wrap',
+          margin: `${spacing[3]} 0`,
+          fontSize: typography.sizes.sm,
+        }}
+      >
         {statuses.map(value => (
           <a
             key={value}
@@ -74,26 +103,55 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
       <p style={{ ...textStyles.caption, color: colours.textSecondary }}>
         {enquiries.length} {status.toLowerCase().replace('_', ' ')} enquiries shown (up to 100 per type).
       </p>
-      {enquiries.length === 0 && <p style={{ ...textStyles.sectionSubtitle }}>No enquiries in this status.</p>}
+      {enquiries.length === 0 && (
+        <p style={{ ...textStyles.sectionSubtitle }}>No enquiries in this status.</p>
+      )}
       <div style={{ display: 'grid', gap: spacing[2] }}>
         {enquiries.map(item => (
-          <article key={`${item.type}-${item.id}`} style={{ background: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', padding: spacing[3], overflowWrap: 'anywhere', fontSize: typography.sizes.sm, fontWeight: typography.weights.light }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[2], flexWrap: 'wrap' }}>
+          <article
+            key={`${item.type}-${item.id}`}
+            style={{
+              background: colours.surface,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '6px',
+              padding: spacing[3],
+              overflowWrap: 'anywhere',
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+            }}
+          >
+            <div
+              style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[2], flexWrap: 'wrap' }}
+            >
               <h2 style={{ ...textStyles.sectionTitle, margin: 0 }}>{item.orgName}</h2>
-              <span style={{ ...textStyles.caption, color: colours.textTertiary }}>{item.type === 'pilot' ? 'Pilot' : 'Institutional'} · {item.createdAt.toLocaleString('en-GB', { timeZone: 'Europe/London' })}</span>
+              <span style={{ ...textStyles.caption, color: colours.textTertiary }}>
+                {item.type === 'pilot' ? 'Pilot' : 'Institutional'} ·{' '}
+                {item.createdAt.toLocaleString('en-GB', { timeZone: 'Europe/London' })}
+              </span>
             </div>
             <p>
-              {item.contactName} · <a href={`mailto:${item.email}`} style={{ color: colours.navy }}>{item.email}</a>
+              {item.contactName} ·{' '}
+              <a href={`mailto:${item.email}`} style={{ color: colours.navy }}>
+                {item.email}
+              </a>
             </p>
             <p>{item.category}</p>
             {item.message && <p style={{ whiteSpace: 'pre-wrap' }}>{item.message}</p>}
-            <form action={updateEnquiry} style={{ display: 'flex', alignItems: 'center', gap: spacing[1], flexWrap: 'wrap' }}>
+            <form
+              action={updateEnquiry}
+              style={{ display: 'flex', alignItems: 'center', gap: spacing[1], flexWrap: 'wrap' }}
+            >
               <input type="hidden" name="type" value={item.type} />
               <input type="hidden" name="id" value={item.id} />
               <label htmlFor={`status-${item.type}-${item.id}`} style={{ ...textStyles.eyebrow }}>
                 Status
               </label>
-              <select id={`status-${item.type}-${item.id}`} name="status" defaultValue={item.status} style={controls.input}>
+              <select
+                id={`status-${item.type}-${item.id}`}
+                name="status"
+                defaultValue={item.status}
+                style={controls.input}
+              >
                 {statuses.map(value => (
                   <option key={value} value={value}>
                     {value.replace('_', ' ')}

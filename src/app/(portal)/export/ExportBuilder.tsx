@@ -17,7 +17,10 @@ const DOMAINS = [
 
 const TIER_LABELS: Record<string, string> = { A: 'Verified', B: 'Declared', C: 'Estimated' }
 
-interface Supplier { id: string; name: string }
+interface Supplier {
+  id: string
+  name: string
+}
 
 interface ExportRecord {
   id: string
@@ -33,12 +36,7 @@ interface ExportRecord {
   supplierName?: string
 }
 
-export function ExportBuilder({
-  suppliers,
-}: {
-  suppliers: Supplier[]
-  buyerEntityId?: string
-}) {
+export function ExportBuilder({ suppliers }: { suppliers: Supplier[]; buyerEntityId?: string }) {
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([])
   const [domain, setDomain] = useState('')
   const [periodFrom, setPeriodFrom] = useState('')
@@ -49,9 +47,7 @@ export function ExportBuilder({
   const [error, setError] = useState<string | null>(null)
 
   function toggleSupplier(id: string) {
-    setSelectedSuppliers(prev =>
-      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-    )
+    setSelectedSuppliers(prev => (prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]))
     setPreviewed(false)
   }
 
@@ -76,8 +72,11 @@ export function ExportBuilder({
           if (!res.ok) return []
           const data = await res.json()
           const supplier = suppliers.find(s => s.id === supplierId)
-          return (data.records ?? []).map((r: ExportRecord) => ({ ...r, supplierName: supplier?.name ?? supplierId }))
-        })
+          return (data.records ?? []).map((r: ExportRecord) => ({
+            ...r,
+            supplierName: supplier?.name ?? supplierId,
+          }))
+        }),
       )
       setRecords(results.flat())
       setPreviewed(true)
@@ -134,16 +133,30 @@ export function ExportBuilder({
           marginBottom: spacing[3],
         }}
       >
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: spacing[2], marginBottom: spacing[3] }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: spacing[2],
+            marginBottom: spacing[3],
+          }}
+        >
           <div>
             <label style={labelStyle}>Data type</label>
             <select
               value={domain}
-              onChange={e => { setDomain(e.target.value); setPreviewed(false) }}
+              onChange={e => {
+                setDomain(e.target.value)
+                setPreviewed(false)
+              }}
               style={{ ...inputStyle, cursor: 'pointer' }}
             >
               <option value="">All data types</option>
-              {DOMAINS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+              {DOMAINS.map(d => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -151,7 +164,10 @@ export function ExportBuilder({
             <input
               type="date"
               value={periodFrom}
-              onChange={e => { setPeriodFrom(e.target.value); setPreviewed(false) }}
+              onChange={e => {
+                setPeriodFrom(e.target.value)
+                setPreviewed(false)
+              }}
               style={inputStyle}
             />
           </div>
@@ -160,7 +176,10 @@ export function ExportBuilder({
             <input
               type="date"
               value={periodTo}
-              onChange={e => { setPeriodTo(e.target.value); setPreviewed(false) }}
+              onChange={e => {
+                setPeriodTo(e.target.value)
+                setPreviewed(false)
+              }}
               style={inputStyle}
             />
           </div>
@@ -194,7 +213,14 @@ export function ExportBuilder({
               })}
             </div>
             {selectedSuppliers.length === 0 && (
-              <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0' }}>
+              <p
+                style={{
+                  fontSize: typography.sizes.xs,
+                  fontWeight: typography.weights.light,
+                  color: colours.textTertiary,
+                  margin: '4px 0 0',
+                }}
+              >
                 No selection = all authorised suppliers
               </p>
             )}
@@ -222,7 +248,17 @@ export function ExportBuilder({
       </div>
 
       {error && (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, backgroundColor: colours.redBg, padding: '10px 12px', borderRadius: '4px', marginBottom: spacing[2] }}>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.red,
+            backgroundColor: colours.redBg,
+            padding: '10px 12px',
+            borderRadius: '4px',
+            marginBottom: spacing[2],
+          }}
+        >
           {error}
         </p>
       )}
@@ -230,7 +266,14 @@ export function ExportBuilder({
       {/* Preview table */}
       {previewed && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: spacing[2],
+            }}
+          >
             <p style={textStyles.sectionSubtitle}>
               {records.length} record{records.length !== 1 ? 's' : ''} matched
             </p>
@@ -275,16 +318,43 @@ export function ExportBuilder({
           </div>
 
           {records.length === 0 ? (
-            <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', padding: spacing[4], textAlign: 'center' }}>
-              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+            <div
+              style={{
+                backgroundColor: colours.surface,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '8px',
+                padding: spacing[4],
+                textAlign: 'center',
+              }}
+            >
+              <p
+                style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.light,
+                  color: colours.textTertiary,
+                  margin: 0,
+                }}
+              >
                 No records match these filters.
               </p>
             </div>
           ) : (
-            <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px', overflowX: 'auto' }}>
+            <div
+              style={{
+                backgroundColor: colours.surface,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '8px',
+                overflowX: 'auto',
+              }}
+            >
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
+                  <tr
+                    style={{
+                      borderBottom: `1px solid ${colours.border}`,
+                      backgroundColor: colours.background,
+                    }}
+                  >
                     {['Supplier', 'Field', 'Value', 'Period', 'Trust tier', 'Confidence'].map(col => (
                       <th
                         key={col}
@@ -306,27 +376,85 @@ export function ExportBuilder({
                 </thead>
                 <tbody>
                   {records.map((r, i) => (
-                    <tr key={r.id} style={{ borderBottom: i < records.length - 1 ? `1px solid ${colours.border}` : 'none' }}>
-                      <td style={{ padding: '10px 16px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, whiteSpace: 'nowrap' }}>
+                    <tr
+                      key={r.id}
+                      style={{
+                        borderBottom: i < records.length - 1 ? `1px solid ${colours.border}` : 'none',
+                      }}
+                    >
+                      <td
+                        style={{
+                          padding: '10px 16px',
+                          fontSize: typography.sizes.xs,
+                          fontWeight: typography.weights.light,
+                          color: colours.textSecondary,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {r.supplierName ?? r.entityId.slice(0, 8)}
                       </td>
-                      <td style={{ padding: '10px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
+                      <td
+                        style={{
+                          padding: '10px 16px',
+                          fontSize: typography.sizes.sm,
+                          fontWeight: typography.weights.medium,
+                          color: colours.textPrimary,
+                        }}
+                      >
                         {fieldLabel(r.fieldName)}
                       </td>
-                      <td style={{ padding: '10px 16px', fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      <td
+                        style={{
+                          padding: '10px 16px',
+                          fontSize: typography.sizes.sm,
+                          fontWeight: typography.weights.light,
+                          color: colours.textPrimary,
+                          fontVariantNumeric: 'tabular-nums',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {r.value.toLocaleString('en-GB', { maximumFractionDigits: 4 })} {r.unit}
                       </td>
-                      <td style={{ padding: '10px 16px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, whiteSpace: 'nowrap' }}>
-                        {new Date(r.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                      <td
+                        style={{
+                          padding: '10px 16px',
+                          fontSize: typography.sizes.xs,
+                          fontWeight: typography.weights.light,
+                          color: colours.textSecondary,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {new Date(r.periodStart).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                         {' – '}
-                        {new Date(r.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                        {new Date(r.periodEnd).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                       </td>
                       <td style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: trustTierConfig[r.trustTier as keyof typeof trustTierConfig]?.colour ?? colours.textTertiary }}>
+                        <span
+                          style={{
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.medium,
+                            color:
+                              trustTierConfig[r.trustTier as keyof typeof trustTierConfig]?.colour ??
+                              colours.textTertiary,
+                          }}
+                        >
                           {TIER_LABELS[r.trustTier] ?? r.trustTier}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 16px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>
+                      <td
+                        style={{
+                          padding: '10px 16px',
+                          fontSize: typography.sizes.xs,
+                          fontWeight: typography.weights.light,
+                          color: colours.textTertiary,
+                        }}
+                      >
                         {Math.round(r.confidenceScore * 100)}%
                       </td>
                     </tr>
@@ -337,8 +465,16 @@ export function ExportBuilder({
           )}
 
           {records.length > 0 && (
-            <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: `${spacing[2]} 0 0` }}>
-              Every exported record includes its trust tier, source reference, and confidence score. These cannot be removed.
+            <p
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                margin: `${spacing[2]} 0 0`,
+              }}
+            >
+              Every exported record includes its trust tier, source reference, and confidence score. These
+              cannot be removed.
             </p>
           )}
         </div>

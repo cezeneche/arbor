@@ -1,9 +1,6 @@
 import { colours, typography, spacing } from '@/lib/design-system'
 import { SupplierForm } from '@/components/SupplierForm'
-import {
-  getSupplierFormContext,
-  SupplierTokenInvalidError,
-} from '@/lib/nucleos/supplier-form-client'
+import { getSupplierFormContext, SupplierTokenInvalidError } from '@/lib/nucleos/supplier-form-client'
 
 // The public supplier form, now hosted by Arbor.
 //
@@ -16,11 +13,7 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-export default async function SupplierFormPage({
-  params,
-}: {
-  params: Promise<{ token: string }>
-}) {
+export default async function SupplierFormPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
   let context = null
@@ -84,8 +77,7 @@ export default async function SupplierFormPage({
                 margin: `${spacing[2]} 0 ${spacing[4]}`,
               }}
             >
-              It is about the goods below, and it should take a couple of minutes.
-              You do not need an account.
+              It is about the goods below, and it should take a couple of minutes. You do not need an account.
             </p>
 
             <div

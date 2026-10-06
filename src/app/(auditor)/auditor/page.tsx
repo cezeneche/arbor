@@ -15,7 +15,8 @@ export default async function AuditorHome() {
     orderBy: { grantedAt: 'desc' },
   })
 
-  const fmt = (d: Date) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmt = (d: Date) =>
+    new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <div>
@@ -32,11 +33,25 @@ export default async function AuditorHome() {
       </h1>
 
       {grants.length === 0 ? (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary }}>
-          You have no active audit access. Access is granted by an Arbor administrator and is scoped to a specific entity and period.
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.textTertiary,
+          }}
+        >
+          You have no active audit access. Access is granted by an Arbor administrator and is scoped to a
+          specific entity and period.
         </p>
       ) : (
-        <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+        <div
+          style={{
+            backgroundColor: colours.surface,
+            border: `1px solid ${colours.border}`,
+            borderRadius: '6px',
+            overflow: 'hidden',
+          }}
+        >
           {grants.map((g, i) => (
             <Link
               key={g.id}
@@ -51,14 +66,32 @@ export default async function AuditorHome() {
               }}
             >
               <div>
-                <div style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
+                <div
+                  style={{
+                    fontSize: typography.sizes.base,
+                    fontWeight: typography.weights.medium,
+                    color: colours.textPrimary,
+                  }}
+                >
                   {g.entity.legalName}
                 </div>
-                <div style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+                <div
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.light,
+                    color: colours.textSecondary,
+                  }}
+                >
                   {fmt(g.periodStart)} – {fmt(g.periodEnd)} · access expires {fmt(g.expiresAt)}
                 </div>
               </div>
-              <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.navy }}>
+              <span
+                style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.light,
+                  color: colours.navy,
+                }}
+              >
                 View package →
               </span>
             </Link>

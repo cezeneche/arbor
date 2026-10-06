@@ -199,7 +199,13 @@ function CaseRequest({ caseId }: { caseId: string }) {
       </div>
 
       {loadingLines && (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary }}>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.textTertiary,
+          }}
+        >
           Loading goods lines…
         </p>
       )}
@@ -239,8 +245,8 @@ function CaseRequest({ caseId }: { caseId: string }) {
                   lineHeight: 1.6,
                 }}
               >
-                The link works once, for this goods line only, and expires. Send it to
-                whoever at the supplier knows the production data.
+                The link works once, for this goods line only, and expires. Send it to whoever at the supplier
+                knows the production data.
               </p>
               <button onClick={generateLink} disabled={busy} style={buttonStyle(busy)}>
                 {busy ? 'Creating…' : 'Create supplier link'}
@@ -299,12 +305,12 @@ function CaseRequest({ caseId }: { caseId: string }) {
                 <p
                   style={{
                     ...textStyles.caption,
-          color: colours.textTertiary,
+                    color: colours.textTertiary,
                     margin: `${spacing[2]} 0 0`,
                   }}
                 >
-                  Expires {new Date(expiresAt).toLocaleDateString('en-GB')}. After that you
-                  will need to create a new one.
+                  Expires {new Date(expiresAt).toLocaleDateString('en-GB')}. After that you will need to
+                  create a new one.
                 </p>
               )}
             </div>
@@ -371,7 +377,7 @@ function CaseRequest({ caseId }: { caseId: string }) {
                   <p
                     style={{
                       ...textStyles.caption,
-          color: colours.textTertiary,
+                      color: colours.textTertiary,
                       margin: `4px 0 0`,
                     }}
                   >
@@ -391,14 +397,13 @@ function CaseRequest({ caseId }: { caseId: string }) {
                   margin: `${spacing[2]} 0 0`,
                 }}
               >
-                This is the published value before the legislated mark-up. The mark-up is
-                added when the declaration is built, so the declarable figure will be
-                higher than the number shown here.
+                This is the published value before the legislated mark-up. The mark-up is added when the
+                declaration is built, so the declarable figure will be higher than the number shown here.
               </p>
               <p
                 style={{
                   ...textStyles.caption,
-          color: colours.textTertiary,
+                  color: colours.textTertiary,
                   lineHeight: 1.6,
                   margin: `${spacing[2]} 0 0`,
                 }}

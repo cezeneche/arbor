@@ -5,11 +5,7 @@
 // modification of any data record.
 import type { DataDomain } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import {
-  generateAuditPackage,
-  type AuditPackage,
-  type AuditVerification,
-} from './generator'
+import { generateAuditPackage, type AuditPackage, type AuditVerification } from './generator'
 import { verifyChain } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
 
@@ -78,9 +74,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
   // package only when at least one side is a document the package already
   // includes. Without this, a Q1 package handed to one auditor disclosed
   // discrepancies found in every other quarter.
-  const inScopeDocumentIds = new Set(
-    records.map(r => r.documentId).filter((id): id is string => id !== null),
-  )
+  const inScopeDocumentIds = new Set(records.map(r => r.documentId).filter((id): id is string => id !== null))
   const crossValidations =
     periodStart || periodEnd
       ? allCrossValidations.filter(
@@ -88,7 +82,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
         )
       : allCrossValidations
 
-  const chainEntries = auditEntries.map((e) => ({
+  const chainEntries = auditEntries.map(e => ({
     hash: e.hash,
     previousHash: e.previousHash,
     payload: e.payload as unknown as AuditPayload,
@@ -147,7 +141,7 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
     periodStart: periodStart ?? derivedPeriodStart,
     periodEnd: periodEnd ?? derivedPeriodEnd,
     generatedAt: new Date(),
-    dataRecords: records.map((r) => ({
+    dataRecords: records.map(r => ({
       id: r.id,
       entityId: r.entityId,
       domain: r.domain,
@@ -163,14 +157,14 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
       documentId: r.documentId,
       auditHash: r.auditHash,
     })),
-    sourceDocuments: [...sourceDocMap.values()].map((d) => ({
+    sourceDocuments: [...sourceDocMap.values()].map(d => ({
       id: d.id,
       documentType: d.documentType,
       fileName: d.fileName,
       submittedAt: d.submittedAt,
       trustTier: d.trustTier,
     })),
-    crossValidationResults: crossValidations.map((c) => ({
+    crossValidationResults: crossValidations.map(c => ({
       id: c.id,
       documentAId: c.documentAId,
       documentBId: c.documentBId,
@@ -184,8 +178,8 @@ export async function assembleAuditPackage(opts: AssembleOptions): Promise<Assem
   })
 
   // shadow-compare the Merkle commitment against the linear chain.
-  const chainHashes = new Set(auditEntries.map((e) => e.hash))
-  const allLeavesInChain = pkg.dataRecords.every((r) => chainHashes.has(r.auditHash))
+  const chainHashes = new Set(auditEntries.map(e => e.hash))
+  const allLeavesInChain = pkg.dataRecords.every(r => chainHashes.has(r.auditHash))
   const merkleShadow: MerkleShadowCompare = {
     chainVerified: chainIntegrityVerified,
     allLeavesInChain,

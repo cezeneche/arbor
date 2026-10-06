@@ -47,10 +47,7 @@ export function canonicalUnitIndex(): CanonicalUnitIndex {
 /** Case and padding are not real differences; anything else is. */
 const normalise = (unit: string) => unit.trim().toLowerCase()
 
-export function findUnitConflicts(
-  records: UnitCheckRecord[],
-  canonical: CanonicalUnitIndex,
-): UnitConflict[] {
+export function findUnitConflicts(records: UnitCheckRecord[], canonical: CanonicalUnitIndex): UnitConflict[] {
   const conflicts: UnitConflict[] = []
   for (const record of records) {
     const expected = canonical[unitKey(record.domain, record.fieldName)]

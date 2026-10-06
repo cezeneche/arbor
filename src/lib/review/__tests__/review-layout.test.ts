@@ -34,29 +34,35 @@ describe('layoutReviewFields', () => {
   })
 
   it('puts compulsory before conditional before optional', () => {
-    expect(names([
-      field({ fieldName: 'customs_procedure', admissibility: 'OPTIONAL' }),
-      field({ fieldName: 'currency', admissibility: 'CONDITIONAL' }),
-      field({ fieldName: 'commodity_code', admissibility: 'COMPULSORY' }),
-    ])).toEqual(['commodity_code', 'currency', 'customs_procedure'])
+    expect(
+      names([
+        field({ fieldName: 'customs_procedure', admissibility: 'OPTIONAL' }),
+        field({ fieldName: 'currency', admissibility: 'CONDITIONAL' }),
+        field({ fieldName: 'commodity_code', admissibility: 'COMPULSORY' }),
+      ]),
+    ).toEqual(['commodity_code', 'currency', 'customs_procedure'])
   })
 
   it('leads each group with the field worth asking about', () => {
     // An uncertain field carries close to a full bit; a near-certain one carries
     // almost none. The uncertain one is asked first even though it sorts later.
-    expect(names([
-      field({ fieldName: 'z_certain', confidence: 0.99 }),
-      field({ fieldName: 'a_uncertain', confidence: 0.5 }),
-    ])).toEqual(['a_uncertain', 'z_certain'])
+    expect(
+      names([
+        field({ fieldName: 'z_certain', confidence: 0.99 }),
+        field({ fieldName: 'a_uncertain', confidence: 0.5 }),
+      ]),
+    ).toEqual(['a_uncertain', 'z_certain'])
   })
 
   it('does not let information gain jump a field out of its group', () => {
     // An optional field the model is 50/50 on outranks a confident compulsory
     // one on gain alone. It still comes second: the grouping is the contract.
-    expect(names([
-      field({ fieldName: 'declared_value', admissibility: 'OPTIONAL', confidence: 0.5 }),
-      field({ fieldName: 'commodity_code', admissibility: 'COMPULSORY', confidence: 0.99 }),
-    ])).toEqual(['commodity_code', 'declared_value'])
+    expect(
+      names([
+        field({ fieldName: 'declared_value', admissibility: 'OPTIONAL', confidence: 0.5 }),
+        field({ fieldName: 'commodity_code', admissibility: 'COMPULSORY', confidence: 0.99 }),
+      ]),
+    ).toEqual(['commodity_code', 'declared_value'])
   })
 
   it('carries the requirement level onto each card', () => {

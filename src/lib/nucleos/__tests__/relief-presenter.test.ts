@@ -68,8 +68,18 @@ describe('presentReliefClaims', () => {
   it('counts only the newest claim; earlier ones were replaced', () => {
     const rows = presentReliefClaims(
       [
-        claim({ id: 'old', created_at: '2027-04-19T10:00:00Z', cpr_amount_gbp: 7000, verification_document_hash: 'a'.repeat(64) }),
-        claim({ id: 'new', created_at: '2027-04-20T10:00:00Z', cpr_amount_gbp: '5100.00', verification_document_hash: 'a'.repeat(64) }),
+        claim({
+          id: 'old',
+          created_at: '2027-04-19T10:00:00Z',
+          cpr_amount_gbp: 7000,
+          verification_document_hash: 'a'.repeat(64),
+        }),
+        claim({
+          id: 'new',
+          created_at: '2027-04-20T10:00:00Z',
+          cpr_amount_gbp: '5100.00',
+          verification_document_hash: 'a'.repeat(64),
+        }),
       ],
       [],
     )
@@ -98,7 +108,14 @@ describe('presentReliefClaims', () => {
   it("links the verifier's statement Arbor holds for a claim", () => {
     const [row] = presentReliefClaims(
       [claim({ id: 'c', verification_document_hash: 'a'.repeat(64) })],
-      [{ id: 'stmt-1', sha256: 'a'.repeat(64), verifierName: 'Carbon Assurance Ltd', verifierAccreditation: 'UKAS 9876' }],
+      [
+        {
+          id: 'stmt-1',
+          sha256: 'a'.repeat(64),
+          verifierName: 'Carbon Assurance Ltd',
+          verifierAccreditation: 'UKAS 9876',
+        },
+      ],
     )
     expect(row.statement).toEqual({
       attached: true,
@@ -110,13 +127,20 @@ describe('presentReliefClaims', () => {
 
   it('marks a claim with no statement as unverified', () => {
     const [row] = presentReliefClaims([claim({ id: 'c' })], [])
-    expect(row.statement).toEqual({ attached: false, label: 'No verifier’s statement yet', statementId: null })
+    expect(row.statement).toEqual({
+      attached: false,
+      label: 'No verifier’s statement yet',
+      statementId: null,
+    })
     expect(row.summary).toBe('Unverified carbon price — please review')
     expect(row.qualifications[0]).toMatch(/not counted on the return/)
   })
 
   it('says when the relief was capped at the liability', () => {
-    const [row] = presentReliefClaims([claim({ id: 'c', cpr_capped: true, cpr_raw_gbp: 9000, cpr_amount_gbp: 4000 })], [])
+    const [row] = presentReliefClaims(
+      [claim({ id: 'c', cpr_capped: true, cpr_raw_gbp: 9000, cpr_amount_gbp: 4000 })],
+      [],
+    )
     expect(row.qualifications.join(' ')).toContain('Capped at the CBAM liability')
   })
 })
@@ -129,10 +153,7 @@ describe('reliefNextStep', () => {
     expect(reliefNextStep(presentReliefClaims([claim({ id: 'c' })], []))).toBe('statement')
   })
   it('has nothing to ask once the claim that counts is verified', () => {
-    const rows = presentReliefClaims(
-      [claim({ id: 'c', verification_document_hash: 'b'.repeat(64) })],
-      [],
-    )
+    const rows = presentReliefClaims([claim({ id: 'c', verification_document_hash: 'b'.repeat(64) })], [])
     expect(reliefNextStep(rows)).toBe('none')
   })
 })

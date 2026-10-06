@@ -33,7 +33,9 @@ export function BackLink({ current, parent }: { current?: string; parent?: Paren
       </Link>
       {current && (
         <>
-          <span aria-hidden style={{ color: colours.textTertiary }}>/</span>
+          <span aria-hidden style={{ color: colours.textTertiary }}>
+            /
+          </span>
           <span style={{ color: colours.textSecondary }}>{current}</span>
         </>
       )}

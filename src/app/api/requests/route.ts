@@ -10,7 +10,16 @@ import { assertSupplierConnection } from '@/lib/plan-guard'
 const createSchema = z
   .object({
     supplierEntityId: z.string().cuid(),
-    domain: z.enum(['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']),
+    domain: z.enum([
+      'ENERGY',
+      'MATERIALS',
+      'PRODUCTION',
+      'LOGISTICS',
+      'EMISSIONS',
+      'AGRICULTURE',
+      'WASTE_AND_WATER',
+      'COMPLIANCE',
+    ]),
     periodStart: z.string().datetime(),
     periodEnd: z.string().datetime(),
     requiredFields: z.array(z.string().min(1)).min(1),

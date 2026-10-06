@@ -45,16 +45,8 @@ export default function LoginPage() {
       }}
     >
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          arbor
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
-          Sign in to your account
-        </p>
+        <h1 style={textStyles.pageTitle}>arbor</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>Sign in to your account</p>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
@@ -166,14 +158,34 @@ export default function LoginPage() {
       </form>
 
       {/* SSO sign-in. Uses the email entered above to resolve the org. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], margin: `${spacing[3]} 0 ${spacing[2]}` }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing[2],
+          margin: `${spacing[3]} 0 ${spacing[2]}`,
+        }}
+      >
         <div style={{ flex: 1, height: '1px', backgroundColor: colours.border }} />
-        <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>or</span>
+        <span
+          style={{
+            fontSize: typography.sizes.xs,
+            fontWeight: typography.weights.light,
+            color: colours.textTertiary,
+          }}
+        >
+          or
+        </span>
         <div style={{ flex: 1, height: '1px', backgroundColor: colours.border }} />
       </div>
       <a
         href={email ? `/api/workos/authorize?email=${encodeURIComponent(email)}` : '#'}
-        onClick={(e) => { if (!email) { e.preventDefault(); setError('Enter your work email above, then use SSO.') } }}
+        onClick={e => {
+          if (!email) {
+            e.preventDefault()
+            setError('Enter your work email above, then use SSO.')
+          }
+        }}
         style={{
           display: 'block',
           textAlign: 'center',

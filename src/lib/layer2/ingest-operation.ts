@@ -33,9 +33,15 @@ export function requestDigest(records: unknown): string {
     Array.isArray(v)
       ? v.map(stable)
       : v && typeof v === 'object'
-        ? Object.fromEntries(Object.keys(v as object).sort().map(k => [k, stable((v as Record<string, unknown>)[k])]))
+        ? Object.fromEntries(
+            Object.keys(v as object)
+              .sort()
+              .map(k => [k, stable((v as Record<string, unknown>)[k])]),
+          )
         : v
-  return createHash('sha256').update(JSON.stringify(stable(records))).digest('hex')
+  return createHash('sha256')
+    .update(JSON.stringify(stable(records)))
+    .digest('hex')
 }
 
 function isUniqueViolation(e: unknown): boolean {
@@ -93,7 +99,7 @@ export async function claimItem(
   result: ItemResult,
 ): Promise<{ alreadyDone: false } | { alreadyDone: true; result: ItemResult }> {
   const op = await tx.ingestOperation.findUnique({ where: { id: operationId } })
-  const results = ((op?.results ?? {}) as Results)
+  const results = (op?.results ?? {}) as Results
   const prior = results[String(index)]
   if (prior) return { alreadyDone: true, result: prior }
   await tx.ingestOperation.update({

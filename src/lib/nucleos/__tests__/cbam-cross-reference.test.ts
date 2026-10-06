@@ -1,7 +1,4 @@
-import {
-  buildCbamCrossReference,
-  formatCbamCrossReference,
-} from '../cbam-cross-reference'
+import { buildCbamCrossReference, formatCbamCrossReference } from '../cbam-cross-reference'
 
 // The single line CBAM is allowed to place on a record surface. Without it a user
 // can look at a supplier and not know that supplier carries six figures of

@@ -70,7 +70,5 @@ const PUBLIC_PREFIXES = [
  */
 export function isPublicPath(pathname: string): boolean {
   if (pathname === '/') return true
-  return PUBLIC_PREFIXES.some(
-    prefix => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  )
+  return PUBLIC_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`))
 }

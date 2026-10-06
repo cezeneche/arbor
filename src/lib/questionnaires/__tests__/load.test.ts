@@ -8,8 +8,22 @@ const template: QuestionnaireTemplate = {
   description: '',
   status: 'available',
   questions: [
-    { id: 'elec', text: '', mode: 'assemble', domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'kwh' },
-    { id: 'emis', text: '', mode: 'direct', domain: 'EMISSIONS', fieldName: 'total_co2e', unit: 'tonnes_co2e' },
+    {
+      id: 'elec',
+      text: '',
+      mode: 'assemble',
+      domain: 'ENERGY',
+      fieldName: 'total_consumption_kwh',
+      unit: 'kwh',
+    },
+    {
+      id: 'emis',
+      text: '',
+      mode: 'direct',
+      domain: 'EMISSIONS',
+      fieldName: 'total_co2e',
+      unit: 'tonnes_co2e',
+    },
     { id: 'coll', text: '', mode: 'collection', domain: 'ENERGY', fieldName: 'quantity' }, // no unit
   ],
 }

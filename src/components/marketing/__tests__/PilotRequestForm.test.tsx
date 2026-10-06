@@ -7,7 +7,8 @@ import { PilotRequestForm } from '../PilotRequestForm'
 
 test('preserves audience and plan, keeps entries after failure, and confirms a retry', async () => {
   const user = userEvent.setup()
-  const fetchMock = jest.fn()
+  const fetchMock = jest
+    .fn()
     .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Please try again.' }) })
     .mockResolvedValueOnce({ ok: true })
   global.fetch = fetchMock
@@ -41,7 +42,8 @@ test('changing audience clears an incompatible plan', async () => {
 
 test('uses a new request ID when details change after an uncertain response', async () => {
   const user = userEvent.setup()
-  const fetchMock = jest.fn()
+  const fetchMock = jest
+    .fn()
     .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Please try again.' }) })
     .mockResolvedValueOnce({ ok: true })
   global.fetch = fetchMock

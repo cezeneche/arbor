@@ -1,8 +1,4 @@
-import {
-  shouldAlert,
-  buildCalibrationAlert,
-  buildAccuracyAlert,
-} from '../drift-alert'
+import { shouldAlert, buildCalibrationAlert, buildAccuracyAlert } from '../drift-alert'
 
 // Drift alerting (MLOps guardrail). Pure: no DB, no network.
 //
@@ -56,9 +52,27 @@ describe('buildAccuracyAlert', () => {
     const alert = buildAccuracyAlert(
       'run_2',
       [
-        { group: 'mass', accuracyDelta: -0.22, confidencePsi: 0.05, accuracyDegraded: true, confidenceDrift: false },
-        { group: 'emissions_intensity', accuracyDelta: 0.0, confidencePsi: 0.31, accuracyDegraded: false, confidenceDrift: true },
-        { group: 'other', accuracyDelta: -0.01, confidencePsi: 0.02, accuracyDegraded: false, confidenceDrift: false },
+        {
+          group: 'mass',
+          accuracyDelta: -0.22,
+          confidencePsi: 0.05,
+          accuracyDegraded: true,
+          confidenceDrift: false,
+        },
+        {
+          group: 'emissions_intensity',
+          accuracyDelta: 0.0,
+          confidencePsi: 0.31,
+          accuracyDegraded: false,
+          confidenceDrift: true,
+        },
+        {
+          group: 'other',
+          accuracyDelta: -0.01,
+          confidencePsi: 0.02,
+          accuracyDegraded: false,
+          confidenceDrift: false,
+        },
       ],
       now,
     )

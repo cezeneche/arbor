@@ -4,7 +4,13 @@ import { compare } from 'bcryptjs'
 import { getSessionUser } from '@/lib/session'
 import { requireAuth } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
-import { generateTotpSecret, getTotpUri, encryptTotpSecret, decryptTotpSecret, verifyTotpCode } from '@/lib/auth/totp'
+import {
+  generateTotpSecret,
+  getTotpUri,
+  encryptTotpSecret,
+  decryptTotpSecret,
+  verifyTotpCode,
+} from '@/lib/auth/totp'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import QRCode from 'qrcode'
 

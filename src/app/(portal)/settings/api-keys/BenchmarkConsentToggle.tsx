@@ -37,24 +37,37 @@ export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean
         padding: spacing[3],
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3] }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: spacing[3],
+        }}
+      >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ ...textStyles.eyebrow, marginBottom: spacing[1] }}>
-            Sector benchmarks
-          </p>
+          <p style={{ ...textStyles.eyebrow, marginBottom: spacing[1] }}>Sector benchmarks</p>
           <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
             Share anonymously, and see how you compare
           </p>
           <p style={{ ...textStyles.sectionSubtitle, lineHeight: '1.6' }}>
-            Benchmarks work both ways. Switch this on and your verified records join the anonymised
-            figures for your sector — which is also what unlocks those figures for you, under
-            Records → Benchmarks. Your business is never identified, and no figure is ever shown
-            unless at least 10 businesses are behind it. Switch it off at any time: your records
-            come out of future benchmarks, and the benchmark view closes again.
+            Benchmarks work both ways. Switch this on and your verified records join the anonymised figures
+            for your sector — which is also what unlocks those figures for you, under Records → Benchmarks.
+            Your business is never identified, and no figure is ever shown unless at least 10 businesses are
+            behind it. Switch it off at any time: your records come out of future benchmarks, and the
+            benchmark view closes again.
           </p>
         </div>
 
-        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '8px',
+          }}
+        >
           <button
             onClick={toggle}
             disabled={saving}
@@ -74,11 +87,7 @@ export function BenchmarkConsentToggle({ initialValue }: { initialValue: boolean
           >
             {saving ? 'Saving…' : enabled ? 'Enabled' : 'Disabled'}
           </button>
-          {saved && (
-            <p style={{ ...textStyles.caption, color: colours.green }}>
-              Saved
-            </p>
-          )}
+          {saved && <p style={{ ...textStyles.caption, color: colours.green }}>Saved</p>}
         </div>
       </div>
     </div>

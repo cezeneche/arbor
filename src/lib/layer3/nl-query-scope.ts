@@ -47,9 +47,7 @@ export interface AuthorisedSupplier {
 }
 
 export type SupplierScope =
-  | { kind: 'all' }
-  | { kind: 'one'; id: string; name: string }
-  | { kind: 'unmatched'; name: string }
+  { kind: 'all' } | { kind: 'one'; id: string; name: string } | { kind: 'unmatched'; name: string }
 
 /**
  * Which supplier a question is about. A named supplier that matches no
@@ -100,7 +98,8 @@ export function supplierGapsWithinGrants(params: {
     const askable = params.targetDomains.filter(d => granted === null || granted.has(d))
     const covered = params.covered.get(s.id) ?? new Set<string>()
     const missing = askable.filter(d => !covered.has(d))
-    if (missing.length > 0) gaps.push({ supplierEntityId: s.id, supplierName: s.name, missingDomains: missing })
+    if (missing.length > 0)
+      gaps.push({ supplierEntityId: s.id, supplierName: s.name, missingDomains: missing })
   }
   return gaps
 }
@@ -148,7 +147,7 @@ export function describeScope(scope: AppliedScope): string {
           ? 'Your records over time'
           : 'Your records'
 
-  const parts = [whose, scope.domain ? DOMAIN_LABELS[scope.domain] ?? scope.domain : 'all areas']
+  const parts = [whose, scope.domain ? (DOMAIN_LABELS[scope.domain] ?? scope.domain) : 'all areas']
   if (scope.fieldName) parts.push(fieldLabel(scope.fieldName, scope.domain))
   parts.push(periodText(scope.periodStart, scope.periodEnd))
   if (scope.queryType !== 'gap') parts.push(scope.trustTier ? TIER_ONLY[scope.trustTier] : 'any status')

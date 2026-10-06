@@ -13,11 +13,7 @@
 
 process.env.AUDIT_CHAIN_SECRET = 'test-secret-for-document-removal'
 
-import {
-  planDocumentRemoval,
-  buildWithdrawalPayload,
-  type WithdrawableRecord,
-} from '../document-removal'
+import { planDocumentRemoval, buildWithdrawalPayload, type WithdrawableRecord } from '../document-removal'
 
 const record = (over: Partial<WithdrawableRecord> = {}): WithdrawableRecord => ({
   id: 'rec_1',
@@ -117,10 +113,10 @@ describe('buildWithdrawalPayload', () => {
 
   it('falls back to the stored figure when the record kept no pre-normalisation value', () => {
     // originalValue/originalUnit are nullable on the row; the audit payload is not.
-    const payload = buildWithdrawalPayload(
-      record({ originalValue: null, originalUnit: null }),
-      { at, byId: 'usr_2' },
-    )
+    const payload = buildWithdrawalPayload(record({ originalValue: null, originalUnit: null }), {
+      at,
+      byId: 'usr_2',
+    })
     expect(payload.originalValue).toBe(24500)
     expect(payload.originalUnit).toBe('kg')
   })

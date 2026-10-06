@@ -13,15 +13,17 @@ import type { ConfidencePosterior } from '@/lib/confidence/types'
 import { logRecordAccess } from '@/lib/layer3/grant-access'
 
 const DOMAINS = [
-  'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
-  'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
+  'ENERGY',
+  'MATERIALS',
+  'PRODUCTION',
+  'LOGISTICS',
+  'EMISSIONS',
+  'AGRICULTURE',
+  'WASTE_AND_WATER',
+  'COMPLIANCE',
 ] as const
 
-export default async function SupplierRecordsPage({
-  params,
-}: {
-  params: Promise<{ supplierId: string }>
-}) {
+export default async function SupplierRecordsPage({ params }: { params: Promise<{ supplierId: string }> }) {
   const session = await requirePageSession()
 
   const { supplierId } = await params
@@ -52,7 +54,11 @@ export default async function SupplierRecordsPage({
   const records = candidateRecords.filter(record => anyGrantCoversRecord(scopes, record))
 
   // log this buyer's view of the supplier's records (PORTAL access).
-  await logRecordAccess(records.map((r) => r.id), buyerEntityId, 'PORTAL')
+  await logRecordAccess(
+    records.map(r => r.id),
+    buyerEntityId,
+    'PORTAL',
+  )
 
   const byDomain = DOMAINS.map(domain => {
     const domainRecords = records.filter(r => r.domain === domain)
@@ -87,14 +93,8 @@ export default async function SupplierRecordsPage({
       >
         <div>
           <BackLink current={supplier.legalName} />
-          <h1
-            style={textStyles.pageTitle}
-          >
-            {supplier.legalName}
-          </h1>
-          <p
-            style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-          >
+          <h1 style={textStyles.pageTitle}>{supplier.legalName}</h1>
+          <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
             {supplier.country} · {supplier.sector} · {totalRecords} records
           </p>
         </div>
@@ -143,9 +143,7 @@ export default async function SupplierRecordsPage({
             >
               {count}
             </p>
-            <p
-              style={{ ...textStyles.sectionSubtitle, margin: `2px 0 0` }}
-            >
+            <p style={{ ...textStyles.sectionSubtitle, margin: `2px 0 0` }}>
               {totalRecords > 0 ? Math.round((count / totalRecords) * 100) : 0}% of records
             </p>
           </div>
@@ -252,22 +250,24 @@ export default async function SupplierRecordsPage({
                       }}
                     >
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                          <TierBadge tier={record.trustTier as 'A' | 'B' | 'C'} />
-                          <p
-                            style={textStyles.sectionTitle}
-                          >
-                            {fieldLabel(record.fieldName, record.domain)}
-                          </p>
-                        </div>
-                        <p
-                          style={textStyles.sectionSubtitle}
+                        <div
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}
                         >
+                          <TierBadge tier={record.trustTier as 'A' | 'B' | 'C'} />
+                          <p style={textStyles.sectionTitle}>{fieldLabel(record.fieldName, record.domain)}</p>
+                        </div>
+                        <p style={textStyles.sectionSubtitle}>
                           {record.value.toLocaleString()} {record.unit}
                           {' · '}
-                          {new Date(record.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                          {new Date(record.periodStart).toLocaleDateString('en-GB', {
+                            month: 'short',
+                            year: 'numeric',
+                          })}
                           {' – '}
-                          {new Date(record.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                          {new Date(record.periodEnd).toLocaleDateString('en-GB', {
+                            month: 'short',
+                            year: 'numeric',
+                          })}
                         </p>
                         {criticalFlags.length > 0 && (
                           <p

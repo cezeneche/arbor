@@ -69,31 +69,61 @@ export function PublicFooter() {
           {/* Product */}
           <div>
             <p style={headingStyle}>Product</p>
-            <Link href="/how-it-works" style={linkStyle}>How it works</Link>
-            <Link href="/cbam-compliance" style={linkStyle}>CBAM for importers</Link>
-            <Link href="/pricing" style={linkStyle}>Pricing</Link>
-            <Link href="/about" style={linkStyle}>About</Link>
-            <Link href="/institutional" style={linkStyle}>Institutional enquiries</Link>
-            <Link href="/docs/api" style={linkStyle}>API guide</Link>
-            <a href={pilotRequestHref()} style={linkStyle}>Request pilot access</a>
-            <Link href="/signup" style={linkStyle}>Create your invited account</Link>
-            <Link href="/login" style={linkStyle}>Sign in</Link>
+            <Link href="/how-it-works" style={linkStyle}>
+              How it works
+            </Link>
+            <Link href="/cbam-compliance" style={linkStyle}>
+              CBAM for importers
+            </Link>
+            <Link href="/pricing" style={linkStyle}>
+              Pricing
+            </Link>
+            <Link href="/about" style={linkStyle}>
+              About
+            </Link>
+            <Link href="/institutional" style={linkStyle}>
+              Institutional enquiries
+            </Link>
+            <Link href="/docs/api" style={linkStyle}>
+              API guide
+            </Link>
+            <a href={pilotRequestHref()} style={linkStyle}>
+              Request pilot access
+            </a>
+            <Link href="/signup" style={linkStyle}>
+              Create your invited account
+            </Link>
+            <Link href="/login" style={linkStyle}>
+              Sign in
+            </Link>
           </div>
 
           {/* Legal */}
           <div>
             <p style={headingStyle}>Legal</p>
-            <Link href="/legal/terms" style={linkStyle}>Terms of service</Link>
-            <Link href="/legal/privacy" style={linkStyle}>Privacy policy</Link>
-            <Link href="/legal/dpa" style={linkStyle}>Data processing agreement</Link>
-            <Link href="/security" style={linkStyle}>Security</Link>
+            <Link href="/legal/terms" style={linkStyle}>
+              Terms of service
+            </Link>
+            <Link href="/legal/privacy" style={linkStyle}>
+              Privacy policy
+            </Link>
+            <Link href="/legal/dpa" style={linkStyle}>
+              Data processing agreement
+            </Link>
+            <Link href="/security" style={linkStyle}>
+              Security
+            </Link>
           </div>
 
           {/* Contact */}
           <div className="mk-footer-contact">
             <p style={headingStyle}>Contact</p>
-            <a href="mailto:hello@arbor.io" style={linkStyle}>hello@arbor.io</a>
-            <a href="mailto:legal@arbor.io" style={linkStyle}>legal@arbor.io</a>
+            <a href="mailto:hello@arbor.io" style={linkStyle}>
+              hello@arbor.io
+            </a>
+            <a href="mailto:legal@arbor.io" style={linkStyle}>
+              legal@arbor.io
+            </a>
           </div>
         </div>
 

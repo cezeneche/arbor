@@ -12,7 +12,12 @@
 // field, overlapping period. It exists to raise a question with the user, not to
 // decide anything on its own.
 
-import { findDuplicates, type CandidateField, type PriorRecord, replacementsByField } from '../duplicate-check'
+import {
+  findDuplicates,
+  type CandidateField,
+  type PriorRecord,
+  replacementsByField,
+} from '../duplicate-check'
 
 const candidate = (o: Partial<CandidateField> = {}): CandidateField => ({
   fieldName: 'declared_weight',
@@ -64,10 +69,12 @@ describe('findDuplicates', () => {
   })
 
   it('ignores a period that does not overlap at all', () => {
-    expect(findDuplicates(
-      [candidate({ periodStart: new Date('2027-01-01'), periodEnd: new Date('2027-03-31') })],
-      [prior()],
-    )).toEqual([])
+    expect(
+      findDuplicates(
+        [candidate({ periodStart: new Date('2027-01-01'), periodEnd: new Date('2027-03-31') })],
+        [prior()],
+      ),
+    ).toEqual([])
   })
 
   it('gathers every prior record a candidate would duplicate', () => {

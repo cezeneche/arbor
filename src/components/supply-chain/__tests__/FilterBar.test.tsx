@@ -57,16 +57,20 @@ describe('generateQuarterRange', () => {
 describe('getLastCompletedQuarter', () => {
   const RealDate = Date
 
-  afterEach(() => { (global as typeof globalThis).Date = RealDate })
+  afterEach(() => {
+    ;(global as typeof globalThis).Date = RealDate
+  })
 
   function mockDate(isoString: string) {
     const fixed = new RealDate(isoString)
     ;(global as typeof globalThis).Date = class extends RealDate {
       constructor(...args: ConstructorParameters<typeof RealDate>) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        super(...(args.length ? args : [fixed.toISOString()]) as [any])
+        super(...((args.length ? args : [fixed.toISOString()]) as [any]))
       }
-      static now() { return fixed.getTime() }
+      static now() {
+        return fixed.getTime()
+      }
     } as typeof Date
   }
 
@@ -224,12 +228,7 @@ function renderFilterBar(overrides: Partial<FilterState> = {}, onChange = jest.f
   return {
     onChange,
     ...render(
-      <FilterBar
-        supplierCountries={COUNTRIES}
-        value={value}
-        onChange={onChange}
-        buyerId="buyer-123"
-      />,
+      <FilterBar supplierCountries={COUNTRIES} value={value} onChange={onChange} buyerId="buyer-123" />,
     ),
   }
 }
@@ -269,9 +268,7 @@ describe('FilterBar - filter application', () => {
     // Click Steel checkbox (accessible name comes from surrounding label text)
     await user.click(screen.getByRole('checkbox', { name: /Steel/i }))
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ sectors: ['Steel'] }),
-    )
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sectors: ['Steel'] }))
   })
 
   it('calls onChange when a trust tier pill is toggled off', async () => {
@@ -293,9 +290,7 @@ describe('FilterBar - filter application', () => {
 
     await user.selectOptions(screen.getByRole('combobox', { name: /Period from/i }), '2025-Q1')
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ periodFrom: '2025-Q1' }),
-    )
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ periodFrom: '2025-Q1' }))
   })
 })
 
@@ -335,9 +330,7 @@ describe('FilterBar - active filter tags', () => {
 
     await user.click(screen.getByLabelText('Remove Sector: Steel'))
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ sectors: [] }),
-    )
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ sectors: [] }))
   })
 
   it('shows trust tier tags when fewer than all three are selected', () => {
@@ -363,7 +356,11 @@ describe('FilterBar - mobile collapse', () => {
 
   afterEach(async () => {
     await act(async () => {
-      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth })
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: originalInnerWidth,
+      })
       window.dispatchEvent(new Event('resize'))
     })
   })

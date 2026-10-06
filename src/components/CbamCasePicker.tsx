@@ -83,7 +83,7 @@ export function CbamCasePicker({
                   style={{
                     display: 'block',
                     ...textStyles.caption,
-          color: colours.textTertiary,
+                    color: colours.textTertiary,
                     marginTop: '2px',
                   }}
                 >

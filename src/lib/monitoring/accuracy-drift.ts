@@ -145,9 +145,7 @@ export function evaluateAccuracyDrift(
     const recentAccuracy = accuracy(recent)
     const baselineAccuracy = accuracy(baseline)
     const accuracyDelta =
-      recentAccuracy !== null && baselineAccuracy !== null
-        ? recentAccuracy - baselineAccuracy
-        : null
+      recentAccuracy !== null && baselineAccuracy !== null ? recentAccuracy - baselineAccuracy : null
 
     const confidencePsi =
       recent.length > 0 && baseline.length > 0
@@ -158,10 +156,8 @@ export function evaluateAccuracyDrift(
         : null
 
     const sufficient = recent.length >= minSamples && baseline.length >= minSamples
-    const accuracyDegraded =
-      sufficient && accuracyDelta !== null && accuracyDelta <= -ACCURACY_DROP_THRESHOLD
-    const confidenceDrift =
-      sufficient && confidencePsi !== null && confidencePsi >= PSI_DRIFT_THRESHOLD
+    const accuracyDegraded = sufficient && accuracyDelta !== null && accuracyDelta <= -ACCURACY_DROP_THRESHOLD
+    const confidenceDrift = sufficient && confidencePsi !== null && confidencePsi >= PSI_DRIFT_THRESHOLD
 
     groups.push({
       group,

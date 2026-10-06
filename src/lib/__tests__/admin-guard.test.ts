@@ -23,7 +23,7 @@ describe('/api/admin route guards', () => {
     expect(files.length).toBeGreaterThan(0)
   })
 
-  it.each(files)('%s gates on requirePlatformAdmin, not requireAdmin', (file) => {
+  it.each(files)('%s gates on requirePlatformAdmin, not requireAdmin', file => {
     const src = readFileSync(file, 'utf8')
     expect(src).toContain('requirePlatformAdmin')
     // No bare tenant-level guard (requirePlatformAdmin does not contain this substring).

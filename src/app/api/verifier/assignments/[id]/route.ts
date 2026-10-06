@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Serializable, not the default: previousHash is read and the next link written
   // in one unit, so a concurrent write cannot fork the entity's chain.
-  const result = await runSerializable(async (tx) => {
+  const result = await runSerializable(async tx => {
     let signatureHash: string | null = null
     let eventType: string
     if (action === 'verify') {
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       entityId: assignment.entityId,
       type: 'TIER_UPGRADED',
       payload: { recordId: `verification_${assignment.id}`, domain: 'COMPLIANCE' },
-    }).catch((e) => console.error('[verifier] notify failed:', e))
+    }).catch(e => console.error('[verifier] notify failed:', e))
   }
 
   return ok({

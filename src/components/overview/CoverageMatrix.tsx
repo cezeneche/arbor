@@ -81,7 +81,9 @@ export function CoverageMatrix({ rows, summary }: { rows: CoverageRow[]; summary
           <tr style={{ borderBottom: `0.5px solid ${colours.border}` }}>
             <th style={{ ...headerCell, textAlign: 'left' }}>Record type</th>
             {periods.map(p => (
-              <th key={p.label} style={headerCell}>{p.label}</th>
+              <th key={p.label} style={headerCell}>
+                {p.label}
+              </th>
             ))}
             <th style={{ ...headerCell, textAlign: 'right' }}>Last recorded</th>
           </tr>
@@ -105,12 +107,9 @@ export function CoverageMatrix({ rows, summary }: { rows: CoverageRow[]; summary
                   <Link
                     href={`/records?domain=${row.domain}`}
                     aria-label={`${row.label}, ${cell.period.label}, ${STATE_WORD[cell.state]}`}
-                    title={[
-                      row.label,
-                      cell.period.label,
-                      STATE_WORD[cell.state],
-                      cell.sourceDocument,
-                    ].filter(Boolean).join(' · ')}
+                    title={[row.label, cell.period.label, STATE_WORD[cell.state], cell.sourceDocument]
+                      .filter(Boolean)
+                      .join(' · ')}
                     style={{
                       display: 'inline-block',
                       width: `${CELL}px`,

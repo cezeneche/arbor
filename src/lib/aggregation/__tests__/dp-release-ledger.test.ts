@@ -20,15 +20,11 @@ describe('fingerprintGroup', () => {
   })
 
   it('changes when a value changes', () => {
-    expect(fingerprintGroup(group('g1', [1, 2, 3]))).not.toBe(
-      fingerprintGroup(group('g1', [1, 2, 4])),
-    )
+    expect(fingerprintGroup(group('g1', [1, 2, 3]))).not.toBe(fingerprintGroup(group('g1', [1, 2, 4])))
   })
 
   it('changes when a contributor joins', () => {
-    expect(fingerprintGroup(group('g1', [1, 2, 3]))).not.toBe(
-      fingerprintGroup(group('g1', [1, 2, 3, 4])),
-    )
+    expect(fingerprintGroup(group('g1', [1, 2, 3]))).not.toBe(fingerprintGroup(group('g1', [1, 2, 3, 4])))
   })
 
   it('changes when the bounds change', () => {

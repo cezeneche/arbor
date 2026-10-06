@@ -15,16 +15,17 @@ import type { Period } from './declaration-period'
 
 // The canonical order, so rows never reshuffle between renders.
 const DOMAIN_ORDER = [
-  'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
-  'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
+  'ENERGY',
+  'MATERIALS',
+  'PRODUCTION',
+  'LOGISTICS',
+  'EMISSIONS',
+  'AGRICULTURE',
+  'WASTE_AND_WATER',
+  'COMPLIANCE',
 ] as const
 
-export type CoverageCellState =
-  | 'verified'
-  | 'declared'
-  | 'estimated'
-  | 'missing'
-  | 'out_of_scope'
+export type CoverageCellState = 'verified' | 'declared' | 'estimated' | 'missing' | 'out_of_scope'
 
 export interface CoverageRecord {
   domain: string
@@ -88,15 +89,11 @@ export function buildCoverageMatrix(input: CoverageInput): CoverageRow[] {
     let lastRecorded: string | null = null
 
     const cells: CoverageCell[] = periods.map(period => {
-      const inPeriod = own.filter(x =>
-        overlaps(x.range.start, x.range.end, period.start, period.end),
-      )
+      const inPeriod = own.filter(x => overlaps(x.range.start, x.range.end, period.start, period.end))
 
       if (inPeriod.length > 0) {
         // Weakest tier present wins.
-        const tier = inPeriod
-          .map(x => x.record.trustTier)
-          .reduce<Tier>((acc, t) => meetTier(acc, t), 'A')
+        const tier = inPeriod.map(x => x.record.trustTier).reduce<Tier>((acc, t) => meetTier(acc, t), 'A')
         lastRecorded = period.label
         return {
           period,
@@ -119,10 +116,7 @@ export function buildCoverageMatrix(input: CoverageInput): CoverageRow[] {
   })
 }
 
-const WORDS = [
-  'No', 'One', 'Two', 'Three', 'Four', 'Five',
-  'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-]
+const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
 
 const inWords = (n: number) => (n <= 10 ? WORDS[n] : String(n))
 
@@ -131,10 +125,7 @@ export function summariseCoverage(rows: CoverageRow[]): string {
   if (rows.length === 0) return 'No record types yet.'
 
   const quarters = rows[0].cells.length
-  const gaps = rows.reduce(
-    (n, row) => n + row.cells.filter(c => c.state === 'missing').length,
-    0,
-  )
+  const gaps = rows.reduce((n, row) => n + row.cells.filter(c => c.state === 'missing').length, 0)
 
   const types = `${inWords(rows.length)} record type${rows.length === 1 ? '' : 's'}`
   const span = `${inWords(quarters).toLowerCase()} quarters`

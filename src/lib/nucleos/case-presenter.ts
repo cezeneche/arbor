@@ -24,9 +24,7 @@ export interface CasePresentation {
 }
 
 function titleCase(value: string): string {
-  return value
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
+  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
 export function presentCase(c: CbamCaseSummary): CasePresentation {
@@ -49,8 +47,7 @@ export function presentCase(c: CbamCaseSummary): CasePresentation {
   // does not render as a number: it renders an em-dash and names what is missing.
   // A zero here would read as "no exposure", which is the opposite of "unknown".
   const hasExposure =
-    typeof c.estimated_liability_gbp === 'number' &&
-    Number.isFinite(c.estimated_liability_gbp)
+    typeof c.estimated_liability_gbp === 'number' && Number.isFinite(c.estimated_liability_gbp)
 
   return {
     id: c.id,
@@ -67,8 +64,7 @@ export function presentCase(c: CbamCaseSummary): CasePresentation {
       : '—',
     exposureNote: hasExposure
       ? null
-      : (c.estimated_liability_unavailable?.detail ??
-         'No published rate — exposure cannot be shown'),
+      : (c.estimated_liability_unavailable?.detail ?? 'No published rate — exposure cannot be shown'),
     status: c.status ? titleCase(c.status) : 'Draft',
     href: `/cbam/${encodeURIComponent(c.id)}`,
   }

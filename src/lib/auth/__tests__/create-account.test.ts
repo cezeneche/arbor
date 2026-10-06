@@ -11,11 +11,18 @@ function fakeDb(opts: { emails?: string[]; failUserCreate?: boolean } = {}) {
   const users: any[] = []
   const emails = new Set(opts.emails ?? [])
   const tx = {
-    entity: { create: jest.fn(async ({ data }: any) => { const e = { id: `ent-${entities.length + 1}`, ...data }; entities.push(e); return e }) },
+    entity: {
+      create: jest.fn(async ({ data }: any) => {
+        const e = { id: `ent-${entities.length + 1}`, ...data }
+        entities.push(e)
+        return e
+      }),
+    },
     user: {
       create: jest.fn(async ({ data }: any) => {
         if (opts.failUserCreate) throw new Error('connection reset')
-        if (emails.has(data.email)) throw Object.assign(new Error('unique'), { code: 'P2002', meta: { target: ['email'] } })
+        if (emails.has(data.email))
+          throw Object.assign(new Error('unique'), { code: 'P2002', meta: { target: ['email'] } })
         emails.add(data.email)
         const u = { id: `user-${users.length + 1}`, ...data }
         users.push(u)
@@ -41,8 +48,13 @@ function fakeDb(opts: { emails?: string[]; failUserCreate?: boolean } = {}) {
 }
 
 const input = {
-  companyName: 'Acme Steel', sector: 'steel', country: 'GB', entityType: 'SUPPLIER' as const,
-  name: 'Ada', email: 'ada@acme.test', passwordHash: 'hash',
+  companyName: 'Acme Steel',
+  sector: 'steel',
+  country: 'GB',
+  entityType: 'SUPPLIER' as const,
+  name: 'Ada',
+  email: 'ada@acme.test',
+  passwordHash: 'hash',
 }
 
 describe('createAccount', () => {

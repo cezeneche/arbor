@@ -51,7 +51,9 @@ describe('presentExplanation', () => {
 
   it('does not link a source it cannot place', () => {
     const out = presentExplanation({
-      evidence: [{ field: 'f', source: 'customs_parser', confidence: 0.9, snippet: 'x', source_ref: 'somewhere-else' }],
+      evidence: [
+        { field: 'f', source: 'customs_parser', confidence: 0.9, snippet: 'x', source_ref: 'somewhere-else' },
+      ],
     })
     expect(out.sources[0].documentHref).toBeNull()
   })

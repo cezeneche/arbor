@@ -46,7 +46,9 @@ describe('expectedInformationGain', () => {
   })
 
   it('is higher for a more important field at equal uncertainty', () => {
-    const comp = expectedInformationGain(field({ fieldName: 'a', admissibility: 'COMPULSORY', confidence: 0.7 }))
+    const comp = expectedInformationGain(
+      field({ fieldName: 'a', admissibility: 'COMPULSORY', confidence: 0.7 }),
+    )
     const opt = expectedInformationGain(field({ fieldName: 'b', admissibility: 'OPTIONAL', confidence: 0.7 }))
     expect(comp).toBeGreaterThan(opt)
   })
@@ -69,12 +71,16 @@ describe('rankReviewFields', () => {
   })
 
   it('never marks a flagged field as low information', () => {
-    const [r] = rankReviewFields([field({ fieldName: 'x', admissibility: 'OPTIONAL', confidence: 0.999, flagged: true })])
+    const [r] = rankReviewFields([
+      field({ fieldName: 'x', admissibility: 'OPTIONAL', confidence: 0.999, flagged: true }),
+    ])
     expect(r.lowInformation).toBe(false)
   })
 
   it('never marks a missing field as low information', () => {
-    const [r] = rankReviewFields([field({ fieldName: 'x', admissibility: 'OPTIONAL', confidence: 0.999, hasValue: false })])
+    const [r] = rankReviewFields([
+      field({ fieldName: 'x', admissibility: 'OPTIONAL', confidence: 0.999, hasValue: false }),
+    ])
     expect(r.lowInformation).toBe(false)
   })
 

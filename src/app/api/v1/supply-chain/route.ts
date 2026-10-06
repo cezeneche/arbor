@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
   const buyerEntityId = auth.entityId
 
   const { allowed } = await checkRateLimit(RATE_LIMITS.buyerApi, buyerEntityId)
-  if (!allowed) return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, { status: 429 })
+  if (!allowed)
+    return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, { status: 429 })
 
   const grants = await prisma.dataAccessGrant.findMany({
     where: { granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },
@@ -44,17 +45,17 @@ export async function GET(req: NextRequest) {
     const first = supplierGrants[0]
     // The one shared rule, field restriction included.
     const scopes = supplierGrants.map(toGrantScope)
-    const records = first.grantorEntity.dataRecords.filter((record) => anyGrantCoversRecord(scopes, record))
-    const domains = [...new Set(records.map((r) => r.domain))]
+    const records = first.grantorEntity.dataRecords.filter(record => anyGrantCoversRecord(scopes, record))
+    const domains = [...new Set(records.map(r => r.domain))]
     return {
       supplierId,
       supplierName: first.grantorEntity.legalName,
       domains,
       recordCount: records.length,
       trustTierDistribution: {
-        A: records.filter((r) => r.trustTier === 'A').length,
-        B: records.filter((r) => r.trustTier === 'B').length,
-        C: records.filter((r) => r.trustTier === 'C').length,
+        A: records.filter(r => r.trustTier === 'A').length,
+        B: records.filter(r => r.trustTier === 'B').length,
+        C: records.filter(r => r.trustTier === 'C').length,
       },
     }
   })

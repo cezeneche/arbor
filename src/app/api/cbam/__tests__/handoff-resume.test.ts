@@ -20,8 +20,9 @@ const findMany = jest.fn()
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     cbamCaseLink: {
-      findFirst: jest.fn(async ({ where }: { where: { documentId: string; entityId: string } }) =>
-        LINKS.find(l => l.documentId === where.documentId && l.entityId === where.entityId) ?? null,
+      findFirst: jest.fn(
+        async ({ where }: { where: { documentId: string; entityId: string } }) =>
+          LINKS.find(l => l.documentId === where.documentId && l.entityId === where.entityId) ?? null,
       ),
       findMany: (args: unknown) => findMany(args),
     },

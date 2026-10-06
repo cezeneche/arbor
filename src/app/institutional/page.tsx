@@ -72,11 +72,16 @@ export default function InstitutionalPage() {
         setSubmitted(true)
       } else {
         const data: unknown = await res.json().catch(() => null)
-        const message = data && typeof data === 'object' && 'error' in data && typeof data.error === 'string' ? data.error : null
+        const message =
+          data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
+            ? data.error
+            : null
         setError(message ?? 'We could not save your enquiry. Your entries are still here; please try again.')
       }
     } catch {
-      setError('We could not confirm receipt of your enquiry. Your entries are still here. Check your connection and try again, or email hello@arbor.io.')
+      setError(
+        'We could not confirm receipt of your enquiry. Your entries are still here. Check your connection and try again, or email hello@arbor.io.',
+      )
     } finally {
       window.clearTimeout(timeout)
       setSubmitting(false)
@@ -97,7 +102,12 @@ export default function InstitutionalPage() {
 
       {/* The site's shared container, so this page's edges line up with the
           header, the footer and every other page. */}
-      <main id={MAIN_CONTENT_ID} tabIndex={-1} className="mk-container" style={{ padding: `${spacing[8]} 0` }}>
+      <main
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
+        className="mk-container"
+        style={{ padding: `${spacing[8]} 0` }}
+      >
         {/* Hero */}
         <div style={{ marginBottom: spacing[8] }}>
           <p
@@ -122,7 +132,9 @@ export default function InstitutionalPage() {
               lineHeight: 1.15,
             }}
           >
-            Operational data for<br />research and institutional use
+            Operational data for
+            <br />
+            research and institutional use
           </h1>
           <p
             style={{
@@ -134,10 +146,10 @@ export default function InstitutionalPage() {
               margin: 0,
             }}
           >
-            Arbor is an operational data platform. Manufacturers and suppliers upload
-            production documents. The platform extracts and stores operational figures with
-            evidence-quality labels. Document-derived records include available source evidence;
-            declared and estimated figures are labelled separately.
+            Arbor is an operational data platform. Manufacturers and suppliers upload production documents.
+            The platform extracts and stores operational figures with evidence-quality labels.
+            Document-derived records include available source evidence; declared and estimated figures are
+            labelled separately.
           </p>
         </div>
 
@@ -212,10 +224,22 @@ export default function InstitutionalPage() {
           </h2>
           <div className="mk-institutional-pairs" style={{ gap: spacing[2] }}>
             {[
-              { label: 'CBAM compliance', text: 'Regulators can cross-reference declared embedded emissions against supplier records labelled by evidence quality.' },
-              { label: 'Supply chain due diligence', text: 'Policy teams can assess Scope 3 data quality across sectors without requiring proprietary calculations.' },
-              { label: 'Benchmark research', text: 'Explore available energy, water, and emissions statistics, with coverage and methodology assessed for your research question.' },
-              { label: 'Audit and verification', text: 'Third-party auditors can access structured, source-linked records rather than unstructured documents.' },
+              {
+                label: 'CBAM compliance',
+                text: 'Regulators can cross-reference declared embedded emissions against supplier records labelled by evidence quality.',
+              },
+              {
+                label: 'Supply chain due diligence',
+                text: 'Policy teams can assess Scope 3 data quality across sectors without requiring proprietary calculations.',
+              },
+              {
+                label: 'Benchmark research',
+                text: 'Explore available energy, water, and emissions statistics, with coverage and methodology assessed for your research question.',
+              },
+              {
+                label: 'Audit and verification',
+                text: 'Third-party auditors can access structured, source-linked records rather than unstructured documents.',
+              },
             ].map(item => (
               <div
                 key={item.label}
@@ -239,10 +263,27 @@ export default function InstitutionalPage() {
                   }}
                 />
                 <div>
-                  <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: typography.tracking.wide, textTransform: 'uppercase', margin: `0 0 4px` }}>
+                  <p
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.medium,
+                      color: colours.textTertiary,
+                      letterSpacing: typography.tracking.wide,
+                      textTransform: 'uppercase',
+                      margin: `0 0 4px`,
+                    }}
+                  >
                     {item.label}
                   </p>
-                  <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, lineHeight: 1.55, margin: 0 }}>
+                  <p
+                    style={{
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.light,
+                      color: colours.textSecondary,
+                      lineHeight: 1.55,
+                      margin: 0,
+                    }}
+                  >
                     {item.text}
                   </p>
                 </div>
@@ -271,48 +312,57 @@ export default function InstitutionalPage() {
           >
             Express an interest
           </h2>
-          <p
-            style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}` }}
-          >
+          <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[3]}` }}>
             Tell us about your organisation and what you are looking for. Fields marked * are required.
           </p>
-          <p style={{ fontSize: typography.sizes.sm, color: colours.textSecondary, lineHeight: 1.6, margin: `0 0 ${spacing[3]}` }}>
-            We use the details you provide to handle your enquiry. See our <a href="/legal/privacy" style={{ color: colours.navy, textDecoration: 'underline' }}>Privacy Policy</a>.
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              color: colours.textSecondary,
+              lineHeight: 1.6,
+              margin: `0 0 ${spacing[3]}`,
+            }}
+          >
+            We use the details you provide to handle your enquiry. See our{' '}
+            <a href="/legal/privacy" style={{ color: colours.navy, textDecoration: 'underline' }}>
+              Privacy Policy
+            </a>
+            .
           </p>
 
           <div role="status" aria-live="polite" aria-atomic="true">
-          {submitted && (
-            <div
-              style={{
-                backgroundColor: colours.greenBg,
-                border: `1px solid ${colours.green}`,
-                borderRadius: '6px',
-                padding: spacing[3],
-              }}
-            >
-              <p
+            {submitted && (
+              <div
                 style={{
-                  fontSize: typography.sizes.base,
-                  fontWeight: typography.weights.medium,
-                  color: colours.green,
-                  margin: `0 0 6px`,
+                  backgroundColor: colours.greenBg,
+                  border: `1px solid ${colours.green}`,
+                  borderRadius: '6px',
+                  padding: spacing[3],
                 }}
               >
-                Enquiry received
-              </p>
-              <p
-                style={textStyles.sectionSubtitle}
-              >
-                Your enquiry has been saved. For follow-up, contact hello@arbor.io.
-              </p>
-            </div>
-          )}
+                <p
+                  style={{
+                    fontSize: typography.sizes.base,
+                    fontWeight: typography.weights.medium,
+                    color: colours.green,
+                    margin: `0 0 6px`,
+                  }}
+                >
+                  Enquiry received
+                </p>
+                <p style={textStyles.sectionSubtitle}>
+                  Your enquiry has been saved. For follow-up, contact hello@arbor.io.
+                </p>
+              </div>
+            )}
           </div>
           {!submitted && (
             <form onSubmit={handleSubmit} aria-busy={submitting}>
               <div className="mk-institutional-pairs" style={{ gap: spacing[2], marginBottom: spacing[2] }}>
                 <div>
-                  <label style={labelStyle} htmlFor="orgName">Organisation name *</label>
+                  <label style={labelStyle} htmlFor="orgName">
+                    Organisation name *
+                  </label>
                   <input
                     id="orgName"
                     name="organisation"
@@ -327,7 +377,9 @@ export default function InstitutionalPage() {
                   />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="contactName">Contact name *</label>
+                  <label style={labelStyle} htmlFor="contactName">
+                    Contact name *
+                  </label>
                   <input
                     id="contactName"
                     name="name"
@@ -345,7 +397,9 @@ export default function InstitutionalPage() {
 
               <div className="mk-institutional-pairs" style={{ gap: spacing[2], marginBottom: spacing[2] }}>
                 <div>
-                  <label style={labelStyle} htmlFor="email">Work email *</label>
+                  <label style={labelStyle} htmlFor="email">
+                    Work email *
+                  </label>
                   <input
                     id="email"
                     name="email"
@@ -360,7 +414,9 @@ export default function InstitutionalPage() {
                   />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="role">Your role</label>
+                  <label style={labelStyle} htmlFor="role">
+                    Your role
+                  </label>
                   <input
                     id="role"
                     name="role"
@@ -376,7 +432,9 @@ export default function InstitutionalPage() {
               </div>
 
               <div style={{ marginBottom: spacing[2] }}>
-                <label style={labelStyle} htmlFor="interestArea">Primary area of interest *</label>
+                <label style={labelStyle} htmlFor="interestArea">
+                  Primary area of interest *
+                </label>
                 <select
                   id="interestArea"
                   value={form.interestArea}
@@ -386,13 +444,17 @@ export default function InstitutionalPage() {
                 >
                   <option value="">Select an area…</option>
                   {INTEREST_AREAS.map(a => (
-                    <option key={a.value} value={a.value}>{a.label}</option>
+                    <option key={a.value} value={a.value}>
+                      {a.label}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div style={{ marginBottom: spacing[3] }}>
-                <label style={labelStyle} htmlFor="message">Additional context</label>
+                <label style={labelStyle} htmlFor="message">
+                  Additional context
+                </label>
                 <textarea
                   id="message"
                   maxLength={4000}
@@ -442,7 +504,6 @@ export default function InstitutionalPage() {
             </form>
           )}
         </div>
-
       </main>
       <PublicFooter />
     </div>

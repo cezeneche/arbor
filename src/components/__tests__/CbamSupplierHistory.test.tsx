@@ -25,7 +25,8 @@ const flagged = {
   available: true,
   flagged: true,
   current: '2.900 tCO₂e per tonne',
-  verdict: 'This figure is 53% away from the average of this installation’s earlier figures (1.900 tCO₂e per tonne). Check it with the supplier before relying on it.',
+  verdict:
+    'This figure is 53% away from the average of this installation’s earlier figures (1.900 tCO₂e per tonne). Check it with the supplier before relying on it.',
   rows: [
     { period: '2027-Q1', value: '1.800 tCO₂e per tonne', source: 'Supplier’s figure' },
     { period: '2027-Q2', value: '1.900 tCO₂e per tonne', source: 'Supplier’s figure' },
@@ -48,7 +49,13 @@ describe('CbamSupplierHistory', () => {
 
   it('offers nothing to open when there are no earlier figures', async () => {
     fetchMock.mockReturnValue(
-      answer({ available: true, flagged: false, current: '1.9', verdict: 'This is the first figure from this installation for these goods.', rows: [] }),
+      answer({
+        available: true,
+        flagged: false,
+        current: '1.9',
+        verdict: 'This is the first figure from this installation for these goods.',
+        rows: [],
+      }),
     )
     render(<CbamSupplierHistory caseId="case-1" goodsLineId="gl-1" />)
     expect(await screen.findByText(/first figure/)).toBeInTheDocument()

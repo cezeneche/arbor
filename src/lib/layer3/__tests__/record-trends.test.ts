@@ -8,7 +8,16 @@ import { buildRecordTrends, type TrendRecord } from '@/lib/layer3/record-trends'
 const compulsory = { ELECTRICITY_BILL: ['consumption', 'supplier'] }
 
 function rec(p: Partial<TrendRecord>): TrendRecord {
-  return { domain: 'ENERGY', fieldName: 'consumption', trustTier: 'A', value: 1, unit: 'kWh', periodStart: '2026-01-01T00:00:00Z', documentType: 'ELECTRICITY_BILL', ...p }
+  return {
+    domain: 'ENERGY',
+    fieldName: 'consumption',
+    trustTier: 'A',
+    value: 1,
+    unit: 'kWh',
+    periodStart: '2026-01-01T00:00:00Z',
+    documentType: 'ELECTRICITY_BILL',
+    ...p,
+  }
 }
 
 describe('buildRecordTrends', () => {
@@ -18,7 +27,10 @@ describe('buildRecordTrends', () => {
 
   it('buckets records into quarters and detects missing compulsory fields per quarter', () => {
     // Q1 2026 has only `consumption` → `supplier` missing → 1 of 2 = 50%.
-    const t = buildRecordTrends([rec({ fieldName: 'consumption', periodStart: '2026-02-01T00:00:00Z' })], compulsory)
+    const t = buildRecordTrends(
+      [rec({ fieldName: 'consumption', periodStart: '2026-02-01T00:00:00Z' })],
+      compulsory,
+    )
     expect(t.quarters).toHaveLength(1)
     const q = t.quarters[0]
     expect(q.quarter).toBe('Q1 2026')
@@ -58,7 +70,10 @@ describe('buildRecordTrends', () => {
   })
 
   it('surfaces fields beyond the compulsory set as extras', () => {
-    const t = buildRecordTrends([rec({ fieldName: 'voltage', periodStart: '2026-02-01T00:00:00Z' })], compulsory)
+    const t = buildRecordTrends(
+      [rec({ fieldName: 'voltage', periodStart: '2026-02-01T00:00:00Z' })],
+      compulsory,
+    )
     const energy = t.quarters[0].domains.find(d => d.domain === 'ENERGY')!
     expect(energy.extraFields).toContain('voltage')
   })

@@ -43,7 +43,10 @@ export interface CaseCalculation {
  * Forbidden unless this entity's link row names the case — including a case
  * with no link at all. See case-ownership.ts for why an unowned case is refused.
  */
-export async function caseContext(caseId: string, entityId: string): Promise<{
+export async function caseContext(
+  caseId: string,
+  entityId: string,
+): Promise<{
   forbidden: boolean
   provenance: ProvenanceTier
 }> {
@@ -59,10 +62,7 @@ export async function caseContext(caseId: string, entityId: string): Promise<{
   return { forbidden: false, provenance: toProvenanceTier(record?.trustTier ?? null) }
 }
 
-export async function calculateCase(
-  caseId: string,
-  entityId: string,
-): Promise<CaseCalculation> {
+export async function calculateCase(caseId: string, entityId: string): Promise<CaseCalculation> {
   const { forbidden, provenance } = await caseContext(caseId, entityId)
   if (forbidden) {
     return { caseId, results: [], forbidden: true, loadError: null }

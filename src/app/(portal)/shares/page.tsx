@@ -22,7 +22,7 @@ export default async function SharesPage() {
 
   // No token here — the raw token exists only at creation; listed shares can't
   // reconstruct their link (shown once). state/revoke still work by id.
-  const initial = shares.map((s) => ({
+  const initial = shares.map(s => ({
     id: s.id,
     domain: s.domain,
     periodStart: s.periodStart?.toISOString() ?? null,
@@ -36,12 +36,19 @@ export default async function SharesPage() {
   return (
     <div style={{ width: '100%' }}>
       <BackLink current="Shared links" />
-      <h1 style={textStyles.pageTitle}>
-        Shared links
-      </h1>
-      <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[4]}`, maxWidth: '640px' }}>
-        Share a set of your records as a link. Whoever opens it sees the records and their trust tiers, and can
-        confirm the data hasn&apos;t been altered - without needing an Arbor account. Revoke any link at any time.
+      <h1 style={textStyles.pageTitle}>Shared links</h1>
+      <p
+        style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.light,
+          color: colours.textSecondary,
+          margin: `${spacing[1]} 0 ${spacing[4]}`,
+          maxWidth: '640px',
+        }}
+      >
+        Share a set of your records as a link. Whoever opens it sees the records and their trust tiers, and
+        can confirm the data hasn&apos;t been altered - without needing an Arbor account. Revoke any link at
+        any time.
       </p>
 
       <SharesManager initial={initial} origin={origin} />

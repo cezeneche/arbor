@@ -16,10 +16,7 @@ import { canonicaliseMeasurement } from './canonical-measurement'
 import type { AuditPayload } from './audit-chain'
 import type { DataDomain, TrustTier, ExtractionMethod, Prisma } from '@prisma/client'
 
-type TxClient = Pick<
-  Prisma.TransactionClient,
-  'dataRecord' | 'auditEntry'
->
+type TxClient = Pick<Prisma.TransactionClient, 'dataRecord' | 'auditEntry'>
 
 export interface RecordInput {
   entityId: string

@@ -79,36 +79,32 @@ describe('calculateDeclaration', () => {
 
   it('surfaces a non-2xx as a calculation error carrying the status', async () => {
     const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ detail: 'bad line' }, 422))
-    await expect(
-      calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never }),
-    ).rejects.toBeInstanceOf(NucleosCalculationError)
+    await expect(calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never })).rejects.toBeInstanceOf(
+      NucleosCalculationError,
+    )
   })
 
   // A total built from part of a declaration renders exactly like a complete
   // one. The endpoint fails closed on this; so does the client.
   it('refuses a result with fewer lines than were sent', async () => {
     const fetchImpl = jest.fn().mockResolvedValue(jsonResponse(okResult({ lines: [] })))
-    await expect(
-      calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never }),
-    ).rejects.toThrow(/0 calculated lines for 1 sent/)
+    await expect(calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never })).rejects.toThrow(
+      /0 calculated lines for 1 sent/,
+    )
   })
 
   it('refuses a result for a different case', async () => {
-    const fetchImpl = jest
-      .fn()
-      .mockResolvedValue(jsonResponse(okResult({ case_reference: 'case-other' })))
-    await expect(
-      calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never }),
-    ).rejects.toThrow(/case-other/)
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse(okResult({ case_reference: 'case-other' })))
+    await expect(calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never })).rejects.toThrow(
+      /case-other/,
+    )
   })
 
   it('refuses a result with no engine version, which could not be reproduced', async () => {
-    const fetchImpl = jest
-      .fn()
-      .mockResolvedValue(jsonResponse(okResult({ engine: {} as never })))
-    await expect(
-      calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never }),
-    ).rejects.toThrow(/engine version/)
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse(okResult({ engine: {} as never })))
+    await expect(calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never })).rejects.toThrow(
+      /engine version/,
+    )
   })
 
   it('reports a timeout as unavailable rather than as a wrong answer', async () => {
@@ -122,9 +118,9 @@ describe('calculateDeclaration', () => {
   it('refuses to call at all when Nucleos is not configured', async () => {
     delete process.env.NUCLEOS_INTERNAL_TOKEN
     const fetchImpl = jest.fn()
-    await expect(
-      calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never }),
-    ).rejects.toBeInstanceOf(NucleosUnavailableError)
+    await expect(calculateDeclaration(PAYLOAD, { fetchImpl: fetchImpl as never })).rejects.toBeInstanceOf(
+      NucleosUnavailableError,
+    )
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 })

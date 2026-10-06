@@ -42,12 +42,12 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
   const { periodStart, periodEnd } = derivePeriod(values, { documentType: document.documentType })
 
   const prepared = job.extractedFields
-    .filter((f) => NUMERIC_FIELDS.has(f.fieldName) && f.rawValue !== null && f.rawValue !== '')
-    .map((f) => {
+    .filter(f => NUMERIC_FIELDS.has(f.fieldName) && f.rawValue !== null && f.rawValue !== '')
+    .map(f => {
       const rawNum = parseNumericValue(f.rawValue) ?? NaN
       return { f, rawNum }
     })
-    .filter((p) => !isNaN(p.rawNum))
+    .filter(p => !isNaN(p.rawNum))
     .map(({ f, rawNum }) => ({ f, rawNum, unit: f.rawUnit ?? 'unknown' }))
 
   if (prepared.length === 0) return []
@@ -67,10 +67,18 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
     where: {
       entityId: document.entityId,
       isActive: true,
-      fieldName: { in: [...new Set(prepared.map((p) => p.f.fieldName))] },
+      fieldName: { in: [...new Set(prepared.map(p => p.f.fieldName))] },
       documentId: { not: documentId },
     },
-    select: { id: true, fieldName: true, domain: true, value: true, unit: true, periodStart: true, periodEnd: true },
+    select: {
+      id: true,
+      fieldName: true,
+      domain: true,
+      value: true,
+      unit: true,
+      periodStart: true,
+      periodEnd: true,
+    },
   })
   const duplicates = findDuplicates(
     prepared.map(({ f }) => ({ fieldName: f.fieldName, domain, periodStart, periodEnd })),
@@ -87,7 +95,7 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
   const staleAfterDate = computeStaleAfterDate(document.documentType, periodEnd)
 
   return prisma.$transaction(
-    async (tx) => {
+    async tx => {
       // Auto-acceptance writes records without anyone pressing a button, so the
       // plan cap has to hold here too — this path had no capacity check at all.
       // Counted inside the transaction that writes.
@@ -97,7 +105,14 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
       const ids: string[] = []
       for (const { f, rawNum, unit } of prepared) {
         const prior = await tx.dataRecord.findMany({
-          where: { entityId: document.entityId, domain, fieldName: f.fieldName, periodStart, periodEnd, isActive: true },
+          where: {
+            entityId: document.entityId,
+            domain,
+            fieldName: f.fieldName,
+            periodStart,
+            periodEnd,
+            isActive: true,
+          },
           select: { id: true },
         })
 
@@ -127,7 +142,7 @@ export async function autoAcceptDocument(documentId: string): Promise<string[]> 
 
         if (prior.length > 0) {
           await tx.dataRecord.updateMany({
-            where: { id: { in: prior.map((p) => p.id) } },
+            where: { id: { in: prior.map(p => p.id) } },
             data: { isActive: false, supersededById: result.recordId },
           })
         }

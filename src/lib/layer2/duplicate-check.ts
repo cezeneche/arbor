@@ -37,16 +37,11 @@ export interface DuplicateMatch {
   priorSummary: string
 }
 
-const overlaps = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) =>
-  aStart <= bEnd && aEnd >= bStart
+const overlaps = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) => aStart <= bEnd && aEnd >= bStart
 
-const monthYear = (d: Date) =>
-  d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+const monthYear = (d: Date) => d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
 
-export function findDuplicates(
-  candidates: CandidateField[],
-  priors: PriorRecord[],
-): DuplicateMatch[] {
+export function findDuplicates(candidates: CandidateField[], priors: PriorRecord[]): DuplicateMatch[] {
   const matches: DuplicateMatch[] = []
 
   for (const candidate of candidates) {

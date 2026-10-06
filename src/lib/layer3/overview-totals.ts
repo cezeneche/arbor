@@ -45,7 +45,12 @@ export interface OverviewTotal {
 const SOURCES: Record<Exclude<TotalKey, 'emissions'>, { label: string; fields: string[] }> = {
   energy: {
     label: 'Energy consumed',
-    fields: ['total_consumption_kwh', 'total_consumption_m3', 'energy_consumption', 'energy_consumption_total'],
+    fields: [
+      'total_consumption_kwh',
+      'total_consumption_m3',
+      'energy_consumption',
+      'energy_consumption_total',
+    ],
   },
   weight: {
     label: 'Weight declared',
@@ -62,10 +67,7 @@ function yearOf(date: Date | string): number | null {
   return Number.isNaN(d.getTime()) ? null : d.getUTCFullYear()
 }
 
-function summarise(
-  key: Exclude<TotalKey, 'emissions'>,
-  records: TotalRecord[],
-): OverviewTotal {
+function summarise(key: Exclude<TotalKey, 'emissions'>, records: TotalRecord[]): OverviewTotal {
   const { label, fields } = SOURCES[key]
   const relevant = records.filter(r => fields.includes(r.fieldName))
 

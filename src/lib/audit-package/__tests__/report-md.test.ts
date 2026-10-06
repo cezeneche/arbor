@@ -183,7 +183,14 @@ describe('renderAuditReportMarkdown', () => {
       dataRecords: [],
       sourceDocuments: [],
       crossValidationResults: [],
-      summary: { ...pkg.summary, totalRecords: 0, tierACount: 0, tierBCount: 0, sourceDocumentCount: 0, crossValidationPassCount: 0 },
+      summary: {
+        ...pkg.summary,
+        totalRecords: 0,
+        tierACount: 0,
+        tierBCount: 0,
+        sourceDocumentCount: 0,
+        crossValidationPassCount: 0,
+      },
     })
     expect(empty).toContain('No records')
     expect(empty).not.toContain('undefined')

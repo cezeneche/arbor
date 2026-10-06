@@ -27,24 +27,35 @@ function deps(over: Partial<VerificationDeps> = {}, nucleosStatus = 'not_require
           rows.set(where.id, row)
           return row
         }),
-        findFirst: jest.fn(async ({ where }: any) =>
-          [...rows.values()].find(
-            r => (!where.id || r.id === where.id) && r.entityId === where.entityId &&
-              (!where.goodsLineId || r.goodsLineId === where.goodsLineId) &&
-              (!where.status || r.status === where.status) &&
-              (!where.subject || r.subject === where.subject) &&
-              (where.syncedAt?.not === undefined || r.syncedAt !== null),
-          ) ?? null,
+        findFirst: jest.fn(
+          async ({ where }: any) =>
+            [...rows.values()].find(
+              r =>
+                (!where.id || r.id === where.id) &&
+                r.entityId === where.entityId &&
+                (!where.goodsLineId || r.goodsLineId === where.goodsLineId) &&
+                (!where.status || r.status === where.status) &&
+                (!where.subject || r.subject === where.subject) &&
+                (where.syncedAt?.not === undefined || r.syncedAt !== null),
+            ) ?? null,
         ),
       },
     } as any,
     storeBytes: jest.fn(async () => ({ pathname: 'ent-1/file.pdf' })),
     lineStatus: jest.fn(async () => ({ status: nucleosStatus, reportHash: null })),
     nucleos: {
-      request: jest.fn(async () => { calls.push('request') }),
-      record: jest.fn(async () => { calls.push('record') }),
-      accept: jest.fn(async () => { calls.push('accept') }),
-      reject: jest.fn(async () => { calls.push('reject') }),
+      request: jest.fn(async () => {
+        calls.push('request')
+      }),
+      record: jest.fn(async () => {
+        calls.push('record')
+      }),
+      accept: jest.fn(async () => {
+        calls.push('accept')
+      }),
+      reject: jest.fn(async () => {
+        calls.push('reject')
+      }),
     },
     now: () => new Date('2027-03-20T10:00:00Z'),
     ...over,
@@ -75,7 +86,11 @@ describe('submitStatement', () => {
       documentRef: 'arbor:verification:stmt-1',
       sha256: sha,
     })
-    expect(rows.get('stmt-1')).toMatchObject({ sha256: sha, storagePath: 'ent-1/file.pdf', syncedAt: expect.any(Date) })
+    expect(rows.get('stmt-1')).toMatchObject({
+      sha256: sha,
+      storagePath: 'ent-1/file.pdf',
+      syncedAt: expect.any(Date),
+    })
   })
 
   it('does not ask for a statement again when Nucleos is already expecting one', async () => {
@@ -86,7 +101,12 @@ describe('submitStatement', () => {
 
   it('keeps the file and says so when Nucleos cannot be reached', async () => {
     const { d, rows } = deps({
-      nucleos: { ...deps().d.nucleos, record: jest.fn(async () => { throw new Error('down') }) },
+      nucleos: {
+        ...deps().d.nucleos,
+        record: jest.fn(async () => {
+          throw new Error('down')
+        }),
+      },
     })
     const out = await submitStatement(input, d)
     expect(out).toMatchObject({ ok: true, synced: false })
@@ -111,7 +131,10 @@ describe('submitStatement', () => {
 
   it('refuses a statement with no verifier named', async () => {
     const { d } = deps()
-    expect(await submitStatement({ ...input, verifierName: '  ' }, d)).toMatchObject({ ok: false, code: 'INVALID' })
+    expect(await submitStatement({ ...input, verifierName: '  ' }, d)).toMatchObject({
+      ok: false,
+      code: 'INVALID',
+    })
   })
 
   it('refuses a new statement while one is waiting for a decision', async () => {
@@ -130,19 +153,42 @@ describe('decideStatement', () => {
 
   it('accepts, and records who decided', async () => {
     const { d, rows } = await submitted()
-    const out = await decideStatement({ entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' }, d)
+    const out = await decideStatement(
+      { entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' },
+      d,
+    )
     expect(out).toMatchObject({ ok: true })
     expect(d.nucleos.accept).toHaveBeenCalledWith('gl-1')
-    expect(rows.get('stmt-1')).toMatchObject({ status: 'ACCEPTED', decidedById: 'user-2', decidedAt: expect.any(Date) })
+    expect(rows.get('stmt-1')).toMatchObject({
+      status: 'ACCEPTED',
+      decidedById: 'user-2',
+      decidedAt: expect.any(Date),
+    })
   })
 
   it('rejects only with a reason', async () => {
     const { d, rows } = await submitted()
     expect(
-      await decideStatement({ entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'reject' }, d),
+      await decideStatement(
+        {
+          entityId: 'ent-1',
+          userId: 'user-2',
+          goodsLineId: 'gl-1',
+          statementId: 'stmt-1',
+          decision: 'reject',
+        },
+        d,
+      ),
     ).toMatchObject({ ok: false, code: 'INVALID' })
     await decideStatement(
-      { entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'reject', reason: 'Wrong installation.' },
+      {
+        entityId: 'ent-1',
+        userId: 'user-2',
+        goodsLineId: 'gl-1',
+        statementId: 'stmt-1',
+        decision: 'reject',
+        reason: 'Wrong installation.',
+      },
       d,
     )
     expect(d.nucleos.reject).toHaveBeenCalledWith('gl-1', 'Wrong installation.')
@@ -152,29 +198,64 @@ describe('decideStatement', () => {
   it("does not decide another organisation's statement", async () => {
     const { d } = await submitted()
     expect(
-      await decideStatement({ entityId: 'ent-2', userId: 'user-9', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' }, d),
+      await decideStatement(
+        {
+          entityId: 'ent-2',
+          userId: 'user-9',
+          goodsLineId: 'gl-1',
+          statementId: 'stmt-1',
+          decision: 'accept',
+        },
+        d,
+      ),
     ).toMatchObject({ ok: false, code: 'NOT_FOUND' })
   })
 
   it('does not decide a statement through another goods line', async () => {
     const { d } = await submitted()
     expect(
-      await decideStatement({ entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-9', statementId: 'stmt-1', decision: 'accept' }, d),
+      await decideStatement(
+        {
+          entityId: 'ent-1',
+          userId: 'user-2',
+          goodsLineId: 'gl-9',
+          statementId: 'stmt-1',
+          decision: 'accept',
+        },
+        d,
+      ),
     ).toMatchObject({ ok: false, code: 'NOT_FOUND' })
   })
 
   it('decides a statement once', async () => {
     const { d } = await submitted()
-    await decideStatement({ entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' }, d)
+    await decideStatement(
+      { entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' },
+      d,
+    )
     expect(
-      await decideStatement({ entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' }, d),
+      await decideStatement(
+        {
+          entityId: 'ent-1',
+          userId: 'user-2',
+          goodsLineId: 'gl-1',
+          statementId: 'stmt-1',
+          decision: 'accept',
+        },
+        d,
+      ),
     ).toMatchObject({ ok: false, code: 'NOT_FOUND' })
   })
 
   it('leaves the statement undecided when Nucleos refuses the step', async () => {
     const { d, rows } = await submitted()
-    d.nucleos.accept = jest.fn(async () => { throw new VerificationRejectedError('already verified') })
-    const out = await decideStatement({ entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' }, d)
+    d.nucleos.accept = jest.fn(async () => {
+      throw new VerificationRejectedError('already verified')
+    })
+    const out = await decideStatement(
+      { entityId: 'ent-1', userId: 'user-2', goodsLineId: 'gl-1', statementId: 'stmt-1', decision: 'accept' },
+      d,
+    )
     expect(out).toMatchObject({ ok: false, code: 'REFUSED' })
     expect(rows.get('stmt-1').status).toBe('SUBMITTED')
   })
@@ -186,8 +267,12 @@ describe('statements about relief', () => {
   function withRelief() {
     const h = deps()
     h.rows.set('relief-1', {
-      id: 'relief-1', entityId: 'ent-1', goodsLineId: 'gl-1', subject: 'RELIEF',
-      status: 'SUBMITTED', syncedAt: new Date('2027-03-19T10:00:00Z'),
+      id: 'relief-1',
+      entityId: 'ent-1',
+      goodsLineId: 'gl-1',
+      subject: 'RELIEF',
+      status: 'SUBMITTED',
+      syncedAt: new Date('2027-03-19T10:00:00Z'),
     })
     return h
   }
@@ -200,7 +285,13 @@ describe('statements about relief', () => {
   it('cannot be accepted or rejected as the emissions statement', async () => {
     const { d, calls } = withRelief()
     const out = await decideStatement(
-      { entityId: 'ent-1', userId: 'user-1', goodsLineId: 'gl-1', statementId: 'relief-1', decision: 'accept' },
+      {
+        entityId: 'ent-1',
+        userId: 'user-1',
+        goodsLineId: 'gl-1',
+        statementId: 'relief-1',
+        decision: 'accept',
+      },
       d,
     )
     expect(out).toMatchObject({ ok: false, code: 'NOT_FOUND' })

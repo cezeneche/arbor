@@ -66,9 +66,7 @@ describe('explainFlagReason', () => {
   it('puts serious flags first', () => {
     // A reviewer scanning a card stops at the first line, so the flag that
     // should stop them has to be there.
-    const flags = explainFlagReason(
-      'confidence_below_threshold:0.42; arbiter_conflict:cn_code',
-    )
+    const flags = explainFlagReason('confidence_below_threshold:0.42; arbiter_conflict:cn_code')
     expect(flags[0].raw).toBe('arbiter_conflict:cn_code')
   })
 

@@ -1,9 +1,4 @@
-import {
-  planEntityLinks,
-  pairKey,
-  RESOLUTION_METHOD,
-  type ExistingLink,
-} from '../link-planner'
+import { planEntityLinks, pairKey, RESOLUTION_METHOD, type ExistingLink } from '../link-planner'
 import type { ScoredPair } from '@/lib/brain/types'
 
 // the planner decides which scored pairs become persisted candidate
@@ -13,12 +8,7 @@ import type { ScoredPair } from '@/lib/brain/types'
 // route wraps DB reads/writes around this. Existing-link keys are built with
 // pairKey so the test can never drift from the implementation's key format.
 
-function scored(
-  a: string,
-  b: string,
-  similarity: number,
-  decision: ScoredPair['decision'],
-): ScoredPair {
+function scored(a: string, b: string, similarity: number, decision: ScoredPair['decision']): ScoredPair {
   return { a, b, similarity, decision }
 }
 
@@ -51,9 +41,7 @@ describe('planEntityLinks', () => {
   })
 
   it('refreshes an existing PENDING link rather than duplicating it', () => {
-    const existing = new Map<string, ExistingLink>([
-      [pairKey('a', 'b'), { id: 'link-1', status: 'PENDING' }],
-    ])
+    const existing = new Map<string, ExistingLink>([[pairKey('a', 'b'), { id: 'link-1', status: 'PENDING' }]])
     const { toCreate, toUpdate } = planEntityLinks([scored('a', 'b', 0.95, 'match')], existing)
     expect(toCreate).toEqual([])
     expect(toUpdate).toEqual([{ id: 'link-1', similarity: 0.95, suggestedDecision: 'match' }])

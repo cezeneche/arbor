@@ -10,10 +10,7 @@ import { prefillQuestionnaire } from '@/lib/questionnaires/prefill'
 // Layer 3 — read-only. Loads the entity's active records for the period, presents
 // them in each question's target unit, and runs the pure pre-fill. No writes, no
 // AI, no emission factors — assembly and formatting only.
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ template: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ template: string }> }) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 
@@ -63,8 +60,8 @@ export async function GET(
   const records = toPrefillRecords(template, stored)
   const answers = prefillQuestionnaire(template, records)
 
-  const answeredCount = answers.filter((a) => a.status === 'answered').length
-  const gapCount = answers.filter((a) => a.status === 'gap').length
+  const answeredCount = answers.filter(a => a.status === 'answered').length
+  const gapCount = answers.filter(a => a.status === 'gap').length
 
   return ok({
     template: {

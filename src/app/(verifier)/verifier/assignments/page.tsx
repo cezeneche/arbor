@@ -28,7 +28,8 @@ export default async function VerifierAssignmentsPage() {
     orderBy: { assignedAt: 'desc' },
   })
 
-  const fmt = (d: Date) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmt = (d: Date) =>
+    new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <div>
@@ -45,13 +46,19 @@ export default async function VerifierAssignmentsPage() {
       </h1>
 
       {assignments.length === 0 && (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary }}>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.textTertiary,
+          }}
+        >
           You have no verification assignments yet.
         </p>
       )}
 
-      {STATUS_GROUPS.map((group) => {
-        const rows = assignments.filter((a) => a.status === group.key)
+      {STATUS_GROUPS.map(group => {
+        const rows = assignments.filter(a => a.status === group.key)
         if (rows.length === 0) return null
         return (
           <section key={group.key} style={{ marginBottom: spacing[4] }}>
@@ -68,7 +75,14 @@ export default async function VerifierAssignmentsPage() {
             >
               {group.label}
             </span>
-            <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+            <div
+              style={{
+                backgroundColor: colours.surface,
+                border: `1px solid ${colours.border}`,
+                borderRadius: '6px',
+                overflow: 'hidden',
+              }}
+            >
               {rows.map((a, i) => (
                 <Link
                   key={a.id}
@@ -83,10 +97,22 @@ export default async function VerifierAssignmentsPage() {
                   }}
                 >
                   <div>
-                    <div style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
+                    <div
+                      style={{
+                        fontSize: typography.sizes.base,
+                        fontWeight: typography.weights.medium,
+                        color: colours.textPrimary,
+                      }}
+                    >
                       {a.entity.legalName}
                     </div>
-                    <div style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+                    <div
+                      style={{
+                        fontSize: typography.sizes.sm,
+                        fontWeight: typography.weights.light,
+                        color: colours.textSecondary,
+                      }}
+                    >
                       {fmt(a.periodStart)} – {fmt(a.periodEnd)} · assigned {fmt(a.assignedAt)}
                     </div>
                   </div>

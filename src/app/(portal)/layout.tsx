@@ -26,7 +26,12 @@ export default async function PortalLayout({ children }: { children: React.React
     const [entity, count, cbamDocuments] = await Promise.all([
       prisma.entity.findUnique({
         where: { id: entityId },
-        select: { legalName: true, entityType: true, cbamEnabled: true, _count: { select: { cbamCaseLinks: true } } },
+        select: {
+          legalName: true,
+          entityType: true,
+          cbamEnabled: true,
+          _count: { select: { cbamCaseLinks: true } },
+        },
       }),
       prisma.dataRecord.count({ where: { entityId, isActive: true } }),
       // A customs or CBAM declaration is CBAM activity. A supplier invoice is
@@ -38,14 +43,26 @@ export default async function PortalLayout({ children }: { children: React.React
     if (entity) {
       entityName = entity.legalName
       entityType = entity.entityType as 'SUPPLIER' | 'BUYER'
-      showCbam = showsCbam({ enabled: entity.cbamEnabled, cbamDocuments, caseLinks: entity._count.cbamCaseLinks })
+      showCbam = showsCbam({
+        enabled: entity.cbamEnabled,
+        cbamDocuments,
+        caseLinks: entity._count.cbamCaseLinks,
+      })
     }
     recordCount = count
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: colours.background }}>
-      <Nav entityName={entityName} entityType={entityType} recordCount={recordCount} showCbam={showCbam} isPlatformAdmin={account?.isPlatformAdmin ?? false} />
+    <div
+      style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: colours.background }}
+    >
+      <Nav
+        entityName={entityName}
+        entityType={entityType}
+        recordCount={recordCount}
+        showCbam={showCbam}
+        isPlatformAdmin={account?.isPlatformAdmin ?? false}
+      />
       <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '40px' }}>
         {account && !account.emailVerifiedAt && <VerifyEmailReminder email={account.email} />}
         {children}

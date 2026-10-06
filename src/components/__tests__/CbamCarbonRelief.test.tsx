@@ -38,7 +38,14 @@ const counting = {
   ],
   statement: { attached: false, label: 'No verifier’s statement yet', statementId: null },
 }
-const replaced = { ...counting, id: 'c-1', latest: false, counts: false, status: 'Replaced by a later claim', amount: '£7,000.00' }
+const replaced = {
+  ...counting,
+  id: 'c-1',
+  latest: false,
+  counts: false,
+  status: 'Replaced by a later claim',
+  amount: '£7,000.00',
+}
 const schemes = {
   eligible: true,
   message: null,
@@ -50,7 +57,16 @@ const schemes = {
 
 describe('LineRelief', () => {
   it('asks for a claim when there is none, under a scheme the importer chooses', async () => {
-    fetchMock.mockReturnValue(answer({ origin: 'SE', schemes, claims: [], next: 'claim', retryStatementId: null, retryProblem: null }))
+    fetchMock.mockReturnValue(
+      answer({
+        origin: 'SE',
+        schemes,
+        claims: [],
+        next: 'claim',
+        retryStatementId: null,
+        retryProblem: null,
+      }),
+    )
     render(<LineRelief case_={case_} lineId="gl-1" />)
 
     expect(await screen.findByRole('button', { name: 'Preview the relief' })).toBeDisabled()
@@ -62,11 +78,20 @@ describe('LineRelief', () => {
 
   it("shows which claim counts and asks for the verifier's statement behind it", async () => {
     fetchMock.mockReturnValue(
-      answer({ origin: 'SE', schemes, claims: [counting, replaced], next: 'statement', retryStatementId: null, retryProblem: null }),
+      answer({
+        origin: 'SE',
+        schemes,
+        claims: [counting, replaced],
+        next: 'statement',
+        retryStatementId: null,
+        retryProblem: null,
+      }),
     )
     render(<LineRelief case_={case_} lineId="gl-1" />)
 
-    expect(await screen.findByText('Not counted until the verifier’s statement is attached')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Not counted until the verifier’s statement is attached'),
+    ).toBeInTheDocument()
     expect(screen.getByText('Replaced by a later claim')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Attach the statement' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Preview the relief' })).not.toBeInTheDocument()
@@ -82,7 +107,16 @@ describe('LineRelief', () => {
       qualifications: [],
       statement: { attached: true, label: 'Verifier’s statement from V Ltd (UKAS 1)', statementId: 'stmt-1' },
     }
-    fetchMock.mockReturnValue(answer({ origin: 'SE', schemes, claims: [verified], next: 'none', retryStatementId: null, retryProblem: null }))
+    fetchMock.mockReturnValue(
+      answer({
+        origin: 'SE',
+        schemes,
+        claims: [verified],
+        next: 'none',
+        retryStatementId: null,
+        retryProblem: null,
+      }),
+    )
     render(<LineRelief case_={case_} lineId="gl-1" />)
 
     expect(await screen.findByRole('link', { name: 'View statement' })).toHaveAttribute(
@@ -110,7 +144,14 @@ describe('LineRelief', () => {
 
   it('offers a retry for a statement that did not reach the claim', async () => {
     fetchMock.mockReturnValue(
-      answer({ origin: 'SE', schemes, claims: [counting], next: 'retry', retryStatementId: 'stmt-3', retryProblem: 'Nucleos was down.' }),
+      answer({
+        origin: 'SE',
+        schemes,
+        claims: [counting],
+        next: 'retry',
+        retryStatementId: 'stmt-3',
+        retryProblem: 'Nucleos was down.',
+      }),
     )
     render(<LineRelief case_={case_} lineId="gl-1" />)
     expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument()
@@ -123,7 +164,14 @@ describe('LineRelief', () => {
   it('previews and claims relief without capping it against the case liability', async () => {
     fetchMock.mockImplementation((url: string) =>
       url.endsWith('/relief')
-        ? answer({ origin: 'SE', schemes, claims: [], next: 'claim', retryStatementId: null, retryProblem: null })
+        ? answer({
+            origin: 'SE',
+            schemes,
+            claims: [],
+            next: 'claim',
+            retryStatementId: null,
+            retryProblem: null,
+          })
         : url.startsWith('/api/cbam/relief/exchange-rate')
           ? answer({ held: false, message: 'Not held.' })
           : answer({
@@ -154,23 +202,43 @@ describe('LineRelief', () => {
     function withRate(rate: unknown) {
       fetchMock.mockImplementation((url: string) =>
         url.endsWith('/relief')
-          ? answer({ origin: 'SE', schemes, claims: [], next: 'claim', retryStatementId: null, retryProblem: null })
+          ? answer({
+              origin: 'SE',
+              schemes,
+              claims: [],
+              next: 'claim',
+              retryStatementId: null,
+              retryProblem: null,
+            })
           : answer(rate),
       )
     }
 
     it('fills in the rate HMRC published for the month, and names it', async () => {
-      withRate({ held: true, rate: '0.8365', label: 'HMRC’s EUR rate for April 2027 (reference table 2027-uk-v1)' })
+      withRate({
+        held: true,
+        rate: '0.8365',
+        label: 'HMRC’s EUR rate for April 2027 (reference table 2027-uk-v1)',
+      })
       render(<LineRelief case_={case_} lineId="gl-1" />)
       await userEvent.type(await screen.findByLabelText('Date of the exchange rate'), '2027-04-15')
 
-      expect(await screen.findByText('HMRC’s EUR rate for April 2027 (reference table 2027-uk-v1)')).toBeInTheDocument()
+      expect(
+        await screen.findByText('HMRC’s EUR rate for April 2027 (reference table 2027-uk-v1)'),
+      ).toBeInTheDocument()
       expect(screen.getByLabelText('Exchange rate')).toHaveValue(0.8365)
-      expect(fetchMock.mock.calls.some(([u]) => u === '/api/cbam/relief/exchange-rate?currency=EUR&date=2027-04-15')).toBe(true)
+      expect(
+        fetchMock.mock.calls.some(
+          ([u]) => u === '/api/cbam/relief/exchange-rate?currency=EUR&date=2027-04-15',
+        ),
+      ).toBe(true)
     })
 
     it('says so when the month is not held, and leaves the rate to be typed', async () => {
-      withRate({ held: false, message: 'HMRC’s EUR rate for May 2027 is not held yet. Enter it from HMRC’s monthly exchange rates.' })
+      withRate({
+        held: false,
+        message: 'HMRC’s EUR rate for May 2027 is not held yet. Enter it from HMRC’s monthly exchange rates.',
+      })
       render(<LineRelief case_={case_} lineId="gl-1" />)
       await userEvent.type(await screen.findByLabelText('Date of the exchange rate'), '2027-05-15')
 
@@ -179,12 +247,18 @@ describe('LineRelief', () => {
     })
 
     it('points out a typed rate that differs from HMRC’s', async () => {
-      withRate({ held: true, rate: '0.8365', label: 'HMRC’s EUR rate for April 2027 (reference table 2027-uk-v1)' })
+      withRate({
+        held: true,
+        rate: '0.8365',
+        label: 'HMRC’s EUR rate for April 2027 (reference table 2027-uk-v1)',
+      })
       render(<LineRelief case_={case_} lineId="gl-1" />)
       await userEvent.type(await screen.findByLabelText('Exchange rate'), '0.9')
       await userEvent.type(screen.getByLabelText('Date of the exchange rate'), '2027-04-15')
 
-      expect(await screen.findByText('This differs from HMRC’s rate of 0.8365 for the month.')).toBeInTheDocument()
+      expect(
+        await screen.findByText('This differs from HMRC’s rate of 0.8365 for the month.'),
+      ).toBeInTheDocument()
       expect(screen.getByLabelText('Exchange rate')).toHaveValue(0.9)
     })
   })

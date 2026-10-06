@@ -45,7 +45,6 @@ export function summariseRecordQuality(
   let estimated = 0
   let expiringSoon = 0
 
-
   // Track what is present, and which document types were actually submitted —
   // a record set is only held to the specs of the documents behind it.
   const presentByDomain: Record<string, Set<string>> = {}
@@ -73,10 +72,7 @@ export function summariseRecordQuality(
   // which marked a freight invoice as missing bill-of-lading fields.
   let missingCompulsoryFields = 0
   for (const [domain, present] of Object.entries(presentByDomain)) {
-    const expected = expectedFieldsFor(
-      [...(docTypesByDomain[domain] ?? [])],
-      compulsoryByDocumentType,
-    )
+    const expected = expectedFieldsFor([...(docTypesByDomain[domain] ?? [])], compulsoryByDocumentType)
     for (const field of expected) {
       if (!present.has(field)) missingCompulsoryFields++
     }

@@ -32,22 +32,19 @@ export interface CbamCrossReferenceInput {
   caseCount?: number
 }
 
-export function buildCbamCrossReference(
-  input: CbamCrossReferenceInput,
-): CbamScopeSummary | null {
+export function buildCbamCrossReference(input: CbamCrossReferenceInput): CbamScopeSummary | null {
   // An entity with no CBAM involvement gets no line at all. A line reading
   // "not in scope" on every supplier is noise that trains people to skip it.
   if (!input.inScope) return null
 
-  const hasFigure =
-    typeof input.exposureGbp === 'number' && Number.isFinite(input.exposureGbp)
+  const hasFigure = typeof input.exposureGbp === 'number' && Number.isFinite(input.exposureGbp)
 
   return {
     inScope: true,
     exposureGbp: hasFigure ? (input.exposureGbp as number) : null,
     exposureUnavailable: hasFigure
       ? null
-      : input.exposureUnavailableReason ?? 'No published rate — exposure cannot be shown',
+      : (input.exposureUnavailableReason ?? 'No published rate — exposure cannot be shown'),
     caseCount: input.caseCount ?? 0,
     href: `/cbam?entity=${encodeURIComponent(input.entityId)}`,
   }
@@ -68,8 +65,7 @@ export function formatCbamCrossReference(summary: CbamScopeSummary): string {
           maximumFractionDigits: 0,
         })}`
 
-  const cases =
-    summary.caseCount === 1 ? '1 CBAM case' : `${summary.caseCount} CBAM cases`
+  const cases = summary.caseCount === 1 ? '1 CBAM case' : `${summary.caseCount} CBAM cases`
 
   return `In scope for CBAM · ${cases} · Exposure ${exposure}`
 }

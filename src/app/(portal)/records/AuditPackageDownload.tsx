@@ -83,16 +83,22 @@ export function AuditPackageDownload({ plain, allowed, deniedReason }: Props) {
         maxWidth: '420px',
       }}
     >
-      <p style={textStyles.rowTitle}>
-        {plain ? 'Which dates should it cover?' : 'Package period'}
-      </p>
+      <p style={textStyles.rowTitle}>{plain ? 'Which dates should it cover?' : 'Package period'}</p>
       <p style={{ ...textStyles.caption, marginTop: '2px' }}>
         {plain
           ? 'Leave both blank to include everything you have.'
           : 'Leave blank for the entity’s full history.'}
       </p>
 
-      <div style={{ display: 'flex', gap: spacing[1], alignItems: 'center', marginTop: spacing[2], flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: spacing[1],
+          alignItems: 'center',
+          marginTop: spacing[2],
+          flexWrap: 'wrap',
+        }}
+      >
         <label style={{ ...textStyles.caption, display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {plain ? 'From' : 'Period start'}
           <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={inputStyle} />

@@ -110,23 +110,21 @@ describe('extractDocumentText', () => {
   describe('vendor adapters', () => {
     it('textract fails loudly rather than pretending to work', async () => {
       process.env.OCR_ADAPTER = 'textract'
-      await expect(
-        extractDocumentText('base64', 'application/pdf', {}),
-      ).rejects.toBeInstanceOf(OcrVendorNotConfiguredError)
+      await expect(extractDocumentText('base64', 'application/pdf', {})).rejects.toBeInstanceOf(
+        OcrVendorNotConfiguredError,
+      )
     })
 
     it('document-ai fails loudly too', async () => {
       process.env.OCR_ADAPTER = 'document-ai'
-      await expect(
-        extractDocumentText('base64', 'application/pdf', {}),
-      ).rejects.toBeInstanceOf(OcrVendorNotConfiguredError)
+      await expect(extractDocumentText('base64', 'application/pdf', {})).rejects.toBeInstanceOf(
+        OcrVendorNotConfiguredError,
+      )
     })
 
     it('the error names the adapter and what is missing', async () => {
       process.env.OCR_ADAPTER = 'textract'
-      await expect(extractDocumentText('base64', 'application/pdf', {})).rejects.toThrow(
-        /textract/i,
-      )
+      await expect(extractDocumentText('base64', 'application/pdf', {})).rejects.toThrow(/textract/i)
     })
   })
 })

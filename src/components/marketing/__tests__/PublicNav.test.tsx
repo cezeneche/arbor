@@ -8,7 +8,9 @@ import { PublicNav } from '../PublicNav'
 let pathname = '/'
 jest.mock('next/navigation', () => ({ usePathname: () => pathname }))
 
-beforeEach(() => { pathname = '/' })
+beforeEach(() => {
+  pathname = '/'
+})
 
 test('opens by keyboard and Escape closes it and returns focus to the toggle', async () => {
   const user = userEvent.setup()
@@ -40,7 +42,12 @@ test('closes after navigation and marks the current page', async () => {
 
 test('closes on outside interaction and when keyboard focus leaves navigation', async () => {
   const user = userEvent.setup()
-  render(<><PublicNav /><button>Outside</button></>)
+  render(
+    <>
+      <PublicNav />
+      <button>Outside</button>
+    </>,
+  )
   await user.click(screen.getByRole('button', { name: 'Menu' }))
   fireEvent.pointerDown(screen.getByRole('button', { name: 'Outside' }))
   expect(screen.getByRole('button', { name: 'Menu' })).toHaveAttribute('aria-expanded', 'false')

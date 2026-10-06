@@ -38,7 +38,12 @@ jest.mock('@/lib/layer2/cbam-verification', () => ({
 const findMany = jest.fn()
 const findFirst = jest.fn()
 jest.mock('@/lib/prisma', () => ({
-  prisma: { cbamVerificationStatement: { findMany: (a: unknown) => findMany(a), findFirst: (a: unknown) => findFirst(a) } },
+  prisma: {
+    cbamVerificationStatement: {
+      findMany: (a: unknown) => findMany(a),
+      findFirst: (a: unknown) => findFirst(a),
+    },
+  },
 }))
 
 import { GET as relief } from '../cases/[caseId]/goods-lines/[goodsLineId]/relief/route'
@@ -48,7 +53,9 @@ import { POST as claim } from '../cpr-claims/route'
 import { NucleosUnavailableError } from '@/lib/nucleos/extraction-client'
 
 const lineParams = { params: Promise.resolve({ caseId: 'case-1', goodsLineId: 'gl-1' }) }
-const stmtParams = { params: Promise.resolve({ caseId: 'case-1', goodsLineId: 'gl-1', statementId: 'stmt-1' }) }
+const stmtParams = {
+  params: Promise.resolve({ caseId: 'case-1', goodsLineId: 'gl-1', statementId: 'stmt-1' }),
+}
 const HASH = 'a'.repeat(64)
 
 beforeEach(() => {
@@ -72,7 +79,10 @@ describe('GET relief', () => {
     const body = await res.json()
     expect(body).toMatchObject({
       origin: 'DE',
-      schemes: { eligible: true, options: [{ name: 'EU Emissions Trading System (EU ETS)', currency: 'EUR' }] },
+      schemes: {
+        eligible: true,
+        options: [{ name: 'EU Emissions Trading System (EU ETS)', currency: 'EUR' }],
+      },
       claims: [],
       next: 'claim',
       retryStatementId: null,
@@ -80,20 +90,52 @@ describe('GET relief', () => {
   })
 
   it("names the caller's own relief statement behind a claim", async () => {
-    claims.mockResolvedValue([{ id: 'c-1', created_at: '2027-04-20T10:00:00Z', cpr_amount_gbp: 100, verification_document_hash: HASH }])
+    claims.mockResolvedValue([
+      {
+        id: 'c-1',
+        created_at: '2027-04-20T10:00:00Z',
+        cpr_amount_gbp: 100,
+        verification_document_hash: HASH,
+      },
+    ])
     findMany.mockResolvedValue([
-      { id: 'stmt-1', sha256: HASH, verifierName: 'V Ltd', verifierAccreditation: 'UKAS 1', syncedAt: new Date(), syncError: null },
+      {
+        id: 'stmt-1',
+        sha256: HASH,
+        verifierName: 'V Ltd',
+        verifierAccreditation: 'UKAS 1',
+        syncedAt: new Date(),
+        syncError: null,
+      },
     ])
     const body = await (await relief(new Request('http://arbor.test'), lineParams)).json()
-    expect(findMany.mock.calls[0][0].where).toEqual({ entityId: 'ent-1', goodsLineId: 'gl-1', subject: 'RELIEF' })
+    expect(findMany.mock.calls[0][0].where).toEqual({
+      entityId: 'ent-1',
+      goodsLineId: 'gl-1',
+      subject: 'RELIEF',
+    })
     expect(body.claims[0].statement).toMatchObject({ attached: true, statementId: 'stmt-1' })
     expect(body.next).toBe('none')
   })
 
   it('offers a retry when the statement for the waiting claim did not reach Nucleos', async () => {
-    claims.mockResolvedValue([{ id: 'c-1', created_at: '2027-04-20T10:00:00Z', cpr_amount_gbp: 100, verification_document_hash: null }])
+    claims.mockResolvedValue([
+      {
+        id: 'c-1',
+        created_at: '2027-04-20T10:00:00Z',
+        cpr_amount_gbp: 100,
+        verification_document_hash: null,
+      },
+    ])
     findMany.mockResolvedValue([
-      { id: 'stmt-2', sha256: HASH, verifierName: 'V', verifierAccreditation: 'A', syncedAt: null, syncError: 'down' },
+      {
+        id: 'stmt-2',
+        sha256: HASH,
+        verifierName: 'V',
+        verifierAccreditation: 'A',
+        syncedAt: null,
+        syncError: 'down',
+      },
     ])
     const body = await (await relief(new Request('http://arbor.test'), lineParams)).json()
     expect(body).toMatchObject({ next: 'retry', retryStatementId: 'stmt-2', retryProblem: 'down' })
@@ -121,7 +163,10 @@ describe('GET relief', () => {
 
 function form(): FormData {
   const f = new FormData()
-  f.set('file', new File([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], 'relief.pdf', { type: 'application/pdf' }))
+  f.set(
+    'file',
+    new File([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], 'relief.pdf', { type: 'application/pdf' }),
+  )
   f.set('verifierName', 'Carbon Assurance Ltd')
   f.set('verifierAccreditation', 'UKAS 9876')
   return f
@@ -130,23 +175,36 @@ function form(): FormData {
 describe('POST relief statement', () => {
   it("stores the statement for the caller's own goods line", async () => {
     submitRelief.mockResolvedValue({ ok: true, statementId: 'stmt-1', synced: true, problem: null })
-    const res = await reliefStatement(new Request('http://arbor.test', { method: 'POST', body: form() }), lineParams)
+    const res = await reliefStatement(
+      new Request('http://arbor.test', { method: 'POST', body: form() }),
+      lineParams,
+    )
     expect(res.status).toBe(201)
     expect(submitRelief.mock.calls[0][0]).toMatchObject({
-      entityId: 'ent-1', userId: 'user-1', caseId: 'case-1', goodsLineId: 'gl-1',
-      verifierName: 'Carbon Assurance Ltd', verifierAccreditation: 'UKAS 9876',
+      entityId: 'ent-1',
+      userId: 'user-1',
+      caseId: 'case-1',
+      goodsLineId: 'gl-1',
+      verifierName: 'Carbon Assurance Ltd',
+      verifierAccreditation: 'UKAS 9876',
     })
   })
 
   it('refuses when there is no claim waiting for a statement', async () => {
     submitRelief.mockResolvedValue({ ok: false, code: 'REFUSED', message: 'Record the relief claim first.' })
-    const res = await reliefStatement(new Request('http://arbor.test', { method: 'POST', body: form() }), lineParams)
+    const res = await reliefStatement(
+      new Request('http://arbor.test', { method: 'POST', body: form() }),
+      lineParams,
+    )
     expect(res.status).toBe(409)
   })
 
   it('refuses a goods line the caller does not own, before storing anything', async () => {
     access.mockResolvedValue({ ok: false, status: 404, error: 'This goods line could not be found.' })
-    const res = await reliefStatement(new Request('http://arbor.test', { method: 'POST', body: form() }), lineParams)
+    const res = await reliefStatement(
+      new Request('http://arbor.test', { method: 'POST', body: form() }),
+      lineParams,
+    )
     expect(res.status).toBe(404)
     expect(submitRelief).not.toHaveBeenCalled()
   })
@@ -181,7 +239,9 @@ describe('POST cpr-claims', () => {
   })
 
   function post(status: number, body: unknown) {
-    global.fetch = jest.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch
+    global.fetch = jest.fn(
+      async () => new Response(JSON.stringify(body), { status }),
+    ) as unknown as typeof fetch
     return claim(
       new Request('http://arbor.test', {
         method: 'POST',
@@ -191,7 +251,9 @@ describe('POST cpr-claims', () => {
   }
 
   it("passes on Nucleos's reason when it refuses the claim", async () => {
-    const res = await post(422, { detail: 'X is not a scheme the UK recognises for relief on goods from DE.' })
+    const res = await post(422, {
+      detail: 'X is not a scheme the UK recognises for relief on goods from DE.',
+    })
     expect(res.status).toBe(422)
     expect((await res.json()).error).toBe('X is not a scheme the UK recognises for relief on goods from DE.')
   })

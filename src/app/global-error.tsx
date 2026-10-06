@@ -56,7 +56,14 @@ export default function GlobalError({
           >
             An unexpected error occurred. Your data is safe.
             {error.digest && (
-              <span style={{ display: 'block', marginTop: '8px', color: colours.textTertiary, fontSize: typography.sizes.xs }}>
+              <span
+                style={{
+                  display: 'block',
+                  marginTop: '8px',
+                  color: colours.textTertiary,
+                  fontSize: typography.sizes.xs,
+                }}
+              >
                 Reference: {error.digest}
               </span>
             )}

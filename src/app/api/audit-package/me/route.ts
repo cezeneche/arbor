@@ -83,7 +83,10 @@ export async function GET(req: NextRequest) {
   const periodStartRaw = sp.get('periodStart')
   const periodEndRaw = sp.get('periodEnd')
 
-  for (const [name, raw] of [['periodStart', periodStartRaw], ['periodEnd', periodEndRaw]] as const) {
+  for (const [name, raw] of [
+    ['periodStart', periodStartRaw],
+    ['periodEnd', periodEndRaw],
+  ] as const) {
     if (raw && Number.isNaN(Date.parse(raw))) {
       return NextResponse.json({ error: `Invalid ${name}.` }, { status: 400 })
     }
@@ -94,13 +97,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'periodStart must be on or before periodEnd.' }, { status: 400 })
   }
 
-  const { package: pkg, chainIntegrityVerified, auditEntryCount, merkleShadow } =
-    await assembleAuditPackage({
-      entityId,
-      periodStart,
-      periodEnd,
-      logRequestedById: userId,
-    })
+  const {
+    package: pkg,
+    chainIntegrityVerified,
+    auditEntryCount,
+    merkleShadow,
+  } = await assembleAuditPackage({
+    entityId,
+    periodStart,
+    periodEnd,
+    logRequestedById: userId,
+  })
 
   const body = {
     generatedAt: pkg.generatedAt.toISOString(),
@@ -185,11 +192,12 @@ export async function GET(req: NextRequest) {
   )
 
   const safeName =
-    pkg.entityName.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'entity'
+    pkg.entityName
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase() || 'entity'
   const scope =
-    periodStartRaw && periodEndRaw
-      ? `-${periodStartRaw.slice(0, 10)}-to-${periodEndRaw.slice(0, 10)}`
-      : ''
+    periodStartRaw && periodEndRaw ? `-${periodStartRaw.slice(0, 10)}-to-${periodEndRaw.slice(0, 10)}` : ''
   const filename = `arbor-audit-package-${safeName}${scope}.zip`
 
   return new NextResponse(new Uint8Array(zip), {

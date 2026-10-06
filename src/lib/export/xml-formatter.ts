@@ -44,7 +44,8 @@ function definitionElement(r: ExportRecord): string {
 }
 
 export function formatRecordsAsXML(records: ExportRecord[]): string {
-  const recordElements = records.map(r => `  <Record
+  const recordElements = records.map(
+    r => `  <Record
     id="${escapeXml(r.id)}"
     trustTier="${escapeXml(r.trustTier)}"
     confidenceScore="${r.confidenceScore}">
@@ -56,7 +57,8 @@ export function formatRecordsAsXML(records: ExportRecord[]): string {
     <ExtractionMethod>${escapeXml(r.extractionMethod)}</ExtractionMethod>
     <SourceDocumentId>${escapeXml(r.documentId)}</SourceDocumentId>
 ${definitionElement(r)}
-  </Record>`)
+  </Record>`,
+  )
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',

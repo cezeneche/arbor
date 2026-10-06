@@ -66,17 +66,31 @@ export function ShareVerifyButton({ entityId, packageHash }: { entityId: string;
             border: `1px solid ${confirmed ? colours.green : colours.red}`,
           }}
         >
-          <p style={{ margin: 0, fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: confirmed ? colours.green : colours.red }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.medium,
+              color: confirmed ? colours.green : colours.red,
+            }}
+          >
             {confirmed
               ? 'Issued by Arbor · audit chain intact'
               : result.hashIssuedByArbor
                 ? 'Issued by Arbor · audit chain does not verify'
                 : 'Could not confirm'}
           </p>
-          <p style={{ margin: '4px 0 0', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+          <p
+            style={{
+              margin: '4px 0 0',
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+            }}
+          >
             {result.hashIssuedByArbor
               ? `${result.entryCount ?? 0} audit entries checked · ${result.verifiedAt ? new Date(result.verifiedAt).toLocaleString('en-GB') : ''}`
-              : result.reason ?? 'This package could not be confirmed.'}
+              : (result.reason ?? 'This package could not be confirmed.')}
           </p>
         </div>
       )}

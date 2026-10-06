@@ -52,15 +52,15 @@ describe('validateConfirmFields', () => {
   })
 
   it('does not police field names when the document type has no definition on file', () => {
-    expect(validateConfirmFields([field({ fieldName: 'anything' })], { knownFieldNames: new Set() })).toEqual([])
+    expect(validateConfirmFields([field({ fieldName: 'anything' })], { knownFieldNames: new Set() })).toEqual(
+      [],
+    )
   })
 
   // A unit that cannot be normalised cannot be converted on output, which is the
   // one thing Layer 3 promises every recipient.
   it('rejects a unit Arbor cannot normalise', () => {
-    expect(validateConfirmFields([field({ confirmedUnit: 'squiggles' })])[0].problem).toBe(
-      'unsupported_unit',
-    )
+    expect(validateConfirmFields([field({ confirmedUnit: 'squiggles' })])[0].problem).toBe('unsupported_unit')
   })
 
   it('allows a field with no unit at all', () => {
@@ -84,7 +84,11 @@ describe('validateConfirmFields', () => {
   it('reports every problem, not just the first', () => {
     const errors = validateConfirmFields([
       field({ confirmedValue: 'x', confirmedUnit: 'squiggles' }),
-      field({ fieldName: 'other', periodStart: '2026-05-01T00:00:00.000Z', periodEnd: '2026-04-01T00:00:00.000Z' }),
+      field({
+        fieldName: 'other',
+        periodStart: '2026-05-01T00:00:00.000Z',
+        periodEnd: '2026-04-01T00:00:00.000Z',
+      }),
     ])
     expect(errors.map(e => e.problem).sort()).toEqual([
       'not_a_number',

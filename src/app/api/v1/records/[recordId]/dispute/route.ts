@@ -38,7 +38,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rec
   const { recordId } = await params
 
   const { allowed } = await checkRateLimit(RATE_LIMITS.buyerApi, buyerEntityId)
-  if (!allowed) return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, { status: 429 })
+  if (!allowed)
+    return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, { status: 429 })
 
   const body = await req.json().catch(() => null)
   const parsed = bodySchema.safeParse(body)
@@ -67,12 +68,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rec
   }
   // The data owner corrects their own data through review, not the dispute path.
   if (record.entityId === buyerEntityId) {
-    return NextResponse.json({ error: 'Use your own review flow to correct your data', code: 'SELF_DISPUTE' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Use your own review flow to correct your data', code: 'SELF_DISPUTE' },
+      { status: 400 },
+    )
   }
 
   // Authorise: an active grant from the supplier to this buyer must cover the record.
   const grants = await prisma.dataAccessGrant.findMany({
-    where: { grantorEntityId: record.entityId, granteeEntityId: buyerEntityId, isActive: true, revokedAt: null },
+    where: {
+      grantorEntityId: record.entityId,
+      granteeEntityId: buyerEntityId,
+      isActive: true,
+      revokedAt: null,
+    },
     select: GRANT_SCOPE_SELECT,
   })
   const covered = anyGrantCoversRecord(grants.map(toGrantScope), {
@@ -82,7 +91,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rec
     fieldName: record.fieldName,
   })
   if (!covered) {
-    return NextResponse.json({ error: 'No active grant covers this record', code: 'FORBIDDEN' }, { status: 403 })
+    return NextResponse.json(
+      { error: 'No active grant covers this record', code: 'FORBIDDEN' },
+      { status: 403 },
+    )
   }
 
   const job = record.document?.extractionJobs[0]

@@ -59,7 +59,11 @@ describe('evaluateAccuracyDrift', () => {
       // baseline (older, createdAt 1..5): all correct
       ...[1, 2, 3, 4, 5].map(t => mass(t, true, 0.8)),
       // recent (newer, createdAt 6..10): 1/5 correct -> delta = 0.2 - 1.0 = -0.8
-      mass(6, true, 0.8), mass(7, false, 0.8), mass(8, false, 0.8), mass(9, false, 0.8), mass(10, false, 0.8),
+      mass(6, true, 0.8),
+      mass(7, false, 0.8),
+      mass(8, false, 0.8),
+      mass(9, false, 0.8),
+      mass(10, false, 0.8),
     ]
     const report = evaluateAccuracyDrift(labels, opts)
     const g = report.groups.find(x => x.group === 'mass')!
@@ -74,8 +78,10 @@ describe('evaluateAccuracyDrift', () => {
 
   it('does not judge a group whose windows are too thin, even if accuracy differs', () => {
     const labels: DriftLabel[] = [
-      mass(1, true, 0.8), mass(2, true, 0.8),
-      mass(3, false, 0.8), mass(4, false, 0.8), // only 4 total -> baseline < minSamples
+      mass(1, true, 0.8),
+      mass(2, true, 0.8),
+      mass(3, false, 0.8),
+      mass(4, false, 0.8), // only 4 total -> baseline < minSamples
     ]
     const report = evaluateAccuracyDrift(labels, opts)
     const g = report.groups.find(x => x.group === 'mass')!

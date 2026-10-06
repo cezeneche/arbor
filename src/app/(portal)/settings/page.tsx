@@ -68,11 +68,7 @@ export default async function SettingsPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
         {/* Account */}
         <div style={sectionStyle}>
-          <ProfileEditor
-            name={user.name}
-            email={user.email}
-            role={user.role}
-          />
+          <ProfileEditor name={user.name} email={user.email} role={user.role} />
         </div>
 
         {/* Organisation */}
@@ -102,9 +98,7 @@ export default async function SettingsPage() {
 
         {/* Data preferences */}
         <div style={sectionStyle}>
-          <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
-            Data preferences
-          </p>
+          <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>Data preferences</p>
           <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[2] }}>
             Control how your data is used beyond your own account.
           </p>
@@ -112,35 +106,72 @@ export default async function SettingsPage() {
           {divider}
           <p style={{ ...textStyles.caption, color: colours.textTertiary, lineHeight: '1.6' }}>
             To request account closure or permanent data deletion, contact{' '}
-            <a href="mailto:support@arbor.uk" style={{ color: colours.textSecondary, textDecoration: 'underline' }}>support@arbor.uk</a>.
-            Your certified records will be retained for audit chain integrity until the request is processed.
+            <a
+              href="mailto:support@arbor.uk"
+              style={{ color: colours.textSecondary, textDecoration: 'underline' }}
+            >
+              support@arbor.uk
+            </a>
+            . Your certified records will be retained for audit chain integrity until the request is
+            processed.
           </p>
         </div>
 
         {/* Reports & logs - reads-not-fills tools, kept off the primary nav */}
         <div style={sectionStyle}>
-          <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
-            Logs &amp; access
-          </p>
+          <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>Logs &amp; access</p>
           <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[2] }}>
-            Review the history of every change to your data. Data quality, trends and benchmarks now live in Records.
+            Review the history of every change to your data. Data quality, trends and benchmarks now live in
+            Records.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {[
-              { href: '/settings/stewards', label: 'Who looks after what', desc: 'Name one person for each kind of data, so anything that needs checking goes to them.' },
-              { href: '/activity', label: entity.entityType === 'BUYER' ? 'Audit log' : 'Activity', desc: 'A time-ordered log of every action taken on your data.' },
+              {
+                href: '/settings/stewards',
+                label: 'Who looks after what',
+                desc: 'Name one person for each kind of data, so anything that needs checking goes to them.',
+              },
+              {
+                href: '/activity',
+                label: entity.entityType === 'BUYER' ? 'Audit log' : 'Activity',
+                desc: 'A time-ordered log of every action taken on your data.',
+              },
               ...(entity.entityType === 'BUYER'
-                ? [{ href: '/access', label: 'Access control', desc: 'Manage which buyers can see which of your records.' }]
+                ? [
+                    {
+                      href: '/access',
+                      label: 'Access control',
+                      desc: 'Manage which buyers can see which of your records.',
+                    },
+                  ]
                 : []),
-            ].map((row) => (
-              <div key={row.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] }}>
+            ].map(row => (
+              <div
+                key={row.href}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                }}
+              >
                 <div>
                   <p style={textStyles.rowTitle}>{row.label}</p>
                   <p style={{ ...textStyles.caption, marginTop: '2px' }}>{row.desc}</p>
                 </div>
                 <Link
                   href={row.href}
-                  style={{ padding: '6px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.navy, border: `1px solid ${colours.border}`, borderRadius: '4px', textDecoration: 'none', letterSpacing: typography.tracking.wide, whiteSpace: 'nowrap' as const }}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.medium,
+                    color: colours.navy,
+                    border: `1px solid ${colours.border}`,
+                    borderRadius: '4px',
+                    textDecoration: 'none',
+                    letterSpacing: typography.tracking.wide,
+                    whiteSpace: 'nowrap' as const,
+                  }}
                 >
                   Open
                 </Link>
@@ -151,19 +182,14 @@ export default async function SettingsPage() {
 
         {/* Security */}
         <div style={sectionStyle}>
-          <TwoFactorSetup
-            enabled={user.twoFactorEnabled}
-            isAdmin={sessionRole === 'ADMIN'}
-          />
+          <TwoFactorSetup enabled={user.twoFactorEnabled} isAdmin={sessionRole === 'ADMIN'} />
         </div>
 
         {/* Integrations */}
         <div style={sectionStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={textStyles.sectionTitle}>
-                Integrations &amp; API keys
-              </p>
+              <p style={textStyles.sectionTitle}>Integrations &amp; API keys</p>
               <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
                 Connect your ERP or accounting system to push data into arbor automatically.
               </p>
@@ -191,23 +217,51 @@ export default async function SettingsPage() {
         {/* Admin-only: connectors, webhooks, SSO */}
         {sessionRole === 'ADMIN' && (
           <div style={sectionStyle}>
-            <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[2] }}>
-              Administration
-            </p>
+            <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[2] }}>Administration</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
-                { href: '/settings/integrations', label: 'ERP & customs integrations', desc: 'Connect CDS, SAP, or NetSuite to pull data automatically.' },
-                { href: '/settings/webhooks', label: 'Webhooks', desc: 'Receive signed callbacks on certified records and access changes.' },
-                { href: '/settings/sso', label: 'Single sign-on', desc: 'Connect your identity provider via WorkOS.' },
-              ].map((row) => (
-                <div key={row.href} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] }}>
+                {
+                  href: '/settings/integrations',
+                  label: 'ERP & customs integrations',
+                  desc: 'Connect CDS, SAP, or NetSuite to pull data automatically.',
+                },
+                {
+                  href: '/settings/webhooks',
+                  label: 'Webhooks',
+                  desc: 'Receive signed callbacks on certified records and access changes.',
+                },
+                {
+                  href: '/settings/sso',
+                  label: 'Single sign-on',
+                  desc: 'Connect your identity provider via WorkOS.',
+                },
+              ].map(row => (
+                <div
+                  key={row.href}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: spacing[2],
+                  }}
+                >
                   <div>
                     <p style={textStyles.rowTitle}>{row.label}</p>
                     <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>{row.desc}</p>
                   </div>
                   <Link
                     href={row.href}
-                    style={{ padding: '6px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.navy, border: `1px solid ${colours.border}`, borderRadius: '4px', textDecoration: 'none', letterSpacing: typography.tracking.wide, whiteSpace: 'nowrap' as const }}
+                    style={{
+                      padding: '6px 14px',
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.medium,
+                      color: colours.navy,
+                      border: `1px solid ${colours.border}`,
+                      borderRadius: '4px',
+                      textDecoration: 'none',
+                      letterSpacing: typography.tracking.wide,
+                      whiteSpace: 'nowrap' as const,
+                    }}
                   >
                     Manage
                   </Link>

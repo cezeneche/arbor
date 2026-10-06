@@ -20,7 +20,12 @@ function toDate(s: unknown): Date | null {
 
 // HMRC CDS — customs declarations → LOGISTICS declared_weight.
 export function mapCdsDeclarations(payload: {
-  declarations?: Array<{ movementReferenceNumber?: string; declaredWeight?: number; weightUnit?: string; declarationDate?: string }>
+  declarations?: Array<{
+    movementReferenceNumber?: string
+    declaredWeight?: number
+    weightUnit?: string
+    declarationDate?: string
+  }>
 }): IntegrationRecord[] {
   const out: IntegrationRecord[] = []
   for (const d of payload.declarations ?? []) {
@@ -41,7 +46,14 @@ export function mapCdsDeclarations(payload: {
 
 // SAP S/4HANA OData material documents → MATERIALS quantity.
 export function mapSapMaterialDocs(payload: {
-  d?: { results?: Array<{ MaterialDocument?: string; QuantityInEntryUnit?: string; EntryUnit?: string; PostingDate?: string }> }
+  d?: {
+    results?: Array<{
+      MaterialDocument?: string
+      QuantityInEntryUnit?: string
+      EntryUnit?: string
+      PostingDate?: string
+    }>
+  }
 }): IntegrationRecord[] {
   const out: IntegrationRecord[] = []
   for (const r of payload.d?.results ?? []) {

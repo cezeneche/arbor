@@ -13,14 +13,7 @@
 import { valuesMatch } from '@/lib/confidence/ground-truth'
 import { classifyFieldType, type FieldType } from '@/lib/brain/field-types'
 import { KILL_SIGNAL_GROUPS } from '@/lib/confidence/calibration-metrics'
-import type {
-  EvalCase,
-  FieldScore,
-  GroupAccuracy,
-  EvalBaseline,
-  Regression,
-  EvalReport,
-} from './types'
+import type { EvalCase, FieldScore, GroupAccuracy, EvalBaseline, Regression, EvalReport } from './types'
 
 /** A kill-signal group may fall at most this far below baseline before it gates. */
 export const KILL_SIGNAL_MAX_DROP = 0.05

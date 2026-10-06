@@ -32,9 +32,8 @@ export default async function DefinitionsPage() {
       <div style={{ marginBottom: spacing[4] }}>
         <h1 style={textStyles.pageTitle}>What your figures mean</h1>
         <p style={{ ...textStyles.pageSubtitle, marginTop: spacing[1] }}>
-          Every number you share carries a plain English statement of what it counts and what it
-          leaves out. Where a customer has agreed that wording, the agreement travels with the data
-          too.
+          Every number you share carries a plain English statement of what it counts and what it leaves out.
+          Where a customer has agreed that wording, the agreement travels with the data too.
         </p>
       </div>
 
@@ -54,8 +53,8 @@ export default async function DefinitionsPage() {
               : `${overview.awaitingYou} wordings are waiting for you to agree them`}
           </p>
           <p style={{ ...textStyles.caption, marginTop: '2px' }}>
-            Read what it says. If it matches how you record that figure, agree it — your customer
-            then knows your number and theirs are counted the same way.
+            Read what it says. If it matches how you record that figure, agree it — your customer then knows
+            your number and theirs are counted the same way.
           </p>
         </div>
       )}
@@ -91,9 +90,8 @@ export default async function DefinitionsPage() {
           lineHeight: typography.lineHeight.body,
         }}
       >
-        Wordings are versioned. Anything you have already shared keeps the wording it was stored
-        under, even after the wording changes — nothing you sent in the past is altered by a
-        change made today.
+        Wordings are versioned. Anything you have already shared keeps the wording it was stored under, even
+        after the wording changes — nothing you sent in the past is altered by a change made today.
       </p>
     </div>
   )

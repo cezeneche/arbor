@@ -10,7 +10,12 @@ import { DOCUMENT_MAX_BYTES, MAX_INBOUND_ATTACHMENTS } from '@/lib/constants'
 // through the standard extraction pipeline. Unknown tokens are silently dropped
 // to prevent enumeration.
 export const processInboundEmailFunction = inngest.createFunction(
-  { id: 'process-inbound-email', retries: 2, concurrency: { limit: 5 }, triggers: [{ event: 'email/inbound' }] },
+  {
+    id: 'process-inbound-email',
+    retries: 2,
+    concurrency: { limit: 5 },
+    triggers: [{ event: 'email/inbound' }],
+  },
   async ({ event, step }) => {
     const { entityToken, attachments } = event.data as {
       entityToken: string
@@ -19,7 +24,10 @@ export const processInboundEmailFunction = inngest.createFunction(
     }
 
     const entity = await step.run('resolve-entity', async () =>
-      prisma.entity.findUnique({ where: { uploadEmailToken: entityToken }, select: { id: true, legalName: true } }),
+      prisma.entity.findUnique({
+        where: { uploadEmailToken: entityToken },
+        select: { id: true, legalName: true },
+      }),
     )
     if (!entity) return { dropped: true, reason: 'unknown_token' }
 

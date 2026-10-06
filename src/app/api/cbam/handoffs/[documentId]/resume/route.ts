@@ -10,10 +10,7 @@ import { runCbamHandoff } from '@/lib/layer2/cbam-handoff'
 // twice: a finished handoff is left alone, one already running is left to
 // finish, and nothing that already landed in Nucleos is posted again.
 
-export async function POST(
-  _request: Request,
-  { params }: { params: Promise<{ documentId: string }> },
-) {
+export async function POST(_request: Request, { params }: { params: Promise<{ documentId: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 

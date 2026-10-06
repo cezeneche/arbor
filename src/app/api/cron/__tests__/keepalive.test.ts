@@ -53,7 +53,10 @@ describe('GET /api/cron/keepalive', () => {
   })
 
   it('reports an unreachable Redis even though the database answered', async () => {
-    rateLimiterHealth.mockResolvedValueOnce({ ok: false, detail: 'Upstash did not answer, so nobody can sign in.' })
+    rateLimiterHealth.mockResolvedValueOnce({
+      ok: false,
+      detail: 'Upstash did not answer, so nobody can sign in.',
+    })
 
     const res = await GET(request('Bearer secret'))
 
@@ -76,7 +79,9 @@ describe('GET /api/cron/keepalive', () => {
     const res = await GET(request('Bearer secret'))
 
     expect(res.status).toBe(200)
-    expect(sendTokenExpiryAlert).toHaveBeenCalledWith(expect.objectContaining({ daysLeft: 7, expired: false }))
+    expect(sendTokenExpiryAlert).toHaveBeenCalledWith(
+      expect.objectContaining({ daysLeft: 7, expired: false }),
+    )
     expect(await res.json()).toMatchObject({ serviceToken: { daysLeft: 7, alertsSent: 1 } })
   })
 })

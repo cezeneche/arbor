@@ -10,14 +10,7 @@
 // path is intentionally not capped.
 
 export type PlanTier =
-  | 'PILOT'
-  | 'STARTER'
-  | 'MICRO'
-  | 'SMALL'
-  | 'GROWTH'
-  | 'STANDARD'
-  | 'BUSINESS'
-  | 'ENTERPRISE'
+  'PILOT' | 'STARTER' | 'MICRO' | 'SMALL' | 'GROWTH' | 'STANDARD' | 'BUSINESS' | 'ENTERPRISE'
 
 export interface PlanLimits {
   /** Cap on active DataRecords; null = unlimited. */
@@ -38,18 +31,66 @@ export interface PlanLimits {
 }
 
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
-  PILOT: { maxActiveRecords: null, maxUploadsPerMonth: null, maxSupplierConnections: null, allowsUploads: true, allowsAuditPackage: true },
+  PILOT: {
+    maxActiveRecords: null,
+    maxUploadsPerMonth: null,
+    maxSupplierConnections: null,
+    allowsUploads: true,
+    allowsAuditPackage: true,
+  },
   // Supplier plans (pricing page)
   // STARTER holds no documents, so a package whose whole value is document-backed
   // provenance would be an empty promise on it.
-  STARTER: { maxActiveRecords: 5, maxUploadsPerMonth: 0, maxSupplierConnections: null, allowsUploads: false, allowsAuditPackage: false },
-  MICRO: { maxActiveRecords: 500, maxUploadsPerMonth: 10, maxSupplierConnections: null, allowsUploads: true, allowsAuditPackage: true },
-  SMALL: { maxActiveRecords: 2500, maxUploadsPerMonth: 50, maxSupplierConnections: null, allowsUploads: true, allowsAuditPackage: true },
-  GROWTH: { maxActiveRecords: 10000, maxUploadsPerMonth: null, maxSupplierConnections: null, allowsUploads: true, allowsAuditPackage: true },
+  STARTER: {
+    maxActiveRecords: 5,
+    maxUploadsPerMonth: 0,
+    maxSupplierConnections: null,
+    allowsUploads: false,
+    allowsAuditPackage: false,
+  },
+  MICRO: {
+    maxActiveRecords: 500,
+    maxUploadsPerMonth: 10,
+    maxSupplierConnections: null,
+    allowsUploads: true,
+    allowsAuditPackage: true,
+  },
+  SMALL: {
+    maxActiveRecords: 2500,
+    maxUploadsPerMonth: 50,
+    maxSupplierConnections: null,
+    allowsUploads: true,
+    allowsAuditPackage: true,
+  },
+  GROWTH: {
+    maxActiveRecords: 10000,
+    maxUploadsPerMonth: null,
+    maxSupplierConnections: null,
+    allowsUploads: true,
+    allowsAuditPackage: true,
+  },
   // Buyer plans (pricing page)
-  STANDARD: { maxActiveRecords: null, maxUploadsPerMonth: null, maxSupplierConnections: 10, allowsUploads: true, allowsAuditPackage: true },
-  BUSINESS: { maxActiveRecords: null, maxUploadsPerMonth: null, maxSupplierConnections: 50, allowsUploads: true, allowsAuditPackage: true },
-  ENTERPRISE: { maxActiveRecords: null, maxUploadsPerMonth: null, maxSupplierConnections: null, allowsUploads: true, allowsAuditPackage: true },
+  STANDARD: {
+    maxActiveRecords: null,
+    maxUploadsPerMonth: null,
+    maxSupplierConnections: 10,
+    allowsUploads: true,
+    allowsAuditPackage: true,
+  },
+  BUSINESS: {
+    maxActiveRecords: null,
+    maxUploadsPerMonth: null,
+    maxSupplierConnections: 50,
+    allowsUploads: true,
+    allowsAuditPackage: true,
+  },
+  ENTERPRISE: {
+    maxActiveRecords: null,
+    maxUploadsPerMonth: null,
+    maxSupplierConnections: null,
+    allowsUploads: true,
+    allowsAuditPackage: true,
+  },
 }
 
 export interface LimitCheck {
@@ -60,7 +101,10 @@ export interface LimitCheck {
 export function checkUploadAllowed(tier: PlanTier, uploadsThisMonth: number): LimitCheck {
   const limits = PLAN_LIMITS[tier]
   if (!limits.allowsUploads) {
-    return { allowed: false, reason: 'Your plan does not include document uploads. Upgrade to upload documents.' }
+    return {
+      allowed: false,
+      reason: 'Your plan does not include document uploads. Upgrade to upload documents.',
+    }
   }
   if (limits.maxUploadsPerMonth !== null && uploadsThisMonth >= limits.maxUploadsPerMonth) {
     return {

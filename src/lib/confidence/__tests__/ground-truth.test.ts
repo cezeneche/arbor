@@ -93,12 +93,20 @@ describe('buildGroundTruthLabel', () => {
 
   it('clamps confidence into [0,1] so a stray score cannot poison the fit', () => {
     expect(
-      buildGroundTruthLabel({ ...base, extractedValue: 'x', confirmedValue: 'x', confidenceAtExtraction: 1.4 })
-        .confidenceAtExtraction,
+      buildGroundTruthLabel({
+        ...base,
+        extractedValue: 'x',
+        confirmedValue: 'x',
+        confidenceAtExtraction: 1.4,
+      }).confidenceAtExtraction,
     ).toBe(1)
     expect(
-      buildGroundTruthLabel({ ...base, extractedValue: 'x', confirmedValue: 'x', confidenceAtExtraction: -0.2 })
-        .confidenceAtExtraction,
+      buildGroundTruthLabel({
+        ...base,
+        extractedValue: 'x',
+        confirmedValue: 'x',
+        confidenceAtExtraction: -0.2,
+      }).confidenceAtExtraction,
     ).toBe(0)
   })
 })

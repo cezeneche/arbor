@@ -60,10 +60,7 @@ export async function ownedCaseIds(
  * not enough on its own — the line has to be checked against that case too, or
  * an owned case id becomes a pass for any line in Nucleos.
  */
-export function goodsLineBelongsToCase(
-  caseRecord: Record<string, unknown>,
-  goodsLineId: string,
-): boolean {
+export function goodsLineBelongsToCase(caseRecord: Record<string, unknown>, goodsLineId: string): boolean {
   if (!goodsLineId) return false
   const lines = caseRecord.goods_lines
   if (!Array.isArray(lines)) return false

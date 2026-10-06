@@ -1,12 +1,7 @@
 const getVercelOidcToken = jest.fn()
 jest.mock('@vercel/oidc', () => ({ getVercelOidcToken: (...a: unknown[]) => getVercelOidcToken(...a) }))
 
-import {
-  monitoredServiceToken,
-  nucleosAuthMode,
-  nucleosHeaders,
-  serviceTokenExpiry,
-} from '../service-auth'
+import { monitoredServiceToken, nucleosAuthMode, nucleosHeaders, serviceTokenExpiry } from '../service-auth'
 import { NucleosUnavailableError } from '../extraction-client'
 
 // Every call to Nucleos carries a credential and a request id, so a failure on
@@ -66,7 +61,7 @@ describe('nucleosHeaders with the OIDC identity', () => {
     process.env.NUCLEOS_OIDC_AUDIENCE = 'https://nucleos.test'
   })
 
-  it('sends the Vercel token exchanged for Nucleos\'s audience', async () => {
+  it("sends the Vercel token exchanged for Nucleos's audience", async () => {
     getVercelOidcToken.mockResolvedValue('oidc-token')
     const h = await nucleosHeaders()
     expect(h.authorization).toBe('Bearer oidc-token')
@@ -100,7 +95,9 @@ describe('monitoredServiceToken', () => {
   it('is the static token only while it is the credential in use', () => {
     expect(monitoredServiceToken({ NUCLEOS_INTERNAL_TOKEN: 't' })).toBe('t')
     // A fallback that is not in use must not raise renewal alarms.
-    expect(monitoredServiceToken({ NUCLEOS_OIDC_AUDIENCE: 'https://n', NUCLEOS_INTERNAL_TOKEN: 't' })).toBe('')
+    expect(monitoredServiceToken({ NUCLEOS_OIDC_AUDIENCE: 'https://n', NUCLEOS_INTERNAL_TOKEN: 't' })).toBe(
+      '',
+    )
     expect(monitoredServiceToken({})).toBe('')
   })
 })
@@ -125,8 +122,16 @@ describe('serviceTokenExpiry', () => {
   })
 
   it('reports no expiry for a token without one, or one that is not a JWT', () => {
-    expect(serviceTokenExpiry(jwt({ sub: 'arbor' }), now)).toEqual({ expiresAt: null, daysLeft: null, expired: false })
-    expect(serviceTokenExpiry('opaque-token', now)).toEqual({ expiresAt: null, daysLeft: null, expired: false })
+    expect(serviceTokenExpiry(jwt({ sub: 'arbor' }), now)).toEqual({
+      expiresAt: null,
+      daysLeft: null,
+      expired: false,
+    })
+    expect(serviceTokenExpiry('opaque-token', now)).toEqual({
+      expiresAt: null,
+      daysLeft: null,
+      expired: false,
+    })
     expect(serviceTokenExpiry('', now)).toEqual({ expiresAt: null, daysLeft: null, expired: false })
   })
 })

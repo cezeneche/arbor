@@ -95,12 +95,28 @@ async function mintToken(scopes = ['cbam:read', 'cbam:write']) {
 
 const server = spawn(
   path.join(venv, 'python'),
-  ['-m', 'uvicorn', 'main:app', '--app-dir', 'api', '--host', '127.0.0.1', '--port', String(PORT), '--log-level', 'warning'],
+  [
+    '-m',
+    'uvicorn',
+    'main:app',
+    '--app-dir',
+    'api',
+    '--host',
+    '127.0.0.1',
+    '--port',
+    String(PORT),
+    '--log-level',
+    'warning',
+  ],
   { cwd: path.join(REPO, 'nucleos'), env: ENV, stdio: ['ignore', 'pipe', 'pipe'] },
 )
 let serverLog = ''
-server.stdout.on('data', d => { serverLog += d })
-server.stderr.on('data', d => { serverLog += d })
+server.stdout.on('data', d => {
+  serverLog += d
+})
+server.stderr.on('data', d => {
+  serverLog += d
+})
 
 let exitCode = 0
 try {
@@ -135,9 +151,16 @@ try {
       'src/lib/nucleos/supplier-history-client.ts',
       'src/lib/nucleos/supplier-history-presenter.ts',
       'src/lib/nucleos/narrative-client.ts',
-      '--outDir', outDir, '--rootDir', 'src/lib/nucleos',
-      '--module', 'commonjs', '--target', 'es2020',
-      '--esModuleInterop', '--skipLibCheck',
+      '--outDir',
+      outDir,
+      '--rootDir',
+      'src/lib/nucleos',
+      '--module',
+      'commonjs',
+      '--target',
+      'es2020',
+      '--esModuleInterop',
+      '--skipLibCheck',
     ],
     { cwd: REPO, stdio: 'pipe' },
   )
@@ -170,7 +193,11 @@ try {
   check('client and service agree on the response shape', result && typeof result === 'object')
   check('document_id round-trips', result.document_id === 'boundary-doc-1', result.document_id)
   check('engine version is stamped', Boolean(result.engine?.engine_version), JSON.stringify(result.engine))
-  check('fields came back', Array.isArray(result.fields) && result.fields.length > 0, `${result.fields?.length} fields`)
+  check(
+    'fields came back',
+    Array.isArray(result.fields) && result.fields.length > 0,
+    `${result.fields?.length} fields`,
+  )
 
   const eori = result.fields.find(f => f.field_name === 'importer_eori')
   check('a known field is extracted', eori?.raw_value === 'GB123456789000', eori?.raw_value)
@@ -180,7 +207,11 @@ try {
   check('a goods line came back', Boolean(line), 'no lines')
   check('CN code is read', line?.cn_code === '72071111', line?.cn_code)
   // The N6 fix, proven over the wire rather than in a unit test.
-  check('thousand-separated mass survives the boundary', line?.net_mass_kg === 24500, String(line?.net_mass_kg))
+  check(
+    'thousand-separated mass survives the boundary',
+    line?.net_mass_kg === 24500,
+    String(line?.net_mass_kg),
+  )
 
   check('no provenance tier is asserted', !JSON.stringify(result).includes('provenance_tier'))
 
@@ -193,8 +224,11 @@ try {
   let rejected = false
   try {
     await extractCbamFields({
-      document_id: 'boundary-doc-2', document_type: 'CUSTOMS_DECLARATION',
-      entity_id: 'boundary-entity', text: INVOICE, jurisdiction: 'EU',
+      document_id: 'boundary-doc-2',
+      document_type: 'CUSTOMS_DECLARATION',
+      entity_id: 'boundary-entity',
+      text: INVOICE,
+      jurisdiction: 'EU',
       blob_url: 'https://example.invalid/doc.pdf',
     })
   } catch {
@@ -208,8 +242,11 @@ try {
   // Without an EORI the determination is deliberately "requires_review" rather
   // than a confident yes — the CN code is covered but a factor is missing. What
   // matters here is that it is not out_of_scope.
-  check('a covered CN code is not written off as out of scope',
-    scope?.status === 'in_scope' || scope?.status === 'requires_review', scope?.status)
+  check(
+    'a covered CN code is not written off as out of scope',
+    scope?.status === 'in_scope' || scope?.status === 'requires_review',
+    scope?.status,
+  )
   check('the answer cites its provisions', (scope?.regulation_refs ?? []).length > 0)
 
   console.log('\n── Supplier form ──')
@@ -227,9 +264,11 @@ try {
   // errors — and that is the point: an error FROM the handler proves the route
   // exists. A wrong path produces "endpoint not found" instead, which is exactly
   // the failure that shipped once and reported itself as an expired link.
-  check('supplier form reaches a real route',
+  check(
+    'supplier form reaches a real route',
     !/endpoint not found/i.test(supplierErr?.message ?? ''),
-    supplierErr?.message?.slice(0, 100))
+    supplierErr?.message?.slice(0, 100),
+  )
 
   console.log('\n── Verification ──')
   // Each step must reach a real route and have its body accepted. On SQLite the
@@ -257,9 +296,11 @@ try {
       stepErr = e
     }
     const message = stepErr?.message ?? ''
-    check(`${name} reaches a real route and its body is accepted`,
+    check(
+      `${name} reaches a real route and its body is accepted`,
       message !== 'Not Found' && !/ 422 /.test(message),
-      message.slice(0, 100))
+      message.slice(0, 100),
+    )
   }
 
   console.log('\n── Carbon price relief ──')
@@ -279,9 +320,11 @@ try {
       callErr = e
     }
     const message = callErr?.message ?? ''
-    check(`${name} reaches a real route and is accepted`,
+    check(
+      `${name} reaches a real route and is accepted`,
       !/ 404 /.test(message) && !/ 422 /.test(message) && message !== 'Not Found',
-      message.slice(0, 100))
+      message.slice(0, 100),
+    )
   }
 
   // HMRC's monthly rate comes from Nucleos's reference table, not the database,
@@ -292,7 +335,11 @@ try {
   } catch (e) {
     hmrcRate = { error: e.message }
   }
-  check("HMRC's exchange rate for the month comes back", hmrcRate?.rate === '0.864304', JSON.stringify(hmrcRate))
+  check(
+    "HMRC's exchange rate for the month comes back",
+    hmrcRate?.rate === '0.864304',
+    JSON.stringify(hmrcRate),
+  )
 
   // The relief client reads a 404 as "no claim waiting", so a wrong path would
   // pass through it unnoticed. Watch what Nucleos actually answers instead.
@@ -312,9 +359,11 @@ try {
   } catch {
     // On SQLite the handler may fail; what matters is which route answered.
   }
-  check('relief statement (a reference, not a file) reaches a real route and is accepted',
+  check(
+    'relief statement (a reference, not a file) reaches a real route and is accepted',
     reliefStatus !== null && reliefStatus !== 422 && reliefBody.trim() !== '{"detail":"Not Found"}',
-    `${reliefStatus} ${reliefBody.slice(0, 100)}`)
+    `${reliefStatus} ${reliefBody.slice(0, 100)}`,
+  )
 
   console.log('\n── Supplier history ──')
   // The client reads a 404 as "no history", so a wrong path would pass through
@@ -331,9 +380,11 @@ try {
   } catch {
     // On SQLite the handler may fail; what matters is which route answered.
   }
-  check('supplier history reaches a real route',
+  check(
+    'supplier history reaches a real route',
     historyStatus !== null && historyStatus !== 422 && historyBody.trim() !== '{"detail":"Not Found"}',
-    `${historyStatus} ${historyBody.slice(0, 100)}`)
+    `${historyStatus} ${historyBody.slice(0, 100)}`,
+  )
 
   console.log('\n── Why this number? ──')
   // The evidence Arbor files when it opens a case, built by the real builder,
@@ -342,9 +393,16 @@ try {
   // mirrors case-writer.ts's sendEvidence.
   const aCase = '00000000-0000-0000-0000-00000000cafe'
   const atoms = buildCaseEvidence({
-    readFields: [{ fieldName: 'lines[0].net_mass_kg', extractedValue: '24 500', sourceText: 'Net mass | 24 500 kg', confidence: 0.9 }],
+    readFields: [
+      {
+        fieldName: 'lines[0].net_mass_kg',
+        extractedValue: '24 500',
+        sourceText: 'Net mass | 24 500 kg',
+        confidence: 0.9,
+      },
+    ],
     confirmed: { 'lines[0].net_mass_kg': '24500' },
-    lineIds: { '0': aLine },
+    lineIds: { 0: aLine },
   })
   const evRes = await fetch(`${BASE}/api/cbam/cases/${aCase}/evidence`, {
     method: 'POST',
@@ -353,9 +411,11 @@ try {
   })
   const evBody = await evRes.text()
   check('the evidence builder produces atoms', atoms.length === 1, JSON.stringify(atoms))
-  check('evidence reaches a real route and its atoms are accepted',
+  check(
+    'evidence reaches a real route and its atoms are accepted',
     evRes.status !== 422 && !(evRes.status === 404 && /"Not Found"/.test(evBody)),
-    `${evRes.status} ${evBody.slice(0, 100)}`)
+    `${evRes.status} ${evBody.slice(0, 100)}`,
+  )
 
   // The explain client maps a 404 to "nothing recorded", so a wrong path would
   // pass silently through it. Watch what Nucleos actually answers instead.
@@ -374,10 +434,14 @@ try {
   }
   // On SQLite the handler itself fails (500), which proves the route exists. A
   // bare "Not Found" is the router's answer for a path that does not.
-  check('explain reaches a real route and its query is accepted',
-    explainStatus !== null && explainStatus !== 400 && explainStatus !== 422 &&
+  check(
+    'explain reaches a real route and its query is accepted',
+    explainStatus !== null &&
+      explainStatus !== 400 &&
+      explainStatus !== 422 &&
       explainBody.trim() !== '{"detail":"Not Found"}',
-    `${explainStatus} ${explainBody.slice(0, 100)}`)
+    `${explainStatus} ${explainBody.slice(0, 100)}`,
+  )
 
   console.log('\n── Audit narrative ──')
   // The token above carries what production's does: cbam:read and cbam:write.
@@ -389,9 +453,11 @@ try {
   } catch (e) {
     narrativeErr = e
   }
-  check('without narrative:run, the refusal is reported as a missing scope',
+  check(
+    'without narrative:run, the refusal is reported as a missing scope',
     narrativeErr instanceof narrativeClient.NarrativeNotAllowedError,
-    narrativeErr?.message?.slice(0, 100))
+    narrativeErr?.message?.slice(0, 100),
+  )
 
   // With the scope, the route has to exist. On SQLite the handler fails; a
   // bare "Not Found" would mean the client calls a path Nucleos does not serve.
@@ -411,17 +477,21 @@ try {
   } finally {
     process.env.NUCLEOS_INTERNAL_TOKEN = token
   }
-  check('with narrative:run, the compliance pack reaches a real route',
+  check(
+    'with narrative:run, the compliance pack reaches a real route',
     packStatus !== null && packStatus !== 403 && packBody.trim() !== '{"detail":"Not Found"}',
-    `${packStatus} ${packBody.slice(0, 100)}`)
+    `${packStatus} ${packBody.slice(0, 100)}`,
+  )
 
   console.log('\n── Calculation boundary ──')
   const calcRes = await fetch(`${BASE}/api/internal/calculate`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      case_reference: 'boundary-case', entity_id: 'boundary-entity',
-      jurisdiction: 'EU', reporting_year: 2027,
+      case_reference: 'boundary-case',
+      entity_id: 'boundary-entity',
+      jurisdiction: 'EU',
+      reporting_year: 2027,
       lines: [{ line_id: 'gl-1', cn_code: '72071111', net_mass_kg: 24500, provenance_tier: 'DECLARED' }],
     }),
   })
@@ -430,13 +500,27 @@ try {
   const cl = calc.lines?.[0]
   check('emissions method is chosen', cl?.emissions_method === 'DEFAULT', cl?.emissions_method)
   check('provenance is echoed, not recomputed', cl?.provenance_tier === 'DECLARED', cl?.provenance_tier)
-  check('the 2027 mark-up is applied', Math.abs((cl?.markup_fraction ?? 0) - 0.2) < 1e-9, String(cl?.markup_fraction))
-  check('versions are stamped on the result', Boolean(calc.engine?.markup_table_version), JSON.stringify(calc.engine))
+  check(
+    'the 2027 mark-up is applied',
+    Math.abs((cl?.markup_fraction ?? 0) - 0.2) < 1e-9,
+    String(cl?.markup_fraction),
+  )
+  check(
+    'versions are stamped on the result',
+    Boolean(calc.engine?.markup_table_version),
+    JSON.stringify(calc.engine),
+  )
 
   const empty = await fetch(`${BASE}/api/internal/calculate`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-    body: JSON.stringify({ case_reference: 'c', entity_id: 'e', jurisdiction: 'EU', reporting_year: 2027, lines: [] }),
+    body: JSON.stringify({
+      case_reference: 'c',
+      entity_id: 'e',
+      jurisdiction: 'EU',
+      reporting_year: 2027,
+      lines: [],
+    }),
   })
   check('an empty declaration is rejected', empty.status === 422, String(empty.status))
 } catch (err) {

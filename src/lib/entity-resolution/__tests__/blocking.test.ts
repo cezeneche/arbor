@@ -36,9 +36,7 @@ describe('normaliseIdentityName', () => {
   })
 
   it('collapses two spellings of the same company to the same string', () => {
-    expect(normaliseIdentityName('ACME STEEL LIMITED')).toBe(
-      normaliseIdentityName('Acme Steel Ltd.'),
-    )
+    expect(normaliseIdentityName('ACME STEEL LIMITED')).toBe(normaliseIdentityName('Acme Steel Ltd.'))
   })
 })
 
@@ -87,10 +85,7 @@ describe('candidatePairs', () => {
   })
 
   it('pairs entities in the same country+sector block', () => {
-    const pairs = candidatePairs([
-      entity({ id: 'a' }),
-      entity({ id: 'b' }),
-    ])
+    const pairs = candidatePairs([entity({ id: 'a' }), entity({ id: 'b' })])
     expect(pairs).toEqual([['a', 'b']])
   })
 
@@ -111,11 +106,7 @@ describe('candidatePairs', () => {
   })
 
   it('orders each pair deterministically (id-sorted) and is symmetric-free', () => {
-    const pairs = candidatePairs([
-      entity({ id: 'z' }),
-      entity({ id: 'a' }),
-      entity({ id: 'm' }),
-    ])
+    const pairs = candidatePairs([entity({ id: 'z' }), entity({ id: 'a' }), entity({ id: 'm' })])
     // 3 entities in one block → 3 unordered pairs, each id-sorted.
     expect(pairs).toEqual([
       ['a', 'm'],

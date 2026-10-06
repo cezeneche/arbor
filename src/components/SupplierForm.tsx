@@ -14,13 +14,7 @@ import type { SupplierFormContext } from '@/lib/nucleos/supplier-form-client'
 // means. The regulatory term appears once, in the hint, so the figure they take
 // off their own paperwork matches what is being asked for.
 
-export function SupplierForm({
-  token,
-  context,
-}: {
-  token: string
-  context: SupplierFormContext
-}) {
+export function SupplierForm({ token, context }: { token: string; context: SupplierFormContext }) {
   const [intensity, setIntensity] = useState('')
   const [route, setRoute] = useState(context.production_routes[0]?.key ?? '')
   const [installation, setInstallation] = useState(context.installation_name ?? '')
@@ -57,12 +51,26 @@ export function SupplierForm({
   if (state === 'sent') {
     return (
       <div>
-        <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0 }}>
+        <h1
+          style={{
+            fontSize: typography.sizes.lg,
+            fontWeight: typography.weights.medium,
+            color: colours.textPrimary,
+            margin: 0,
+          }}
+        >
           Thank you — that is everything we needed.
         </h1>
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, marginTop: spacing[2] }}>
-          {context.importer_name ?? 'The company that contacted you'} has your figure.
-          You do not need to do anything else, and you can close this page.
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.textSecondary,
+            marginTop: spacing[2],
+          }}
+        >
+          {context.importer_name ?? 'The company that contacted you'} has your figure. You do not need to do
+          anything else, and you can close this page.
         </p>
       </div>
     )
@@ -99,8 +107,8 @@ export function SupplierForm({
           How much CO₂e does one tonne of these goods produce?
         </label>
         <p style={hint}>
-          In tonnes of CO₂e per tonne of product — the direct specific embedded
-          emissions figure from your own records. For example, 1.8.
+          In tonnes of CO₂e per tonne of product — the direct specific embedded emissions figure from your own
+          records. For example, 1.8.
         </p>
         <input
           id="intensity"
@@ -119,16 +127,8 @@ export function SupplierForm({
         <label htmlFor="route" style={label}>
           How were they produced?
         </label>
-        <p style={hint}>
-          This decides which published figure your number is checked against.
-        </p>
-        <select
-          id="route"
-          required
-          value={route}
-          onChange={e => setRoute(e.target.value)}
-          style={input}
-        >
+        <p style={hint}>This decides which published figure your number is checked against.</p>
+        <select id="route" required value={route} onChange={e => setRoute(e.target.value)} style={input}>
           {context.production_routes.map(r => (
             <option key={r.key} value={r.key}>
               {r.label}
@@ -139,7 +139,8 @@ export function SupplierForm({
 
       <div style={{ marginBottom: spacing[4] }}>
         <label htmlFor="installation" style={label}>
-          Which site produced them? <span style={{ fontWeight: typography.weights.light, color: colours.textSecondary }}>Optional</span>
+          Which site produced them?{' '}
+          <span style={{ fontWeight: typography.weights.light, color: colours.textSecondary }}>Optional</span>
         </label>
         <input
           id="installation"
@@ -151,7 +152,14 @@ export function SupplierForm({
       </div>
 
       {error && (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.amber, marginBottom: spacing[3] }}>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.amber,
+            marginBottom: spacing[3],
+          }}
+        >
           {error}
         </p>
       )}

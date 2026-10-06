@@ -14,10 +14,7 @@
 // belong to a submitted document type AND can be stored as records, which are
 // absent.
 
-import {
-  getCompulsoryStorableFieldsByDocumentType,
-  expectedFieldsFor,
-} from '../compulsory-fields'
+import { getCompulsoryStorableFieldsByDocumentType, expectedFieldsFor } from '../compulsory-fields'
 
 describe('getCompulsoryStorableFieldsByDocumentType', () => {
   const byType = getCompulsoryStorableFieldsByDocumentType()
@@ -59,8 +56,10 @@ describe('expectedFieldsFor', () => {
   })
 
   it('unions across several submitted types', () => {
-    expect(expectedFieldsFor(['FREIGHT_INVOICE', 'BILL_OF_LADING'], byType).sort())
-      .toEqual(['gross_weight', 'shipment_weight'])
+    expect(expectedFieldsFor(['FREIGHT_INVOICE', 'BILL_OF_LADING'], byType).sort()).toEqual([
+      'gross_weight',
+      'shipment_weight',
+    ])
   })
 
   it('expects nothing from a document type that was never submitted', () => {

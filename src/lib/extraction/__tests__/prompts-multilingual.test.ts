@@ -1,8 +1,4 @@
-import {
-  buildExtractionPrompt,
-  buildLanguageDetectionPrompt,
-  buildQualityAssessmentPrompt,
-} from '../prompts'
+import { buildExtractionPrompt, buildLanguageDetectionPrompt, buildQualityAssessmentPrompt } from '../prompts'
 
 // Layer 1 multilingual + degraded-document handling.
 // These are pure prompt-construction functions; no AI call is made here.

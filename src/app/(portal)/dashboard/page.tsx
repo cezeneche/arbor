@@ -85,15 +85,24 @@ export default async function DashboardPage() {
     prisma.dataRecord.findMany({
       where: { entityId, isActive: true, periodEnd: { gte: periods[0].start } },
       select: {
-        id: true, domain: true, fieldName: true, value: true, unit: true, trustTier: true,
-        periodStart: true, periodEnd: true, submittedById: true,
+        id: true,
+        domain: true,
+        fieldName: true,
+        value: true,
+        unit: true,
+        trustTier: true,
+        periodStart: true,
+        periodEnd: true,
+        submittedById: true,
         document: { select: { fileName: true } },
       },
     }),
     prisma.document.findMany({
       where: { entityId, status: { in: ['REVIEW_REQUIRED', 'REJECTED'] } },
       select: {
-        id: true, fileName: true, status: true,
+        id: true,
+        fileName: true,
+        status: true,
         extractionJobs: {
           orderBy: { completedAt: 'desc' },
           take: 1,
@@ -111,7 +120,10 @@ export default async function DashboardPage() {
         OR: [{ buyerEntityId: entityId }, { supplierEntityId: entityId }],
       },
       select: {
-        id: true, domain: true, deadline: true, buyerEntityId: true,
+        id: true,
+        domain: true,
+        deadline: true,
+        buyerEntityId: true,
         buyerEntity: { select: { legalName: true } },
         supplierEntity: { select: { legalName: true } },
       },
@@ -176,16 +188,20 @@ export default async function DashboardPage() {
   const attention = buildAttention({
     now,
     records: records.map(r => ({
-      id: r.id, domain: r.domain, fieldName: r.fieldName, value: r.value, unit: r.unit,
+      id: r.id,
+      domain: r.domain,
+      fieldName: r.fieldName,
+      value: r.value,
+      unit: r.unit,
       trustTier: r.trustTier as 'A' | 'B' | 'C',
-      periodStart: r.periodStart, periodEnd: r.periodEnd,
+      periodStart: r.periodStart,
+      periodEnd: r.periodEnd,
     })),
     requests: requests.map(q => ({
       id: q.id,
       domain: q.domain,
       deadline: q.deadline,
-      counterpartyName:
-        q.buyerEntityId === entityId ? q.supplierEntity.legalName : q.buyerEntity.legalName,
+      counterpartyName: q.buyerEntityId === entityId ? q.supplierEntity.legalName : q.buyerEntity.legalName,
     })),
     documents: [
       ...reviewDocs,
@@ -320,8 +336,13 @@ export default async function DashboardPage() {
             <div style={{ display: 'flex', gap: spacing[6], flexWrap: 'wrap' }}>
               {buildOverviewTotals(
                 records.map(r => ({
-                  id: r.id, domain: r.domain, fieldName: r.fieldName, value: r.value,
-                  unit: r.unit, trustTier: r.trustTier as 'A' | 'B' | 'C', periodEnd: r.periodEnd,
+                  id: r.id,
+                  domain: r.domain,
+                  fieldName: r.fieldName,
+                  value: r.value,
+                  unit: r.unit,
+                  trustTier: r.trustTier as 'A' | 'B' | 'C',
+                  periodEnd: r.periodEnd,
                 })),
                 period.year,
               ).map(total => (
@@ -414,7 +435,8 @@ export default async function DashboardPage() {
                   {openRequests} open
                   {overdueRequests > 0 && (
                     <span style={{ color: colours.red, fontWeight: typography.weights.light }}>
-                      {' · '}{overdueRequests} overdue
+                      {' · '}
+                      {overdueRequests} overdue
                     </span>
                   )}
                 </div>

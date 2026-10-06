@@ -36,21 +36,17 @@ export default async function DataRequestsPage() {
     requiredFields: r.requiredFields as string[],
   }))
 
-  const serialisedIncoming = serialised.filter(r => r.supplierEntityId === entityId && r.buyerEntityId !== entityId)
+  const serialisedIncoming = serialised.filter(
+    r => r.supplierEntityId === entityId && r.buyerEntityId !== entityId,
+  )
   const serialisedOutgoing = serialised.filter(r => r.buyerEntityId === entityId)
 
   return (
     <div style={{ width: '100%' }}>
       <BackLink current="Data requests" />
       <div style={{ margin: `0 0 ${spacing[5]}` }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Data requests
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <h1 style={textStyles.pageTitle}>Data requests</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           {incoming.length} incoming · {outgoing.length} sent
         </p>
       </div>

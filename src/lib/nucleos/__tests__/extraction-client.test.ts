@@ -74,44 +74,38 @@ describe('extractCbamFields', () => {
 
   it('throws on a non-2xx response', async () => {
     const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ detail: 'bad' }, 422))
-    await expect(
-      extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never }),
-    ).rejects.toBeInstanceOf(NucleosExtractionError)
+    await expect(extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never })).rejects.toBeInstanceOf(
+      NucleosExtractionError,
+    )
   })
 
   it('throws on a network error', async () => {
     const fetchImpl = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'))
-    await expect(
-      extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never }),
-    ).rejects.toBeInstanceOf(NucleosUnavailableError)
+    await expect(extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never })).rejects.toBeInstanceOf(
+      NucleosUnavailableError,
+    )
   })
 
   it('throws on timeout', async () => {
     const abortErr = Object.assign(new Error('aborted'), { name: 'AbortError' })
     const fetchImpl = jest.fn().mockRejectedValue(abortErr)
-    await expect(
-      extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never }),
-    ).rejects.toBeInstanceOf(NucleosUnavailableError)
+    await expect(extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never })).rejects.toBeInstanceOf(
+      NucleosUnavailableError,
+    )
   })
 
   it('rejects a result for a different document', async () => {
     // Would attach one document's fields to another's review screen, and both
     // screens would look entirely normal.
-    const fetchImpl = jest
-      .fn()
-      .mockResolvedValue(jsonResponse(okResult({ document_id: 'doc-OTHER' })))
-    await expect(
-      extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never }),
-    ).rejects.toThrow(/document_id/)
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse(okResult({ document_id: 'doc-OTHER' })))
+    await expect(extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never })).rejects.toThrow(/document_id/)
   })
 
   it('rejects a result with no engine version', async () => {
-    const fetchImpl = jest
-      .fn()
-      .mockResolvedValue(jsonResponse({ ...okResult(), engine: {} }))
-    await expect(
-      extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never }),
-    ).rejects.toThrow(/engine version/)
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ ...okResult(), engine: {} }))
+    await expect(extractCbamFields(REQUEST, { fetchImpl: fetchImpl as never })).rejects.toThrow(
+      /engine version/,
+    )
   })
 
   it('never resolves to an empty result when the call failed', async () => {

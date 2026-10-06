@@ -105,9 +105,7 @@ async function postForFile(
     if ((err as Error)?.name === 'AbortError') {
       throw new NucleosUnavailableError(`Nucleos timed out for ${path}`)
     }
-    throw new NucleosUnavailableError(
-      `Nucleos request failed for ${path}: ${(err as Error).message}`,
-    )
+    throw new NucleosUnavailableError(`Nucleos request failed for ${path}: ${(err as Error).message}`)
   } finally {
     clearTimeout(timeout)
   }

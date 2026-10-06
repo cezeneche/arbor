@@ -9,8 +9,7 @@ import { getCbamCase } from './cases-client'
 import { resolveCaseAccess } from './case-ownership'
 
 export type GoodsLineAccess =
-  | { ok: true; line: Record<string, unknown> }
-  | { ok: false; status: 400 | 404 | 502; error: string }
+  { ok: true; line: Record<string, unknown> } | { ok: false; status: 400 | 404 | 502; error: string }
 
 export async function resolveGoodsLineAccess(
   caseId: unknown,

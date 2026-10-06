@@ -538,8 +538,18 @@ describe('writeCbamCase — evidence', () => {
         sourceRef: 'arbor:document:doc-1',
         confirmed: { 'lines[0].net_mass_kg': '24000', importer_eori: 'GB123456789000' },
         readFields: [
-          { fieldName: 'lines[0].net_mass_kg', extractedValue: '24000', sourceText: 'Net mass | 24 000 kg', confidence: 0.8 },
-          { fieldName: 'importer_eori', extractedValue: 'GB123456789000', sourceText: 'EORI GB123456789000', confidence: 0.8 },
+          {
+            fieldName: 'lines[0].net_mass_kg',
+            extractedValue: '24000',
+            sourceText: 'Net mass | 24 000 kg',
+            confidence: 0.8,
+          },
+          {
+            fieldName: 'importer_eori',
+            extractedValue: 'GB123456789000',
+            sourceText: 'EORI GB123456789000',
+            confidence: 0.8,
+          },
         ],
       },
     })
@@ -558,8 +568,20 @@ describe('writeCbamCase — evidence', () => {
     expect(evidenceCall?.body).toEqual({
       source_ref: 'arbor:document:doc-1',
       evidence: [
-        { field: 'goods_lines.gl-0.net_mass_kg', value: 24000, source: 'arbor_extraction', confidence: 0.8, snippet: 'Net mass | 24 000 kg' },
-        { field: 'case.importer_eori', value: 'GB123456789000', source: 'arbor_extraction', confidence: 0.8, snippet: 'EORI GB123456789000' },
+        {
+          field: 'goods_lines.gl-0.net_mass_kg',
+          value: 24000,
+          source: 'arbor_extraction',
+          confidence: 0.8,
+          snippet: 'Net mass | 24 000 kg',
+        },
+        {
+          field: 'case.importer_eori',
+          value: 'GB123456789000',
+          source: 'arbor_extraction',
+          confidence: 0.8,
+          snippet: 'EORI GB123456789000',
+        },
       ],
     })
     expect(calls.map(c => c.path).indexOf('/api/cbam/cases/case-1/evidence')).toBe(calls.length - 1)

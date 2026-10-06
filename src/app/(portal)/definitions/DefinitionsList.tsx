@@ -200,7 +200,14 @@ export function DefinitionsList({ definitions, counterparties, showTechnicalDeta
               padding: spacing[3],
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[2], alignItems: 'flex-start' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: spacing[2],
+                alignItems: 'flex-start',
+              }}
+            >
               <div>
                 <p style={textStyles.sectionTitle}>{def.label}</p>
                 <p style={{ ...textStyles.caption, marginTop: '2px' }}>
@@ -292,7 +299,13 @@ export function DefinitionsList({ definitions, counterparties, showTechnicalDeta
 
             {/* Ask another company to agree this wording. Inline, never a modal. */}
             {available.length > 0 && (
-              <div style={{ marginTop: spacing[2], paddingTop: '10px', borderTop: `1px solid ${colours.border}` }}>
+              <div
+                style={{
+                  marginTop: spacing[2],
+                  paddingTop: '10px',
+                  borderTop: `1px solid ${colours.border}`,
+                }}
+              >
                 {openProposal === def.id ? (
                   <div style={{ display: 'flex', gap: spacing[1], alignItems: 'center', flexWrap: 'wrap' }}>
                     <select

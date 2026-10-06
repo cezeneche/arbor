@@ -3,7 +3,12 @@ import { groupRecordsByDocument, type RecordRow } from '../group-records'
 // each stored record is one field; the constraint check needs a
 // document's fields together. This regroups them.
 
-function row(documentId: string, fieldName: string, value: number, sector: string | null = 'steel'): RecordRow {
+function row(
+  documentId: string,
+  fieldName: string,
+  value: number,
+  sector: string | null = 'steel',
+): RecordRow {
   return { documentId, fieldName, value, sector }
 }
 
@@ -31,10 +36,7 @@ describe('groupRecordsByDocument', () => {
   })
 
   it('keeps the first non-null sector for a document', () => {
-    const grouped = groupRecordsByDocument([
-      row('doc1', 'a', 1, null),
-      row('doc1', 'b', 2, 'aluminium'),
-    ])
+    const grouped = groupRecordsByDocument([row('doc1', 'a', 1, null), row('doc1', 'b', 2, 'aluminium')])
     expect(grouped[0].sector).toBe('aluminium')
   })
 })

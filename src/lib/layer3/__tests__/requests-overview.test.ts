@@ -13,13 +13,37 @@ const base = {
 }
 
 function dr(p: Partial<(typeof base.dataRequests)[number]>) {
-  return { id: 'd1', status: 'PENDING', direction: 'incoming', counterpartyName: 'Acme', domain: 'ENERGY', periodStart: '2026-01-01', periodEnd: '2026-03-31', deadline: null, createdAt: '2026-02-01T00:00:00Z', ...p } as (typeof base.dataRequests)[number]
+  return {
+    id: 'd1',
+    status: 'PENDING',
+    direction: 'incoming',
+    counterpartyName: 'Acme',
+    domain: 'ENERGY',
+    periodStart: '2026-01-01',
+    periodEnd: '2026-03-31',
+    deadline: null,
+    createdAt: '2026-02-01T00:00:00Z',
+    ...p,
+  } as (typeof base.dataRequests)[number]
 }
 function ib(p: Partial<(typeof base.inboundRequests)[number]>) {
-  return { id: 'e1', status: 'NEEDS_DATA', fromEmail: 'buyer@acme.com', createdAt: '2026-02-01T00:00:00Z', answeredAt: null, ...p } as (typeof base.inboundRequests)[number]
+  return {
+    id: 'e1',
+    status: 'NEEDS_DATA',
+    fromEmail: 'buyer@acme.com',
+    createdAt: '2026-02-01T00:00:00Z',
+    answeredAt: null,
+    ...p,
+  } as (typeof base.inboundRequests)[number]
 }
 function se(p: Partial<(typeof base.sharedExports)[number]>) {
-  return { id: 's1', domain: 'ENERGY', state: 'active', createdAt: '2026-02-01T00:00:00Z', ...p } as (typeof base.sharedExports)[number]
+  return {
+    id: 's1',
+    domain: 'ENERGY',
+    state: 'active',
+    createdAt: '2026-02-01T00:00:00Z',
+    ...p,
+  } as (typeof base.sharedExports)[number]
 }
 
 describe('categoriseRequests', () => {
@@ -45,7 +69,10 @@ describe('categoriseRequests', () => {
   })
 
   it('puts outgoing data requests in their own "sent" section', () => {
-    const r = categoriseRequests({ ...base, dataRequests: [dr({ id: 'o', direction: 'outgoing', status: 'PENDING' })] })
+    const r = categoriseRequests({
+      ...base,
+      dataRequests: [dr({ id: 'o', direction: 'outgoing', status: 'PENDING' })],
+    })
     expect(r.sent.map(i => i.id)).toEqual(['o'])
     expect(r.waiting).toHaveLength(0)
   })
@@ -53,7 +80,11 @@ describe('categoriseRequests', () => {
   it('routes email requests: needs-data waits, answered is shared', () => {
     const r = categoriseRequests({
       ...base,
-      inboundRequests: [ib({ id: 'n', status: 'NEEDS_DATA' }), ib({ id: 'w', status: 'NEW' }), ib({ id: 'a', status: 'ANSWERED', answeredAt: '2026-03-01' })],
+      inboundRequests: [
+        ib({ id: 'n', status: 'NEEDS_DATA' }),
+        ib({ id: 'w', status: 'NEW' }),
+        ib({ id: 'a', status: 'ANSWERED', answeredAt: '2026-03-01' }),
+      ],
     })
     expect(r.waiting.map(i => i.id).sort()).toEqual(['n', 'w'])
     expect(r.shared.map(i => i.id)).toEqual(['a'])
@@ -68,7 +99,10 @@ describe('categoriseRequests', () => {
   it('sorts each section newest first', () => {
     const r = categoriseRequests({
       ...base,
-      sharedExports: [se({ id: 'old', createdAt: '2026-01-01T00:00:00Z' }), se({ id: 'new', createdAt: '2026-05-01T00:00:00Z' })],
+      sharedExports: [
+        se({ id: 'old', createdAt: '2026-01-01T00:00:00Z' }),
+        se({ id: 'new', createdAt: '2026-05-01T00:00:00Z' }),
+      ],
     })
     expect(r.shared.map(i => i.id)).toEqual(['new', 'old'])
   })

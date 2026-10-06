@@ -22,8 +22,8 @@ const proposeSchema = z.object({
 
 export async function POST(req: NextRequest) {
   // Proposing a shared definition is ADMIN-only: an agreement binds the whole
-// organisation to a stated meaning for a field, which is what makes the number
-// comparable across two companies' systems.
+  // organisation to a stated meaning for a field, which is what makes the number
+  // comparable across two companies' systems.
   const { session, response } = await requireAdmin()
   if (!session) return response!
   const user = getSessionUser(session)

@@ -16,7 +16,10 @@ import { hashOpaqueToken } from '@/lib/tokens/opaque-token'
 const entrySchema = z.object({
   fieldName: z.string().min(1),
   value: z.number().finite(),
-  unit: z.string().min(1).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
+  unit: z.string().min(1).refine(isStorableUnit, {
+    message:
+      'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.',
+  }),
   sourceText: z.string().optional(),
 })
 
@@ -24,10 +27,7 @@ const bodySchema = z.object({
   entries: z.array(entrySchema).min(1).max(MAX_BATCH_ENTRIES),
 })
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const ip = getClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'))
   const { allowed } = await checkRateLimit(RATE_LIMITS.submitToken, ip)
   if (!allowed) return err('Too many requests. Please try again later.', 'RATE_LIMITED', 429)
@@ -59,10 +59,7 @@ export async function GET(
   })
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const ip = getClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'))
   const { allowed } = await checkRateLimit(RATE_LIMITS.submitToken, ip)
   if (!allowed) return err('Too many requests. Please try again later.', 'RATE_LIMITED', 429)
@@ -113,7 +110,7 @@ export async function POST(
   // If any step fails the whole thing rolls back — no partial state.
   let recordCount = 0
   try {
-    await runSerializable(async (tx) => {
+    await runSerializable(async tx => {
       // Reset per attempt — the wrapper may re-run this whole function on a
       // write-conflict retry, and each run starts the transaction from scratch.
       recordCount = 0
@@ -157,9 +154,7 @@ export async function POST(
       // (falling back to the fields actually submitted). Without it, a request for
       // one figure handed over every energy record in the quarter.
       const grantedFieldNames =
-        requiredFields.length > 0
-          ? requiredFields
-          : [...new Set(parsed.data.entries.map(e => e.fieldName))]
+        requiredFields.length > 0 ? requiredFields : [...new Set(parsed.data.entries.map(e => e.fieldName))]
 
       const existingGrant = await tx.dataAccessGrant.findFirst({
         where: {
