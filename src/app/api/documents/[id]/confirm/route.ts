@@ -16,7 +16,7 @@ import { runConstraintValidation } from '@/lib/constraints/run-constraint-valida
 import { buildReviewLabels } from '@/lib/confidence/review-capture'
 import { confirmFieldMessage, validateConfirmFields } from '@/lib/layer2/confirm-validation'
 import { documentPeriod, missingCbamDocumentDate } from '@/lib/review/review-policy'
-import { certifyTier } from '@/lib/layer2/certification-policy'
+import { reviewTier } from '@/lib/layer2/review-tier'
 import { parseNumericValue } from '@/lib/parse-numeric'
 import { ExtractionMethod, TrustTier, type DataDomain, type GroundTruthSource } from '@prisma/client'
 import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
@@ -26,11 +26,7 @@ import { findActiveGranteeEntityIds } from '@/lib/layer3/grant-access'
 import { sendNotification } from '@/lib/notifications'
 import { dispatchWebhook } from '@/lib/webhooks/dispatch'
 import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
-import {
-  cbamCompulsoryFieldsPresent,
-  isCbamFieldName,
-  parseGoodsLineFieldName,
-} from '@/lib/nucleos/cbam-fields'
+import { isCbamFieldName, parseGoodsLineFieldName } from '@/lib/nucleos/cbam-fields'
 import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
 import {
   enqueueCbamHandoff,
@@ -202,25 +198,23 @@ export async function POST(
     (job?.extractedFields ?? []).map(f => [f.fieldName, f.sourceText]),
   )
 
-  let tierIsA: boolean
-  if (cbamDocument) {
-    tierIsA = Boolean(job) && cbamCompulsoryFieldsPresent(confirmedValues, sourceTextByField)
-  } else {
-    const entity = await prisma.entity.findUnique({
-      where: { id: entityId },
-      select: { legalName: true },
-    })
-    const periodEnds = parsed.data.fields.map(f => Date.parse(f.periodEnd)).filter(Number.isFinite)
-    tierIsA = certifyTier({
+  // The review screen calls reviewTier with the same inputs, so the tier it
+  // showed is the tier saved here.
+  const entity = await prisma.entity.findUnique({
+    where: { id: entityId },
+    select: { legalName: true },
+  })
+  const tierIsA =
+    reviewTier({
       documentType: document.documentType,
+      cbam: cbamDocument,
+      hasExtraction: Boolean(job),
       extracted: new Map((job?.extractedFields ?? []).map(f => [f.fieldName, f.rawValue])),
       confirmed: confirmedValues,
-      hasExtraction: Boolean(job),
-      entityName: entity?.legalName ?? '',
-      reportingPeriodEnd: periodEnds.length ? new Date(Math.max(...periodEnds)) : undefined,
       sourceText: sourceTextByField,
-    }).tier === 'A'
-  }
+      entityName: entity?.legalName ?? '',
+      recordPeriodEnds: parsed.data.fields.map(f => f.periodEnd),
+    }) === 'A'
 
   const trustTier: TrustTier = tierIsA ? TrustTier.A : TrustTier.B
 
@@ -308,8 +302,7 @@ export async function POST(
     ? replacementsByField(duplicates)
     : new Map<string, string[]>()
 
-  // scopes whose prior records were superseded, so we can notify buyers.
-  const supersededScopes: { domain: string; periodStart: Date; periodEnd: Date }[] = []
+  type SupersededScope = { domain: string; periodStart: Date; periodEnd: Date }
 
   // A sentinel rather than a returned error, so a second confirmation aborts the
   // transaction instead of half-writing. runSerializable rethrows anything that
@@ -350,10 +343,16 @@ export async function POST(
       }
     : null
 
+  // Everything the transaction decides comes back as its return value.
+  // runSerializable reruns the callback after a write conflict, so state kept
+  // outside it would carry over from an attempt that never committed.
   let createdRecords: string[]
+  // Scopes whose prior records were superseded, so buyers can be told.
+  let supersededScopes: SupersededScope[]
   try {
-    createdRecords = await runSerializable(async (tx) => {
+    ;({ recordIds: createdRecords, supersededScopes } = await runSerializable(async (tx) => {
     const recordIds: string[] = []
+    const supersededScopes: SupersededScope[] = []
 
     // The interactive confirm path wrote records without ever consulting the
     // plan cap. Counted inside the transaction that writes, so concurrent
@@ -465,8 +464,8 @@ export async function POST(
 
     if (cbamHandoff) await enqueueCbamHandoff(tx, cbamHandoff)
 
-    return recordIds
-    })
+    return { recordIds, supersededScopes }
+    }))
   } catch (e) {
     if (e instanceof AlreadyConfirmed) {
       return err('Document already confirmed', 'ALREADY_CONFIRMED', 409)

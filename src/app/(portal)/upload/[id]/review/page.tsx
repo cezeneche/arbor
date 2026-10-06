@@ -23,6 +23,7 @@ export default async function ReviewPage({
   const document = await prisma.document.findUnique({
     where: { id },
     include: {
+      entity: { select: { legalName: true } },
       extractionJobs: {
         orderBy: { startedAt: 'desc' },
         take: 1,
@@ -170,6 +171,7 @@ export default async function ReviewPage({
           }}
         >
           <ExtractionReview
+            entityName={document.entity.legalName}
             document={{
               id: document.id,
               fileName: document.fileName,

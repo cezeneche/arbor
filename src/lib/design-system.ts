@@ -193,4 +193,31 @@ export const layout = {
   codeBorderRadius: '4px',
 } as const
 
+// Form controls, as the portal's screens draw them. New screens use these
+// instead of the browser's defaults or another inline copy.
+export const controls = {
+  input: {
+    padding: '8px 10px',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.light,
+    border: `1px solid ${colours.border}`,
+    borderRadius: '4px',
+    backgroundColor: colours.surface,
+    color: colours.textPrimary,
+    fontFamily: 'inherit',
+  },
+  primaryButton: {
+    padding: '9px 18px',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colours.surface,
+    backgroundColor: colours.navy,
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    letterSpacing: typography.tracking.wide,
+    fontFamily: 'inherit',
+  },
+} as const
+
 export const confidenceThreshold = 0.85

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { parsePage } from '@/lib/pagination'
 import { fieldLabel, fieldMeaning } from '@/lib/layer3/field-label'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
 import { getSessionUser } from '@/lib/session'
@@ -39,7 +40,7 @@ export default async function RecordsPage({
   const sp = await searchParams
   const domainFilter = sp.domain ?? null
   const tierFilter = sp.tier ?? null
-  const page = Math.max(1, parseInt(sp.page ?? '1', 10))
+  const page = parsePage(sp.page)
   const view = sp.view === 'trends' ? 'trends' : sp.view === 'benchmarks' ? 'benchmarks' : 'records'
 
   // Narrowed rather than cast: these come from the query string, so `as never`
@@ -310,7 +311,7 @@ export default async function RecordsPage({
               backgroundColor: colours.surface,
               border: `1px solid ${colours.border}`,
               borderRadius: '8px',
-              overflow: 'hidden',
+              overflowX: 'auto',
             }}
           >
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>

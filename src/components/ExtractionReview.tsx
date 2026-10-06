@@ -2,9 +2,8 @@
 
 import { CbamResumeHandoff, type HandoffState } from './CbamResumeHandoff'
 import { CbamHandoffInputs } from './CbamHandoffInputs'
-import { certifyTier } from '@/lib/layer2/certification-policy'
+import { reviewTier } from '@/lib/layer2/review-tier'
 import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
-import { cbamCompulsoryFieldsPresent } from '@/lib/nucleos/cbam-fields'
 import { useState } from 'react'
 import { fieldLabel } from '@/lib/layer3/field-label'
 import { useRouter } from 'next/navigation'
@@ -65,10 +64,12 @@ interface ConflictRecord {
 
 interface Props {
   document: Document
+  /** The organisation's registered name, which the tier is checked against. */
+  entityName: string
   existingConflicts?: ConflictRecord[]
 }
 
-export function ExtractionReview({ document, existingConflicts = [] }: Props) {
+export function ExtractionReview({ document, entityName, existingConflicts = [] }: Props) {
   const router = useRouter()
   const job = document.extractionJobs[0]
   const fields = job?.extractedFields ?? []
@@ -113,27 +114,27 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
   const criticalFlags = fields.filter(
     f => f.admissibility === 'COMPULSORY' && (f.rawValue === null || f.rawValue === '')
   )
-  // The tier this would be saved at, by the same policy the confirm route
-  // applies — so an estimated read or a document with no spec is not shown as
-  // Verified here and saved as Declared. A CBAM document is judged on its goods
-  // lines instead, as the route does.
-  // The same source text the confirm route weighs, so the badge here is the
-  // tier that will be saved rather than an optimistic one.
-  const sourceTextByField = new Map<string, string | null>(
-    fields.map(f => [f.fieldName, f.sourceText]),
-  )
-  const trustTier = isCbamRelevant(document.documentType)
-    ? job && cbamCompulsoryFieldsPresent(new Map(Object.entries(values)), sourceTextByField)
-      ? 'A'
-      : 'B'
-    : certifyTier({
-        documentType: document.documentType,
-        extracted: new Map(fields.map(f => [f.fieldName, f.rawValue])),
-        confirmed: new Map(Object.entries(values)),
-        hasExtraction: Boolean(job),
-        entityName: '',
-        sourceText: sourceTextByField,
-      }).tier
+  // The tier this would be saved at: the confirm route calls reviewTier with
+  // the same inputs — the source text, the organisation name, and the period
+  // ends of the records handleConfirm sends — so the badge is the saved tier.
+  //
+  // The period is shared with the auto-accept path so both derive identically.
+  // An inline copy once anchored it to upload time, which meant the same
+  // document confirmed twice wrote two records instead of superseding.
+  const derived = derivePeriod(values, { documentType: document.documentType })
+  const recordPeriodEnds = fields
+    .filter(f => values[f.fieldName] && isRecordProducingField(f.fieldName))
+    .map(() => derived.periodEnd.toISOString())
+  const trustTier = reviewTier({
+    documentType: document.documentType,
+    cbam: isCbamRelevant(document.documentType),
+    hasExtraction: Boolean(job),
+    extracted: new Map(fields.map(f => [f.fieldName, f.rawValue])),
+    confirmed: new Map(Object.entries(values)),
+    sourceText: new Map(fields.map(f => [f.fieldName, f.sourceText])),
+    entityName,
+    recordPeriodEnds,
+  })
 
   // One grid over every field, ordered compulsory → conditional → optional and
   // by information gain within each. Three separate grids left a hole beside the
@@ -153,10 +154,6 @@ export function ExtractionReview({ document, existingConflicts = [] }: Props) {
     setError(null)
     setDuplicates(null)
 
-    // Shared with the auto-accept path so both derive identically. This used to
-    // be an inline copy that anchored the period to upload time, which meant the
-    // same document confirmed twice wrote two records instead of superseding.
-    const derived = derivePeriod(values, { documentType: document.documentType })
     const periodStart = derived.periodStart.toISOString()
     const periodEnd = derived.periodEnd.toISOString()
 
