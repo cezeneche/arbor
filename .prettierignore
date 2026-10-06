@@ -1,0 +1,6 @@
+# Prettier formats Arbor's TypeScript only: `npm run format` names the paths.
+# These are inside those paths and must stay as they are.
+
+# Generated from nucleos/contract by `npm run contract:generate`; the drift
+# check compares it byte for byte with the generator's output.
+src/lib/nucleos/contract.ts
