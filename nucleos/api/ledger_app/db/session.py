@@ -50,3 +50,25 @@ def missing_required_tables() -> list[str]:
             t for t in REQUIRED_TABLES
             if conn.execute(text("SELECT to_regclass(:t) IS NULL"), {"t": t}).scalar()
         ]
+
+
+def tenant_columns_of_wrong_type() -> list[str]:
+    """CBAM tenant_id columns that are not TEXT. Empty on SQLite.
+
+    A tenant is a text id ("arbor"). A table left over from the older schema
+    lineage has tenant_id UUID, and every read or write on it fails; migrations
+    written CREATE TABLE IF NOT EXISTS do not correct a table that exists. The
+    tables were all present, so readiness said "schema: ok" while carbon price
+    relief could not be opened. Fixed by db/migrations/013_tenant_id_text.sql.
+    """
+    if engine.dialect.name == "sqlite":
+        return []
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT table_name, data_type FROM information_schema.columns "
+                "WHERE table_schema = 'cbam' AND column_name = 'tenant_id' "
+                "AND data_type <> 'text' ORDER BY table_name"
+            )
+        ).all()
+    return [f"cbam.{table}.tenant_id is {data_type}" for table, data_type in rows]

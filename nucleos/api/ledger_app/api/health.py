@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from ledger_app.db.session import db_healthcheck, missing_required_tables
+from ledger_app.db.session import db_healthcheck, missing_required_tables, tenant_columns_of_wrong_type
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,8 @@ def health():
 
 
 def _readiness():
-    """The one readiness contract: the database answers and has the tables a
-    case is written to. /ready and /health/ready both serve it, so a probe
+    """The one readiness contract: the database answers, has the tables a
+    case is written to, and keys them by a text tenant id. /ready and /health/ready both serve it, so a probe
     configured with either path gets the same answer."""
     try:
         db_ok = bool(db_healthcheck().get("db_ok"))
@@ -47,6 +47,17 @@ def _readiness():
                 "ready": False,
                 "service": "nucleo-ledger",
                 "dependencies": {"db": "ok", "schema": {"missing": missing}},
+            },
+        )
+    # Table and column names only: this route is unauthenticated.
+    wrong_type = tenant_columns_of_wrong_type()
+    if wrong_type:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "ready": False,
+                "service": "nucleo-ledger",
+                "dependencies": {"db": "ok", "schema": {"wrong_type": wrong_type}},
             },
         )
     return {"ready": True, "service": "nucleo-ledger", "dependencies": {"db": "ok", "schema": "ok"}}
