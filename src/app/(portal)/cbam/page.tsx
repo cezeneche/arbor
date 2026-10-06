@@ -13,6 +13,7 @@ import { CbamStartCase } from '@/components/CbamStartCase'
 import { CbamRequestData } from '@/components/CbamRequestData'
 import { CbamCarbonRelief } from '@/components/CbamCarbonRelief'
 import { selectReusableDocuments } from '@/lib/nucleos/reusable-documents'
+import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
 import { getSessionUser } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 
@@ -29,6 +30,15 @@ export default async function CbamPage({
   const entityId = getSessionUser(session).entityId as string
   const { view: raw, page: rawPage } = await searchParams
   const view: CbamView = resolveCbamView(raw)
+
+  // The scope check states the exemption threshold for the regime the
+  // organisation files under: 50 tonnes a year in the EU, £50,000 in the UK.
+  const jurisdiction = resolveJurisdiction(
+    view === 'scope' && entityId
+      ? (await prisma.entity.findUnique({ where: { id: entityId }, select: { cbamJurisdiction: true } }))
+          ?.cbamJurisdiction
+      : null,
+  )
 
   // Read through the boundary rather than from a local copy: cases are Nucleos's
   // domain state and Arbor does not mirror them. A failure is shown as a failure
@@ -150,7 +160,7 @@ export default async function CbamPage({
         }}
       >
         {view === 'scope' ? (
-          <CbamScopeChecker />
+          <CbamScopeChecker jurisdiction={jurisdiction} />
         ) : casesError ? (
           <div style={{ ...textStyles.sectionSubtitle, color: colours.amber }}>
             CBAM cases could not be loaded, so this is not showing what you have.

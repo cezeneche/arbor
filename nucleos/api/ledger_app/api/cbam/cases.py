@@ -245,14 +245,14 @@ router = APIRouter()
 def cbam_scope_check(payload: _shared.CBAMScopeCheckRequest):
     """Pre-import CBAM scope determination (EU 2023/956 Art. 2).
 
-    Checks three conditions in sequence:
+    Checks four conditions in sequence:
     1. Annex I — is the CN code covered by CBAM?
     2. Annex II / EU origin — is the country of origin excluded?
-    3. De minimis — is the consignment value ≤ EUR 150?
+    3. De minimis — the 50-tonne annual exemption is reported, never applied.
     4. EORI format — does the importer EORI match the EU format?
 
     Returns one of:
-    - ``in_scope``        A CBAM declaration is required.
+    - ``in_scope``        The goods are covered and no exclusion applies.
     - ``out_of_scope``    A definitive exclusion applies; no declaration needed.
     - ``requires_review`` The CN code is covered but a factor needs human review
                           (missing origin, invalid EORI, etc.).
@@ -260,7 +260,6 @@ def cbam_scope_check(payload: _shared.CBAMScopeCheckRequest):
     result = _shared.determine_cbam_scope(
         cn_code=payload.cn_code,
         origin_country=payload.origin_country,
-        consignment_value_eur=payload.consignment_value_eur,
         importer_eori=payload.importer_eori,
     )
     return {
@@ -268,7 +267,6 @@ def cbam_scope_check(payload: _shared.CBAMScopeCheckRequest):
         "sector": result.sector,
         "cn_code": result.cn_code,
         "origin_country": result.origin_country,
-        "consignment_value_eur": result.consignment_value_eur,
         "importer_eori": result.importer_eori,
         "reasons": result.reasons,
         "regulation_refs": result.regulation_refs,

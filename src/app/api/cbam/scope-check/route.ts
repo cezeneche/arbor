@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 
-  let body: { cn_code?: unknown; origin_country?: unknown; consignment_value_eur?: unknown }
+  let body: { cn_code?: unknown; origin_country?: unknown }
   try {
     body = await request.json()
   } catch {
@@ -33,17 +33,15 @@ export async function POST(request: Request) {
         typeof body.origin_country === 'string' && body.origin_country.trim()
           ? body.origin_country.trim().toUpperCase()
           : null,
-      consignment_value_eur:
-        typeof body.consignment_value_eur === 'number' && Number.isFinite(body.consignment_value_eur)
-          ? body.consignment_value_eur
-          : null,
     })
     // The default SEE comes from a second lookup because the scope endpoint does
     // not return it. Fetched here rather than in the browser so one user action
     // stays one request, and so a lookup failure degrades to "no estimate"
     // instead of failing the scope answer, which is the part that matters.
+    // Looked up for any covered code: asked with a code alone, Nucleos answers
+    // "requires_review" for want of an origin, and the estimate is still wanted.
     let defaultSee: number | null = null
-    if (result.status === 'in_scope') {
+    if (result.sector && result.status !== 'out_of_scope') {
       try {
         const entries = await lookupDefaultValues(cnCode)
         defaultSee = entries[0]?.default_see_tco2e_per_t ?? null
