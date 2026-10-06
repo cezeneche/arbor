@@ -104,6 +104,48 @@ Both are required. `isNucleosConfigured()` is false without either, and the
 client throws rather than degrading — CBAM documents fail visibly instead of
 landing in Review looking like documents with no CBAM data in them.
 
+#### 5b. Retire the static token: Arbor's Vercel identity
+
+The token above is minted by hand and expires after a year. Arbor can instead
+present the OIDC token Vercel gives every Arbor function, exchanged for a
+Nucleos-only audience. It lives about two hours and Vercel refreshes it, so
+nothing needs renewing and Arbor holds no Nucleos secret. Nucleos checks it
+against Vercel's published keys, accepts it only from Arbor's team, project and
+production environment, and grants the same scopes as the token
+(`nucleos/api/shared_auth/vercel_service.py`).
+
+Deploy the code first; nothing changes until these are set.
+
+1. On **nucleos-api** (production), then redeploy:
+
+   ```
+   NUCLEOS_SERVICE_OIDC_ISSUER=https://oidc.vercel.com/cezeneches-projects
+   NUCLEOS_SERVICE_OIDC_AUDIENCE=https://nucleos.arbor.internal
+   NUCLEOS_SERVICE_OIDC_OWNER_ID=team_Pkh5xabRJlHqGfpu4Qeu0Sxn
+   NUCLEOS_SERVICE_OIDC_PROJECT_ID=prj_6oHxcMmQqjYmfQKaq6Jn4Fyw3Th3
+   ```
+
+   None of these is secret. Preview deployments are refused unless
+   `NUCLEOS_SERVICE_OIDC_ENVIRONMENTS=production,preview` is set; they run
+   unreviewed branches against production Nucleos.
+
+2. On **arbor** (production), then redeploy:
+
+   ```
+   NUCLEOS_OIDC_AUDIENCE=https://nucleos.arbor.internal
+   ```
+
+   Keep `NUCLEOS_INTERNAL_TOKEN` for now. If the exchange fails, Arbor logs
+   `[nucleos] OIDC token unavailable` and uses the token instead.
+
+3. Prove it: open a CBAM case in production. Nothing in Arbor's logs should
+   say `OIDC token unavailable`, and readiness (with `CRON_SECRET`) should show
+   `serviceToken.expiresAt: null`, because the static token is no longer the
+   credential in use.
+
+4. After a quiet week, remove `NUCLEOS_INTERNAL_TOKEN` from Arbor, then rotate
+   Nucleos's `JWT_SECRET` so every token minted by hand stops working.
+
 ### 6. Prove it
 
 ```sh

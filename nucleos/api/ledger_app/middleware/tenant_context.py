@@ -8,7 +8,7 @@ route handler runs. This makes RLS policies transparent to application code.
 How it works
 ------------
 1. TenantContextMiddleware reads the Bearer token from the Authorization header.
-2. It decodes the JWT (shared_auth.jwt.decode_access_token) to get the
+2. It decodes the JWT (shared_auth.jwt.decode_bearer_token) to get the
    AuthContext, which contains tenant_id.
 3. It calls Supabase's set_config() RPC to set app.current_tenant_id for the
    duration of that database connection.
@@ -36,7 +36,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from shared_auth.jwt import decode_access_token
+from shared_auth.jwt import decode_bearer_token
 from shared_auth.models import AuthContext
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         auth_ctx: AuthContext | None = None
 
         try:
-            auth_ctx = decode_access_token(token)
+            auth_ctx = decode_bearer_token(token)
         except Exception as exc:
             logger.debug("TenantContextMiddleware: token decode failed: %s", exc)
             # Don't reject here — route auth dependency will handle it with
@@ -179,7 +179,7 @@ async def get_request_auth(request: Request) -> AuthContext:
         )
     token = auth_header.removeprefix("Bearer ").strip()
     try:
-        ctx = decode_access_token(token)
+        ctx = decode_bearer_token(token)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

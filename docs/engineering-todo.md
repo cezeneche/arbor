@@ -53,7 +53,8 @@ Suggested order: A1 and A3 first (small; A1 corrects wrong information shown to 
   - supply-chain flow conservation checks;
   - embedding-based entity matching;
   - the MaxEnt solver.
-- [ ] **C3. Automatic Nucleos service-token renewal.** Renewal is manual once a year (the current token expires around 30 September 2027); the expiry email warns platform admins beforehand. Automating it means Arbor minting its own tokens, which is the owner's security decision.
+- [x] **C3. Automatic Nucleos service-token renewal.** Renewal is manual once a year (the current token expires around 30 September 2027); the expiry email warns platform admins beforehand. Automating it means Arbor minting its own tokens, which is the owner's security decision.
+  - Done differently (owner approved automating, 30 September 2026): instead of Arbor minting tokens, which would put Nucleos's signing secret in Arbor, Arbor presents the OIDC token Vercel issues to its functions, exchanged for a Nucleos-only audience. Nucleos verifies it against Vercel's published keys and pins it to Arbor's team, project and production environment, then grants the same three scopes itself. Nothing to renew and no Nucleos secret in Arbor. The static token stays as a fallback until the rollout in `docs/INTEGRATION-ROLLOUT.md` step 5b is finished.
 
 ## D. Housekeeping
 

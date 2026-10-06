@@ -31,7 +31,7 @@ export function evaluateReadiness(facts: ReadinessFacts): Readiness {
   if (!token.expired && token.daysLeft !== null && token.daysLeft < TOKEN_WARNING_DAYS) {
     warnings.push(
       `The Nucleos service token expires in ${token.daysLeft} day(s), on ${token.expiresAt}. ` +
-        'Mint a new one and set NUCLEOS_INTERNAL_TOKEN before then.',
+        'Mint a new one and set NUCLEOS_INTERNAL_TOKEN before then, or set NUCLEOS_OIDC_AUDIENCE to stop renewing it.',
     )
   }
 

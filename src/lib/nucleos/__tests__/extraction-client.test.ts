@@ -132,9 +132,17 @@ describe('isNucleosConfigured', () => {
   it('needs both the URL and the token', () => {
     process.env.NUCLEOS_URL = 'https://nucleos.test'
     delete process.env.NUCLEOS_INTERNAL_TOKEN
+    delete process.env.NUCLEOS_OIDC_AUDIENCE
     expect(isNucleosConfigured()).toBe(false)
 
     process.env.NUCLEOS_INTERNAL_TOKEN = 'token'
+    expect(isNucleosConfigured()).toBe(true)
+  })
+
+  it('is configured by the OIDC audience alone', () => {
+    process.env.NUCLEOS_URL = 'https://nucleos.test'
+    delete process.env.NUCLEOS_INTERNAL_TOKEN
+    process.env.NUCLEOS_OIDC_AUDIENCE = 'https://nucleos.test/aud'
     expect(isNucleosConfigured()).toBe(true)
   })
 })

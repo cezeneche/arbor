@@ -53,7 +53,7 @@ export interface CasesRequestOptions {
 async function nucleosGet<T>(pathAndQuery: string, opts: CasesRequestOptions = {}): Promise<T> {
   if (!isNucleosConfigured()) {
     throw new NucleosUnavailableError(
-      'NUCLEOS_URL or NUCLEOS_INTERNAL_TOKEN is not configured',
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
     )
   }
 
@@ -63,7 +63,7 @@ async function nucleosGet<T>(pathAndQuery: string, opts: CasesRequestOptions = {
 
   try {
     const res = await doFetch(`${process.env.NUCLEOS_URL}${pathAndQuery}`, {
-      headers: nucleosHeaders(),
+      headers: await nucleosHeaders(),
       signal: controller.signal,
       cache: 'no-store',
     })

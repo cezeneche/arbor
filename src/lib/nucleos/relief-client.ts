@@ -43,7 +43,7 @@ export interface ReliefClaim {
 
 function base(): string {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or NUCLEOS_INTERNAL_TOKEN is not configured')
+    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
   }
   return process.env.NUCLEOS_URL as string
 }
@@ -51,7 +51,7 @@ function base(): string {
 async function get<T>(path: string, fetchImpl: typeof fetch): Promise<T> {
   let res: Response
   try {
-    res = await fetchImpl(`${base()}${path}`, { headers: nucleosHeaders(), cache: 'no-store' })
+    res = await fetchImpl(`${base()}${path}`, { headers: await nucleosHeaders(), cache: 'no-store' })
   } catch (err) {
     if (err instanceof NucleosUnavailableError) throw err
     throw new NucleosUnavailableError(`Nucleos request failed for ${path}: ${(err as Error).message}`)
@@ -115,7 +115,7 @@ export async function getHmrcExchangeRate(
   const path = `/api/cbam/cpr/exchange-rate?${query.toString()}`
   let res: Response
   try {
-    res = await fetchImpl(`${base()}${path}`, { headers: nucleosHeaders(), cache: 'no-store' })
+    res = await fetchImpl(`${base()}${path}`, { headers: await nucleosHeaders(), cache: 'no-store' })
   } catch (err) {
     if (err instanceof NucleosUnavailableError) throw err
     throw new NucleosUnavailableError(`Nucleos request failed for ${path}: ${(err as Error).message}`)
@@ -135,7 +135,7 @@ export async function recordReliefStatement(
   const path = `/api/cbam/cpr/upload-verification/${encodeURIComponent(goodsLineId)}`
   const res = await fetchImpl(`${base()}${path}`, {
     method: 'POST',
-    headers: nucleosHeaders({ 'content-type': 'application/json' }),
+    headers: await nucleosHeaders({ 'content-type': 'application/json' }),
     body: JSON.stringify({ document_ref: statement.documentRef, document_sha256: statement.sha256 }),
     cache: 'no-store',
   })

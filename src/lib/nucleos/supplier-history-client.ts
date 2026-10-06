@@ -10,12 +10,12 @@ export async function getSupplierHistory(
   fetchImpl: typeof fetch = fetch,
 ): Promise<SupplierHistoryResponse | null> {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or NUCLEOS_INTERNAL_TOKEN is not configured')
+    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
   }
   const path = `/api/cbam/goods-lines/${encodeURIComponent(goodsLineId)}/supplier-history`
   let res: Response
   try {
-    res = await fetchImpl(`${process.env.NUCLEOS_URL}${path}`, { headers: nucleosHeaders(), cache: 'no-store' })
+    res = await fetchImpl(`${process.env.NUCLEOS_URL}${path}`, { headers: await nucleosHeaders(), cache: 'no-store' })
   } catch (err) {
     throw new NucleosUnavailableError(`Nucleos request failed for ${path}: ${(err as Error).message}`)
   }

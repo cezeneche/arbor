@@ -13,7 +13,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { rateLimiterHealth } from '@/lib/rate-limit'
-import { serviceTokenExpiry } from '@/lib/nucleos/service-auth'
+import { monitoredServiceToken, serviceTokenExpiry } from '@/lib/nucleos/service-auth'
 import { sendTokenExpiryAlert } from '@/lib/nucleos/token-expiry-alert'
 
 export const dynamic = 'force-dynamic'
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const limiter = await rateLimiterHealth()
   if (!limiter.ok) console.error('[cron/keepalive] rate limiter unreachable:', limiter.detail)
 
-  const token = serviceTokenExpiry(process.env.NUCLEOS_INTERNAL_TOKEN ?? '')
+  const token = serviceTokenExpiry(monitoredServiceToken())
   const alert = await sendTokenExpiryAlert(token)
 
   const ok = database === 'ok' && limiter.ok
