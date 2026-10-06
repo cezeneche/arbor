@@ -1,5 +1,6 @@
 import { PublicNav } from '@/components/marketing/PublicNav'
 import { PublicFooter } from '@/components/marketing/PublicFooter'
+import { SkipLink, MAIN_CONTENT_ID } from '@/components/marketing/SkipLink'
 import { colours } from '@/lib/design-system'
 import './marketing.css'
 
@@ -20,8 +21,11 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         } as React.CSSProperties
       }
     >
+      <SkipLink />
       <PublicNav />
-      <main style={{ flex: 1 }}>{children}</main>
+      <main id={MAIN_CONTENT_ID} tabIndex={-1} style={{ flex: 1 }}>
+        {children}
+      </main>
       <PublicFooter />
     </div>
   )

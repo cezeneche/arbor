@@ -194,6 +194,9 @@ export default function DpaPage() {
             locations, customer authorisation and related agreements must be verified before execution:
           </p>
           <div
+            tabIndex={0}
+            role="region"
+            aria-label="Sub-processors"
             style={{
               border: `1px solid ${colours.border}`,
               borderRadius: '4px',
