@@ -95,7 +95,9 @@ export default function InstitutionalPage() {
       <SkipLink />
       <PublicNav />
 
-      <main id={MAIN_CONTENT_ID} tabIndex={-1} style={{ maxWidth: '960px', margin: '0 auto', padding: `${spacing[8]} ${spacing[4]}` }}>
+      {/* The site's shared container, so this page's edges line up with the
+          header, the footer and every other page. */}
+      <main id={MAIN_CONTENT_ID} tabIndex={-1} className="mk-container" style={{ padding: `${spacing[8]} 0` }}>
         {/* Hero */}
         <div style={{ marginBottom: spacing[8] }}>
           <p
