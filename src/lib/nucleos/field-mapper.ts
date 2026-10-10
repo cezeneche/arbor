@@ -109,10 +109,7 @@ function cnCodeFlag(code: string | null): string | null {
   if (!hasValue(code)) return null
   const digits = (code as string).replace(/\D/g, '')
   if (digits.length === 8) return null
-  return (
-    `cn_code_not_8_digit:${code} has ${digits.length} digits; ` +
-    'CBAM needs the full 8-digit CN code'
-  )
+  return `cn_code_not_8_digit:${code} has ${digits.length} digits; ` + 'CBAM needs the full 8-digit CN code'
 }
 
 export function toExtractedFieldRows(result: CbamExtractionResult): ExtractedFieldRow[] {

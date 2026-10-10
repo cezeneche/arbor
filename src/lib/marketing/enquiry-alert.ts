@@ -18,7 +18,10 @@ export function enquiryAlertText(alert: EnquiryAlert, appUrl: string): string {
   return `New ${alert.kind} enquiry from ${alert.orgName}${detail}. Review it: ${appUrl}/admin/enquiries`
 }
 
-export async function sendEnquiryAlert(alert: EnquiryAlert, fetchImpl: typeof fetch = fetch): Promise<boolean> {
+export async function sendEnquiryAlert(
+  alert: EnquiryAlert,
+  fetchImpl: typeof fetch = fetch,
+): Promise<boolean> {
   const webhook = process.env.ENQUIRY_SLACK_WEBHOOK_URL
   if (!webhook) return false
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'

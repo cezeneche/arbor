@@ -5,10 +5,7 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
 // Revoke a share. After this the public page reveals no data. Idempotent.
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
   const entityId = getSessionUser(session).entityId as string

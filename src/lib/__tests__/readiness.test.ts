@@ -31,14 +31,21 @@ describe('evaluateReadiness', () => {
   })
 
   it('is not ready once the Nucleos service token has expired', () => {
-    const r = evaluateReadiness({ ...good, serviceToken: { expiresAt: '2026-01-01T00:00:00.000Z', daysLeft: -3, expired: true } })
+    const r = evaluateReadiness({
+      ...good,
+      serviceToken: { expiresAt: '2026-01-01T00:00:00.000Z', daysLeft: -3, expired: true },
+    })
     expect(r.ready).toBe(false)
   })
 
   it('stays ready but warns when the token expires soon', () => {
     const r = evaluateReadiness({
       ...good,
-      serviceToken: { expiresAt: '2026-10-01T00:00:00.000Z', daysLeft: TOKEN_WARNING_DAYS - 1, expired: false },
+      serviceToken: {
+        expiresAt: '2026-10-01T00:00:00.000Z',
+        daysLeft: TOKEN_WARNING_DAYS - 1,
+        expired: false,
+      },
     })
     expect(r.ready).toBe(true)
     expect(r.warnings.join(' ')).toMatch(/expires in/)

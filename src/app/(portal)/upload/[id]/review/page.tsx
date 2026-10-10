@@ -10,11 +10,7 @@ import { DOMAIN_BY_DOCUMENT_TYPE } from '@/lib/constants'
 import { truncationNotice } from '@/lib/review/truncation-notice'
 import type { DataDomain } from '@prisma/client'
 
-export default async function ReviewPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await requirePageSession()
 
@@ -29,10 +25,7 @@ export default async function ReviewPage({
         take: 1,
         include: {
           extractedFields: {
-            orderBy: [
-              { admissibility: 'asc' },
-              { fieldName: 'asc' },
-            ],
+            orderBy: [{ admissibility: 'asc' }, { fieldName: 'asc' }],
           },
         },
       },
@@ -48,10 +41,21 @@ export default async function ReviewPage({
   // to surface conflicts before the user confirms (PRD §12.3).
   const domain = DOMAIN_BY_DOCUMENT_TYPE[document.documentType] ?? 'COMPLIANCE'
   const fields = job?.extractedFields ?? []
-  const periodStartRaw = fields.find(f => f.fieldName === 'period_start' || f.fieldName === 'production_period_start')?.rawValue
-  const periodEndRaw = fields.find(f => f.fieldName === 'period_end' || f.fieldName === 'production_period_end')?.rawValue
+  const periodStartRaw = fields.find(
+    f => f.fieldName === 'period_start' || f.fieldName === 'production_period_start',
+  )?.rawValue
+  const periodEndRaw = fields.find(
+    f => f.fieldName === 'period_end' || f.fieldName === 'production_period_end',
+  )?.rawValue
 
-  type ConflictRecord = { fieldName: string; value: number; unit: string; trustTier: string; periodStart: Date; periodEnd: Date }
+  type ConflictRecord = {
+    fieldName: string
+    value: number
+    unit: string
+    trustTier: string
+    periodStart: Date
+    periodEnd: Date
+  }
   let existingConflicts: ConflictRecord[] = []
   if (periodStartRaw && periodEndRaw) {
     try {
@@ -67,11 +71,20 @@ export default async function ReviewPage({
             periodStart: { lte: pe },
             periodEnd: { gte: ps },
           },
-          select: { fieldName: true, value: true, unit: true, trustTier: true, periodStart: true, periodEnd: true },
+          select: {
+            fieldName: true,
+            value: true,
+            unit: true,
+            trustTier: true,
+            periodStart: true,
+            periodEnd: true,
+          },
           orderBy: { fieldName: 'asc' },
         })
       }
-    } catch { /* date parse failure  -  skip */ }
+    } catch {
+      /* date parse failure  -  skip */
+    }
   }
 
   const serialisedConflicts = existingConflicts.map(c => ({
@@ -82,11 +95,11 @@ export default async function ReviewPage({
 
   // surface multilingual + degraded-document warnings before the field list.
   const detectedLanguage = job?.detectedLanguage ?? null
-  const showLanguageBanner =
-    !!detectedLanguage && detectedLanguage !== 'en' && detectedLanguage !== 'unknown'
+  const showLanguageBanner = !!detectedLanguage && detectedLanguage !== 'en' && detectedLanguage !== 'unknown'
   const qualityScore = job?.imageQualityScore ?? null
   const showQualityBanner = typeof qualityScore === 'number' && qualityScore < 4
-  const qualityLabel = qualityScore === null ? '' : qualityScore < 2 ? 'Poor' : qualityScore < 4 ? 'Fair' : 'Good'
+  const qualityLabel =
+    qualityScore === null ? '' : qualityScore < 2 ? 'Poor' : qualityScore < 4 ? 'Fair' : 'Good'
   const qualityIssues = Array.isArray(job?.imageQualityIssues)
     ? (job?.imageQualityIssues as string[]).join(', ').replace(/_/g, ' ')
     : ''
@@ -96,14 +109,8 @@ export default async function ReviewPage({
     <div>
       <BackLink current="Review extraction" />
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Review extraction
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <h1 style={textStyles.pageTitle}>Review extraction</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           {document.fileName} · {document.documentType.replace(/_/g, ' ')}
         </p>
       </div>
@@ -121,7 +128,9 @@ export default async function ReviewPage({
             color: colours.amber,
           }}
         >
-          Part of this document has not been read: <strong style={{ fontWeight: typography.weights.medium }}>{truncation.reason}</strong> Anything you confirm below covers only the part that was read.
+          Part of this document has not been read:{' '}
+          <strong style={{ fontWeight: typography.weights.medium }}>{truncation.reason}</strong> Anything you
+          confirm below covers only the part that was read.
         </div>
       )}
 
@@ -138,7 +147,9 @@ export default async function ReviewPage({
             color: colours.amber,
           }}
         >
-          This document appears to be in <strong style={{ fontWeight: typography.weights.medium }}>{detectedLanguage}</strong>. Values are shown as extracted - check numeric fields and units carefully.
+          This document appears to be in{' '}
+          <strong style={{ fontWeight: typography.weights.medium }}>{detectedLanguage}</strong>. Values are
+          shown as extracted - check numeric fields and units carefully.
         </div>
       )}
 
@@ -155,7 +166,10 @@ export default async function ReviewPage({
             color: colours.amber,
           }}
         >
-          This image was flagged as <strong style={{ fontWeight: typography.weights.medium }}>{qualityLabel}</strong> quality{qualityIssues ? ` (${qualityIssues})` : ''}. Some values may have been misread - verify before confirming.
+          This image was flagged as{' '}
+          <strong style={{ fontWeight: typography.weights.medium }}>{qualityLabel}</strong> quality
+          {qualityIssues ? ` (${qualityIssues})` : ''}. Some values may have been misread - verify before
+          confirming.
         </div>
       )}
 

@@ -31,8 +31,13 @@ function fakeClient(opts: { tier: string; uploadsThisMonth: number }) {
 }
 
 const data = {
-  entityId: 'ent-1', fileName: 'bill.pdf', fileType: 'application/pdf', documentType: 'ELECTRICITY_BILL',
-  blobUrl: 'ent-1/1.pdf', submittedById: 'user-1', status: 'PENDING',
+  entityId: 'ent-1',
+  fileName: 'bill.pdf',
+  fileType: 'application/pdf',
+  documentType: 'ELECTRICITY_BILL',
+  blobUrl: 'ent-1/1.pdf',
+  submittedById: 'user-1',
+  status: 'PENDING',
 } as const
 
 describe('createDocumentWithinQuota', () => {
@@ -46,7 +51,9 @@ describe('createDocumentWithinQuota', () => {
 
   it('refuses the document when the plan is full, and creates nothing', async () => {
     const client = fakeClient({ tier: 'STARTER', uploadsThisMonth: 0 })
-    await expect(createDocumentWithinQuota(data as never, { client: client as never })).rejects.toBeInstanceOf(UploadQuotaError)
+    await expect(
+      createDocumentWithinQuota(data as never, { client: client as never }),
+    ).rejects.toBeInstanceOf(UploadQuotaError)
     expect(client.created).toHaveLength(0)
   })
 })

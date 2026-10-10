@@ -19,7 +19,9 @@ export async function explainGoodsLineField(
   opts: { fetchImpl?: typeof fetch } = {},
 ): Promise<ExplainResponse | null> {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
+    throw new NucleosUnavailableError(
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
+    )
   }
   const query = new URLSearchParams({ field: `goods_lines.${goodsLineId}.${field}` })
   const path = `/api/cbam/cases/${encodeURIComponent(caseId)}/explain?${query.toString()}`

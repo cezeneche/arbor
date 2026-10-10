@@ -12,7 +12,12 @@ export interface ApiKeyAuthResult {
   reason: string | null
 }
 
-const deny = (reason: string): ApiKeyAuthResult => ({ authorized: false, entityId: null, scope: null, reason })
+const deny = (reason: string): ApiKeyAuthResult => ({
+  authorized: false,
+  entityId: null,
+  scope: null,
+  reason,
+})
 
 export async function authenticateApiKey(
   authHeader: string | null,
@@ -37,8 +42,14 @@ export async function authenticateApiKey(
   const key = await prisma.apiKey.findUnique({
     where: { keyPrefix },
     select: {
-      id: true, entityId: true, keyHash: true, isActive: true, revokedAt: true,
-      scope: true, expiresAt: true, ipAllowlist: true,
+      id: true,
+      entityId: true,
+      keyHash: true,
+      isActive: true,
+      revokedAt: true,
+      scope: true,
+      expiresAt: true,
+      ipAllowlist: true,
     },
   })
 

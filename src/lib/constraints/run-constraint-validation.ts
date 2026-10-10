@@ -37,13 +37,13 @@ export async function runConstraintValidation(documentId: string): Promise<Plann
 
   if (records.length === 0) return []
 
-  const rows: RecordRow[] = records.map((r) => ({
+  const rows: RecordRow[] = records.map(r => ({
     documentId,
     fieldName: r.fieldName,
     value: r.value,
     sector: r.entity?.sector ?? null,
   }))
-  const refs: RecordRef[] = records.map((r) => ({
+  const refs: RecordRef[] = records.map(r => ({
     documentId,
     fieldName: r.fieldName,
     dataRecordId: r.id,
@@ -71,7 +71,7 @@ export async function runConstraintValidation(documentId: string): Promise<Plann
   // what was already written on a prior attempt.
   const existing = await prisma.validationFlag.findMany({
     where: {
-      dataRecordId: { in: refs.map((r) => r.dataRecordId) },
+      dataRecordId: { in: refs.map(r => r.dataRecordId) },
       flagType: 'INTERNAL_INCONSISTENCY',
     },
     select: { dataRecordId: true, message: true },

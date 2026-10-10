@@ -11,8 +11,7 @@ export const CBAM_VIEWS = [
   {
     id: 'scope',
     label: 'Scope check',
-    description:
-      'Whether a commodity code is covered by CBAM, before any document or commitment.',
+    description: 'Whether a commodity code is covered by CBAM, before any document or commitment.',
   },
   {
     id: 'cases',

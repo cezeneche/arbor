@@ -31,10 +31,9 @@ export async function lookupDefaultValues(
   const digits = (cnPrefix ?? '').replace(/\D/g, '').slice(0, 8)
   if (digits.length < 2) return []
 
-  const res = await fetchImpl(
-    `${process.env.NUCLEOS_URL}/api/public/cbam-cn-lookup?q=${digits}`,
-    { cache: 'no-store' },
-  )
+  const res = await fetchImpl(`${process.env.NUCLEOS_URL}/api/public/cbam-cn-lookup?q=${digits}`, {
+    cache: 'no-store',
+  })
   if (!res.ok) {
     // Fails closed. An empty list would read as "there is no default for this
     // code", which for an in-scope commodity is never true.

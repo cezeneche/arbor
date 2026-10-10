@@ -1,9 +1,4 @@
-import {
-  generateResetToken,
-  hashResetToken,
-  isResetTokenUsable,
-  RESET_TOKEN_TTL_MS,
-} from '../password-reset'
+import { generateResetToken, hashResetToken, isResetTokenUsable, RESET_TOKEN_TTL_MS } from '../password-reset'
 
 describe('generateResetToken', () => {
   it('returns a token whose hash matches hashResetToken', () => {

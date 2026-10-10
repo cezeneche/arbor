@@ -7,7 +7,11 @@ import { escapeHtml, getResend } from '@/lib/email/client'
 // sign-in gate, so a missing key or a failed send leaves the account working
 // and the reminder in the portal offers to send it again.
 
-export async function sendEmailVerification(user: { id: string; email: string; name: string }): Promise<void> {
+export async function sendEmailVerification(user: {
+  id: string
+  email: string
+  name: string
+}): Promise<void> {
   const resend = getResend()
   if (!resend) return
   try {

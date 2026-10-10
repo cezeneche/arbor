@@ -11,12 +11,8 @@ describe('explainGap', () => {
   })
 
   it('reads the part of the case from the token’s prefix', () => {
-    expect(explainGap('shipment:abc-123:origin_country_missing', 'blocking').where).toBe(
-      'A consignment',
-    )
-    expect(explainGap('goods_line:abc-123:cn_code_missing', 'blocking').where).toBe(
-      'A goods line',
-    )
+    expect(explainGap('shipment:abc-123:origin_country_missing', 'blocking').where).toBe('A consignment')
+    expect(explainGap('goods_line:abc-123:cn_code_missing', 'blocking').where).toBe('A goods line')
   })
 
   // The token is what a support conversation needs, and what a user needs is a

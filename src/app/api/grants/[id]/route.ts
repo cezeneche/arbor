@@ -5,13 +5,10 @@ import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
 import { dispatchWebhook } from '@/lib/webhooks/dispatch'
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Revocation is ADMIN-only, matching the bar for creating a grant. Cutting a
-// buyer's access to a supplier's data mid-reporting-period is a commercial
-// decision about the relationship, not a routine edit.
+  // buyer's access to a supplier's data mid-reporting-period is a commercial
+  // decision about the relationship, not a routine edit.
   const { session, response } = await requireAdmin()
   if (!session) return response!
 

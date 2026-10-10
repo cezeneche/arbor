@@ -42,7 +42,12 @@ describe('presentVerification', () => {
 
   it('names the verifier once accepted, and offers nothing further', () => {
     const v = presentVerification(
-      { method: 'actual', status: 'verified', verifierName: 'Carbon Assurance Ltd', verifierAccreditation: 'UKAS 9876' },
+      {
+        method: 'actual',
+        status: 'verified',
+        verifierName: 'Carbon Assurance Ltd',
+        verifierAccreditation: 'UKAS 9876',
+      },
       statement({ status: 'ACCEPTED', decidedByName: 'Grace Hopper' }),
     )
     expect(v).toMatchObject({ state: 'verified', action: null })
@@ -61,7 +66,10 @@ describe('presentVerification', () => {
   // The file is safe in Arbor but Nucleos was not told. Retrying is the only
   // useful action; accepting a statement Nucleos has not recorded would fail.
   it('offers a retry when the statement has not reached the case yet', () => {
-    const v = presentVerification({ method: 'actual', status: 'not_required' }, statement({ syncedToNucleos: false }))
+    const v = presentVerification(
+      { method: 'actual', status: 'not_required' },
+      statement({ syncedToNucleos: false }),
+    )
     expect(v).toMatchObject({ state: 'unsynced', action: 'retry', statementId: 'stmt-1' })
   })
 
@@ -92,9 +100,16 @@ describe('latestStatements', () => {
         row({ id: 'new' }),
         row({ id: 'other', goodsLineId: 'gl-2', decidedById: 'user-2', status: 'ACCEPTED' }),
       ],
-      new Map([['user-1', 'Ada Lovelace'], ['user-2', 'Grace Hopper']]),
+      new Map([
+        ['user-1', 'Ada Lovelace'],
+        ['user-2', 'Grace Hopper'],
+      ]),
     )
-    expect(out.get('gl-1')).toMatchObject({ id: 'new', uploadedByName: 'Ada Lovelace', syncedToNucleos: true })
+    expect(out.get('gl-1')).toMatchObject({
+      id: 'new',
+      uploadedByName: 'Ada Lovelace',
+      syncedToNucleos: true,
+    })
     expect(out.get('gl-2')).toMatchObject({ id: 'other', decidedByName: 'Grace Hopper' })
   })
 

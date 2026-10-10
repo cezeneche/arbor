@@ -58,7 +58,7 @@ async function throwForStatus(res: Response, what: string): Promise<never> {
   }
 
   const looksLikeTokenRejection = /link/i.test(detail)
-  if ((res.status === 410 || res.status === 403) || (res.status === 404 && looksLikeTokenRejection)) {
+  if (res.status === 410 || res.status === 403 || (res.status === 404 && looksLikeTokenRejection)) {
     throw new SupplierTokenInvalidError(
       'This link is no longer valid. It may have expired or already been used. ' +
         'Ask the company that sent it for a new one.',

@@ -21,7 +21,9 @@ describe('neighbourhood', () => {
 
   it('reaches a 2-hop node only at depth ≥ 2', () => {
     expect(neighbourhood(EDGES, 'entity:sup2', { depth: 1 }).map(r => r.nodeId)).toEqual(['entity:sup1'])
-    const d2 = neighbourhood(EDGES, 'entity:sup2', { depth: 2 }).map(r => r.nodeId).sort()
+    const d2 = neighbourhood(EDGES, 'entity:sup2', { depth: 2 })
+      .map(r => r.nodeId)
+      .sort()
     expect(d2).toEqual(['entity:buy1', 'entity:sup1'])
   })
 

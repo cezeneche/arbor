@@ -47,9 +47,7 @@ describe('presentLine', () => {
   })
 
   it('never derives one axis from the other', () => {
-    const defaulted = presentLine(
-      line({ emissions_method: 'DEFAULT', provenance_tier: 'VERIFIED' }),
-    )
+    const defaulted = presentLine(line({ emissions_method: 'DEFAULT', provenance_tier: 'VERIFIED' }))
     expect(defaulted.method).toBe('Published default')
     expect(defaulted.provenance).toBe('Verified')
   })

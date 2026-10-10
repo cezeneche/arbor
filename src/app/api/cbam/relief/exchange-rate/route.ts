@@ -7,7 +7,11 @@ import { getHmrcExchangeRate } from '@/lib/nucleos/relief-client'
 // typed from HMRC's published figures rather than guessed.
 
 function monthOf(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 export async function GET(request: Request) {

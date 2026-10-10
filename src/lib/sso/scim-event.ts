@@ -38,7 +38,7 @@ export type ScimIntent =
 /** The user's primary email: the top-level `email`, else the primary (or first) of `emails`. Lowercased. */
 export function emailFrom(data: ScimData): string | null {
   if (data.email && data.email.includes('@')) return data.email.toLowerCase()
-  const chosen = data.emails.find((e) => e.primary) ?? data.emails[0]
+  const chosen = data.emails.find(e => e.primary) ?? data.emails[0]
   return chosen && chosen.value.includes('@') ? chosen.value.toLowerCase() : null
 }
 
@@ -74,7 +74,12 @@ export function interpretScimWebhook(body: ScimWebhook): ScimIntent {
   if (event === 'dsync.user.updated') {
     // Soft-deactivation is an update to state "inactive"; reactivation flips it back.
     if (data.state === 'inactive') return { kind: 'deactivate', email }
-    return { kind: 'reactivate', email, name: nameFrom(data, email), organizationId: data.organization_id ?? null }
+    return {
+      kind: 'reactivate',
+      email,
+      name: nameFrom(data, email),
+      organizationId: data.organization_id ?? null,
+    }
   }
 
   return { kind: 'ignore' }

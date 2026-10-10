@@ -58,14 +58,8 @@ export function ExtractionPoller({ documentId }: { documentId: string }) {
           textAlign: 'center',
         }}
       >
-        <p
-          style={textStyles.sectionTitle}
-        >
-          Extraction could not be completed
-        </p>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <p style={textStyles.sectionTitle}>Extraction could not be completed</p>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           The document may be unsupported or unreadable. Try uploading it again.
         </p>
       </div>
@@ -94,14 +88,8 @@ export function ExtractionPoller({ documentId }: { documentId: string }) {
         }}
       />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <p
-        style={textStyles.sectionTitle}
-      >
-        Reading your document…
-      </p>
-      <p
-        style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-      >
+      <p style={textStyles.sectionTitle}>Reading your document…</p>
+      <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
         This usually takes 10–30 seconds.
       </p>
     </div>

@@ -32,7 +32,14 @@ export async function GET(
       prisma.cbamVerificationStatement.findMany({
         where: { entityId, goodsLineId, subject: 'RELIEF' },
         orderBy: { uploadedAt: 'desc' },
-        select: { id: true, sha256: true, verifierName: true, verifierAccreditation: true, syncedAt: true, syncError: true },
+        select: {
+          id: true,
+          sha256: true,
+          verifierName: true,
+          verifierAccreditation: true,
+          syncedAt: true,
+          syncError: true,
+        },
       }),
     ])
     const rows = presentReliefClaims(claims, statements)

@@ -33,8 +33,7 @@ export const REQUEST_KINDS: RequestKindOption[] = [
   {
     id: 'records',
     label: 'Operational data',
-    asks:
-      'Ask a supplier to share operational data they already hold — energy, production, materials, logistics.',
+    asks: 'Ask a supplier to share operational data they already hold — energy, production, materials, logistics.',
     produces:
       'Their answer becomes certified records in your account, with the source documents behind them.',
     href: '/supply-chain/request',
@@ -42,10 +41,8 @@ export const REQUEST_KINDS: RequestKindOption[] = [
   {
     id: 'cbam',
     label: 'CBAM emissions data',
-    asks:
-      'Ask a supplier for the emissions intensity of specific goods, in tCO₂e per tonne.',
-    produces:
-      'Their answer attaches to a goods line in a CBAM case, and replaces the default value.',
+    asks: 'Ask a supplier for the emissions intensity of specific goods, in tCO₂e per tonne.',
+    produces: 'Their answer attaches to a goods line in a CBAM case, and replaces the default value.',
     href: '/cbam?view=request',
   },
 ]

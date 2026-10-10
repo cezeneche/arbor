@@ -22,8 +22,7 @@ type Result =
 function extractProof(raw: unknown): MerkleInclusionProof {
   const obj = raw as Record<string, unknown>
   const candidate = (obj && typeof obj === 'object' && 'proof' in obj ? obj.proof : obj) as
-    | MerkleInclusionProof
-    | undefined
+    MerkleInclusionProof | undefined
   if (
     !candidate ||
     typeof candidate.leaf !== 'string' ||
@@ -155,10 +154,9 @@ export default function VerifyMerklePage() {
           marginTop: spacing[2],
         }}
       >
-        Paste the inclusion proof from an Arbor audit package below. This page
-        recomputes the record&rsquo;s Merkle root entirely in your browser and
-        checks it against the committed root. Nothing is uploaded — the proof is
-        self-contained, so the check works offline.
+        Paste the inclusion proof from an Arbor audit package below. This page recomputes the record&rsquo;s
+        Merkle root entirely in your browser and checks it against the committed root. Nothing is uploaded —
+        the proof is self-contained, so the check works offline.
       </p>
 
       <textarea

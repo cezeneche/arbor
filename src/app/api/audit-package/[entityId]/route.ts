@@ -6,10 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyChain } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ entityId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ entityId: string }> }) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 
@@ -45,7 +42,7 @@ export async function GET(
     orderBy: { createdAt: 'asc' },
   })
 
-  const chainEntries = auditEntries.map((e) => ({
+  const chainEntries = auditEntries.map(e => ({
     hash: e.hash,
     previousHash: e.previousHash,
     payload: e.payload as unknown as AuditPayload,

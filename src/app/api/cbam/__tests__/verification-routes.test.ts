@@ -26,7 +26,9 @@ jest.mock('@/lib/layer2/cbam-verification', () => ({
 }))
 
 const findFirst = jest.fn()
-jest.mock('@/lib/prisma', () => ({ prisma: { cbamVerificationStatement: { findFirst: (a: unknown) => findFirst(a) } } }))
+jest.mock('@/lib/prisma', () => ({
+  prisma: { cbamVerificationStatement: { findFirst: (a: unknown) => findFirst(a) } },
+}))
 
 const fetchBytes = jest.fn()
 jest.mock('@/lib/storage-retrieval', () => ({ fetchDocumentBytes: (p: string) => fetchBytes(p) }))
@@ -37,11 +39,16 @@ import { POST as retry } from '../cases/[caseId]/goods-lines/[goodsLineId]/verif
 import { GET as file } from '../cases/[caseId]/goods-lines/[goodsLineId]/verification/[statementId]/file/route'
 
 const lineParams = { params: Promise.resolve({ caseId: 'case-1', goodsLineId: 'gl-1' }) }
-const stmtParams = { params: Promise.resolve({ caseId: 'case-1', goodsLineId: 'gl-1', statementId: 'stmt-1' }) }
+const stmtParams = {
+  params: Promise.resolve({ caseId: 'case-1', goodsLineId: 'gl-1', statementId: 'stmt-1' }),
+}
 
 function form(): FormData {
   const f = new FormData()
-  f.set('file', new File([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], 'statement.pdf', { type: 'application/pdf' }))
+  f.set(
+    'file',
+    new File([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], 'statement.pdf', { type: 'application/pdf' }),
+  )
   f.set('verifierName', 'Carbon Assurance Ltd')
   f.set('verifierAccreditation', 'UKAS 9876')
   return f
@@ -149,7 +156,11 @@ describe('file', () => {
     const res = await file(new Request('http://arbor.test'), stmtParams)
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('application/pdf')
-    expect(findFirst.mock.calls[0][0].where).toMatchObject({ id: 'stmt-1', entityId: 'ent-1', goodsLineId: 'gl-1' })
+    expect(findFirst.mock.calls[0][0].where).toMatchObject({
+      id: 'stmt-1',
+      entityId: 'ent-1',
+      goodsLineId: 'gl-1',
+    })
   })
 
   it("does not reveal whether another organisation's statement exists", async () => {

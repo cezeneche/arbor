@@ -39,7 +39,10 @@ export async function POST(request: Request) {
       // Nucleos says in words why a claim is refused — a scheme not recognised
       // for the origin, the wrong country. A list is field validation, which
       // the form's own checks should have caught; the general message serves.
-      const detail = await res.json().then(b => (b as { detail?: unknown }).detail, () => null)
+      const detail = await res.json().then(
+        b => (b as { detail?: unknown }).detail,
+        () => null,
+      )
       return NextResponse.json(
         { error: typeof detail === 'string' ? detail : 'These figures do not make a valid claim.' },
         { status: 422 },

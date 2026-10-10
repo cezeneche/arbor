@@ -17,9 +17,7 @@ import { CbamReturnBuilder } from '../CbamReturnBuilder'
 
 describe('CbamReturnBuilder — EU declaration wording', () => {
   function euTile() {
-    const { container } = render(
-      <CbamReturnBuilder caseId="case-1" available={['EU_XML']} blocked={null} />,
-    )
+    const { container } = render(<CbamReturnBuilder caseId="case-1" available={['EU_XML']} blocked={null} />)
     return container
   }
 

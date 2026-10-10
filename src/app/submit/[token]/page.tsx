@@ -19,9 +19,14 @@ interface RequestDetails {
 }
 
 const DOMAIN_LABELS: Record<string, string> = {
-  ENERGY: 'Energy', MATERIALS: 'Materials', PRODUCTION: 'Production',
-  LOGISTICS: 'Logistics', EMISSIONS: 'Emissions', AGRICULTURE: 'Agriculture',
-  WASTE_AND_WATER: 'Waste and water', COMPLIANCE: 'Compliance',
+  ENERGY: 'Energy',
+  MATERIALS: 'Materials',
+  PRODUCTION: 'Production',
+  LOGISTICS: 'Logistics',
+  EMISSIONS: 'Emissions',
+  AGRICULTURE: 'Agriculture',
+  WASTE_AND_WATER: 'Waste and water',
+  COMPLIANCE: 'Compliance',
 }
 
 function plainFieldLabel(field: string): string {
@@ -58,11 +63,13 @@ export default function SubmitPage() {
     e.preventDefault()
     if (!request) return
 
-    const entries = request.requiredFields.map(field => ({
-      fieldName: field,
-      value: parseNumericValue(values[field]) ?? NaN,
-      unit: units[field] ?? '',
-    })).filter(e => !isNaN(e.value) && e.unit)
+    const entries = request.requiredFields
+      .map(field => ({
+        fieldName: field,
+        value: parseNumericValue(values[field]) ?? NaN,
+        unit: units[field] ?? '',
+      }))
+      .filter(e => !isNaN(e.value) && e.unit)
 
     if (entries.length === 0) {
       setError('Please fill in at least one field with a value and unit.')
@@ -110,7 +117,14 @@ export default function SubmitPage() {
     return (
       <div style={containerStyle}>
         <div style={cardStyle}>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0 }}>
+          <p
+            style={{
+              fontSize: typography.sizes.base,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: 0,
+            }}
+          >
             Loading your request...
           </p>
         </div>
@@ -122,13 +136,37 @@ export default function SubmitPage() {
     return (
       <div style={containerStyle}>
         <div style={cardStyle}>
-          <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 ${spacing[1]}` }}>
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.medium,
+              color: colours.textTertiary,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              margin: `0 0 ${spacing[1]}`,
+            }}
+          >
             arbor
           </p>
-          <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: '-0.03em' }}>
+          <h1
+            style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.medium,
+              color: colours.textPrimary,
+              margin: `0 0 ${spacing[1]}`,
+              letterSpacing: '-0.03em',
+            }}
+          >
             This link is not available
           </h1>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0 }}>
+          <p
+            style={{
+              fontSize: typography.sizes.base,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: 0,
+            }}
+          >
             {error}
           </p>
         </div>
@@ -140,16 +178,48 @@ export default function SubmitPage() {
     return (
       <div style={containerStyle}>
         <div style={cardStyle}>
-          <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 ${spacing[1]}` }}>
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.medium,
+              color: colours.textTertiary,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              margin: `0 0 ${spacing[1]}`,
+            }}
+          >
             arbor
           </p>
-          <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: '-0.03em' }}>
+          <h1
+            style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.medium,
+              color: colours.textPrimary,
+              margin: `0 0 ${spacing[1]}`,
+              letterSpacing: '-0.03em',
+            }}
+          >
             Done. Your data has been saved.
           </h1>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[3]}` }}>
-            {request?.buyerName} will be able to see the information you entered. It has been recorded as Declared. You can improve its status at any time by uploading a supporting document.
+          <p
+            style={{
+              fontSize: typography.sizes.base,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: `0 0 ${spacing[3]}`,
+            }}
+          >
+            {request?.buyerName} will be able to see the information you entered. It has been recorded as
+            Declared. You can improve its status at any time by uploading a supporting document.
           </p>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textTertiary,
+              margin: 0,
+            }}
+          >
             You can close this window.
           </p>
         </div>
@@ -166,13 +236,37 @@ export default function SubmitPage() {
     return (
       <div style={containerStyle}>
         <div style={cardStyle}>
-          <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 ${spacing[1]}` }}>
+          <p
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.medium,
+              color: colours.textTertiary,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              margin: `0 0 ${spacing[1]}`,
+            }}
+          >
             arbor
           </p>
-          <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: '-0.03em' }}>
+          <h1
+            style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.medium,
+              color: colours.textPrimary,
+              margin: `0 0 ${spacing[1]}`,
+              letterSpacing: '-0.03em',
+            }}
+          >
             {alreadyResponded ? 'This request has already been responded to' : 'This link has expired'}
           </h1>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0 }}>
+          <p
+            style={{
+              fontSize: typography.sizes.base,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: 0,
+            }}
+          >
             {alreadyResponded
               ? `You already responded to ${request.buyerName}'s request.`
               : `Please contact ${request.buyerName} to request a new link.`}
@@ -190,24 +284,74 @@ export default function SubmitPage() {
   return (
     <div style={containerStyle}>
       <div style={{ width: '100%', maxWidth: '560px' }}>
-        <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 ${spacing[2]}` }}>
+        <p
+          style={{
+            fontSize: typography.sizes.xs,
+            fontWeight: typography.weights.medium,
+            color: colours.textTertiary,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            margin: `0 0 ${spacing[2]}`,
+          }}
+        >
           arbor
         </p>
 
         <div style={cardStyle}>
-          <h1 style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: `0 0 ${spacing[1]}`, letterSpacing: '-0.03em' }}>
+          <h1
+            style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.medium,
+              color: colours.textPrimary,
+              margin: `0 0 ${spacing[1]}`,
+              letterSpacing: '-0.03em',
+            }}
+          >
             {request.buyerName} needs some data from you
           </h1>
-          <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[3]}`, lineHeight: '1.6' }}>
-            They need your {DOMAIN_LABELS[request.domain] ?? request.domain} figures for {periodLabel}. Enter the values below — leave blank any figures you don&apos;t have. It should take about five minutes.
+          <p
+            style={{
+              fontSize: typography.sizes.base,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: `0 0 ${spacing[3]}`,
+              lineHeight: '1.6',
+            }}
+          >
+            They need your {DOMAIN_LABELS[request.domain] ?? request.domain} figures for {periodLabel}. Enter
+            the values below — leave blank any figures you don&apos;t have. It should take about five minutes.
           </p>
 
           {request.notes && (
-            <div style={{ backgroundColor: colours.background, borderRadius: '6px', padding: spacing[2], marginBottom: spacing[3] }}>
-              <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: '0.12em', textTransform: 'uppercase', margin: `0 0 6px` }}>
+            <div
+              style={{
+                backgroundColor: colours.background,
+                borderRadius: '6px',
+                padding: spacing[2],
+                marginBottom: spacing[3],
+              }}
+            >
+              <p
+                style={{
+                  fontSize: typography.sizes.xs,
+                  fontWeight: typography.weights.medium,
+                  color: colours.textTertiary,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  margin: `0 0 6px`,
+                }}
+              >
                 Note from {request.buyerName}
               </p>
-              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: 0, lineHeight: '1.5' }}>
+              <p
+                style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.light,
+                  color: colours.textSecondary,
+                  margin: 0,
+                  lineHeight: '1.5',
+                }}
+              >
                 {request.notes}
               </p>
             </div>
@@ -218,7 +362,13 @@ export default function SubmitPage() {
               {request.requiredFields.map(field => (
                 <div key={field}>
                   <label
-                    style={{ display: 'block', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, marginBottom: '8px' }}
+                    style={{
+                      display: 'block',
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.medium,
+                      color: colours.textPrimary,
+                      marginBottom: '8px',
+                    }}
                   >
                     {plainFieldLabel(field)}
                   </label>
@@ -264,7 +414,14 @@ export default function SubmitPage() {
             </div>
 
             {error && (
-              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, marginBottom: spacing[2] }}>
+              <p
+                style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.light,
+                  color: colours.red,
+                  marginBottom: spacing[2],
+                }}
+              >
                 {error}
               </p>
             )}
@@ -289,15 +446,38 @@ export default function SubmitPage() {
               {submitting ? 'Saving...' : 'Submit'}
             </button>
 
-            <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, textAlign: 'center', margin: `${spacing[2]} 0 0`, lineHeight: '1.5' }}>
-              The data you enter will be recorded as Declared. You can improve its status later by uploading a supporting document.
+            <p
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                textAlign: 'center',
+                margin: `${spacing[2]} 0 0`,
+                lineHeight: '1.5',
+              }}
+            >
+              The data you enter will be recorded as Declared. You can improve its status later by uploading a
+              supporting document.
             </p>
           </form>
         </div>
 
         {request.deadline && (
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, textAlign: 'center', margin: `${spacing[2]} 0 0` }}>
-            Deadline: {new Date(request.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textTertiary,
+              textAlign: 'center',
+              margin: `${spacing[2]} 0 0`,
+            }}
+          >
+            Deadline:{' '}
+            {new Date(request.deadline).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
           </p>
         )}
       </div>

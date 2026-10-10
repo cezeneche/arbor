@@ -63,7 +63,7 @@ export function parseWorkosSignatureHeader(header: string | null): WorkosSignatu
   let timestamp: number | null = null
   let signature: string | null = null
   for (const part of header.split(',')) {
-    const [k, v] = part.split('=').map((s) => s.trim())
+    const [k, v] = part.split('=').map(s => s.trim())
     if (k === 't') {
       const n = Number(v)
       timestamp = Number.isFinite(n) ? n : null

@@ -44,10 +44,9 @@ describe('findUnitConflicts', () => {
 
   it('holds no opinion on a field with no canonical unit', () => {
     // Categorical and dimensionless fields declare null; anything is allowed.
-    const conflicts = findUnitConflicts(
-      [rec({ fieldName: 'read_type', unit: 'ACTUAL' })],
-      { 'ENERGY::read_type': null },
-    )
+    const conflicts = findUnitConflicts([rec({ fieldName: 'read_type', unit: 'ACTUAL' })], {
+      'ENERGY::read_type': null,
+    })
     expect(conflicts).toEqual([])
   })
 
@@ -66,10 +65,9 @@ describe('findUnitConflicts', () => {
 
 describe('findUnitConflicts — grouped input', () => {
   it('carries a group count through to the conflict', () => {
-    const [c] = findUnitConflicts(
-      [{ id: 'r1', domain: 'ENERGY', fieldName: 'f', unit: 'kwh', count: 4 }],
-      { 'ENERGY::f': 'mj' },
-    )
+    const [c] = findUnitConflicts([{ id: 'r1', domain: 'ENERGY', fieldName: 'f', unit: 'kwh', count: 4 }], {
+      'ENERGY::f': 'mj',
+    })
     expect(c).toMatchObject({ unit: 'kwh', expected: 'mj', count: 4 })
   })
 })

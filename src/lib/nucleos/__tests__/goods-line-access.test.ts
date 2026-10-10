@@ -26,11 +26,17 @@ it('hands back the line it found', async () => {
 })
 
 it('refuses a line that is not on the case', async () => {
-  await expect(resolveGoodsLineAccess('case-1', 'gl-9', 'ent-1')).resolves.toMatchObject({ ok: false, status: 404 })
+  await expect(resolveGoodsLineAccess('case-1', 'gl-9', 'ent-1')).resolves.toMatchObject({
+    ok: false,
+    status: 404,
+  })
 })
 
 it("refuses a case that is not the caller's, before reading it", async () => {
   allowed.mockResolvedValue({ allowed: false })
-  await expect(resolveGoodsLineAccess('case-1', 'gl-1', 'ent-1')).resolves.toMatchObject({ ok: false, status: 404 })
+  await expect(resolveGoodsLineAccess('case-1', 'gl-1', 'ent-1')).resolves.toMatchObject({
+    ok: false,
+    status: 404,
+  })
   expect(getCase).not.toHaveBeenCalled()
 })

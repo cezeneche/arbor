@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- test doubles stand in for Prisma's generic argument types */
 import { createHash } from 'crypto'
-import { submitReliefStatement, syncReliefStatement, type ReliefStatementDeps } from '../cbam-relief-statement'
+import {
+  submitReliefStatement,
+  syncReliefStatement,
+  type ReliefStatementDeps,
+} from '../cbam-relief-statement'
 import { VerificationRejectedError } from '@/lib/nucleos/verification-client'
 
 // The verifier's statement behind a carbon price relief claim. Stored in Arbor,
@@ -73,7 +77,9 @@ describe('submitReliefStatement', () => {
 
   it('applies the same checks as the emissions statement', async () => {
     const { d } = deps()
-    await expect(submitReliefStatement({ ...input, verifierName: ' ' }, d)).resolves.toMatchObject({ code: 'INVALID' })
+    await expect(submitReliefStatement({ ...input, verifierName: ' ' }, d)).resolves.toMatchObject({
+      code: 'INVALID',
+    })
     await expect(
       submitReliefStatement({ ...input, bytes: new Uint8Array([1, 2, 3, 4, 5]) }, d),
     ).resolves.toMatchObject({ code: 'NOT_PDF' })
@@ -97,8 +103,12 @@ describe('submitReliefStatement', () => {
 
 describe('syncReliefStatement', () => {
   const row = {
-    id: 'stmt-9', nucleosCaseId: 'case-1', goodsLineId: 'gl-1', sha256: sha,
-    verifierName: 'V', verifierAccreditation: 'A',
+    id: 'stmt-9',
+    nucleosCaseId: 'case-1',
+    goodsLineId: 'gl-1',
+    sha256: sha,
+    verifierName: 'V',
+    verifierAccreditation: 'A',
   }
 
   it('does not send a statement Nucleos already holds', async () => {
@@ -111,7 +121,9 @@ describe('syncReliefStatement', () => {
   it('reports a refusal from Nucleos as the reason', async () => {
     const { d, rows } = deps()
     rows.set('stmt-9', row)
-    ;(d.record as jest.Mock).mockRejectedValue(new VerificationRejectedError('There is no relief claim waiting.'))
+    ;(d.record as jest.Mock).mockRejectedValue(
+      new VerificationRejectedError('There is no relief claim waiting.'),
+    )
     await expect(syncReliefStatement(row, d)).resolves.toMatchObject({
       ok: false,
       message: expect.stringContaining('There is no relief claim waiting.'),

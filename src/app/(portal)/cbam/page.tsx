@@ -52,7 +52,11 @@ export default async function CbamPage({
       orderBy: { submittedAt: 'desc' },
       take: 50,
       select: {
-        id: true, fileName: true, documentType: true, status: true, submittedAt: true,
+        id: true,
+        fileName: true,
+        documentType: true,
+        status: true,
+        submittedAt: true,
         extractionJobs: { select: { extractorVersion: true }, take: 1, orderBy: { startedAt: 'desc' } },
       },
     })
@@ -184,9 +188,7 @@ export default async function CbamPage({
         ) : view === 'relief' && cases ? (
           <CbamCarbonRelief cases={cases} />
         ) : (
-          <div style={textStyles.sectionSubtitle}>
-            This view could not be loaded.
-          </div>
+          <div style={textStyles.sectionSubtitle}>This view could not be loaded.</div>
         )}
       </div>
     </div>

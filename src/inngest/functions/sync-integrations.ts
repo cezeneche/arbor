@@ -22,7 +22,10 @@ function providerEndpoint(base: string, path: string): string {
 // through safeFetchJson: public https destinations only, redirects re-checked,
 // bounded time and bounded response size. The HMRC endpoint is a constant but
 // uses the same path so the limits apply uniformly.
-async function runSync(provider: IntegrationProvider, credentialId: string): Promise<{ created: number; skipped: number }> {
+async function runSync(
+  provider: IntegrationProvider,
+  credentialId: string,
+): Promise<{ created: number; skipped: number }> {
   const cred = await prisma.integrationCredential.findUnique({ where: { id: credentialId } })
   if (!cred || !cred.isActive) return { created: 0, skipped: 0 }
 
@@ -31,11 +34,14 @@ async function runSync(provider: IntegrationProvider, credentialId: string): Pro
 
   let records
   if (provider === 'CDS') {
-    const json = await safeFetchJson<Parameters<typeof mapCdsDeclarations>[0]>('https://api.service.hmrc.gov.uk/customs/declarations', {
-      ...limits,
-      label: 'CDS fetch',
-      headers: { Authorization: `Bearer ${creds.accessToken}`, Accept: 'application/vnd.hmrc.1.0+json' },
-    })
+    const json = await safeFetchJson<Parameters<typeof mapCdsDeclarations>[0]>(
+      'https://api.service.hmrc.gov.uk/customs/declarations',
+      {
+        ...limits,
+        label: 'CDS fetch',
+        headers: { Authorization: `Bearer ${creds.accessToken}`, Accept: 'application/vnd.hmrc.1.0+json' },
+      },
+    )
     records = mapCdsDeclarations(json)
   } else if (provider === 'SAP') {
     const json = await safeFetchJson<Parameters<typeof mapSapMaterialDocs>[0]>(
@@ -70,15 +76,24 @@ async function runSync(provider: IntegrationProvider, credentialId: string): Pro
 
 // On-demand sync triggered from the integrations UI.
 export const syncIntegrationFunction = inngest.createFunction(
-  { id: 'sync-integration', retries: 2, concurrency: { limit: 3 }, triggers: [{ event: 'integration/sync' }] },
+  {
+    id: 'sync-integration',
+    retries: 2,
+    concurrency: { limit: 3 },
+    triggers: [{ event: 'integration/sync' }],
+  },
   async ({ event, step }) => {
     const { credentialId, provider } = event.data as { credentialId: string; provider: IntegrationProvider }
     try {
       const result = await step.run('run-sync', () => runSync(provider, credentialId))
-      await step.run('record-outcome', () => recordSyncOutcome(credentialId, `ok: ${result.created} created, ${result.skipped} skipped`))
+      await step.run('record-outcome', () =>
+        recordSyncOutcome(credentialId, `ok: ${result.created} created, ${result.skipped} skipped`),
+      )
       return result
     } catch (e) {
-      await step.run('record-failure', () => recordSyncOutcome(credentialId, `error: ${(e as Error).message}`))
+      await step.run('record-failure', () =>
+        recordSyncOutcome(credentialId, `error: ${(e as Error).message}`),
+      )
       throw e
     }
   },
@@ -89,10 +104,16 @@ export const syncCdsDailyFunction = inngest.createFunction(
   { id: 'sync-cds-daily', triggers: [{ cron: '0 7 * * *' }] },
   async ({ step }) => {
     const creds = await step.run('find-cds-credentials', async () =>
-      prisma.integrationCredential.findMany({ where: { provider: 'CDS', isActive: true }, select: { id: true } }),
+      prisma.integrationCredential.findMany({
+        where: { provider: 'CDS', isActive: true },
+        select: { id: true },
+      }),
     )
     for (const c of creds) {
-      await step.sendEvent(`sync-${c.id}`, { name: 'integration/sync', data: { credentialId: c.id, provider: 'CDS' } })
+      await step.sendEvent(`sync-${c.id}`, {
+        name: 'integration/sync',
+        data: { credentialId: c.id, provider: 'CDS' },
+      })
     }
     return { dispatched: creds.length }
   },

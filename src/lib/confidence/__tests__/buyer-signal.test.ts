@@ -18,7 +18,12 @@ const base = {
 
 describe('buildBuyerLabel', () => {
   it('maps a dispute to a BUYER_DISPUTED, wasCorrect=false label with the buyer’s suggestion', () => {
-    const label = buildBuyerLabel({ ...base, decision: 'dispute', recordValue: '1000', suggestedValue: '100' })
+    const label = buildBuyerLabel({
+      ...base,
+      decision: 'dispute',
+      recordValue: '1000',
+      suggestedValue: '100',
+    })
     expect(label).toMatchObject({
       source: 'BUYER_DISPUTED',
       wasCorrect: false,
@@ -54,7 +59,12 @@ describe('buildBuyerLabel', () => {
   })
 
   it('clamps an out-of-range confidence into [0,1]', () => {
-    const label = buildBuyerLabel({ ...base, decision: 'confirm', recordValue: '1', confidenceAtExtraction: 1.4 })
+    const label = buildBuyerLabel({
+      ...base,
+      decision: 'confirm',
+      recordValue: '1',
+      confidenceAtExtraction: 1.4,
+    })
     expect(label.confidenceAtExtraction).toBe(1)
   })
 

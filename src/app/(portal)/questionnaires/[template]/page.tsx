@@ -48,7 +48,8 @@ export default async function QuestionnaireDetailPage({
   if (!template || template.status !== 'available') notFound()
 
   const sp = await searchParams
-  const periodStart = sp.periodStart && !isNaN(Date.parse(sp.periodStart)) ? new Date(sp.periodStart) : undefined
+  const periodStart =
+    sp.periodStart && !isNaN(Date.parse(sp.periodStart)) ? new Date(sp.periodStart) : undefined
   const periodEnd = sp.periodEnd && !isNaN(Date.parse(sp.periodEnd)) ? new Date(sp.periodEnd) : undefined
 
   const stored = await prisma.dataRecord.findMany({
@@ -59,20 +60,26 @@ export default async function QuestionnaireDetailPage({
       ...(periodEnd ? { periodEnd: { lte: periodEnd } } : {}),
     },
     select: {
-      id: true, domain: true, fieldName: true, value: true, unit: true,
-      trustTier: true, periodStart: true, periodEnd: true,
+      id: true,
+      domain: true,
+      fieldName: true,
+      value: true,
+      unit: true,
+      trustTier: true,
+      periodStart: true,
+      periodEnd: true,
     },
   })
 
   const answers = prefillQuestionnaire(template, toPrefillRecords(template, stored))
-  const answered = answers.filter((a) => a.status === 'answered').length
+  const answered = answers.filter(a => a.status === 'answered').length
   const gaps = answers.length - answered
 
   // Group answers in template order by section.
   const sections: { name: string; answers: PrefilledAnswer[] }[] = []
   for (const a of answers) {
     const name = a.section ?? 'Other'
-    let group = sections.find((s) => s.name === name)
+    let group = sections.find(s => s.name === name)
     if (!group) {
       group = { name, answers: [] }
       sections.push(group)
@@ -84,13 +91,20 @@ export default async function QuestionnaireDetailPage({
     <div style={{ width: '100%' }}>
       <BackLink current={template.name} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3], margin: `0 0 ${spacing[3]}` }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: spacing[3],
+          margin: `0 0 ${spacing[3]}`,
+        }}
+      >
         <div>
-          <h1 style={textStyles.pageTitle}>
-            {template.name}
-          </h1>
+          <h1 style={textStyles.pageTitle}>{template.name}</h1>
           <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
-            {answered} of {answers.length} answered from your records{gaps > 0 ? ` · ${gaps} still need data` : ''}
+            {answered} of {answers.length} answered from your records
+            {gaps > 0 ? ` · ${gaps} still need data` : ''}
           </p>
         </div>
         <PrefillExport templateId={template.id} answers={answers} />
@@ -99,32 +113,79 @@ export default async function QuestionnaireDetailPage({
       {/* Period filter - inline, no modal. */}
       <form
         method="get"
-        style={{ display: 'flex', alignItems: 'flex-end', gap: spacing[2], marginBottom: spacing[3], padding: spacing[2], backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '8px' }}
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: spacing[2],
+          marginBottom: spacing[3],
+          padding: spacing[2],
+          backgroundColor: colours.surface,
+          border: `1px solid ${colours.border}`,
+          borderRadius: '8px',
+        }}
       >
-        <label style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+        <label
+          style={{
+            fontSize: typography.sizes.xs,
+            fontWeight: typography.weights.light,
+            color: colours.textSecondary,
+          }}
+        >
           <div style={{ marginBottom: '4px' }}>From</div>
           <input type="date" name="periodStart" defaultValue={sp.periodStart ?? ''} style={inputStyle} />
         </label>
-        <label style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+        <label
+          style={{
+            fontSize: typography.sizes.xs,
+            fontWeight: typography.weights.light,
+            color: colours.textSecondary,
+          }}
+        >
           <div style={{ marginBottom: '4px' }}>To</div>
           <input type="date" name="periodEnd" defaultValue={sp.periodEnd ?? ''} style={inputStyle} />
         </label>
         <button
           type="submit"
-          style={{ padding: '8px 18px', fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.surface, backgroundColor: colours.navy, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          style={{
+            padding: '8px 18px',
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.medium,
+            color: colours.surface,
+            backgroundColor: colours.navy,
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
         >
           Apply period
         </button>
         {(periodStart || periodEnd) && (
-          <Link href={`/questionnaires/${template.id}`} style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, textDecoration: 'none' }}>
+          <Link
+            href={`/questionnaires/${template.id}`}
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              textDecoration: 'none',
+            }}
+          >
             Clear
           </Link>
         )}
       </form>
 
-      {sections.map((section) => (
+      {sections.map(section => (
         <div key={section.name} style={{ marginBottom: spacing[3] }}>
-          <h2 style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, letterSpacing: typography.tracking.wider, textTransform: 'uppercase', margin: `0 0 ${spacing[1]}` }}>
+          <h2
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.medium,
+              color: colours.textTertiary,
+              letterSpacing: typography.tracking.wider,
+              textTransform: 'uppercase',
+              margin: `0 0 ${spacing[1]}`,
+            }}
+          >
             {section.name}
           </h2>
           {/* Answers flow into as many columns as the window allows, so the page
@@ -137,7 +198,7 @@ export default async function QuestionnaireDetailPage({
               gap: '10px',
             }}
           >
-            {section.answers.map((a) => {
+            {section.answers.map(a => {
               const isGap = a.status === 'gap'
               return (
                 <div
@@ -149,28 +210,59 @@ export default async function QuestionnaireDetailPage({
                     backgroundColor: isGap ? colours.amberBg : colours.surface,
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[3], alignItems: 'flex-start' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: spacing[3],
+                      alignItems: 'flex-start',
+                    }}
+                  >
                     <div style={{ flex: 1 }}>
-                      <p style={textStyles.rowTitle}>
-                        {a.questionText}
-                      </p>
+                      <p style={textStyles.rowTitle}>{a.questionText}</p>
                       {a.note && (
-                        <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0' }}>
+                        <p
+                          style={{
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.light,
+                            color: colours.textTertiary,
+                            margin: '4px 0 0',
+                          }}
+                        >
                           {a.note}
                         </p>
                       )}
                     </div>
                     <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {isGap ? (
-                        <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.amber }}>
+                        <span
+                          style={{
+                            fontSize: typography.sizes.sm,
+                            fontWeight: typography.weights.medium,
+                            color: colours.amber,
+                          }}
+                        >
                           No data yet
                         </span>
                       ) : a.mode === 'collection' ? (
-                        <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+                        <span
+                          style={{
+                            fontSize: typography.sizes.sm,
+                            fontWeight: typography.weights.light,
+                            color: colours.textSecondary,
+                          }}
+                        >
                           {a.contributingCount} record{a.contributingCount === 1 ? '' : 's'} attached
                         </span>
                       ) : (
-                        <span style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+                        <span
+                          style={{
+                            fontSize: typography.sizes.base,
+                            fontWeight: typography.weights.medium,
+                            color: colours.textPrimary,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
                           {a.value!.toLocaleString('en-GB', { maximumFractionDigits: 2 })} {a.unit}
                         </span>
                       )}
@@ -182,7 +274,14 @@ export default async function QuestionnaireDetailPage({
                   {isGap && (
                     <Link
                       href="/upload"
-                      style={{ display: 'inline-block', marginTop: spacing[1], fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.navy, textDecoration: 'none' }}
+                      style={{
+                        display: 'inline-block',
+                        marginTop: spacing[1],
+                        fontSize: typography.sizes.xs,
+                        fontWeight: typography.weights.light,
+                        color: colours.navy,
+                        textDecoration: 'none',
+                      }}
                     >
                       Upload a document to answer this →
                     </Link>

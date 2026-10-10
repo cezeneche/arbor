@@ -21,9 +21,7 @@ const LOCKED_REASON =
   'records join the anonymous pool for your sector, which unlocks the pool for you. ' +
   'Your business is never named in any figure, and you can switch it off again at any time.'
 
-export function resolveBenchmarkAccess(
-  entity: BenchmarkConsentSource | null | undefined,
-): BenchmarkAccess {
+export function resolveBenchmarkAccess(entity: BenchmarkConsentSource | null | undefined): BenchmarkAccess {
   if (!entity?.allowBenchmarkAggregation) {
     return { unlocked: false, reason: LOCKED_REASON }
   }

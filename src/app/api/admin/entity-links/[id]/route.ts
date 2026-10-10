@@ -13,10 +13,7 @@ import { prisma } from '@/lib/prisma'
 // graph) rely on.
 const bodySchema = z.object({ action: z.enum(['confirm', 'reject']) })
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requirePlatformAdmin()
   if (!session) return response!
   const userId = getSessionUser(session).id

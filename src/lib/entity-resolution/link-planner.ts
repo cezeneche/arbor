@@ -44,10 +44,7 @@ export function pairKey(a: string, b: string): string {
   return a < b ? `${a} ${b}` : `${b} ${a}`
 }
 
-export function planEntityLinks(
-  scored: ScoredPair[],
-  existing: Map<string, ExistingLink>,
-): LinkPlan {
+export function planEntityLinks(scored: ScoredPair[], existing: Map<string, ExistingLink>): LinkPlan {
   const toCreate: LinkCreate[] = []
   const toUpdate: LinkUpdate[] = []
 
@@ -59,7 +56,13 @@ export function planEntityLinks(
     const prior = existing.get(pairKey(s.a, s.b))
 
     if (!prior) {
-      toCreate.push({ entityAId, entityBId, similarity: s.similarity, suggestedDecision, method: RESOLUTION_METHOD })
+      toCreate.push({
+        entityAId,
+        entityBId,
+        similarity: s.similarity,
+        suggestedDecision,
+        method: RESOLUTION_METHOD,
+      })
     } else if (prior.status === 'PENDING') {
       toUpdate.push({ id: prior.id, similarity: s.similarity, suggestedDecision })
     }

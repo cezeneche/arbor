@@ -8,9 +8,7 @@ export type SessionSecurityCode =
   | 'SESSION_REVOKED'
   | 'ADMIN_TWO_FACTOR_SETUP_REQUIRED'
 
-export type SessionSecurityResult =
-  | { ok: true }
-  | { ok: false; code: SessionSecurityCode }
+export type SessionSecurityResult = { ok: true } | { ok: false; code: SessionSecurityCode }
 
 export interface SessionSecurityOptions {
   /** The 2FA enrolment endpoints themselves must stay reachable by an
@@ -52,11 +50,7 @@ export function evaluateSessionSecurity(
   // Mandatory admin 2FA, enforced at the API layer too — the portal layout's
   // redirect to /security-setup only covers page loads, not direct API calls.
   // Only applies when the caller supplied role/enrolment (backwards compatible).
-  if (
-    !opts.exemptAdminTwoFactorSetup &&
-    dbUser.role === 'ADMIN' &&
-    dbUser.twoFactorEnabled === false
-  ) {
+  if (!opts.exemptAdminTwoFactorSetup && dbUser.role === 'ADMIN' && dbUser.twoFactorEnabled === false) {
     return { ok: false, code: 'ADMIN_TWO_FACTOR_SETUP_REQUIRED' }
   }
 

@@ -5,12 +5,7 @@
 // an emission factor, never a meaning-changing unit conversion.
 
 import type { TrustTier } from '@/lib/constants'
-import type {
-  QuestionnaireTemplate,
-  QuestionDefinition,
-  PrefilledAnswer,
-  PrefillRecordRef,
-} from './types'
+import type { QuestionnaireTemplate, QuestionDefinition, PrefilledAnswer, PrefillRecordRef } from './types'
 
 export interface PrefillInputRecord {
   id: string
@@ -50,7 +45,7 @@ export function prefillQuestionnaire(
   template: QuestionnaireTemplate,
   records: PrefillInputRecord[],
 ): PrefilledAnswer[] {
-  return template.questions.map((q) => answerQuestion(q, records))
+  return template.questions.map(q => answerQuestion(q, records))
 }
 
 function answerQuestion(q: QuestionDefinition, records: PrefillInputRecord[]): PrefilledAnswer {
@@ -73,7 +68,7 @@ function answerQuestion(q: QuestionDefinition, records: PrefillInputRecord[]): P
     contributingRecords: [],
   })
 
-  const matching = records.filter((r) => r.domain === q.domain && r.fieldName === q.fieldName)
+  const matching = records.filter(r => r.domain === q.domain && r.fieldName === q.fieldName)
   if (matching.length === 0) return gap()
 
   if (q.mode === 'collection') {
@@ -82,8 +77,8 @@ function answerQuestion(q: QuestionDefinition, records: PrefillInputRecord[]): P
       status: 'answered',
       value: null,
       unit: null,
-      trustTier: worstTier(matching.map((r) => r.trustTier)),
-      sourceRecordIds: matching.map((r) => r.id),
+      trustTier: worstTier(matching.map(r => r.trustTier)),
+      sourceRecordIds: matching.map(r => r.id),
       contributingCount: matching.length,
       note: `${matching.length} record${matching.length === 1 ? '' : 's'} to combine in your tool`,
       contributingRecords: matching.map(toRef),
@@ -92,7 +87,7 @@ function answerQuestion(q: QuestionDefinition, records: PrefillInputRecord[]): P
 
   // direct / assemble — only ever operate on a single, identical unit.
   const targetUnit = q.unit ?? matching[0].unit
-  const unitMatched = matching.filter((r) => r.unit === targetUnit)
+  const unitMatched = matching.filter(r => r.unit === targetUnit)
   if (unitMatched.length === 0) return gap()
 
   if (q.mode === 'direct') {
@@ -121,8 +116,8 @@ function answerQuestion(q: QuestionDefinition, records: PrefillInputRecord[]): P
     status: 'answered',
     value: sum,
     unit: targetUnit,
-    trustTier: worstTier(unitMatched.map((r) => r.trustTier)),
-    sourceRecordIds: unitMatched.map((r) => r.id),
+    trustTier: worstTier(unitMatched.map(r => r.trustTier)),
+    sourceRecordIds: unitMatched.map(r => r.id),
     contributingCount: unitMatched.length,
     note: `Σ of ${unitMatched.length} record${unitMatched.length === 1 ? '' : 's'}`,
     contributingRecords: unitMatched.map(toRef),

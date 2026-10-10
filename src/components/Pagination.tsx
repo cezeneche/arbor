@@ -45,7 +45,9 @@ export function Pagination({
       }}
     >
       {page > 1 ? (
-        <Link href={buildUrl(page - 1)} style={btnStyle}>← Previous</Link>
+        <Link href={buildUrl(page - 1)} style={btnStyle}>
+          ← Previous
+        </Link>
       ) : (
         <span style={ghostStyle}>← Previous</span>
       )}
@@ -61,7 +63,9 @@ export function Pagination({
       </span>
 
       {page < totalPages ? (
-        <Link href={buildUrl(page + 1)} style={btnStyle}>Next →</Link>
+        <Link href={buildUrl(page + 1)} style={btnStyle}>
+          Next →
+        </Link>
       ) : (
         <span style={ghostStyle}>Next →</span>
       )}

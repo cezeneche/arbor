@@ -9,7 +9,10 @@ import { safeFetch, OutboundRequestError } from '@/lib/net/safe-fetch'
 export const deliverWebhookFunction = inngest.createFunction(
   { id: 'deliver-webhook', retries: 3, concurrency: { limit: 5 }, triggers: [{ event: 'webhook/deliver' }] },
   async ({ event, step }) => {
-    const { subscriptionId, payload } = event.data as { subscriptionId: string; payload: Record<string, unknown> }
+    const { subscriptionId, payload } = event.data as {
+      subscriptionId: string
+      payload: Record<string, unknown>
+    }
 
     const sub = await step.run('load-subscription', async () =>
       prisma.webhookSubscription.findUnique({ where: { id: subscriptionId } }),
@@ -49,8 +52,7 @@ export const deliverWebhookFunction = inngest.createFunction(
     } catch (e) {
       // Record the attempt before rethrowing, so a subscription failing every retry
       // still shows its last status in the UI rather than looking untouched.
-      const reason =
-        e instanceof OutboundRequestError ? `blocked: ${e.reason}` : (e as Error).message
+      const reason = e instanceof OutboundRequestError ? `blocked: ${e.reason}` : (e as Error).message
       await step.run('record-failure', async () => {
         await prisma.webhookSubscription.update({
           where: { id: subscriptionId },

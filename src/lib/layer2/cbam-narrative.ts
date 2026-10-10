@@ -35,14 +35,25 @@ export type NarrativeResult =
   | { ok: true; narrativeId: string; reviewRequired: boolean; emailed: number; emailProblem: string | null }
   | { ok: false; code: 'NOT_ALLOWED' | 'BLOCKED' | 'UNAVAILABLE'; message: string }
 
-export function narrativeReviewEmail(input: { caseLabel: string; reasons: string[]; link: string }): NarrativeEmail {
+export function narrativeReviewEmail(input: {
+  caseLabel: string
+  reasons: string[]
+  link: string
+}): NarrativeEmail {
   const intro =
     'The audit narrative for this CBAM case was checked against the case’s figures, and a person needs to ' +
     'review it before it is relied on.'
   const reasons = input.reasons.length ? input.reasons : ['No reason was given.']
   return {
     subject: `A CBAM audit narrative needs review: ${input.caseLabel}`,
-    text: [intro, '', 'What was found:', ...reasons.map(r => `- ${r}`), '', `Open the case: ${input.link}`].join('\n'),
+    text: [
+      intro,
+      '',
+      'What was found:',
+      ...reasons.map(r => `- ${r}`),
+      '',
+      `Open the case: ${input.link}`,
+    ].join('\n'),
     html:
       `<p>${escapeHtml(intro)}</p>` +
       `<p>What was found:</p><ul>${reasons.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>` +
@@ -79,7 +90,11 @@ export async function writeNarrative(
       }
     }
     if (!(err instanceof NucleosUnavailableError)) console.error('[cbam-narrative] unexpected failure:', err)
-    return { ok: false, code: 'UNAVAILABLE', message: 'The narrative could not be written just now. Try again shortly.' }
+    return {
+      ok: false,
+      code: 'UNAVAILABLE',
+      message: 'The narrative could not be written just now. Try again shortly.',
+    }
   }
 
   const row = await deps.db.cbamNarrative.create({

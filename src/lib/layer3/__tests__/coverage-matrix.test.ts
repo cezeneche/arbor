@@ -41,10 +41,7 @@ describe('buildCoverageMatrix', () => {
   })
 
   it('marks a period by the weakest tier present, never the best', () => {
-    const rows = build([
-      rec({ trustTier: 'A' }),
-      rec({ trustTier: 'B' }),
-    ])
+    const rows = build([rec({ trustTier: 'A' }), rec({ trustTier: 'B' })])
     expect(stateAt(rows, 'Q2 2026')).toBe('declared')
   })
 

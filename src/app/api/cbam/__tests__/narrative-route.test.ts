@@ -34,7 +34,13 @@ beforeEach(() => {
 
 describe('POST narrative', () => {
   it("writes the narrative for the caller's own case, named by its importer and quarter", async () => {
-    write.mockResolvedValue({ ok: true, narrativeId: 'nar-1', reviewRequired: false, emailed: 0, emailProblem: null })
+    write.mockResolvedValue({
+      ok: true,
+      narrativeId: 'nar-1',
+      reviewRequired: false,
+      emailed: 0,
+      emailProblem: null,
+    })
     const res = await post()
     expect(res.status).toBe(201)
     expect(access).toHaveBeenCalledWith('case-1', 'ent-1')
@@ -48,7 +54,13 @@ describe('POST narrative', () => {
 
   it('falls back to the case id when the case cannot be read for its name', async () => {
     getCase.mockRejectedValue(new Error('down'))
-    write.mockResolvedValue({ ok: true, narrativeId: 'nar-1', reviewRequired: false, emailed: 0, emailProblem: null })
+    write.mockResolvedValue({
+      ok: true,
+      narrativeId: 'nar-1',
+      reviewRequired: false,
+      emailed: 0,
+      emailProblem: null,
+    })
     await post()
     expect(write.mock.calls[0][0].caseLabel).toBe('case case-1')
   })

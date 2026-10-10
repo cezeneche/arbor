@@ -11,10 +11,11 @@ const schema = z.object({
   password: z.string().min(8).max(200),
 })
 
-const INVALID = () => NextResponse.json(
-  { error: 'This reset link is invalid or has expired. Please request a new one.' },
-  { status: 400 },
-)
+const INVALID = () =>
+  NextResponse.json(
+    { error: 'This reset link is invalid or has expired. Please request a new one.' },
+    { status: 400 },
+  )
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'))

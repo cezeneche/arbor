@@ -66,7 +66,10 @@ jest.mock('@/lib/prisma', () => ({
       attempt++
       const result = await fn(tx)
       if (attempt === 1) {
-        throw new Prisma.PrismaClientKnownRequestError('write conflict', { code: 'P2034', clientVersion: 'test' })
+        throw new Prisma.PrismaClientKnownRequestError('write conflict', {
+          code: 'P2034',
+          clientVersion: 'test',
+        })
       }
       return result
     },

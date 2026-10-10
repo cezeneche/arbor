@@ -33,15 +33,10 @@ const VALID_SEVERITIES: readonly FlagSeverity[] = ['INFO', 'WARNING', 'CRITICAL'
 
 function normaliseSeverity(raw: string): FlagSeverity {
   const upper = raw.toUpperCase()
-  return (VALID_SEVERITIES as readonly string[]).includes(upper)
-    ? (upper as FlagSeverity)
-    : 'WARNING'
+  return (VALID_SEVERITIES as readonly string[]).includes(upper) ? (upper as FlagSeverity) : 'WARNING'
 }
 
-export function planConstraintFlags(
-  results: ConstraintRecordResult[],
-  records: RecordRef[],
-): PlannedFlag[] {
+export function planConstraintFlags(results: ConstraintRecordResult[], records: RecordRef[]): PlannedFlag[] {
   // documentId → (fieldName → dataRecordId)
   const byDoc = new Map<string, Map<string, string>>()
   for (const r of records) {
@@ -87,5 +82,5 @@ export interface ExistingFlag {
 export function dedupeNewFlags(planned: PlannedFlag[], existing: ExistingFlag[]): PlannedFlag[] {
   const seen = new Set<string>()
   for (const e of existing) seen.add(JSON.stringify([e.dataRecordId, e.message]))
-  return planned.filter((f) => !seen.has(JSON.stringify([f.dataRecordId, f.message])))
+  return planned.filter(f => !seen.has(JSON.stringify([f.dataRecordId, f.message])))
 }

@@ -6,14 +6,25 @@ import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
 
 const DOMAINS = [
-  'ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS',
-  'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE',
+  'ENERGY',
+  'MATERIALS',
+  'PRODUCTION',
+  'LOGISTICS',
+  'EMISSIONS',
+  'AGRICULTURE',
+  'WASTE_AND_WATER',
+  'COMPLIANCE',
 ] as const
 
-type Domain = typeof DOMAINS[number]
+type Domain = (typeof DOMAINS)[number]
 
 const DOMAIN_FIELDS: Record<Domain, string[]> = {
-  ENERGY: ['electricity_consumption_kwh', 'gas_consumption_kwh', 'fuel_consumption_litres', 'renewable_percentage'],
+  ENERGY: [
+    'electricity_consumption_kwh',
+    'gas_consumption_kwh',
+    'fuel_consumption_litres',
+    'renewable_percentage',
+  ],
   MATERIALS: ['material_type', 'quantity_kg', 'country_of_origin', 'supplier_name'],
   PRODUCTION: ['product_type', 'quantity_produced', 'production_unit', 'process_stage'],
   LOGISTICS: ['transport_mode', 'distance_km', 'shipment_weight_kg', 'origin', 'destination'],
@@ -37,17 +48,20 @@ function RequestForm() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-
   const toggleField = (field: string) => {
-    setSelectedFields(prev =>
-      prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]
-    )
+    setSelectedFields(prev => (prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!supplierId) { setError('No supplier specified.'); return }
-    if (selectedFields.length === 0) { setError('Select at least one field.'); return }
+    if (!supplierId) {
+      setError('No supplier specified.')
+      return
+    }
+    if (selectedFields.length === 0) {
+      setError('Select at least one field.')
+      return
+    }
 
     setSubmitting(true)
     setError(null)
@@ -103,14 +117,8 @@ function RequestForm() {
     <div>
       <BackLink current="Request data" />
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Request data
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <h1 style={textStyles.pageTitle}>Request data</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Send a scoped data request to this supplier.
         </p>
       </div>
@@ -131,12 +139,17 @@ function RequestForm() {
             <label style={labelStyle}>Domain</label>
             <select
               value={domain}
-              onChange={e => { setDomain(e.target.value as Domain); setSelectedFields([]) }}
+              onChange={e => {
+                setDomain(e.target.value as Domain)
+                setSelectedFields([])
+              }}
               style={inputStyle}
               required
             >
               {DOMAINS.map(d => (
-                <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>
+                <option key={d} value={d}>
+                  {d.replace(/_/g, ' ')}
+                </option>
               ))}
             </select>
           </div>

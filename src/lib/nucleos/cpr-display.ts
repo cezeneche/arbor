@@ -74,9 +74,7 @@ export function cprDisplay(claim: CprClaimInput): CprDisplay {
     )
   }
   if (claim.exchangeRate && claim.exchangeRateDate) {
-    qualifications.push(
-      `Converted at ${claim.exchangeRate} on ${claim.exchangeRateDate}.`,
-    )
+    qualifications.push(`Converted at ${claim.exchangeRate} on ${claim.exchangeRateDate}.`)
   }
 
   const band: TrustBand =

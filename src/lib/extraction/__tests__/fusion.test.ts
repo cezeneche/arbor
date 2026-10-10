@@ -9,17 +9,33 @@ import type { ExtractedFieldResult } from '../types'
 
 function field(p: Partial<ExtractedFieldResult>): ExtractedFieldResult {
   return {
-    fieldName: 'f', rawValue: null, rawUnit: null, sourceText: '',
-    confidenceScore: 1, flagged: false, flagReason: null, ...p,
+    fieldName: 'f',
+    rawValue: null,
+    rawUnit: null,
+    sourceText: '',
+    confidenceScore: 1,
+    flagged: false,
+    flagReason: null,
+    ...p,
   }
 }
 
 describe('collectFieldSamples', () => {
   it('aligns each field value across the k runs (null where a run missed it)', () => {
     const groups = collectFieldSamples([
-      { fields: [field({ fieldName: 'weight', rawValue: '24500' }), field({ fieldName: 'origin', rawValue: 'India' })] },
+      {
+        fields: [
+          field({ fieldName: 'weight', rawValue: '24500' }),
+          field({ fieldName: 'origin', rawValue: 'India' }),
+        ],
+      },
       { fields: [field({ fieldName: 'weight', rawValue: '24,500' })] }, // origin missing this run
-      { fields: [field({ fieldName: 'weight', rawValue: '24500' }), field({ fieldName: 'origin', rawValue: 'India' })] },
+      {
+        fields: [
+          field({ fieldName: 'weight', rawValue: '24500' }),
+          field({ fieldName: 'origin', rawValue: 'India' }),
+        ],
+      },
     ])
     const weight = groups.find(g => g.fieldName === 'weight')!
     expect(weight.samples).toEqual(['24500', '24,500', '24500'])
@@ -38,13 +54,33 @@ describe('collectFieldSamples', () => {
 
 describe('buildFusedFields', () => {
   const groups = collectFieldSamples([
-    { fields: [field({ fieldName: 'weight', rawValue: '24500', rawUnit: 'KG', sourceText: 'Net 24500 KG', confidenceScore: 1 })] },
+    {
+      fields: [
+        field({
+          fieldName: 'weight',
+          rawValue: '24500',
+          rawUnit: 'KG',
+          sourceText: 'Net 24500 KG',
+          confidenceScore: 1,
+        }),
+      ],
+    },
     { fields: [field({ fieldName: 'weight', rawValue: '24,500', rawUnit: 'kg', sourceText: 'x' })] },
-    { fields: [field({ fieldName: 'weight', rawValue: '24500', rawUnit: 'KG', sourceText: 'Net 24500 KG' })] },
+    {
+      fields: [field({ fieldName: 'weight', rawValue: '24500', rawUnit: 'KG', sourceText: 'Net 24500 KG' })],
+    },
   ])
 
   const fused: FusedFieldResult[] = [
-    { field_name: 'weight', consensus: '24500', agreement: 3, k: 3, posterior_mean: 0.8, ci_low: 0.3, ci_high: 1 },
+    {
+      field_name: 'weight',
+      consensus: '24500',
+      agreement: 3,
+      k: 3,
+      posterior_mean: 0.8,
+      ci_low: 0.3,
+      ci_high: 1,
+    },
   ]
 
   it('uses the fused posterior as confidenceScore (not the model 1.0)', () => {
@@ -58,7 +94,15 @@ describe('buildFusedFields', () => {
 
   it('flags a field the samples disagreed on', () => {
     const lowFused: FusedFieldResult[] = [
-      { field_name: 'weight', consensus: '24500', agreement: 2, k: 3, posterior_mean: 0.6, ci_low: 0.2, ci_high: 0.9 },
+      {
+        field_name: 'weight',
+        consensus: '24500',
+        agreement: 2,
+        k: 3,
+        posterior_mean: 0.6,
+        ci_low: 0.2,
+        ci_high: 0.9,
+      },
     ]
     const [f] = buildFusedFields(groups, lowFused)
     expect(f.flagged).toBe(true)
@@ -69,7 +113,15 @@ describe('buildFusedFields', () => {
     // The bug verification caught: at k=3 the max fused score is ~0.8, so an
     // absolute 0.85 threshold flagged every field. Unanimous = not flagged.
     const unanimous: FusedFieldResult[] = [
-      { field_name: 'weight', consensus: '24500', agreement: 3, k: 3, posterior_mean: 0.8, ci_low: 0.3, ci_high: 1 },
+      {
+        field_name: 'weight',
+        consensus: '24500',
+        agreement: 3,
+        k: 3,
+        posterior_mean: 0.8,
+        ci_low: 0.3,
+        ci_high: 1,
+      },
     ]
     const [f] = buildFusedFields(groups, unanimous)
     expect(f.flagged).toBe(false)

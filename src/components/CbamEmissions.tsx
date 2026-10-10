@@ -18,13 +18,7 @@ import type { RegimeCalculation } from '@/lib/nucleos/case-calculation'
 // why it did not use actual data, and that sentence with its regulation
 // reference is the answer. It renders as prose, not a collapsed detail.
 
-function Badge({
-  label,
-  tone,
-}: {
-  label: string
-  tone: 'method' | 'provenance'
-}) {
+function Badge({ label, tone }: { label: string; tone: 'method' | 'provenance' }) {
   const isVerified = label === 'Verified'
   const isMeasured = label === 'Measured'
   const colour =
@@ -81,11 +75,7 @@ function Figure({ label, value }: { label: string; value: string }) {
 
 export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
   if (results.length === 0) {
-    return (
-      <p style={textStyles.sectionSubtitle}>
-        No emissions have been worked out for this case yet.
-      </p>
-    )
+    return <p style={textStyles.sectionSubtitle}>No emissions have been worked out for this case yet.</p>
   }
 
   return (
@@ -95,9 +85,7 @@ export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
           {/* Only named when there is more than one. A single-regime importer
               has no choice to understand. */}
           {results.length > 1 && (
-            <p style={{ ...textStyles.eyebrow, marginBottom: spacing[2] }}>
-              {REGIME_LABEL[regime]}
-            </p>
+            <p style={{ ...textStyles.eyebrow, marginBottom: spacing[2] }}>{REGIME_LABEL[regime]}</p>
           )}
 
           {problems.length > 0 && (
@@ -130,9 +118,7 @@ export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
                 }}
               >
                 <div>
-                  <p style={{ ...textStyles.eyebrow, marginBottom: '4px' }}>
-                    Total embedded emissions
-                  </p>
+                  <p style={{ ...textStyles.eyebrow, marginBottom: '4px' }}>Total embedded emissions</p>
                   <p
                     style={{
                       fontSize: typography.sizes.lg,
@@ -145,9 +131,7 @@ export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
                     {presented.totalEmbedded}
                   </p>
                 </div>
-                <p style={{ ...textStyles.caption, color: colours.textTertiary }}>
-                  {presented.period}
-                </p>
+                <p style={{ ...textStyles.caption, color: colours.textTertiary }}>{presented.period}</p>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
@@ -218,9 +202,7 @@ export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
                               margin: '0 0 4px',
                             }}
                           >
-                            <strong style={{ fontWeight: typography.weights.medium }}>
-                              {r.method}:
-                            </strong>{' '}
+                            <strong style={{ fontWeight: typography.weights.medium }}>{r.method}:</strong>{' '}
                             {r.reason}{' '}
                             <span style={{ color: colours.textTertiary }}>({r.regulationRef})</span>
                           </p>
@@ -268,10 +250,8 @@ export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
                         >
                           {line.trace.map((atom, i) => (
                             <li key={i}>
-                              <strong style={{ fontWeight: typography.weights.medium }}>
-                                {atom.step}
-                              </strong>{' '}
-                              → {atom.outcome}. {atom.detail}
+                              <strong style={{ fontWeight: typography.weights.medium }}>{atom.step}</strong> →{' '}
+                              {atom.outcome}. {atom.detail}
                               {atom.regulation_ref ? ` (${atom.regulation_ref})` : ''}
                             </li>
                           ))}

@@ -20,17 +20,15 @@ const caseSchema = z.object({
   expected: z.array(expectedFieldSchema),
 })
 
-const goldenSetSchema = z
-  .object({ cases: z.array(caseSchema) })
-  .superRefine((val, ctx) => {
-    const seen = new Set<string>()
-    for (const c of val.cases) {
-      if (seen.has(c.id)) {
-        ctx.addIssue({ code: 'custom', message: `duplicate case id: ${c.id}` })
-      }
-      seen.add(c.id)
+const goldenSetSchema = z.object({ cases: z.array(caseSchema) }).superRefine((val, ctx) => {
+  const seen = new Set<string>()
+  for (const c of val.cases) {
+    if (seen.has(c.id)) {
+      ctx.addIssue({ code: 'custom', message: `duplicate case id: ${c.id}` })
     }
-  })
+    seen.add(c.id)
+  }
+})
 
 const baselineSchema = z.object({
   extractorVersion: z.string().optional(),

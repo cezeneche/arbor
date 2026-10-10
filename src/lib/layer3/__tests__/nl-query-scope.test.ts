@@ -12,9 +12,21 @@ const d = (iso: string) => new Date(iso)
 
 const grants: SupplierGrant[] = [
   // Energy only, 2026 only.
-  { grantorEntityId: 'sup-a', domain: 'ENERGY', periodStart: d('2026-01-01'), periodEnd: d('2026-12-31'), fieldNames: null },
+  {
+    grantorEntityId: 'sup-a',
+    domain: 'ENERGY',
+    periodStart: d('2026-01-01'),
+    periodEnd: d('2026-12-31'),
+    fieldNames: null,
+  },
   // Everything, one field.
-  { grantorEntityId: 'sup-b', domain: null, periodStart: null, periodEnd: null, fieldNames: ['declared_weight'] },
+  {
+    grantorEntityId: 'sup-b',
+    domain: null,
+    periodStart: null,
+    periodEnd: null,
+    fieldNames: ['declared_weight'],
+  },
 ]
 
 type Rec = { entityId: string; domain: DataDomain; fieldName: string; periodStart: Date; periodEnd: Date }
@@ -38,12 +50,48 @@ function matches(where: ReturnType<typeof grantedRecordsWhere>, r: Rec): boolean
 // database query itself.
 describe('grantedRecordsWhere', () => {
   const records: Rec[] = [
-    { entityId: 'sup-a', domain: 'ENERGY', fieldName: 'total_consumption_kwh', periodStart: d('2026-02-01'), periodEnd: d('2026-02-28') },
-    { entityId: 'sup-a', domain: 'ENERGY', fieldName: 'total_consumption_kwh', periodStart: d('2025-02-01'), periodEnd: d('2025-02-28') },
-    { entityId: 'sup-a', domain: 'MATERIALS', fieldName: 'quantity', periodStart: d('2026-02-01'), periodEnd: d('2026-02-28') },
-    { entityId: 'sup-b', domain: 'LOGISTICS', fieldName: 'declared_weight', periodStart: d('2024-01-01'), periodEnd: d('2024-01-01') },
-    { entityId: 'sup-b', domain: 'LOGISTICS', fieldName: 'shipment_weight', periodStart: d('2024-01-01'), periodEnd: d('2024-01-01') },
-    { entityId: 'sup-c', domain: 'ENERGY', fieldName: 'total_consumption_kwh', periodStart: d('2026-02-01'), periodEnd: d('2026-02-28') },
+    {
+      entityId: 'sup-a',
+      domain: 'ENERGY',
+      fieldName: 'total_consumption_kwh',
+      periodStart: d('2026-02-01'),
+      periodEnd: d('2026-02-28'),
+    },
+    {
+      entityId: 'sup-a',
+      domain: 'ENERGY',
+      fieldName: 'total_consumption_kwh',
+      periodStart: d('2025-02-01'),
+      periodEnd: d('2025-02-28'),
+    },
+    {
+      entityId: 'sup-a',
+      domain: 'MATERIALS',
+      fieldName: 'quantity',
+      periodStart: d('2026-02-01'),
+      periodEnd: d('2026-02-28'),
+    },
+    {
+      entityId: 'sup-b',
+      domain: 'LOGISTICS',
+      fieldName: 'declared_weight',
+      periodStart: d('2024-01-01'),
+      periodEnd: d('2024-01-01'),
+    },
+    {
+      entityId: 'sup-b',
+      domain: 'LOGISTICS',
+      fieldName: 'shipment_weight',
+      periodStart: d('2024-01-01'),
+      periodEnd: d('2024-01-01'),
+    },
+    {
+      entityId: 'sup-c',
+      domain: 'ENERGY',
+      fieldName: 'total_consumption_kwh',
+      periodStart: d('2026-02-01'),
+      periodEnd: d('2026-02-28'),
+    },
   ]
 
   it('selects exactly the records the grants cover', () => {
@@ -75,26 +123,36 @@ describe('resolveSupplierScope', () => {
 
   it('takes an authorised id the parser chose', () => {
     expect(resolveSupplierScope({ supplierEntityId: 'sup-b' }, suppliers)).toEqual({
-      kind: 'one', id: 'sup-b', name: 'Northern Freight Limited',
+      kind: 'one',
+      id: 'sup-b',
+      name: 'Northern Freight Limited',
     })
   })
 
   it('matches a name however the company is spelt', () => {
-    expect(resolveSupplierScope({ supplierName: 'ACME STEEL' }, suppliers)).toMatchObject({ kind: 'one', id: 'sup-a' })
-    expect(resolveSupplierScope({ supplierName: 'northern freight ltd' }, suppliers)).toMatchObject({ kind: 'one', id: 'sup-b' })
+    expect(resolveSupplierScope({ supplierName: 'ACME STEEL' }, suppliers)).toMatchObject({
+      kind: 'one',
+      id: 'sup-a',
+    })
+    expect(resolveSupplierScope({ supplierName: 'northern freight ltd' }, suppliers)).toMatchObject({
+      kind: 'one',
+      id: 'sup-b',
+    })
   })
 
   // An unmatched name used to fall back to every authorised supplier, so
   // "show me Brighton Metals' figures" answered about everyone else.
   it('says a named supplier was not found instead of widening to all', () => {
     expect(resolveSupplierScope({ supplierName: 'Brighton Metals' }, suppliers)).toEqual({
-      kind: 'unmatched', name: 'Brighton Metals',
+      kind: 'unmatched',
+      name: 'Brighton Metals',
     })
   })
 
   it('does not trust an id outside the authorised list', () => {
     expect(resolveSupplierScope({ supplierEntityId: 'sup-z', supplierName: 'Zed Ltd' }, suppliers)).toEqual({
-      kind: 'unmatched', name: 'Zed Ltd',
+      kind: 'unmatched',
+      name: 'Zed Ltd',
     })
   })
 
@@ -122,7 +180,11 @@ describe('supplierGapsWithinGrants', () => {
     })
     expect(gaps).toEqual([
       { supplierEntityId: 'sup-a', supplierName: 'Acme Steel Ltd', missingDomains: ['ENERGY'] },
-      { supplierEntityId: 'sup-b', supplierName: 'Northern Freight Limited', missingDomains: ['ENERGY', 'MATERIALS'] },
+      {
+        supplierEntityId: 'sup-b',
+        supplierName: 'Northern Freight Limited',
+        missingDomains: ['ENERGY', 'MATERIALS'],
+      },
     ])
   })
 
@@ -157,7 +219,10 @@ describe('describeScope', () => {
 
   it('names the supplier searched', () => {
     expect(
-      describeScope({ queryType: 'supply_chain', supplier: { kind: 'one', id: 'sup-a', name: 'Acme Steel Ltd' } }),
+      describeScope({
+        queryType: 'supply_chain',
+        supplier: { kind: 'one', id: 'sup-a', name: 'Acme Steel Ltd' },
+      }),
     ).toBe('Acme Steel Ltd · all areas · any period · any status')
   })
 

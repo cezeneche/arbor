@@ -14,16 +14,9 @@
 // pinned-agent.ts binds the socket to the address that was checked so DNS cannot
 // answer differently a moment later.
 
-export type OutboundUrlRejection =
-  | 'not_a_url'
-  | 'scheme'
-  | 'credentials'
-  | 'blocked_host'
-  | 'private_address'
+export type OutboundUrlRejection = 'not_a_url' | 'scheme' | 'credentials' | 'blocked_host' | 'private_address'
 
-export type OutboundUrlResult =
-  | { ok: true; url: URL }
-  | { ok: false; reason: OutboundUrlRejection }
+export type OutboundUrlResult = { ok: true; url: URL } | { ok: false; reason: OutboundUrlRejection }
 
 export const OUTBOUND_URL_MESSAGES: Record<OutboundUrlRejection, string> = {
   not_a_url: 'That is not a valid URL.',
@@ -34,12 +27,7 @@ export const OUTBOUND_URL_MESSAGES: Record<OutboundUrlRejection, string> = {
 }
 
 // Hostnames that never legitimately name a tenant's public endpoint.
-const BLOCKED_HOSTNAMES = new Set([
-  'localhost',
-  'metadata',
-  'metadata.google.internal',
-  'instance-data',
-])
+const BLOCKED_HOSTNAMES = new Set(['localhost', 'metadata', 'metadata.google.internal', 'instance-data'])
 
 const BLOCKED_SUFFIXES = ['.localhost', '.local', '.internal', '.home.arpa']
 
@@ -75,7 +63,10 @@ export function isPrivateIpv4(ip: string): boolean {
 /** True for an IPv6 literal outside the publicly routable space, including
  *  IPv4-mapped forms such as ::ffff:169.254.169.254. */
 export function isPrivateIpv6(ip: string): boolean {
-  const addr = ip.replace(/^\[|\]$/g, '').toLowerCase().split('%')[0]
+  const addr = ip
+    .replace(/^\[|\]$/g, '')
+    .toLowerCase()
+    .split('%')[0]
 
   if (addr === '::' || addr === '::1') return true
 

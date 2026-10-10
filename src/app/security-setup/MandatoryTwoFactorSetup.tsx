@@ -58,7 +58,10 @@ export function MandatoryTwoFactorSetup() {
     setLoading(true)
     const res = await fetch('/api/auth/2fa/setup', { method: 'POST' }).catch(() => null)
     setLoading(false)
-    if (!res?.ok) { setError('Could not start setup. Please try again.'); return }
+    if (!res?.ok) {
+      setError('Could not start setup. Please try again.')
+      return
+    }
     const data = await res.json()
     setQrDataUrl(data.qrDataUrl)
     setManualSecret(data.secret)
@@ -97,11 +100,7 @@ export function MandatoryTwoFactorSetup() {
       }}
     >
       <div style={{ marginBottom: spacing[4] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Secure your administrator account
-        </h1>
+        <h1 style={textStyles.pageTitle}>Secure your administrator account</h1>
         <p
           style={{
             fontSize: typography.sizes.sm,
@@ -111,20 +110,30 @@ export function MandatoryTwoFactorSetup() {
             lineHeight: '1.6',
           }}
         >
-          Two-factor authentication is required for all administrators. Set it up now
-          to continue.
+          Two-factor authentication is required for all administrators. Set it up now to continue.
         </p>
       </div>
 
       {/* STEP: intro */}
       {step === 'intro' && (
         <>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[3]}`, lineHeight: '1.6' }}>
-            You&apos;ll need an authenticator app such as Google Authenticator, Authy, or
-            1Password. We&apos;ll show a QR code to scan, then ask for the 6-digit code it
-            generates.
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: `0 0 ${spacing[3]}`,
+              lineHeight: '1.6',
+            }}
+          >
+            You&apos;ll need an authenticator app such as Google Authenticator, Authy, or 1Password.
+            We&apos;ll show a QR code to scan, then ask for the 6-digit code it generates.
           </p>
-          {error && <p style={{ color: colours.red, fontSize: typography.sizes.sm, margin: `0 0 ${spacing[2]}` }}>{error}</p>}
+          {error && (
+            <p style={{ color: colours.red, fontSize: typography.sizes.sm, margin: `0 0 ${spacing[2]}` }}>
+              {error}
+            </p>
+          )}
           <button onClick={startSetup} disabled={loading} style={btnPrimary(loading)}>
             {loading ? 'Starting…' : 'Begin setup'}
           </button>
@@ -134,25 +143,57 @@ export function MandatoryTwoFactorSetup() {
       {/* STEP: scanning */}
       {step === 'scanning' && (
         <>
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `0 0 ${spacing[2]}`, lineHeight: '1.6' }}>
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+              margin: `0 0 ${spacing[2]}`,
+              lineHeight: '1.6',
+            }}
+          >
             Scan this code with your authenticator app, then enter the 6-digit code below.
           </p>
           {qrDataUrl && (
             <div style={{ marginBottom: spacing[2], display: 'flex', justifyContent: 'center' }}>
-              <Image src={qrDataUrl} alt="2FA QR code" width={180} height={180} style={{ borderRadius: '4px' }} />
+              <Image
+                src={qrDataUrl}
+                alt="2FA QR code"
+                width={180}
+                height={180}
+                style={{ borderRadius: '4px' }}
+              />
             </div>
           )}
           <details style={{ marginBottom: spacing[3] }}>
-            <summary style={{ fontSize: typography.sizes.xs, color: colours.textTertiary, cursor: 'pointer', userSelect: 'none' }}>
+            <summary
+              style={{
+                fontSize: typography.sizes.xs,
+                color: colours.textTertiary,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
               Can&apos;t scan? Enter the code manually
             </summary>
-            <p style={{ fontFamily: 'monospace', fontSize: typography.sizes.sm, color: colours.textPrimary, wordBreak: 'break-all', margin: '8px 0 0', letterSpacing: '0.05em' }}>
+            <p
+              style={{
+                fontFamily: 'monospace',
+                fontSize: typography.sizes.sm,
+                color: colours.textPrimary,
+                wordBreak: 'break-all',
+                margin: '8px 0 0',
+                letterSpacing: '0.05em',
+              }}
+            >
               {manualSecret}
             </p>
           </details>
           <form onSubmit={confirmSetup} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
             <div>
-              <label htmlFor="code" style={labelStyle}>Code from your app</label>
+              <label htmlFor="code" style={labelStyle}>
+                Code from your app
+              </label>
               <input
                 id="code"
                 type="text"
@@ -176,29 +217,56 @@ export function MandatoryTwoFactorSetup() {
       {/* STEP: recovery codes */}
       {step === 'recovery' && (
         <>
-          <div style={{ backgroundColor: colours.amberBg, border: `1px solid ${colours.amber}`, borderRadius: '4px', padding: spacing[2], marginBottom: spacing[3] }}>
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.amber, margin: '0 0 4px' }}>
+          <div
+            style={{
+              backgroundColor: colours.amberBg,
+              border: `1px solid ${colours.amber}`,
+              borderRadius: '4px',
+              padding: spacing[2],
+              marginBottom: spacing[3],
+            }}
+          >
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                color: colours.amber,
+                margin: '0 0 4px',
+              }}
+            >
               Save these recovery codes now
             </p>
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.amber, margin: 0, lineHeight: '1.6' }}>
-              If you lose access to your authenticator, these codes are the only way back into
-              your account. Each works once. They won&apos;t be shown again.
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.amber,
+                margin: 0,
+                lineHeight: '1.6',
+              }}
+            >
+              If you lose access to your authenticator, these codes are the only way back into your account.
+              Each works once. They won&apos;t be shown again.
             </p>
           </div>
-          <div style={{
-            backgroundColor: colours.background,
-            border: `1px solid ${colours.border}`,
-            borderRadius: '4px',
-            padding: spacing[2],
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '8px',
-            marginBottom: spacing[3],
-            fontFamily: 'monospace',
-            fontSize: typography.sizes.sm,
-          }}>
+          <div
+            style={{
+              backgroundColor: colours.background,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '4px',
+              padding: spacing[2],
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px',
+              marginBottom: spacing[3],
+              fontFamily: 'monospace',
+              fontSize: typography.sizes.sm,
+            }}
+          >
             {recoveryCodes.map(c => (
-              <span key={c} style={{ color: colours.textPrimary, letterSpacing: '0.05em' }}>{c}</span>
+              <span key={c} style={{ color: colours.textPrimary, letterSpacing: '0.05em' }}>
+                {c}
+              </span>
             ))}
           </div>
           {/* Full reload so the portal layout re-reads twoFactorEnabled from the DB. */}
@@ -211,7 +279,14 @@ export function MandatoryTwoFactorSetup() {
       <p style={{ textAlign: 'center', margin: `${spacing[3]} 0 0` }}>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          style={{ background: 'none', border: 'none', color: colours.textTertiary, fontSize: typography.sizes.sm, fontWeight: typography.weights.light, cursor: 'pointer' }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: colours.textTertiary,
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            cursor: 'pointer',
+          }}
         >
           Sign out
         </button>

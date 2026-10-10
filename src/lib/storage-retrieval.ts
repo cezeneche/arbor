@@ -15,10 +15,11 @@ export async function fetchDocumentAsBase64(storedPath: string): Promise<{
   const buffer = await data.arrayBuffer()
   const base64 = Buffer.from(buffer).toString('base64')
 
-  const mediaType: 'application/pdf' | 'image/jpeg' | 'image/png' =
-    contentType.includes('pdf') ? 'application/pdf' :
-    contentType.includes('png') ? 'image/png' :
-    'image/jpeg'
+  const mediaType: 'application/pdf' | 'image/jpeg' | 'image/png' = contentType.includes('pdf')
+    ? 'application/pdf'
+    : contentType.includes('png')
+      ? 'image/png'
+      : 'image/jpeg'
 
   return { base64, mediaType }
 }

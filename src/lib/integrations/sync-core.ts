@@ -27,8 +27,7 @@ export async function writeIntegrationRecords(
   let created = 0
   let skipped = 0
   const unsupportedUnits = new Set<string>()
-  const unsupported = () =>
-    unsupportedUnits.size ? { unsupportedUnits: [...unsupportedUnits] } : {}
+  const unsupported = () => (unsupportedUnits.size ? { unsupportedUnits: [...unsupportedUnits] } : {})
 
   for (const rec of records) {
     // A unit the writer cannot store canonically would throw mid-sync. Refuse
@@ -43,7 +42,7 @@ export async function writeIntegrationRecords(
     // arrive in bulk and unattended — and were the one write path with no
     // capacity check at all. Counted inside the transaction that writes, so two
     // concurrent syncs cannot both see room for the last record.
-    const written = await runSerializable(async (tx) => {
+    const written = await runSerializable(async tx => {
       // Dedup on sourceRef inside the transaction that writes. Checked before it,
       // two syncs of the same source running together both saw nothing and both
       // wrote; serializable isolation makes one of them retry and see the other.

@@ -15,7 +15,10 @@ export async function POST(req: NextRequest) {
   const secret = process.env.WORKOS_WEBHOOK_SECRET
   if (!secret) {
     // Missing secret is a deploy error — refuse rather than accept unverified events.
-    return NextResponse.json({ error: 'Webhook secret not configured', code: 'MISCONFIGURED' }, { status: 503 })
+    return NextResponse.json(
+      { error: 'Webhook secret not configured', code: 'MISCONFIGURED' },
+      { status: 503 },
+    )
   }
 
   // Read the raw body once and verify the signature over those exact bytes before parsing.

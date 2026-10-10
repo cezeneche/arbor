@@ -78,9 +78,7 @@ export interface BuildDeclarationResult {
   problems: string[]
 }
 
-export function buildDeclarationPayload(
-  input: BuildDeclarationInput,
-): BuildDeclarationResult {
+export function buildDeclarationPayload(input: BuildDeclarationInput): BuildDeclarationResult {
   const problems: string[] = []
   const lines: DeclarationLine[] = []
 
@@ -99,9 +97,7 @@ export function buildDeclarationPayload(
 
     const declared = str(raw.method)?.toUpperCase()
     const declaredMethod =
-      declared && METHODS.has(declared as EmissionsMethod)
-        ? (declared as EmissionsMethod)
-        : null
+      declared && METHODS.has(declared as EmissionsMethod) ? (declared as EmissionsMethod) : null
     if (declared && !declaredMethod) {
       problems.push(
         `Goods line ${index + 1} records an emissions method of "${declared}", ` +

@@ -37,6 +37,9 @@ jobs:
       - name: Lint
         run: npx eslint --max-warnings=0 src
 
+      - name: Format
+        run: npm run format:check
+
       - name: Tests
         run: npx jest --ci
 

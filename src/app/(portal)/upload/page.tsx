@@ -26,16 +26,10 @@ export default async function UploadPage({
   return (
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          {isBuyer ? 'Ingest documents' : 'Upload document'}
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
-          Upload a document to extract and certify its data. Fields below the confidence
-          threshold will be flagged for your review before records are written.
+        <h1 style={textStyles.pageTitle}>{isBuyer ? 'Ingest documents' : 'Upload document'}</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
+          Upload a document to extract and certify its data. Fields below the confidence threshold will be
+          flagged for your review before records are written.
         </p>
 
         {/* Provenance guard - an ingested document becomes the uploader's OWN
@@ -57,7 +51,10 @@ export default async function UploadPage({
           >
             Documents you ingest are recorded as your organisation&apos;s own data. To obtain a
             supplier&apos;s certified data - under their name and trust tier -{' '}
-            <Link href="/supply-chain" style={{ color: colours.navy, textDecoration: 'none', fontWeight: typography.weights.medium }}>
+            <Link
+              href="/supply-chain"
+              style={{ color: colours.navy, textDecoration: 'none', fontWeight: typography.weights.medium }}
+            >
               send a data request
             </Link>{' '}
             instead.
@@ -93,9 +90,8 @@ export default async function UploadPage({
             margin: 0,
           }}
         >
-          Accepted formats: PDF, JPEG, PNG. Maximum file size: 20 MB.
-          Documents are stored securely and only accessible to your organisation
-          and buyers you have granted access.
+          Accepted formats: PDF, JPEG, PNG. Maximum file size: 20 MB. Documents are stored securely and only
+          accessible to your organisation and buyers you have granted access.
         </p>
         {uploadEmail && (
           <p
@@ -107,7 +103,8 @@ export default async function UploadPage({
             }}
           >
             Or email documents as attachments to{' '}
-            <code style={{ color: colours.textSecondary }}>{uploadEmail}</code> - we&apos;ll read them and notify you when they&apos;re ready.
+            <code style={{ color: colours.textSecondary }}>{uploadEmail}</code> - we&apos;ll read them and
+            notify you when they&apos;re ready.
           </p>
         )}
       </div>

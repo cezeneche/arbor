@@ -17,7 +17,10 @@ export interface VocabularyEntry {
 
 /** Loose key so "Declared Weight" and "declared_weight" collapse to one thing. */
 function normalise(name: string): string {
-  return name.trim().toLowerCase().replace(/[\s-]+/g, '_')
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
 }
 
 /**

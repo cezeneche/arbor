@@ -92,11 +92,7 @@ export async function POST(req: NextRequest) {
   try {
     conversion = convertFromSI(record.value, record.unit as never, targetUnit as SupportedUnit)
   } catch (e) {
-    return err(
-      e instanceof Error ? e.message : 'Conversion failed',
-      'INCOMPATIBLE_UNITS',
-      400,
-    )
+    return err(e instanceof Error ? e.message : 'Conversion failed', 'INCOMPATIBLE_UNITS', 400)
   }
 
   return ok({

@@ -39,7 +39,13 @@ function fakeDb(seed: Op[] = []) {
       create: jest.fn(async ({ data }: { data: Omit<Op, 'id' | 'updatedAt' | 'results' | 'status'> }) => {
         const key = `${data.entityId}:${data.idempotencyKey}`
         if (ops.has(key)) throw uniqueViolation()
-        const op: Op = { ...data, id: `op-${ops.size + 1}`, status: 'IN_PROGRESS', results: {}, updatedAt: new Date() }
+        const op: Op = {
+          ...data,
+          id: `op-${ops.size + 1}`,
+          status: 'IN_PROGRESS',
+          results: {},
+          updatedAt: new Date(),
+        }
         ops.set(key, op)
         return op
       }),
@@ -52,8 +58,8 @@ function fakeDb(seed: Op[] = []) {
         const op = byId().get(where.id)
         if (!op) return { count: 0 }
         if (where.OR) {
-          const ok = where.OR.some((c: any) =>
-            c.status === op.status && (!c.updatedAt || op.updatedAt < c.updatedAt.lt),
+          const ok = where.OR.some(
+            (c: any) => c.status === op.status && (!c.updatedAt || op.updatedAt < c.updatedAt.lt),
           )
           if (!ok) return { count: 0 }
         }
@@ -69,7 +75,10 @@ function fakeDb(seed: Op[] = []) {
   }
 }
 
-const RECORDS = [{ fieldName: 'a', value: 1 }, { fieldName: 'b', value: 2 }]
+const RECORDS = [
+  { fieldName: 'a', value: 1 },
+  { fieldName: 'b', value: 2 },
+]
 
 describe('requestDigest', () => {
   it('is the same for the same request and different for a different one', () => {
@@ -89,7 +98,15 @@ describe('reserveIngestOperation', () => {
   it('replays a completed batch with its original per-item results', async () => {
     const results = { '0': { index: 0, status: 'created', recordId: 'r1' } }
     const db = fakeDb([
-      { id: 'op-1', entityId: 'ent-1', idempotencyKey: 'key-1', requestDigest: 'd1', status: 'COMPLETE', results, updatedAt: new Date() },
+      {
+        id: 'op-1',
+        entityId: 'ent-1',
+        idempotencyKey: 'key-1',
+        requestDigest: 'd1',
+        status: 'COMPLETE',
+        results,
+        updatedAt: new Date(),
+      },
     ])
     expect(await reserveIngestOperation(db as never, 'ent-1', 'key-1', 'd1')).toEqual({
       kind: 'replay',
@@ -99,7 +116,15 @@ describe('reserveIngestOperation', () => {
 
   it('refuses the same key sent with a different request', async () => {
     const db = fakeDb([
-      { id: 'op-1', entityId: 'ent-1', idempotencyKey: 'key-1', requestDigest: 'd1', status: 'COMPLETE', results: {}, updatedAt: new Date() },
+      {
+        id: 'op-1',
+        entityId: 'ent-1',
+        idempotencyKey: 'key-1',
+        requestDigest: 'd1',
+        status: 'COMPLETE',
+        results: {},
+        updatedAt: new Date(),
+      },
     ])
     expect(await reserveIngestOperation(db as never, 'ent-1', 'key-1', 'OTHER')).toEqual({ kind: 'conflict' })
   })
@@ -114,8 +139,13 @@ describe('reserveIngestOperation', () => {
     const done = { '0': { index: 0, status: 'created', recordId: 'r1' } }
     const db = fakeDb([
       {
-        id: 'op-1', entityId: 'ent-1', idempotencyKey: 'key-1', requestDigest: 'd1', status: 'IN_PROGRESS',
-        results: done, updatedAt: new Date(Date.now() - STALE_MS - 1000),
+        id: 'op-1',
+        entityId: 'ent-1',
+        idempotencyKey: 'key-1',
+        requestDigest: 'd1',
+        status: 'IN_PROGRESS',
+        results: done,
+        updatedAt: new Date(Date.now() - STALE_MS - 1000),
       },
     ])
     expect(await reserveIngestOperation(db as never, 'ent-1', 'key-1', 'd1')).toEqual({

@@ -72,9 +72,7 @@ export async function calculateDeclaration(
     if ((err as Error)?.name === 'AbortError') {
       throw new NucleosUnavailableError('Nucleos calculation timed out')
     }
-    throw new NucleosUnavailableError(
-      `Nucleos calculation failed: ${(err as Error).message}`,
-    )
+    throw new NucleosUnavailableError(`Nucleos calculation failed: ${(err as Error).message}`)
   } finally {
     clearTimeout(timeout)
   }

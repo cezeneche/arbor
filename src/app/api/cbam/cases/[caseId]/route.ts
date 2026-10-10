@@ -8,10 +8,7 @@ import { resolveCaseAccess } from '@/lib/nucleos/case-ownership'
 // exists in another organisation is itself not this caller's to learn.
 const NOT_FOUND = { error: 'This case could not be found.', code: 'NOT_FOUND' }
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ caseId: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ caseId: string }> }) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 

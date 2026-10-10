@@ -3,7 +3,12 @@
 // no AI. The only transform is a unit conversion on OUTPUT — explicitly allowed
 // in Layer 3 — so each question sees its records already in its target unit.
 
-import { convertFromSI, isSupportedUnit, type SIDimension, type SupportedUnit } from '@/lib/layer3/unit-conversion'
+import {
+  convertFromSI,
+  isSupportedUnit,
+  type SIDimension,
+  type SupportedUnit,
+} from '@/lib/layer3/unit-conversion'
 import type { PrefillInputRecord } from './prefill'
 import type { QuestionnaireTemplate } from './types'
 
@@ -37,7 +42,7 @@ export function toPrefillRecords(
     if (q.unit) targetUnitByKey.set(`${q.domain}|${q.fieldName}`, q.unit)
   }
 
-  return stored.map((r) => {
+  return stored.map(r => {
     const target = targetUnitByKey.get(`${r.domain}|${r.fieldName}`)
     if (target && target !== r.unit && isSupportedUnit(r.unit) && isSupportedUnit(target)) {
       try {

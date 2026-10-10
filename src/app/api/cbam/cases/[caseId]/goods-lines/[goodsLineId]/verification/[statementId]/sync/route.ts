@@ -25,7 +25,8 @@ export async function POST(
   const row = await prisma.cbamVerificationStatement.findFirst({
     where: { id: statementId, entityId: user.entityId as string, goodsLineId, syncedAt: null },
   })
-  if (!row) return NextResponse.json({ error: 'There is nothing to retry for this statement.' }, { status: 404 })
+  if (!row)
+    return NextResponse.json({ error: 'There is nothing to retry for this statement.' }, { status: 404 })
 
   const result =
     row.subject === 'RELIEF'

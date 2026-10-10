@@ -73,7 +73,9 @@ export function CbamVerification({
   }
 
   const base = `/api/cbam/cases/${encodeURIComponent(caseId)}/goods-lines/${encodeURIComponent(goodsLineId)}/verification`
-  const statementBase = verification.statementId ? `${base}/${encodeURIComponent(verification.statementId)}` : null
+  const statementBase = verification.statementId
+    ? `${base}/${encodeURIComponent(verification.statementId)}`
+    : null
 
   async function send(url: string, init: RequestInit) {
     setBusy(true)
@@ -113,7 +115,9 @@ export function CbamVerification({
         {verification.label}
       </span>
       {verification.detail && (
-        <span style={{ display: 'block', ...textStyles.caption, color: colours.textSecondary, marginTop: '2px' }}>
+        <span
+          style={{ display: 'block', ...textStyles.caption, color: colours.textSecondary, marginTop: '2px' }}
+        >
           {verification.detail}
         </span>
       )}
@@ -141,9 +145,25 @@ export function CbamVerification({
           }}
           style={{ marginTop: spacing[1] }}
         >
-          <input name="verifierName" placeholder="Verifier, e.g. Carbon Assurance Ltd" required style={input} />
-          <input name="verifierAccreditation" placeholder="Accreditation, e.g. UKAS 9876" required style={input} />
-          <input name="file" type="file" accept="application/pdf" required style={{ ...input, border: 'none', padding: 0 }} />
+          <input
+            name="verifierName"
+            placeholder="Verifier, e.g. Carbon Assurance Ltd"
+            required
+            style={input}
+          />
+          <input
+            name="verifierAccreditation"
+            placeholder="Accreditation, e.g. UKAS 9876"
+            required
+            style={input}
+          />
+          <input
+            name="file"
+            type="file"
+            accept="application/pdf"
+            required
+            style={{ ...input, border: 'none', padding: 0 }}
+          />
           <div style={{ display: 'flex', gap: spacing[1] }}>
             <button type="submit" disabled={busy} style={{ ...primary, opacity: busy ? 0.7 : 1 }}>
               {busy ? 'Adding…' : 'Add statement'}
@@ -196,7 +216,11 @@ export function CbamVerification({
                   body: JSON.stringify({ decision: 'reject', reason }),
                 })
               }
-              style={{ ...primary, backgroundColor: colours.red, opacity: busy || reason.trim() === '' ? 0.7 : 1 }}
+              style={{
+                ...primary,
+                backgroundColor: colours.red,
+                opacity: busy || reason.trim() === '' ? 0.7 : 1,
+              }}
             >
               Reject statement
             </button>
@@ -219,7 +243,9 @@ export function CbamVerification({
       )}
 
       {error && (
-        <span style={{ display: 'block', ...textStyles.caption, color: colours.red, marginTop: '4px' }}>{error}</span>
+        <span style={{ display: 'block', ...textStyles.caption, color: colours.red, marginTop: '4px' }}>
+          {error}
+        </span>
       )}
     </div>
   )

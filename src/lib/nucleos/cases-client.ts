@@ -76,9 +76,7 @@ async function nucleosGet<T>(pathAndQuery: string, opts: CasesRequestOptions = {
     if ((err as Error)?.name === 'AbortError') {
       throw new NucleosUnavailableError(`Nucleos timed out for ${pathAndQuery}`)
     }
-    throw new NucleosUnavailableError(
-      `Nucleos request failed for ${pathAndQuery}: ${(err as Error).message}`,
-    )
+    throw new NucleosUnavailableError(`Nucleos request failed for ${pathAndQuery}: ${(err as Error).message}`)
   } finally {
     clearTimeout(timeout)
   }
@@ -125,10 +123,7 @@ export async function getCbamCase(
   caseId: string,
   opts: CasesRequestOptions = {},
 ): Promise<Record<string, unknown>> {
-  return nucleosGet<Record<string, unknown>>(
-    `/api/cbam/cases/${encodeURIComponent(caseId)}`,
-    opts,
-  )
+  return nucleosGet<Record<string, unknown>>(`/api/cbam/cases/${encodeURIComponent(caseId)}`, opts)
 }
 
 export interface CbamAuditEvent {
@@ -160,12 +155,6 @@ export interface CbamAuditLog {
  * foreign-chain seal rather than merged. Showing them as one list would imply a
  * single chain, which would be a claim about integrity that is not true.
  */
-export async function getCbamAuditLog(
-  caseId: string,
-  opts: CasesRequestOptions = {},
-): Promise<CbamAuditLog> {
-  return nucleosGet<CbamAuditLog>(
-    `/api/cases/${encodeURIComponent(caseId)}/audit-log`,
-    opts,
-  )
+export async function getCbamAuditLog(caseId: string, opts: CasesRequestOptions = {}): Promise<CbamAuditLog> {
+  return nucleosGet<CbamAuditLog>(`/api/cases/${encodeURIComponent(caseId)}/audit-log`, opts)
 }

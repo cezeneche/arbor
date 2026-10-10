@@ -6,13 +6,7 @@
 //
 // Pure policy. No DB, no clock of its own — `now` is always injected.
 
-import {
-  dueDateFor,
-  escalationState,
-  flagsNeedingEscalation,
-  SLA_WINDOW_DAYS,
-  type SlaFlag,
-} from '../sla'
+import { dueDateFor, escalationState, flagsNeedingEscalation, SLA_WINDOW_DAYS, type SlaFlag } from '../sla'
 
 const iso = (s: string) => new Date(s)
 const ASSIGNED = iso('2026-08-01T00:00:00.000Z')
@@ -49,14 +43,18 @@ describe('escalationState', () => {
   }
 
   it('reports RESOLVED once the steward has closed it, whatever the clock says', () => {
-    const got = escalationState({ ...critical, resolvedAt: iso('2026-08-02T00:00:00.000Z') },
-      iso('2026-09-01T00:00:00.000Z'))
+    const got = escalationState(
+      { ...critical, resolvedAt: iso('2026-08-02T00:00:00.000Z') },
+      iso('2026-09-01T00:00:00.000Z'),
+    )
     expect(got).toBe('RESOLVED')
   })
 
   it('reports NO_SLA for a flag with no deadline', () => {
-    const got = escalationState({ ...critical, severity: 'INFO', dueAt: null },
-      iso('2026-09-01T00:00:00.000Z'))
+    const got = escalationState(
+      { ...critical, severity: 'INFO', dueAt: null },
+      iso('2026-09-01T00:00:00.000Z'),
+    )
     expect(got).toBe('NO_SLA')
   })
 
@@ -73,8 +71,10 @@ describe('escalationState', () => {
   })
 
   it('reports ESCALATED once it has been raised to the entity admin', () => {
-    const got = escalationState({ ...critical, escalatedAt: iso('2026-08-05T00:00:00.000Z') },
-      iso('2026-08-06T00:00:00.000Z'))
+    const got = escalationState(
+      { ...critical, escalatedAt: iso('2026-08-05T00:00:00.000Z') },
+      iso('2026-08-06T00:00:00.000Z'),
+    )
     expect(got).toBe('ESCALATED')
   })
 
@@ -103,13 +103,17 @@ describe('flagsNeedingEscalation', () => {
 
   it('excludes flags already escalated so the cron cannot notify twice', () => {
     const got = flagsNeedingEscalation(
-      [{ ...base, id: 'already', escalatedAt: iso('2026-08-05T00:00:00.000Z') }], now)
+      [{ ...base, id: 'already', escalatedAt: iso('2026-08-05T00:00:00.000Z') }],
+      now,
+    )
     expect(got).toHaveLength(0)
   })
 
   it('excludes resolved flags', () => {
     const got = flagsNeedingEscalation(
-      [{ ...base, id: 'done', resolvedAt: iso('2026-08-03T00:00:00.000Z') }], now)
+      [{ ...base, id: 'done', resolvedAt: iso('2026-08-03T00:00:00.000Z') }],
+      now,
+    )
     expect(got).toHaveLength(0)
   })
 

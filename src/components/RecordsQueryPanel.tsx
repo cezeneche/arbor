@@ -38,7 +38,6 @@ type QueryResult = {
   records: NlRecord[]
 }
 
-
 export function RecordsQueryPanel({
   children,
   plainTiers = false,
@@ -105,9 +104,7 @@ export function RecordsQueryPanel({
   return (
     <>
       {/* Page content with bottom padding when panel is open */}
-      <div style={{ paddingBottom: open ? PANEL_HEIGHT + 32 : 32 }}>
-        {children}
-      </div>
+      <div style={{ paddingBottom: open ? PANEL_HEIGHT + 32 : 32 }}>{children}</div>
 
       {/* Toggle handle - fixed at bottom, offset by nav width */}
       <div
@@ -277,8 +274,16 @@ export function RecordsQueryPanel({
           {/* Idle state */}
           {!result && !error && !loading && (
             <div style={{ padding: `${spacing[2]} ${spacing[2]}` }}>
-              <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: `0 0 8px` }}>
-                Ask about your own data in your own words. You get an answer and the exact records behind it, without leaving this page.
+              <p
+                style={{
+                  fontSize: typography.sizes.xs,
+                  fontWeight: typography.weights.light,
+                  color: colours.textTertiary,
+                  margin: `0 0 8px`,
+                }}
+              >
+                Ask about your own data in your own words. You get an answer and the exact records behind it,
+                without leaving this page.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {suggestions.map(ex => (
@@ -308,7 +313,14 @@ export function RecordsQueryPanel({
           {/* Loading */}
           {loading && (
             <div style={{ padding: `${spacing[2]} ${spacing[2]}` }}>
-              <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: typography.sizes.xs,
+                  fontWeight: typography.weights.light,
+                  color: colours.textTertiary,
+                  margin: 0,
+                }}
+              >
                 Reading your records…
               </p>
             </div>
@@ -317,7 +329,14 @@ export function RecordsQueryPanel({
           {/* Error */}
           {error && (
             <div style={{ padding: `${spacing[2]} ${spacing[2]}` }}>
-              <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.red, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: typography.sizes.xs,
+                  fontWeight: typography.weights.light,
+                  color: colours.red,
+                  margin: 0,
+                }}
+              >
                 {error}
               </p>
             </div>
@@ -329,7 +348,12 @@ export function RecordsQueryPanel({
               {/* The answer leads; the records that justify it sit underneath,
                   so nothing is ever asserted without its evidence in view. */}
               {result.answer && (
-                <div style={{ padding: `${spacing[2]} ${spacing[2]}`, borderBottom: `1px solid ${colours.border}` }}>
+                <div
+                  style={{
+                    padding: `${spacing[2]} ${spacing[2]}`,
+                    borderBottom: `1px solid ${colours.border}`,
+                  }}
+                >
                   <p
                     style={{
                       fontSize: typography.sizes.sm,
@@ -343,15 +367,43 @@ export function RecordsQueryPanel({
                   </p>
                 </div>
               )}
-              <div style={{ padding: `8px ${spacing[2]}`, borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background, display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textPrimary }}>
+              <div
+                style={{
+                  padding: `8px ${spacing[2]}`,
+                  borderBottom: `1px solid ${colours.border}`,
+                  backgroundColor: colours.background,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.medium,
+                    color: colours.textPrimary,
+                  }}
+                >
                   {result.summary}
                 </span>
-                <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>
+                <span
+                  style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.light,
+                    color: colours.textTertiary,
+                  }}
+                >
                   · Searched: {result.scope ?? result.interpretation}
                 </span>
                 {result.hasMore && (
-                  <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.amber, marginLeft: 'auto' }}>
+                  <span
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.light,
+                      color: colours.amber,
+                      marginLeft: 'auto',
+                    }}
+                  >
                     Showing top results - refine your query for more
                   </span>
                 )}
@@ -363,7 +415,14 @@ export function RecordsQueryPanel({
                 </div>
               ) : result.records.length === 0 ? (
                 <div style={{ padding: `${spacing[2]} ${spacing[2]}` }}>
-                  <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+                  <p
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.light,
+                      color: colours.textTertiary,
+                      margin: 0,
+                    }}
+                  >
                     No records matched this query.
                   </p>
                 </div>
@@ -373,7 +432,12 @@ export function RecordsQueryPanel({
                     <tr style={{ backgroundColor: colours.background }}>
                       {[
                         ...(showSupplier ? ['Supplier'] : []),
-                        'Field', 'Value', 'Period', 'Domain', 'Tier', 'From the document',
+                        'Field',
+                        'Value',
+                        'Period',
+                        'Domain',
+                        'Tier',
+                        'From the document',
                       ].map(col => (
                         <th
                           key={col}
@@ -398,25 +462,75 @@ export function RecordsQueryPanel({
                     {result.records.map((r, i) => (
                       <tr
                         key={r.id}
-                        style={{ borderBottom: i < result.records.length - 1 ? `1px solid ${colours.border}` : 'none' }}
+                        style={{
+                          borderBottom:
+                            i < result.records.length - 1 ? `1px solid ${colours.border}` : 'none',
+                        }}
                       >
                         {showSupplier && (
-                          <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textPrimary, whiteSpace: 'nowrap' }}>
+                          <td
+                            style={{
+                              padding: '7px 14px',
+                              fontSize: typography.sizes.xs,
+                              fontWeight: typography.weights.light,
+                              color: colours.textPrimary,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
                             {r.entityName}
                           </td>
                         )}
-                        <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textPrimary, whiteSpace: 'nowrap' }}>
+                        <td
+                          style={{
+                            padding: '7px 14px',
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.medium,
+                            color: colours.textPrimary,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {fieldLabel(r.fieldName, r.domain)}
                         </td>
-                        <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textPrimary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        <td
+                          style={{
+                            padding: '7px 14px',
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.light,
+                            color: colours.textPrimary,
+                            fontVariantNumeric: 'tabular-nums',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {r.value.toLocaleString('en-GB', { maximumFractionDigits: 4 })} {r.unit}
                         </td>
-                        <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, whiteSpace: 'nowrap' }}>
-                          {new Date(r.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                        <td
+                          style={{
+                            padding: '7px 14px',
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.light,
+                            color: colours.textSecondary,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {new Date(r.periodStart).toLocaleDateString('en-GB', {
+                            month: 'short',
+                            year: 'numeric',
+                          })}
                           {' – '}
-                          {new Date(r.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                          {new Date(r.periodEnd).toLocaleDateString('en-GB', {
+                            month: 'short',
+                            year: 'numeric',
+                          })}
                         </td>
-                        <td style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, whiteSpace: 'nowrap' }}>
+                        <td
+                          style={{
+                            padding: '7px 14px',
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.light,
+                            color: colours.textSecondary,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {DOMAIN_LABELS[r.domain] ?? r.domain}
                         </td>
                         <td style={{ padding: '7px 14px' }}>
@@ -424,7 +538,16 @@ export function RecordsQueryPanel({
                         </td>
                         <td
                           title={r.sourceText ?? undefined}
-                          style={{ padding: '7px 14px', fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          style={{
+                            padding: '7px 14px',
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.light,
+                            color: colours.textSecondary,
+                            maxWidth: '280px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
                         >
                           {r.sourceText ? `“${r.sourceText}”` : '—'}
                         </td>

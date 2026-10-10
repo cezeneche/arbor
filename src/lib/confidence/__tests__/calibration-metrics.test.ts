@@ -1,8 +1,4 @@
-import {
-  evaluateCalibrationRun,
-  KILL_SIGNAL_GROUPS,
-  ECE_KILL_THRESHOLD,
-} from '../calibration-metrics'
+import { evaluateCalibrationRun, KILL_SIGNAL_GROUPS, ECE_KILL_THRESHOLD } from '../calibration-metrics'
 import type { GroupCalibration } from '@/lib/brain/types'
 
 // measurement loop. Turn the brain's per-group calibration report

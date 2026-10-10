@@ -9,10 +9,7 @@ import { calculateCase } from '@/lib/nucleos/case-calculation'
 // exists alongside the server-rendered emissions section so the figures can be
 // re-asked for without a page load once a supplier answers.
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ caseId: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ caseId: string }> }) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 
@@ -22,10 +19,7 @@ export async function GET(
   const result = await calculateCase(caseId, entityId)
 
   if (result.forbidden) {
-    return NextResponse.json(
-      { error: 'This case could not be found.', code: 'NOT_FOUND' },
-      { status: 404 },
-    )
+    return NextResponse.json({ error: 'This case could not be found.', code: 'NOT_FOUND' }, { status: 404 })
   }
   if (result.loadError) {
     return NextResponse.json(

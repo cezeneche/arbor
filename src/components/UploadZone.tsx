@@ -57,7 +57,7 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
   function addFiles(list: FileList | null) {
     if (!list) return
     const incoming = Array.from(list)
-    setFiles((prev) => [...prev, ...incoming].slice(0, MAX_BATCH))
+    setFiles(prev => [...prev, ...incoming].slice(0, MAX_BATCH))
   }
 
   function handleDragOver(e: DragEvent) {
@@ -102,20 +102,20 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
 
     setError(null)
     setUploading(true)
-    setQueue(files.map((file) => ({ file, status: 'queued' })))
+    setQueue(files.map(file => ({ file, status: 'queued' })))
 
     const results: QueueItem[] = []
     for (let i = 0; i < files.length; i++) {
-      setQueue((prev) => prev.map((q, idx) => (idx === i ? { ...q, status: 'uploading' } : q)))
+      setQueue(prev => prev.map((q, idx) => (idx === i ? { ...q, status: 'uploading' } : q)))
       const result = await uploadOne(files[i])
       results.push(result)
-      setQueue((prev) => prev.map((q, idx) => (idx === i ? result : q)))
+      setQueue(prev => prev.map((q, idx) => (idx === i ? result : q)))
     }
 
     setUploading(false)
 
     // Single successful file: jump straight to its review (unchanged behaviour).
-    const successes = results.filter((r) => r.status === 'ready')
+    const successes = results.filter(r => r.status === 'ready')
     if (results.length === 1 && successes.length === 1) {
       router.push(`/upload/${successes[0].documentId}/review`)
     }
@@ -146,10 +146,10 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
-
       {/* Two-column area */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3], alignItems: 'stretch' }}>
-
+      <div
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3], alignItems: 'stretch' }}
+      >
         {/* Left: drop zone */}
         <div
           onDragOver={handleDragOver}
@@ -189,10 +189,24 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
             </div>
           ) : (
             <div>
-              <p style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.medium, color: colours.textSecondary, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: typography.sizes.base,
+                  fontWeight: typography.weights.medium,
+                  color: colours.textSecondary,
+                  margin: 0,
+                }}
+              >
                 Drop files here, or click to browse
               </p>
-              <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: `${spacing[1]} 0 0` }}>
+              <p
+                style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.light,
+                  color: colours.textTertiary,
+                  margin: `${spacing[1]} 0 0`,
+                }}
+              >
                 PDF, JPEG, or PNG · upload several at once
               </p>
             </div>
@@ -224,7 +238,16 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
           <div>
             <label htmlFor="reportingPeriodEnd" style={labelStyle}>
               Reporting period end
-              <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, marginLeft: '6px', textTransform: 'none', letterSpacing: 0 }}>
+              <span
+                style={{
+                  fontSize: typography.sizes.xs,
+                  fontWeight: typography.weights.light,
+                  color: colours.textTertiary,
+                  marginLeft: '6px',
+                  textTransform: 'none',
+                  letterSpacing: 0,
+                }}
+              >
                 (optional)
               </span>
             </label>
@@ -235,14 +258,31 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
               onChange={e => setReportingPeriodEnd(e.target.value)}
               style={inputStyle}
             />
-            <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '6px 0 0' }}>
+            <p
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                margin: '6px 0 0',
+              }}
+            >
               Used for certificate expiry checks.
             </p>
           </div>
 
           {/* Error */}
           {error && (
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, backgroundColor: colours.redBg, padding: '10px 12px', borderRadius: '4px', margin: 0 }}>
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.red,
+                backgroundColor: colours.redBg,
+                padding: '10px 12px',
+                borderRadius: '4px',
+                margin: 0,
+              }}
+            >
               {error}
             </p>
           )}
@@ -254,7 +294,8 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
               disabled={files.length === 0 || !documentType || uploading}
               style={{
                 padding: '12px 28px',
-                backgroundColor: files.length === 0 || !documentType || uploading ? colours.textTertiary : colours.navy,
+                backgroundColor:
+                  files.length === 0 || !documentType || uploading ? colours.textTertiary : colours.navy,
                 color: colours.surface,
                 fontSize: typography.sizes.sm,
                 fontWeight: typography.weights.medium,
@@ -264,7 +305,11 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
                 letterSpacing: typography.tracking.wide,
               }}
             >
-              {uploading ? 'Uploading…' : files.length > 1 ? `Upload ${files.length} and extract` : 'Upload and extract'}
+              {uploading
+                ? 'Uploading…'
+                : files.length > 1
+                  ? `Upload ${files.length} and extract`
+                  : 'Upload and extract'}
             </button>
           </div>
         </div>
@@ -275,15 +320,21 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
         <div style={{ border: `1px solid ${colours.border}`, borderRadius: '8px', overflow: 'hidden' }}>
           {queue.map((item, i) => {
             const statusLabel =
-              item.status === 'queued' ? 'Queued'
-              : item.status === 'uploading' ? 'Reading…'
-              : item.status === 'ready' ? 'Ready'
-              : 'Failed'
+              item.status === 'queued'
+                ? 'Queued'
+                : item.status === 'uploading'
+                  ? 'Reading…'
+                  : item.status === 'ready'
+                    ? 'Ready'
+                    : 'Failed'
             const statusColour =
-              item.status === 'ready' ? colours.green
-              : item.status === 'error' ? colours.red
-              : item.status === 'uploading' ? colours.navy
-              : colours.textTertiary
+              item.status === 'ready'
+                ? colours.green
+                : item.status === 'error'
+                  ? colours.red
+                  : item.status === 'uploading'
+                    ? colours.navy
+                    : colours.textTertiary
             return (
               <div
                 key={i}
@@ -295,16 +346,41 @@ export function UploadZone({ initialType = '' }: { initialType?: string }) {
                   borderBottom: i < queue.length - 1 ? `1px solid ${colours.border}` : 'none',
                 }}
               >
-                <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, maxWidth: '60%' }}>
+                <span
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.light,
+                    color: colours.textPrimary,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap' as const,
+                    maxWidth: '60%',
+                  }}
+                >
                   {item.file.name}
                 </span>
                 <span style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
                   {item.status === 'ready' && item.documentId && (
-                    <a href={`/upload/${item.documentId}/review`} style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.navy, textDecoration: 'none' }}>
+                    <a
+                      href={`/upload/${item.documentId}/review`}
+                      style={{
+                        fontSize: typography.sizes.xs,
+                        fontWeight: typography.weights.medium,
+                        color: colours.navy,
+                        textDecoration: 'none',
+                      }}
+                    >
                       Review →
                     </a>
                   )}
-                  <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: statusColour, letterSpacing: typography.tracking.wide }}>
+                  <span
+                    style={{
+                      fontSize: typography.sizes.xs,
+                      fontWeight: typography.weights.medium,
+                      color: statusColour,
+                      letterSpacing: typography.tracking.wide,
+                    }}
+                  >
                     {statusLabel}
                   </span>
                 </span>

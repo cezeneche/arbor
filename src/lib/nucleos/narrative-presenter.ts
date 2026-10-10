@@ -32,7 +32,10 @@ function strings(value: unknown): string[] {
 }
 
 export function presentNarrative(row: StoredNarrative, generatedBy: string | null): PresentedNarrative {
-  const n = (row.narrative && typeof row.narrative === 'object' ? row.narrative : {}) as Record<string, unknown>
+  const n = (row.narrative && typeof row.narrative === 'object' ? row.narrative : {}) as Record<
+    string,
+    unknown
+  >
   const zone = { timeZone: 'Europe/London' } as const
   const when =
     row.generatedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', ...zone }) +

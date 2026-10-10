@@ -36,13 +36,7 @@ export interface SlaFlag {
   escalatedAt: Date | null
 }
 
-export type EscalationState =
-  | 'RESOLVED'
-  | 'NO_SLA'
-  | 'ON_TRACK'
-  | 'DUE_SOON'
-  | 'OVERDUE'
-  | 'ESCALATED'
+export type EscalationState = 'RESOLVED' | 'NO_SLA' | 'ON_TRACK' | 'DUE_SOON' | 'OVERDUE' | 'ESCALATED'
 
 const DUE_SOON_WINDOW_MS = DAY_MS
 

@@ -50,7 +50,10 @@ export async function POST(req: NextRequest) {
 
   const { granteeEntityId, domain, periodStart, periodEnd } = parsed.data
 
-  const grantee = await prisma.entity.findUnique({ where: { id: granteeEntityId }, select: { legalName: true } })
+  const grantee = await prisma.entity.findUnique({
+    where: { id: granteeEntityId },
+    select: { legalName: true },
+  })
   if (!grantee) return NextResponse.json({ error: 'Grantee entity not found.' }, { status: 404 })
 
   // The grant and its consent entry are written together. Previously the grant was

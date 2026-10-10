@@ -54,7 +54,10 @@ export interface PresentedReliefClaim {
   latest: boolean
   /** True when the return carries it: the newest claim, with its statement attached. */
   counts: boolean
-  status: 'Counts on the return' | 'Not counted until the verifier’s statement is attached' | 'Replaced by a later claim'
+  status:
+    | 'Counts on the return'
+    | 'Not counted until the verifier’s statement is attached'
+    | 'Replaced by a later claim'
   amount: string
   scheme: string
   /** The figures the relief was worked out from. */
@@ -83,7 +86,9 @@ function basis(claim: ReliefClaim): string {
   const rate = num(claim.exchange_rate_to_gbp)
   const currency = claim.local_currency_code ?? ''
   const parts = [
-    emissions === null ? '— tCO₂e' : `${emissions.toLocaleString('en-GB', { maximumFractionDigits: 3 })} tCO₂e`,
+    emissions === null
+      ? '— tCO₂e'
+      : `${emissions.toLocaleString('en-GB', { maximumFractionDigits: 3 })} tCO₂e`,
     price === null
       ? 'an unrecorded price'
       : `${price.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} per tCO₂e`,

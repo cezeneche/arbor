@@ -409,7 +409,7 @@ export const QUESTIONNAIRE_TEMPLATES: QuestionnaireTemplate[] = [
 ]
 
 export function getTemplate(id: string): QuestionnaireTemplate | undefined {
-  return QUESTIONNAIRE_TEMPLATES.find((t) => t.id === id)
+  return QUESTIONNAIRE_TEMPLATES.find(t => t.id === id)
 }
 
 /** Lightweight catalogue entry for the list view / list API. */
@@ -423,7 +423,7 @@ export interface TemplateSummary {
 }
 
 export function listTemplates(): TemplateSummary[] {
-  return QUESTIONNAIRE_TEMPLATES.map((t) => ({
+  return QUESTIONNAIRE_TEMPLATES.map(t => ({
     id: t.id,
     name: t.name,
     framework: t.framework,

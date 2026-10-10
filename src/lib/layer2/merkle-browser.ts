@@ -61,9 +61,7 @@ async function hashInternal(leftHex: string, rightHex: string): Promise<string> 
  * false on any malformed input rather than throwing, so the UI can treat an
  * unverifiable proof the same as a failed one.
  */
-export async function verifyInclusionProofWebCrypto(
-  proof: MerkleInclusionProof,
-): Promise<boolean> {
+export async function verifyInclusionProofWebCrypto(proof: MerkleInclusionProof): Promise<boolean> {
   try {
     let node = await hashLeaf(proof.leaf)
     for (const step of proof.path) {

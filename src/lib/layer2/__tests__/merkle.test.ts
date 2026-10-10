@@ -1,10 +1,4 @@
-import {
-  hashLeaf,
-  hashInternal,
-  merkleRoot,
-  buildInclusionProof,
-  verifyInclusionProof,
-} from '../merkle'
+import { hashLeaf, hashInternal, merkleRoot, buildInclusionProof, verifyInclusionProof } from '../merkle'
 
 // Merkle-DAG audit structure.
 //
@@ -22,16 +16,12 @@ import {
 
 describe('RFC 6962 conformance vectors', () => {
   it('empty tree hashes to SHA-256 of the empty string', () => {
-    expect(merkleRoot([])).toBe(
-      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    )
+    expect(merkleRoot([])).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
   })
 
   it('a single empty leaf hashes with the 0x00 domain prefix', () => {
     // RFC 6962 §2.1 published vector for H(0x00 || "").
-    expect(hashLeaf('')).toBe(
-      '6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d',
-    )
+    expect(hashLeaf('')).toBe('6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d')
   })
 
   it('single-leaf root is just that leaf hash (no internal node)', () => {
@@ -86,9 +76,7 @@ describe('inclusion proofs', () => {
 
   it('rejects a proof with a tampered sibling in the path', () => {
     const proof = buildInclusionProof(leaves, 3)
-    const path = proof.path.map((s, i) =>
-      i === 0 ? { ...s, siblingHash: hashLeaf('forged') } : s,
-    )
+    const path = proof.path.map((s, i) => (i === 0 ? { ...s, siblingHash: hashLeaf('forged') } : s))
     expect(verifyInclusionProof({ ...proof, path })).toBe(false)
   })
 

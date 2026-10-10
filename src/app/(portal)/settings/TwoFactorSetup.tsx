@@ -130,9 +130,7 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={textStyles.sectionTitle}>
-            Two-factor authentication
-          </p>
+          <p style={textStyles.sectionTitle}>Two-factor authentication</p>
           <p style={{ ...textStyles.sectionSubtitle, marginTop: '4px' }}>
             {isEnabled
               ? 'Your account is protected with an authenticator app.'
@@ -162,7 +160,11 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
           <button onClick={startSetup} disabled={loading} style={btnPrimary(loading)}>
             {loading ? 'Starting…' : 'Set up authenticator'}
           </button>
-          {error && <p style={{ color: colours.red, fontSize: typography.sizes.sm, margin: `${spacing[1]} 0 0` }}>{error}</p>}
+          {error && (
+            <p style={{ color: colours.red, fontSize: typography.sizes.sm, margin: `${spacing[1]} 0 0` }}>
+              {error}
+            </p>
+          )}
         </div>
       )}
 
@@ -170,12 +172,22 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
       {step === 'idle' && isEnabled && (
         <div style={{ marginTop: spacing[2] }}>
           {isAdmin ? (
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, margin: 0 }}>
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                margin: 0,
+              }}
+            >
               Administrators must keep two-factor authentication enabled.
             </p>
           ) : (
             <button
-              onClick={() => { setStep('disabling'); setError(null) }}
+              onClick={() => {
+                setStep('disabling')
+                setError(null)
+              }}
               style={{
                 ...btnGhost,
                 color: colours.red,
@@ -192,24 +204,49 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
       {step === 'scanning' && (
         <div style={{ marginTop: spacing[2] }}>
           <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[2]}` }}>
-            Scan this code with your authenticator app (Google Authenticator, Authy, or similar), then enter the code it shows below.
+            Scan this code with your authenticator app (Google Authenticator, Authy, or similar), then enter
+            the code it shows below.
           </p>
           {qrDataUrl && (
             <div style={{ marginBottom: spacing[2] }}>
-              <Image src={qrDataUrl} alt="2FA QR code" width={160} height={160} style={{ display: 'block', borderRadius: '4px' }} />
+              <Image
+                src={qrDataUrl}
+                alt="2FA QR code"
+                width={160}
+                height={160}
+                style={{ display: 'block', borderRadius: '4px' }}
+              />
             </div>
           )}
           <details style={{ marginBottom: spacing[2] }}>
-            <summary style={{ fontSize: typography.sizes.xs, color: colours.textTertiary, cursor: 'pointer', userSelect: 'none' }}>
+            <summary
+              style={{
+                fontSize: typography.sizes.xs,
+                color: colours.textTertiary,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
               Can&apos;t scan? Enter the code manually
             </summary>
-            <p style={{ fontFamily: 'monospace', fontSize: typography.sizes.sm, color: colours.textPrimary, wordBreak: 'break-all', margin: '8px 0 0', letterSpacing: '0.05em' }}>
+            <p
+              style={{
+                fontFamily: 'monospace',
+                fontSize: typography.sizes.sm,
+                color: colours.textPrimary,
+                wordBreak: 'break-all',
+                margin: '8px 0 0',
+                letterSpacing: '0.05em',
+              }}
+            >
               {manualSecret}
             </p>
           </details>
           <form onSubmit={confirmSetup} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
             <div>
-              <label htmlFor="confirm-code" style={labelStyle}>Code from your app</label>
+              <label htmlFor="confirm-code" style={labelStyle}>
+                Code from your app
+              </label>
               <input
                 id="confirm-code"
                 type="text"
@@ -227,7 +264,14 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
               <button type="submit" disabled={loading} style={btnPrimary(loading)}>
                 {loading ? 'Confirming…' : 'Confirm'}
               </button>
-              <button type="button" onClick={() => { setStep('idle'); setError(null) }} style={btnGhost}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('idle')
+                  setError(null)
+                }}
+                style={btnGhost}
+              >
                 Cancel
               </button>
             </div>
@@ -238,34 +282,58 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
       {/* STEP: recovery - show codes once */}
       {step === 'recovery' && (
         <div style={{ marginTop: spacing[2] }}>
-          <div style={{ backgroundColor: colours.amberBg, border: `1px solid ${colours.amber}`, borderRadius: '4px', padding: spacing[2], marginBottom: spacing[2] }}>
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.amber, margin: '0 0 4px' }}>
+          <div
+            style={{
+              backgroundColor: colours.amberBg,
+              border: `1px solid ${colours.amber}`,
+              borderRadius: '4px',
+              padding: spacing[2],
+              marginBottom: spacing[2],
+            }}
+          >
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                color: colours.amber,
+                margin: '0 0 4px',
+              }}
+            >
               Save these recovery codes now
             </p>
-            <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.amber, margin: 0 }}>
-              If you lose access to your authenticator, these codes let you sign in. Each code can only be used once. They won&apos;t be shown again.
+            <p
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.light,
+                color: colours.amber,
+                margin: 0,
+              }}
+            >
+              If you lose access to your authenticator, these codes let you sign in. Each code can only be
+              used once. They won&apos;t be shown again.
             </p>
           </div>
-          <div style={{
-            backgroundColor: colours.background,
-            border: `1px solid ${colours.border}`,
-            borderRadius: '4px',
-            padding: spacing[2],
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '8px',
-            marginBottom: spacing[2],
-            fontFamily: 'monospace',
-            fontSize: typography.sizes.sm,
-          }}>
+          <div
+            style={{
+              backgroundColor: colours.background,
+              border: `1px solid ${colours.border}`,
+              borderRadius: '4px',
+              padding: spacing[2],
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px',
+              marginBottom: spacing[2],
+              fontFamily: 'monospace',
+              fontSize: typography.sizes.sm,
+            }}
+          >
             {recoveryCodes.map(c => (
-              <span key={c} style={{ color: colours.textPrimary, letterSpacing: '0.05em' }}>{c}</span>
+              <span key={c} style={{ color: colours.textPrimary, letterSpacing: '0.05em' }}>
+                {c}
+              </span>
             ))}
           </div>
-          <button
-            onClick={() => setStep('idle')}
-            style={btnPrimary(false)}
-          >
+          <button onClick={() => setStep('idle')} style={btnPrimary(false)}>
             I&apos;ve saved my recovery codes
           </button>
         </div>
@@ -277,9 +345,14 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
           <p style={{ ...textStyles.sectionSubtitle, margin: `0 0 ${spacing[2]}` }}>
             Enter your authenticator code to confirm you want to remove two-factor authentication.
           </p>
-          <form onSubmit={handleDisable} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+          <form
+            onSubmit={handleDisable}
+            style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}
+          >
             <div>
-              <label htmlFor="disable-code" style={labelStyle}>Authenticator code</label>
+              <label htmlFor="disable-code" style={labelStyle}>
+                Authenticator code
+              </label>
               <input
                 id="disable-code"
                 type="text"
@@ -294,10 +367,21 @@ export function TwoFactorSetup({ enabled, isAdmin }: Props) {
             </div>
             {error && <p style={{ color: colours.red, fontSize: typography.sizes.sm, margin: 0 }}>{error}</p>}
             <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
-              <button type="submit" disabled={loading} style={{ ...btnPrimary(loading), backgroundColor: colours.red, opacity: loading ? 0.6 : 1 }}>
+              <button
+                type="submit"
+                disabled={loading}
+                style={{ ...btnPrimary(loading), backgroundColor: colours.red, opacity: loading ? 0.6 : 1 }}
+              >
                 {loading ? 'Removing…' : 'Remove 2FA'}
               </button>
-              <button type="button" onClick={() => { setStep('idle'); setError(null) }} style={btnGhost}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('idle')
+                  setError(null)
+                }}
+                style={btnGhost}
+              >
                 Cancel
               </button>
             </div>

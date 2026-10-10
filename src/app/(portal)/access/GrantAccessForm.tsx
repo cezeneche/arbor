@@ -33,14 +33,26 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
   const [error, setError] = useState<string | null>(null)
 
   const effectiveBuyerId = customBuyerId.trim() || buyerEntityId
-  const selectedBuyerName = knownBuyers.find((b) => b.id === effectiveBuyerId)?.legalName ?? 'this buyer'
+  const selectedBuyerName = knownBuyers.find(b => b.id === effectiveBuyerId)?.legalName ?? 'this buyer'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!effectiveBuyerId) { setError('Please select or enter a buyer.'); return }
-    if (!periodStart || !periodEnd) { setError('Please enter the period.'); return }
-    if (new Date(periodEnd) <= new Date(periodStart)) { setError('Period end must be after period start.'); return }
-    if (!consent) { setError('Please confirm the consent acknowledgement.'); return }
+    if (!effectiveBuyerId) {
+      setError('Please select or enter a buyer.')
+      return
+    }
+    if (!periodStart || !periodEnd) {
+      setError('Please enter the period.')
+      return
+    }
+    if (new Date(periodEnd) <= new Date(periodStart)) {
+      setError('Period end must be after period start.')
+      return
+    }
+    if (!consent) {
+      setError('Please confirm the consent acknowledgement.')
+      return
+    }
 
     setSubmitting(true)
     setError(null)
@@ -130,11 +142,7 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
         marginBottom: spacing[4],
       }}
     >
-      <p
-        style={{ ...textStyles.sectionTitle, margin: `0 0 ${spacing[3]}` }}
-      >
-        Share data with a buyer
-      </p>
+      <p style={{ ...textStyles.sectionTitle, margin: `0 0 ${spacing[3]}` }}>Share data with a buyer</p>
 
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -143,11 +151,16 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
             {knownBuyers.length > 0 && (
               <select
                 value={customBuyerId ? '' : buyerEntityId}
-                onChange={e => { setBuyerEntityId(e.target.value); setCustomBuyerId('') }}
+                onChange={e => {
+                  setBuyerEntityId(e.target.value)
+                  setCustomBuyerId('')
+                }}
                 style={{ ...inputStyle, marginBottom: '8px' }}
               >
                 {knownBuyers.map(b => (
-                  <option key={b.id} value={b.id}>{b.legalName}</option>
+                  <option key={b.id} value={b.id}>
+                    {b.legalName}
+                  </option>
                 ))}
                 <option value="">Other: enter buyer ID below</option>
               </select>
@@ -161,20 +174,25 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
                 style={inputStyle}
               />
             )}
-            <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, margin: '4px 0 0' }}>
+            <p
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.light,
+                color: colours.textTertiary,
+                margin: '4px 0 0',
+              }}
+            >
               The buyer&apos;s system ID. They can find it in their account settings.
             </p>
           </div>
 
           <div>
             <label style={labelStyle}>Data type</label>
-            <select
-              value={domain}
-              onChange={e => setDomain(e.target.value)}
-              style={inputStyle}
-            >
+            <select value={domain} onChange={e => setDomain(e.target.value)} style={inputStyle}>
               {DOMAINS.map(d => (
-                <option key={d.value} value={d.value}>{d.label}</option>
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
               ))}
             </select>
           </div>
@@ -219,17 +237,24 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
           <input
             type="checkbox"
             checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
+            onChange={e => setConsent(e.target.checked)}
             style={{ marginTop: '3px' }}
           />
           <span>
-            I understand that {selectedBuyerName} may use this data for their own reporting.
-            Sharing this data does not transfer my liability for its accuracy.
+            I understand that {selectedBuyerName} may use this data for their own reporting. Sharing this data
+            does not transfer my liability for its accuracy.
           </span>
         </label>
 
         {error && (
-          <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, margin: `${spacing[2]} 0 0` }}>
+          <p
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.light,
+              color: colours.red,
+              margin: `${spacing[2]} 0 0`,
+            }}
+          >
             {error}
           </p>
         )}
@@ -237,7 +262,10 @@ export function GrantAccessForm({ knownBuyers }: { knownBuyers: Buyer[] }) {
         <div style={{ display: 'flex', gap: '12px', marginTop: spacing[3] }}>
           <button
             type="button"
-            onClick={() => { setOpen(false); setError(null) }}
+            onClick={() => {
+              setOpen(false)
+              setError(null)
+            }}
             style={{
               padding: '10px 20px',
               backgroundColor: 'transparent',

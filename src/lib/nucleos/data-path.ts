@@ -46,8 +46,7 @@ export const DATA_PATHS: readonly DataPath[] = [
     body:
       'Send a link to the supplier. They fill in the emissions for the goods they ' +
       'made, without needing an account here.',
-    consequence:
-      'Their figure is recorded as an actual measurement, and no mark-up is added.',
+    consequence: 'Their figure is recorded as an actual measurement, and no mark-up is added.',
     emissionsMethod: 'ACTUAL',
     markupApplies: false,
     alwaysAvailable: false,

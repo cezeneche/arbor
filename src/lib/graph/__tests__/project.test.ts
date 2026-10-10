@@ -23,7 +23,11 @@ describe('projectGraph — nodes', () => {
   it('emits one typed node per entity, document, and record', () => {
     const { nodes } = projectGraph(BASE)
     const byId = new Map(nodes.map(n => [n.id, n]))
-    expect(byId.get(nodeId('ENTITY', 'sup1'))).toMatchObject({ type: 'ENTITY', refId: 'sup1', label: 'Acme Steel' })
+    expect(byId.get(nodeId('ENTITY', 'sup1'))).toMatchObject({
+      type: 'ENTITY',
+      refId: 'sup1',
+      label: 'Acme Steel',
+    })
     expect(byId.get(nodeId('DOCUMENT', 'doc1'))).toMatchObject({ type: 'DOCUMENT', refId: 'doc1' })
     expect(byId.get(nodeId('RECORD', 'rec1'))).toMatchObject({ type: 'RECORD', refId: 'rec1' })
     expect(nodes).toHaveLength(5) // 2 entities + 1 document + 2 records

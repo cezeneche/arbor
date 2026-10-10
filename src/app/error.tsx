@@ -60,10 +60,17 @@ export default function RootError({
             margin: `0 0 ${spacing[3]}`,
           }}
         >
-          An unexpected error occurred. Your data is safe — nothing has been
-          changed. Try again, or return to the dashboard.
+          An unexpected error occurred. Your data is safe — nothing has been changed. Try again, or return to
+          the dashboard.
           {error.digest && (
-            <span style={{ display: 'block', marginTop: '8px', color: colours.textTertiary, fontSize: typography.sizes.xs }}>
+            <span
+              style={{
+                display: 'block',
+                marginTop: '8px',
+                color: colours.textTertiary,
+                fontSize: typography.sizes.xs,
+              }}
+            >
               Reference: {error.digest}
             </span>
           )}

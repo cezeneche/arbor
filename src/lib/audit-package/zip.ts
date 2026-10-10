@@ -65,8 +65,7 @@ function dosDateTime(at: Date): { time: number; date: number } {
   const year = at.getUTCFullYear()
   // The DOS epoch is 1980; anything earlier cannot be represented.
   const dosYear = Math.max(0, year - 1980)
-  const time =
-    (at.getUTCHours() << 11) | (at.getUTCMinutes() << 5) | Math.floor(at.getUTCSeconds() / 2)
+  const time = (at.getUTCHours() << 11) | (at.getUTCMinutes() << 5) | Math.floor(at.getUTCSeconds() / 2)
   const date = (dosYear << 9) | ((at.getUTCMonth() + 1) << 5) | at.getUTCDate()
   return { time, date }
 }

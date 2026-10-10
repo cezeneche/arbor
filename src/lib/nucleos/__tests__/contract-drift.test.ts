@@ -36,7 +36,7 @@ describe('nucleos contract', () => {
       status === 0
         ? ''
         : `Generated contract types have drifted from the schemas.\n${output}\n` +
-          'Regenerate: python3 contract/generate.py --typescript src/lib/nucleos/contract.ts',
+            'Regenerate: python3 contract/generate.py --typescript src/lib/nucleos/contract.ts',
     ).toBe('')
   })
 
@@ -49,8 +49,8 @@ describe('nucleos contract', () => {
       current === committed
         ? ''
         : 'The contract schemas changed but contract/DIGEST was not updated.\n' +
-          `  committed: ${committed}\n  current:   ${current}\n` +
-          'Regenerate: npm run contract:generate, then sync nucleos/contract/.',
+            `  committed: ${committed}\n  current:   ${current}\n` +
+            'Regenerate: npm run contract:generate, then sync nucleos/contract/.',
     ).toBe('')
   })
 

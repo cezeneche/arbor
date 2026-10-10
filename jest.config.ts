@@ -13,9 +13,7 @@ const config: Config = {
     '^.+\\.js$': ['ts-jest', { tsconfig: { jsx: 'react-jsx', strict: false }, diagnostics: false }],
   },
   // Transform ESM packages that Jest would otherwise skip
-  transformIgnorePatterns: [
-    '/node_modules/(?!(otplib|@otplib|@scure|@noble)/)',
-  ],
+  transformIgnorePatterns: ['/node_modules/(?!(otplib|@otplib|@scure|@noble)/)'],
   // Per-file environment overrides applied via @jest-environment docblock in .tsx test files
 }
 

@@ -26,13 +26,17 @@ describe('explainGoodsLineField', () => {
   it("asks for the field on Nucleos's own goods-line key", async () => {
     const { impl, urls } = fake(200, { chosen_value: 5000, evidence: [] })
     const body = await explainGoodsLineField('case-1', 'gl-1', 'net_mass_kg', { fetchImpl: impl })
-    expect(urls[0]).toBe('https://nucleos.test/api/cbam/cases/case-1/explain?field=goods_lines.gl-1.net_mass_kg')
+    expect(urls[0]).toBe(
+      'https://nucleos.test/api/cbam/cases/case-1/explain?field=goods_lines.gl-1.net_mass_kg',
+    )
     expect(body).toEqual({ chosen_value: 5000, evidence: [] })
   })
 
   it('treats a case with no recorded evidence as nothing to show', async () => {
     const { impl } = fake(404, { detail: 'Not Found' })
-    await expect(explainGoodsLineField('case-1', 'gl-1', 'net_mass_kg', { fetchImpl: impl })).resolves.toBeNull()
+    await expect(
+      explainGoodsLineField('case-1', 'gl-1', 'net_mass_kg', { fetchImpl: impl }),
+    ).resolves.toBeNull()
   })
 
   it('fails closed on any other error', async () => {

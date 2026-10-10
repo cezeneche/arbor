@@ -26,7 +26,9 @@ export interface StatementReference {
 
 function base(): string {
   if (!isNucleosConfigured()) {
-    throw new NucleosUnavailableError('NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured')
+    throw new NucleosUnavailableError(
+      'NUCLEOS_URL or a Nucleos credential (NUCLEOS_OIDC_AUDIENCE or NUCLEOS_INTERNAL_TOKEN) is not configured',
+    )
   }
   return process.env.NUCLEOS_URL as string
 }
@@ -40,7 +42,10 @@ async function post(path: string, body: unknown, fetchImpl: typeof fetch): Promi
   })
   if (res.ok) return
   if (res.status === 409 || res.status === 404) {
-    const detail = await res.json().then(b => (b as { detail?: unknown }).detail, () => null)
+    const detail = await res.json().then(
+      b => (b as { detail?: unknown }).detail,
+      () => null,
+    )
     throw new VerificationRejectedError(
       typeof detail === 'string' ? detail : 'This goods line cannot take that step now.',
     )

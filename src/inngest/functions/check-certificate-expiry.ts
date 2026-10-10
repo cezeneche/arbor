@@ -21,9 +21,8 @@ function readableType(documentType: string): string {
   return documentType
     .toLowerCase()
     .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\b\w/g, c => c.toUpperCase())
 }
-
 
 // per-entity tallies so each entity receives at most one expiring email
 // and one expired email per run, in plain English.

@@ -1,0 +1,6 @@
+# Commits that only change formatting. `git blame` skips them when run with
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# and GitHub's blame view reads this file by itself.
+
+# Format Arbor's TypeScript with Prettier
+8fd50d32a49a6e0c7d4315c9fc0c4a974b401d51

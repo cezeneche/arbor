@@ -39,7 +39,7 @@ export function grantCoversRecord(grant: GrantScope, record: ScopedRecord): bool
 
 /** True when at least one of `grants` covers `record`. */
 export function anyGrantCoversRecord(grants: GrantScope[], record: ScopedRecord): boolean {
-  return grants.some((g) => grantCoversRecord(g, record))
+  return grants.some(g => grantCoversRecord(g, record))
 }
 
 /** Reads the stored JSON field list back into the shape GrantScope expects.

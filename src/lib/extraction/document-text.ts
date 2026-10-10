@@ -67,9 +67,7 @@ export interface DocumentText {
 export function selectTextAdapter(): TextAdapter {
   const configured = (process.env.OCR_ADAPTER ?? 'transcribe').trim() as TextAdapter
   if (!ADAPTERS.includes(configured)) {
-    throw new Error(
-      `Unknown OCR_ADAPTER "${configured}". Expected one of: ${ADAPTERS.join(', ')}.`,
-    )
+    throw new Error(`Unknown OCR_ADAPTER "${configured}". Expected one of: ${ADAPTERS.join(', ')}.`)
   }
   return configured
 }
@@ -81,10 +79,7 @@ export interface TranscriptionResult {
 
 export interface ExtractDocumentTextOptions {
   /** Injectable transcriber, for hermetic tests. */
-  transcribeImpl?: (
-    base64: string,
-    mediaType: ExtractionInput['mediaType'],
-  ) => Promise<TranscriptionResult>
+  transcribeImpl?: (base64: string, mediaType: ExtractionInput['mediaType']) => Promise<TranscriptionResult>
   adapter?: TextAdapter
 }
 
@@ -94,10 +89,7 @@ function getClient(): Anthropic {
   return _client
 }
 
-function documentContentBlock(
-  base64: string,
-  mediaType: ExtractionInput['mediaType'],
-): ContentBlockParam {
+function documentContentBlock(base64: string, mediaType: ExtractionInput['mediaType']): ContentBlockParam {
   return mediaType === 'application/pdf'
     ? {
         type: 'document' as const,
@@ -136,10 +128,10 @@ async function transcribeWithModel(
 
   const text = response.content
     .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
+    .map(block => block.text)
     .join('')
 
-  return { pages: text.split(/^---\s*PAGE BREAK\s*---$/m).map((p) => p.trim()) }
+  return { pages: text.split(/^---\s*PAGE BREAK\s*---$/m).map(p => p.trim()) }
 }
 
 export async function extractDocumentText(
@@ -167,8 +159,8 @@ export async function extractDocumentText(
   const transcribe = opts.transcribeImpl ?? transcribeWithModel
   const result = await transcribe(base64, mediaType)
 
-  const allPages = (result.pages ?? []).map((p) => (p ?? '').trim())
-  const nonEmpty = allPages.filter((p) => p.length > 0)
+  const allPages = (result.pages ?? []).map(p => (p ?? '').trim())
+  const nonEmpty = allPages.filter(p => p.length > 0)
   if (nonEmpty.length === 0) {
     throw new EmptyTranscriptionError()
   }

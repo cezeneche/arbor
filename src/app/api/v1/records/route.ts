@@ -18,7 +18,10 @@ const recordSchema = z.object({
   domain: domainSchema,
   fieldName: z.string().min(1).max(120),
   value: z.number().finite(),
-  unit: z.string().min(1).max(60).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
+  unit: z.string().min(1).max(60).refine(isStorableUnit, {
+    message:
+      'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.',
+  }),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
 })
@@ -83,7 +86,10 @@ export async function GET(req: NextRequest) {
     const csv = formatRecordsAsCSV(records)
     return new NextResponse(csv, {
       status: 200,
-      headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-records.csv"' },
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="arbor-records.csv"',
+      },
     })
   }
 
@@ -91,7 +97,10 @@ export async function GET(req: NextRequest) {
     const xml = formatRecordsAsXML(records)
     return new NextResponse(xml, {
       status: 200,
-      headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-records.xml"' },
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="arbor-records.xml"',
+      },
     })
   }
 
@@ -119,11 +128,14 @@ export async function POST(req: NextRequest) {
 
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({
-      error: 'Request body failed validation',
-      code: 'VALIDATION_ERROR',
-      issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })),
-    }, { status: 400 })
+    return NextResponse.json(
+      {
+        error: 'Request body failed validation',
+        code: 'VALIDATION_ERROR',
+        issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })),
+      },
+      { status: 400 },
+    )
   }
   const records = parsed.data
 
@@ -143,19 +155,19 @@ export async function POST(req: NextRequest) {
     if (new Date(r.periodEnd) <= new Date(r.periodStart)) continue
 
     // API key writes have no supporting document — Tier B per PRD §12.
-    const written = await runSerializable(async (tx) => {
+    const written = await runSerializable(async tx => {
       const room = await assertRecordCapacity(auth.entityId!, 1, tx)
       if (!room.allowed) return null
       return writeRecordWithAuditEntry(tx, {
-          entityId: auth.entityId!,
-          domain: r.domain,
-          fieldName: r.fieldName,
-          value: r.value,
-          unit: r.unit,
-          originalValue: r.value,
-          originalUnit: r.unit,
-          periodStart: new Date(r.periodStart),
-          periodEnd: new Date(r.periodEnd),
+        entityId: auth.entityId!,
+        domain: r.domain,
+        fieldName: r.fieldName,
+        value: r.value,
+        unit: r.unit,
+        originalValue: r.value,
+        originalUnit: r.unit,
+        periodStart: new Date(r.periodStart),
+        periodEnd: new Date(r.periodEnd),
         trustTier: TrustTier.B,
         extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
         submittedById: systemUser.id,

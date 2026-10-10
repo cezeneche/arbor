@@ -27,18 +27,44 @@ function PaginationBar({
     cursor: 'pointer',
     letterSpacing: typography.tracking.wide,
   }
-  const ghost: React.CSSProperties = { ...btn, color: 'transparent', border: '1px solid transparent', cursor: 'default' }
+  const ghost: React.CSSProperties = {
+    ...btn,
+    color: 'transparent',
+    border: '1px solid transparent',
+    cursor: 'default',
+  }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[3] }}>
-      {page > 1
-        ? <button style={btn} onClick={() => onPage(page - 1)}>← Previous</button>
-        : <span style={ghost}>← Previous</span>}
-      <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: spacing[3],
+      }}
+    >
+      {page > 1 ? (
+        <button style={btn} onClick={() => onPage(page - 1)}>
+          ← Previous
+        </button>
+      ) : (
+        <span style={ghost}>← Previous</span>
+      )}
+      <span
+        style={{
+          fontSize: typography.sizes.xs,
+          fontWeight: typography.weights.light,
+          color: colours.textTertiary,
+        }}
+      >
         Page {page} of {totalPages}
       </span>
-      {page < totalPages
-        ? <button style={btn} onClick={() => onPage(page + 1)}>Next →</button>
-        : <span style={ghost}>Next →</span>}
+      {page < totalPages ? (
+        <button style={btn} onClick={() => onPage(page + 1)}>
+          Next →
+        </button>
+      ) : (
+        <span style={ghost}>Next →</span>
+      )}
     </div>
   )
 }
@@ -131,9 +157,7 @@ export function RequestsList({ incoming, outgoing }: Props) {
     }
 
     setRequests(prev =>
-      prev.map(r =>
-        r.id === requestId ? { ...r, status: 'SUBMITTED', notes: respondNote } : r
-      )
+      prev.map(r => (r.id === requestId ? { ...r, status: 'SUBMITTED', notes: respondNote } : r)),
     )
     setRespondingTo(null)
     setRespondNote('')
@@ -196,21 +220,28 @@ export function RequestsList({ incoming, outgoing }: Props) {
                 }}
               >
                 <div style={{ padding: spacing[3] }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[2] }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: spacing[2],
+                    }}
+                  >
                     <div>
-                      <p
-                        style={textStyles.sectionTitle}
-                      >
-                        {req.buyerEntity.legalName}
-                      </p>
-                      <p
-                        style={{ ...textStyles.sectionSubtitle, margin: `4px 0 0` }}
-                      >
+                      <p style={textStyles.sectionTitle}>{req.buyerEntity.legalName}</p>
+                      <p style={{ ...textStyles.sectionSubtitle, margin: `4px 0 0` }}>
                         {DOMAIN_LABELS[req.domain] ?? req.domain}
                         {' · '}
-                        {new Date(req.periodStart).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                        {new Date(req.periodStart).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                         {' – '}
-                        {new Date(req.periodEnd).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                        {new Date(req.periodEnd).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                         {req.deadline && (
                           <span style={{ color: colours.amber }}>
                             {' · Due '}
@@ -309,11 +340,11 @@ export function RequestsList({ incoming, outgoing }: Props) {
                       backgroundColor: colours.background,
                     }}
                   >
-                    <p
-                      style={{ ...textStyles.rowTitle, margin: `0 0 ${spacing[2]}` }}
-                    >
+                    <p style={{ ...textStyles.rowTitle, margin: `0 0 ${spacing[2]}` }}>
                       Upload the requested data at{' '}
-                      <a href="/upload" style={{ color: colours.navy }}>Upload documents</a>
+                      <a href="/upload" style={{ color: colours.navy }}>
+                        Upload documents
+                      </a>
                       , then confirm the request below.
                     </p>
 
@@ -354,7 +385,10 @@ export function RequestsList({ incoming, outgoing }: Props) {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing[2] }}>
                       <button
-                        onClick={() => { setRespondingTo(null); setRespondNote('') }}
+                        onClick={() => {
+                          setRespondingTo(null)
+                          setRespondNote('')
+                        }}
                         style={{
                           padding: '10px 16px',
                           backgroundColor: 'transparent',
@@ -412,24 +446,27 @@ export function RequestsList({ incoming, outgoing }: Props) {
                 }}
               >
                 <div>
-                  <p
-                    style={textStyles.rowTitle}
-                  >
-                    {req.supplierEntity.legalName}
-                  </p>
-                  <p
-                    style={{ ...textStyles.caption, margin: '2px 0 0' }}
-                  >
+                  <p style={textStyles.rowTitle}>{req.supplierEntity.legalName}</p>
+                  <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
                     {DOMAIN_LABELS[req.domain] ?? req.domain}
                     {' · '}
                     {new Date(req.createdAt).toLocaleDateString('en-GB')}
                   </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                  {req.status === 'PENDING' && (
-                    generatedLinks[req.id] ? (
+                  {req.status === 'PENDING' &&
+                    (generatedLinks[req.id] ? (
                       <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.medium, color: colours.textTertiary, margin: '0 0 4px', letterSpacing: typography.tracking.wider, textTransform: 'uppercase' }}>
+                        <p
+                          style={{
+                            fontSize: typography.sizes.xs,
+                            fontWeight: typography.weights.medium,
+                            color: colours.textTertiary,
+                            margin: '0 0 4px',
+                            letterSpacing: typography.tracking.wider,
+                            textTransform: 'uppercase',
+                          }}
+                        >
                           Submission link
                         </p>
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -483,8 +520,7 @@ export function RequestsList({ incoming, outgoing }: Props) {
                       >
                         {generatingLink === req.id ? 'Generating…' : 'Send link'}
                       </button>
-                    )
-                  )}
+                    ))}
                   <span
                     style={{
                       fontSize: typography.sizes.xs,

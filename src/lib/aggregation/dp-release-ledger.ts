@@ -46,11 +46,7 @@ export interface ReleasePlan {
 }
 
 /** Splits the requested groups into "already released" and "needs a draw". */
-export function planDpRelease(
-  groups: DPGroupInput[],
-  epsilon: number,
-  ledger: LedgerEntry[],
-): ReleasePlan {
+export function planDpRelease(groups: DPGroupInput[], epsilon: number, ledger: LedgerEntry[]): ReleasePlan {
   const fingerprints = new Map<string, string>()
   for (const g of groups) fingerprints.set(g.key, fingerprintGroup(g))
 

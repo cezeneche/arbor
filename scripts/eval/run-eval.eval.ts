@@ -31,49 +31,49 @@ describe('pre-deploy extraction eval gate', () => {
   const baselineJson = readJson('baseline.json')
   const baseline = baselineJson ? parseBaseline(baselineJson) : EMPTY_BASELINE
 
-  it(
-    'extraction accuracy has not regressed on the golden set',
-    async () => {
-      if (cases.length === 0) {
-        console.warn('[eval] no golden cases in eval/golden-set.json — add fixtures to arm the gate')
-        return
-      }
+  it('extraction accuracy has not regressed on the golden set', async () => {
+    if (cases.length === 0) {
+      console.warn('[eval] no golden cases in eval/golden-set.json — add fixtures to arm the gate')
+      return
+    }
 
-      const report = await runEval(EXTRACTOR_VERSION, cases, baseline, {
-        loadFixture: async (fixture) =>
-          fs.readFileSync(path.join(FIXTURES_DIR, fixture)).toString('base64'),
-        extract: async ({ documentBase64, mediaType, documentType }) => {
-          const result = await extractDocument({
-            documentBase64,
-            mediaType,
-            documentType,
-            entityName: 'EVAL',
-          })
-          return result.fields.map((f) => ({ fieldName: f.fieldName, rawValue: f.rawValue }))
-        },
-      })
+    const report = await runEval(EXTRACTOR_VERSION, cases, baseline, {
+      loadFixture: async fixture => fs.readFileSync(path.join(FIXTURES_DIR, fixture)).toString('base64'),
+      extract: async ({ documentBase64, mediaType, documentType }) => {
+        const result = await extractDocument({
+          documentBase64,
+          mediaType,
+          documentType,
+          entityName: 'EVAL',
+        })
+        return result.fields.map(f => ({ fieldName: f.fieldName, rawValue: f.rawValue }))
+      },
+    })
 
-      console.log(
-        '[eval] report\n' +
-          JSON.stringify(
-            { extractorVersion: report.extractorVersion, overall: report.overall, groups: report.groups, regressions: report.regressions },
-            null,
-            2,
-          ),
+    console.log(
+      '[eval] report\n' +
+        JSON.stringify(
+          {
+            extractorVersion: report.extractorVersion,
+            overall: report.overall,
+            groups: report.groups,
+            regressions: report.regressions,
+          },
+          null,
+          2,
+        ),
+    )
+
+    if (process.env.EVAL_UPDATE_BASELINE === '1') {
+      fs.writeFileSync(
+        path.join(EVAL_DIR, 'baseline.json'),
+        JSON.stringify(toBaseline(report), null, 2) + '\n',
       )
+      console.log('[eval] baseline updated from this run')
+      return
+    }
 
-      if (process.env.EVAL_UPDATE_BASELINE === '1') {
-        fs.writeFileSync(
-          path.join(EVAL_DIR, 'baseline.json'),
-          JSON.stringify(toBaseline(report), null, 2) + '\n',
-        )
-        console.log('[eval] baseline updated from this run')
-        return
-      }
-
-      // The gate: any kill-signal regression fails the run (non-zero exit).
-      expect(report.regressions).toEqual([])
-    },
-    300_000,
-  )
+    // The gate: any kill-signal regression fails the run (non-zero exit).
+    expect(report.regressions).toEqual([])
+  }, 300_000)
 })

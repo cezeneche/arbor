@@ -9,16 +9,8 @@
 // the secret is unset.
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import {
-  candidatePairs,
-  normaliseIdentityName,
-  type BlockableEntity,
-} from '@/lib/entity-resolution/blocking'
-import {
-  planEntityLinks,
-  pairKey,
-  type ExistingLink,
-} from '@/lib/entity-resolution/link-planner'
+import { candidatePairs, normaliseIdentityName, type BlockableEntity } from '@/lib/entity-resolution/blocking'
+import { planEntityLinks, pairKey, type ExistingLink } from '@/lib/entity-resolution/link-planner'
 import { scoreEntityPairs } from '@/lib/brain/resolution-client'
 import { BrainUnavailableError } from '@/lib/brain/calibration-client'
 import type { ResolutionEntityName } from '@/lib/brain/types'
@@ -54,7 +46,10 @@ export async function GET(req: NextRequest) {
   }))
   let scored
   try {
-    scored = await scoreEntityPairs(names, pairs.map(([a, b]) => ({ a, b })))
+    scored = await scoreEntityPairs(
+      names,
+      pairs.map(([a, b]) => ({ a, b })),
+    )
   } catch (e) {
     if (e instanceof BrainUnavailableError) {
       return Response.json({ status: 'skipped', reason: 'brain unavailable', detail: e.message })

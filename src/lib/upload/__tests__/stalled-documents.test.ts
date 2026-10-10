@@ -10,12 +10,8 @@ describe('classifyStalledDocument', () => {
   // A run that began and died may have written part of its work; asking for it
   // again could duplicate that, so a person decides.
   it('hands an abandoned mid-run document to the user rather than re-running it', () => {
-    expect(classifyStalledDocument({ status: 'EXTRACTING', hasExtractionJob: true })).toBe(
-      'MARK_FOR_REVIEW',
-    )
-    expect(classifyStalledDocument({ status: 'PENDING', hasExtractionJob: true })).toBe(
-      'MARK_FOR_REVIEW',
-    )
+    expect(classifyStalledDocument({ status: 'EXTRACTING', hasExtractionJob: true })).toBe('MARK_FOR_REVIEW')
+    expect(classifyStalledDocument({ status: 'PENDING', hasExtractionJob: true })).toBe('MARK_FOR_REVIEW')
   })
 
   it('leaves a generous window so a slow live run is never disturbed', () => {

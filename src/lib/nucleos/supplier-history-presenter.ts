@@ -43,7 +43,13 @@ const SOURCE: Record<string, string> = { actual: 'Supplier’s figure', estimate
 
 export function presentSupplierHistory(body: SupplierHistoryResponse | null): PresentedSupplierHistory {
   if (!body) {
-    return { available: false, flagged: false, current: null, verdict: 'No history could be found for these goods.', rows: [] }
+    return {
+      available: false,
+      flagged: false,
+      current: null,
+      verdict: 'No history could be found for these goods.',
+      rows: [],
+    }
   }
 
   const rows = (body.history ?? []).map(h => ({

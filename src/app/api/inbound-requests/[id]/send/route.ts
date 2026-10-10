@@ -12,10 +12,7 @@ import type { Prisma } from '@prisma/client'
 // matched to certified records and held for review (the S2 fix: nothing is ever
 // emailed automatically). Only a write-capable member of the entity that owns
 // the request can send, and only while it is awaiting supplier review.
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
   const entityId = getSessionUser(session).entityId as string
@@ -89,7 +86,11 @@ export async function POST(
     console.error(`[inbound-requests] send for ${id} failed:`, error)
     await prisma.inboundRequest.updateMany({
       where: { id, status: 'ANSWERED' },
-      data: { status: request.status, answeredAt: null, parsedFields: pf as unknown as Prisma.InputJsonValue },
+      data: {
+        status: request.status,
+        answeredAt: null,
+        parsedFields: pf as unknown as Prisma.InputJsonValue,
+      },
     })
     return err('The email could not be delivered. Please try again.', 'SEND_FAILED', 502)
   }

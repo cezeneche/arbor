@@ -77,7 +77,7 @@ export async function assertSupplierConnection(
     select: { supplierEntityId: true },
     distinct: ['supplierEntityId'],
   })
-  const alreadyConnected = connected.some((c) => c.supplierEntityId === supplierEntityId)
+  const alreadyConnected = connected.some(c => c.supplierEntityId === supplierEntityId)
   return checkSupplierConnection(tier, connected.length, alreadyConnected)
 }
 

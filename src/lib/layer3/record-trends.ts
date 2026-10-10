@@ -56,7 +56,16 @@ export function buildRecordTrends(
   compulsoryByDocumentType: Record<string, string[]>,
 ): RecordTrends {
   // quarter sortKey → { label, domain → { fields, tiers } }
-  const quarterMap = new Map<number, { label: string; domains: Map<string, { fields: Set<string>; docTypes: Set<string>; tiers: { A: number; B: number; C: number } }> }>()
+  const quarterMap = new Map<
+    number,
+    {
+      label: string
+      domains: Map<
+        string,
+        { fields: Set<string>; docTypes: Set<string>; tiers: { A: number; B: number; C: number } }
+      >
+    }
+  >()
   // domain → fieldName → (quarter sortKey → ValuePoint) — first record seen per quarter wins
   const valueMap = new Map<string, Map<string, Map<number, ValuePoint & { sortKey: number }>>>()
 
@@ -65,7 +74,8 @@ export function buildRecordTrends(
 
     if (!quarterMap.has(sortKey)) quarterMap.set(sortKey, { label, domains: new Map() })
     const qEntry = quarterMap.get(sortKey)!
-    if (!qEntry.domains.has(r.domain)) qEntry.domains.set(r.domain, { fields: new Set(), docTypes: new Set(), tiers: { A: 0, B: 0, C: 0 } })
+    if (!qEntry.domains.has(r.domain))
+      qEntry.domains.set(r.domain, { fields: new Set(), docTypes: new Set(), tiers: { A: 0, B: 0, C: 0 } })
     const dEntry = qEntry.domains.get(r.domain)!
     dEntry.fields.add(r.fieldName)
     if (r.documentType) dEntry.docTypes.add(r.documentType)
@@ -91,9 +101,10 @@ export function buildRecordTrends(
       const presentFields = [...d.fields]
       const missingFields = expected.filter(f => !d.fields.has(f))
       const extraFields = presentFields.filter(f => !expected.includes(f))
-      const pct = expected.length > 0
-        ? Math.round(((expected.length - missingFields.length) / expected.length) * 100)
-        : 100
+      const pct =
+        expected.length > 0
+          ? Math.round(((expected.length - missingFields.length) / expected.length) * 100)
+          : 100
       return { domain, presentFields, missingFields, extraFields, pct, tiers: d.tiers }
     })
     return { quarter: label, domains: domainCoverage }

@@ -50,9 +50,9 @@ describe('dictionary covers every storable (fieldName, domain) pair', () => {
     // A wording filed under a domain nothing writes to is dead weight and, worse,
     // looks like coverage while providing none.
     const storable = new Set(storablePairs().map(p => `${p.domain} ${p.fieldName}`))
-    const orphaned = SEED_DEFINITIONS.filter(
-      d => !storable.has(`${d.domain} ${d.fieldName}`),
-    ).map(d => `${d.fieldName} defined under ${d.domain}`)
+    const orphaned = SEED_DEFINITIONS.filter(d => !storable.has(`${d.domain} ${d.fieldName}`)).map(
+      d => `${d.fieldName} defined under ${d.domain}`,
+    )
 
     expect(orphaned).toEqual([])
   })

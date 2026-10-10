@@ -4,11 +4,7 @@ import { getSessionUser } from '@/lib/session'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { err } from '@/lib/api-helpers'
 import { resolveCaseAccess } from '@/lib/nucleos/case-ownership'
-import {
-  ReturnNotAvailableError,
-  buildEuXmlDeclaration,
-  buildHmrcReturn,
-} from '@/lib/nucleos/return-client'
+import { ReturnNotAvailableError, buildEuXmlDeclaration, buildHmrcReturn } from '@/lib/nucleos/return-client'
 import { NucleosUnavailableError } from '@/lib/nucleos/extraction-client'
 import { availableReturns, resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
 import { getCbamCase } from '@/lib/nucleos/cases-client'
@@ -30,10 +26,7 @@ const bodySchema = z.object({
   hmrcFormat: z.enum(['json', 'pdf']).optional(),
 })
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ caseId: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ caseId: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
@@ -78,12 +71,16 @@ export async function POST(
     const doc =
       parsed.data.format === 'EU_XML'
         ? await buildEuXmlDeclaration(caseId)
-        : await buildHmrcReturn(caseId, {
-            importerVatNumber: parsed.data.importerVatNumber ?? '',
-            importerAddress: parsed.data.importerAddress ?? {},
-            accuracyDeclaration: parsed.data.accuracyDeclaration ?? false,
-            cbamRateOverride: parsed.data.cbamRateOverride ?? null,
-          }, { format: parsed.data.hmrcFormat ?? 'json' })
+        : await buildHmrcReturn(
+            caseId,
+            {
+              importerVatNumber: parsed.data.importerVatNumber ?? '',
+              importerAddress: parsed.data.importerAddress ?? {},
+              accuracyDeclaration: parsed.data.accuracyDeclaration ?? false,
+              cbamRateOverride: parsed.data.cbamRateOverride ?? null,
+            },
+            { format: parsed.data.hmrcFormat ?? 'json' },
+          )
 
     return new NextResponse(doc.body, {
       status: 200,

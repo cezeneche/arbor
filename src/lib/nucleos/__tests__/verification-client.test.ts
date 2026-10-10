@@ -69,9 +69,9 @@ describe('verification client', () => {
   })
 
   it('says the step is not allowed in this state, rather than that Nucleos is down', async () => {
-    await expect(acceptVerification('gl-1', fake(409, { detail: 'bad transition' }).impl)).rejects.toBeInstanceOf(
-      VerificationRejectedError,
-    )
+    await expect(
+      acceptVerification('gl-1', fake(409, { detail: 'bad transition' }).impl),
+    ).rejects.toBeInstanceOf(VerificationRejectedError)
   })
 
   it('treats anything else as Nucleos being unavailable', async () => {

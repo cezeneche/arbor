@@ -25,23 +25,17 @@ describe('verifyInclusionProofWebCrypto', () => {
 
   it('rejects a tampered leaf', async () => {
     const proof = buildInclusionProof(leaves, 2)
-    await expect(
-      verifyInclusionProofWebCrypto({ ...proof, leaf: 'tampered' }),
-    ).resolves.toBe(false)
+    await expect(verifyInclusionProofWebCrypto({ ...proof, leaf: 'tampered' })).resolves.toBe(false)
   })
 
   it('rejects a proof whose committed root has been swapped', async () => {
     const proof = buildInclusionProof(leaves, 1)
-    await expect(
-      verifyInclusionProofWebCrypto({ ...proof, root: '00'.repeat(32) }),
-    ).resolves.toBe(false)
+    await expect(verifyInclusionProofWebCrypto({ ...proof, root: '00'.repeat(32) })).resolves.toBe(false)
   })
 
   it('rejects a tampered sibling hash in the path', async () => {
     const proof = buildInclusionProof(leaves, 3)
-    const path = proof.path.map((s, i) =>
-      i === 0 ? { ...s, siblingHash: 'ff'.repeat(32) } : s,
-    )
+    const path = proof.path.map((s, i) => (i === 0 ? { ...s, siblingHash: 'ff'.repeat(32) } : s))
     await expect(verifyInclusionProofWebCrypto({ ...proof, path })).resolves.toBe(false)
   })
 })

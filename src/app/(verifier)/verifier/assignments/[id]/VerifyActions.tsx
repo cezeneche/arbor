@@ -38,7 +38,14 @@ export function VerifyActions({ assignmentId }: { assignmentId: string }) {
   return (
     <div style={{ marginTop: spacing[3], display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
       {error && (
-        <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.red, margin: 0 }}>
+        <p
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.light,
+            color: colours.red,
+            margin: 0,
+          }}
+        >
           {error}
         </p>
       )}
@@ -46,7 +53,7 @@ export function VerifyActions({ assignmentId }: { assignmentId: string }) {
       {mode === 'rejecting' && (
         <textarea
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={e => setNote(e.target.value)}
           placeholder="Explain why this package cannot be verified…"
           rows={3}
           style={{
@@ -125,7 +132,10 @@ export function VerifyActions({ assignmentId }: { assignmentId: string }) {
             <button
               type="button"
               disabled={busy}
-              onClick={() => { setMode('idle'); setNote('') }}
+              onClick={() => {
+                setMode('idle')
+                setNote('')
+              }}
               style={{
                 padding: '10px 20px',
                 backgroundColor: 'transparent',

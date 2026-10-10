@@ -4,7 +4,8 @@ import { probeNucleos } from '../readiness-probe'
 // takes longer than the probe waits; a refusal, an error answer or an unknown
 // host is a real failure.
 
-const answer = (status: number) => jest.fn(async () => new Response('{}', { status })) as unknown as typeof fetch
+const answer = (status: number) =>
+  jest.fn(async () => new Response('{}', { status })) as unknown as typeof fetch
 
 describe('probeNucleos', () => {
   it('is fine when Nucleos answers', async () => {

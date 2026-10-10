@@ -46,9 +46,7 @@ describe('provenanceNote', () => {
   // The defect: the email told the buyer every value was backed by a source
   // document, which is false for manual and integration Tier B records.
   it('claims document backing only when every value is Verified', () => {
-    const note = provenanceNote([
-      { fieldName: 'x', records: [{ value: 1, unit: 'kWh', trustTier: 'A' }] },
-    ])
+    const note = provenanceNote([{ fieldName: 'x', records: [{ value: 1, unit: 'kWh', trustTier: 'A' }] }])
     expect(note).toContain('Verified')
     expect(note).toContain('source document')
     expect(note).not.toContain('Declared')

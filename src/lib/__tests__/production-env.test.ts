@@ -26,7 +26,11 @@ describe('missingProductionEnv', () => {
     const noRedis = { ...complete, UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '' }
     expect(missingProductionEnv(noRedis)).toEqual(['UPSTASH_REDIS_REST_URL / KV_REST_API_URL (+ token)'])
     expect(
-      missingProductionEnv({ ...noRedis, KV_REST_API_URL: 'https://kv.example', KV_REST_API_TOKEN: 'kv-token' }),
+      missingProductionEnv({
+        ...noRedis,
+        KV_REST_API_URL: 'https://kv.example',
+        KV_REST_API_TOKEN: 'kv-token',
+      }),
     ).toEqual([])
   })
 
@@ -39,9 +43,16 @@ describe('missingProductionEnv', () => {
 
   it('covers every service a request depends on', () => {
     for (const name of [
-      'DATABASE_URL', 'AUTH_SECRET', 'AUDIT_CHAIN_SECRET',
-      'NUCLEOS_URL', 'INNGEST_EVENT_KEY', 'INNGEST_SIGNING_KEY',
-      'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'CRON_SECRET',
+      'DATABASE_URL',
+      'AUTH_SECRET',
+      'AUDIT_CHAIN_SECRET',
+      'NUCLEOS_URL',
+      'INNGEST_EVENT_KEY',
+      'INNGEST_SIGNING_KEY',
+      'SUPABASE_URL',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'RESEND_API_KEY',
+      'CRON_SECRET',
     ]) {
       expect(REQUIRED_PRODUCTION_ENV).toContain(name)
     }

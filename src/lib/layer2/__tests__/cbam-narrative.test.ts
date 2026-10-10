@@ -76,14 +76,22 @@ describe('writeNarrative', () => {
     const { d, rows } = deps({ required: true, reasons: ['x'] })
     ;(d.send as jest.Mock).mockRejectedValue(new Error('RESEND_API_KEY is not set'))
     const out = await writeNarrative(input, d)
-    expect(out).toMatchObject({ ok: true, emailed: 0, emailProblem: expect.stringContaining('could not be emailed') })
+    expect(out).toMatchObject({
+      ok: true,
+      emailed: 0,
+      emailProblem: expect.stringContaining('could not be emailed'),
+    })
     expect(rows.get('nar-1').emailedAt).toBeNull()
   })
 
   it('says the organisation has no one to email, rather than failing', async () => {
     const { d } = deps({ required: true, reasons: ['x'] })
     ;(d.recipients as jest.Mock).mockResolvedValue([])
-    await expect(writeNarrative(input, d)).resolves.toMatchObject({ ok: true, emailed: 0, emailProblem: expect.any(String) })
+    await expect(writeNarrative(input, d)).resolves.toMatchObject({
+      ok: true,
+      emailed: 0,
+      emailProblem: expect.any(String),
+    })
   })
 
   it('stores nothing when Nucleos refuses or fails', async () => {
@@ -104,7 +112,11 @@ describe('writeNarrative', () => {
     const { d } = deps()
     ;(d.run as jest.Mock).mockRejectedValue(new NarrativeBlockedError(['direct_embedded_kgco2e']))
     const out = await writeNarrative(input, d)
-    expect(out).toMatchObject({ ok: false, code: 'BLOCKED', message: expect.stringContaining('direct_embedded_kgco2e') })
+    expect(out).toMatchObject({
+      ok: false,
+      code: 'BLOCKED',
+      message: expect.stringContaining('direct_embedded_kgco2e'),
+    })
   })
 })
 

@@ -12,15 +12,9 @@ const MAX_SUGGESTIONS = 3
 
 // Shown before any record exists. Deliberately free of years and domains, so
 // nothing here can promise data the entity does not have.
-const STARTERS = [
-  'What records do we have?',
-  'Which of our records still need a document?',
-]
+const STARTERS = ['What records do we have?', 'Which of our records still need a document?']
 
-export function buildQuerySuggestions(opts: {
-  domains: string[]
-  latestYear: number | null
-}): string[] {
+export function buildQuerySuggestions(opts: { domains: string[]; latestYear: number | null }): string[] {
   const { domains, latestYear } = opts
   if (domains.length === 0 || latestYear === null) return STARTERS
 

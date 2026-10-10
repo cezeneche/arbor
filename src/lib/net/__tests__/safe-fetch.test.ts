@@ -11,8 +11,10 @@ const PUBLIC_V6 = { address: '2606:4700:4700::1111', family: 6 as const }
 const METADATA = { address: '169.254.169.254', family: 4 as const }
 const LOOPBACK = { address: '127.0.0.1', family: 4 as const }
 
-const resolvesTo = (...addresses: Array<{ address: string; family: 4 | 6 }>): HostResolver =>
-  async () => addresses
+const resolvesTo =
+  (...addresses: Array<{ address: string; family: 4 | 6 }>): HostResolver =>
+  async () =>
+    addresses
 
 describe('checkDestination', () => {
   it('returns the resolved address the request will be pinned to', async () => {
@@ -168,9 +170,7 @@ describe('safeFetch — redirects are re-checked at every hop', () => {
   // The destination after a 302 is the remote server's choice, not the tenant's,
   // so a check performed only on the first URL protects nothing.
   it('refuses a redirect into the metadata endpoint', async () => {
-    const transport = scriptedFetch([
-      { status: 302, location: 'https://169.254.169.254/latest/meta-data/' },
-    ])
+    const transport = scriptedFetch([{ status: 302, location: 'https://169.254.169.254/latest/meta-data/' }])
     await expect(
       safeFetch('https://start.example.com/', {
         resolver: resolvesTo(PUBLIC_V4),

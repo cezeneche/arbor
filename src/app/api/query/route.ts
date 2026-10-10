@@ -58,13 +58,25 @@ export async function GET(req: NextRequest) {
     case 'entity':
       return handleEntityQuery({ entityId, domain, fieldName, periodStart, periodEnd, trustTier, documentId })
     case 'supply_chain':
-      return handleSupplyChainQuery({ buyerEntityId: entityId, domain, fieldName, periodStart, periodEnd, trustTier, supplierEntityId })
+      return handleSupplyChainQuery({
+        buyerEntityId: entityId,
+        domain,
+        fieldName,
+        periodStart,
+        periodEnd,
+        trustTier,
+        supplierEntityId,
+      })
     case 'gap':
       return handleGapQuery({ entityId, domain, periodStart, periodEnd })
     case 'historical':
       return handleHistoricalQuery({ entityId, domain, fieldName })
     default:
-      return err(`Invalid query type '${queryType}'. Valid types: entity, supply_chain, gap, historical`, 'VALIDATION_ERROR', 400)
+      return err(
+        `Invalid query type '${queryType}'. Valid types: entity, supply_chain, gap, historical`,
+        'VALIDATION_ERROR',
+        400,
+      )
   }
 }
 
@@ -184,10 +196,7 @@ async function handleSupplyChainQuery(params: {
   })
 
   const filteredRecords = records.filter(record =>
-    anyGrantCoversRecord(
-      grants.filter(g => g.grantorEntityId === record.entityId).map(toGrantScope),
-      record,
-    ),
+    anyGrantCoversRecord(grants.filter(g => g.grantorEntityId === record.entityId).map(toGrantScope), record),
   )
 
   const supplierCount = new Set(filteredRecords.map(r => r.entityId)).size
@@ -264,7 +273,9 @@ async function handleGapQuery(params: {
         : (entityGrants.map(g => g.domain).filter(Boolean) as DataDomain[])
 
       const covered = supplierCoverage.get(sid) ?? new Set()
-      const missing = (grantedDomains.length > 0 ? grantedDomains : (ALL_DOMAINS as DataDomain[])).filter(d => !covered.has(d))
+      const missing = (grantedDomains.length > 0 ? grantedDomains : (ALL_DOMAINS as DataDomain[])).filter(
+        d => !covered.has(d),
+      )
 
       if (missing.length > 0) {
         supplierGaps.push({ supplierEntityId: sid, supplierName, missingDomains: missing })
@@ -277,11 +288,7 @@ async function handleGapQuery(params: {
 
 // HISTORICAL QUERY
 
-async function handleHistoricalQuery(params: {
-  entityId: string
-  domain?: DataDomain
-  fieldName?: string
-}) {
+async function handleHistoricalQuery(params: { entityId: string; domain?: DataDomain; fieldName?: string }) {
   const { entityId, domain, fieldName } = params
 
   if (!domain || !fieldName) {

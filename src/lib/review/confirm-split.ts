@@ -38,9 +38,7 @@ export interface ConfirmSplit<T> {
 }
 
 /** Partition confirmed fields into the two lists the confirm route expects. */
-export function splitConfirmFields<T extends { fieldName: string }>(
-  fields: readonly T[],
-): ConfirmSplit<T> {
+export function splitConfirmFields<T extends { fieldName: string }>(fields: readonly T[]): ConfirmSplit<T> {
   const records: T[] = []
   const context: T[] = []
   for (const field of fields) {

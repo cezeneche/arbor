@@ -27,7 +27,7 @@ export interface RunSerializableOptions {
   sleep?: (ms: number) => Promise<void>
 }
 
-const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+const defaultSleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 /**
  * Run `fn` inside a Serializable transaction, retrying only on write-conflict

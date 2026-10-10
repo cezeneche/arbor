@@ -5,10 +5,7 @@ import { requireAuth } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ entityId: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ entityId: string }> }) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 

@@ -56,10 +56,17 @@ export default function PortalError({
             margin: `0 0 ${spacing[2]}`,
           }}
         >
-          Your records are safe — nothing has been changed. Try again, or move to
-          another section and come back.
+          Your records are safe — nothing has been changed. Try again, or move to another section and come
+          back.
           {error.digest && (
-            <span style={{ display: 'block', marginTop: '8px', color: colours.textTertiary, fontSize: typography.sizes.xs }}>
+            <span
+              style={{
+                display: 'block',
+                marginTop: '8px',
+                color: colours.textTertiary,
+                fontSize: typography.sizes.xs,
+              }}
+            >
               Reference: {error.digest}
             </span>
           )}

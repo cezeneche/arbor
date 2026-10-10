@@ -85,8 +85,8 @@ export default async function StewardsPage() {
       <div style={{ marginBottom: spacing[4] }}>
         <h1 style={textStyles.pageTitle}>Who looks after what</h1>
         <p style={{ ...textStyles.pageSubtitle, marginTop: spacing[1] }}>
-          Name one person for each kind of data. When something needs checking, it goes to them by
-          name instead of sitting in a list nobody owns.
+          Name one person for each kind of data. When something needs checking, it goes to them by name
+          instead of sitting in a list nobody owns.
         </p>
       </div>
 
@@ -115,18 +115,14 @@ export default async function StewardsPage() {
         <div style={sectionStyle}>
           <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>Data owners</p>
           <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[2] }}>
-            {canEdit
-              ? 'Changes save as you make them.'
-              : 'Only an administrator can change these.'}
+            {canEdit ? 'Changes save as you make them.' : 'Only an administrator can change these.'}
           </p>
           <StewardEditor coverage={coverage} members={members} canEdit={canEdit} />
         </div>
 
         {workload.length > 0 && (
           <div style={sectionStyle}>
-            <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
-              What is outstanding
-            </p>
+            <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>What is outstanding</p>
             <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[2] }}>
               Open items by owner. Anything past its date is shown first.
             </p>
@@ -187,9 +183,8 @@ export default async function StewardsPage() {
           lineHeight: typography.lineHeight.body,
         }}
       >
-        Urgent items are due within three days, everything else within two weeks, and notes carry no
-        deadline at all. Nothing here changes your stored data — it only decides who is asked to look
-        at it.
+        Urgent items are due within three days, everything else within two weeks, and notes carry no deadline
+        at all. Nothing here changes your stored data — it only decides who is asked to look at it.
       </p>
     </div>
   )

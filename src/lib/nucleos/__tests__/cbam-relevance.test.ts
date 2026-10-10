@@ -151,7 +151,7 @@ describe('toExtractedFieldRows', () => {
         ],
       } as Partial<CbamExtractionResult>),
     )
-    const names = rows.map((r) => r.fieldName)
+    const names = rows.map(r => r.fieldName)
     expect(names).toContain('lines[0].cn_code')
     expect(names).toContain('lines[0].net_mass_kg')
     expect(names).toContain('lines[0].emissions_method')

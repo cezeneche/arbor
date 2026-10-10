@@ -9,8 +9,8 @@ import { setBenchmarkConsent } from '@/lib/layer2/benchmark-consent'
 
 export async function POST(req: NextRequest) {
   // Opting the organisation's data into aggregation is a governance decision about
-// the whole entity (PRD 19.3), not a data-entry action, so it is ADMIN-only —
-// the same bar as granting a buyer access to that data.
+  // the whole entity (PRD 19.3), not a data-entry action, so it is ADMIN-only —
+  // the same bar as granting a buyer access to that data.
   const { session, response } = await requireAdmin()
   if (!session) return response!
 

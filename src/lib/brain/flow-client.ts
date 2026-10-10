@@ -7,12 +7,7 @@
 
 import { emitBrainMetric, type BrainOutcome } from './metrics'
 import { isBrainConfigured, BrainUnavailableError } from './calibration-client'
-import type {
-  FlowNodeInput,
-  FlowEdgeInput,
-  FlowClaimInput,
-  FlowCheckResponse,
-} from './types'
+import type { FlowNodeInput, FlowEdgeInput, FlowClaimInput, FlowCheckResponse } from './types'
 
 export interface FlowCheckInput {
   nodes?: FlowNodeInput[]
@@ -41,8 +36,7 @@ export async function checkFlow(
       outcome = 'degraded'
       throw new BrainUnavailableError('brain URL or internal token not configured')
     }
-    const nothingToCheck =
-      (input.nodes?.length ?? 0) === 0 && (input.claims?.length ?? 0) === 0
+    const nothingToCheck = (input.nodes?.length ?? 0) === 0 && (input.claims?.length ?? 0) === 0
     if (nothingToCheck) {
       outcome = 'ok'
       return EMPTY

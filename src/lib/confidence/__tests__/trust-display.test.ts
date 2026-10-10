@@ -84,8 +84,13 @@ describe('overruled point estimates', () => {
     const t = trustDisplay({
       confidenceScore: 1,
       confidencePosterior: {
-        posteriorMean: 1, ciLow: 0.55, ciHigh: 1, ciMass: 0.9,
-        method: 'beta', priorClass: 'n=1', rawScore: 1,
+        posteriorMean: 1,
+        ciLow: 0.55,
+        ciHigh: 1,
+        ciMass: 0.9,
+        method: 'beta',
+        priorClass: 'n=1',
+        rawScore: 1,
       },
     })
     expect(t.band).toBe('moderate')
@@ -96,8 +101,13 @@ describe('overruled point estimates', () => {
     const t = trustDisplay({
       confidenceScore: 0.7,
       confidencePosterior: {
-        posteriorMean: 0.7, ciLow: 0.66, ciHigh: 0.74, ciMass: 0.9,
-        method: 'beta', priorClass: 'n=40', rawScore: 0.7,
+        posteriorMean: 0.7,
+        ciLow: 0.66,
+        ciHigh: 0.74,
+        ciMass: 0.9,
+        method: 'beta',
+        priorClass: 'n=40',
+        rawScore: 0.7,
       },
     })
     expect(t.band).toBe('moderate')

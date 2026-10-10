@@ -23,6 +23,11 @@ describe('buildCertificateClaims', () => {
   })
 
   it('skips blank / null references', () => {
-    expect(buildCertificateClaims([{ ref: null, claimant: 'e1' }, { ref: '  ', claimant: 'e1' }])).toEqual([])
+    expect(
+      buildCertificateClaims([
+        { ref: null, claimant: 'e1' },
+        { ref: '  ', claimant: 'e1' },
+      ]),
+    ).toEqual([])
   })
 })

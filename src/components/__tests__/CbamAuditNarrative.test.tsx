@@ -40,7 +40,9 @@ const kept: PresentedNarrative = {
 
 describe('CbamAuditNarrative', () => {
   it('offers to write the narrative when there is none', async () => {
-    fetchMock.mockReturnValue(answer({ ok: true, narrativeId: 'nar-1', reviewRequired: false, emailed: 0, emailProblem: null }, 201))
+    fetchMock.mockReturnValue(
+      answer({ ok: true, narrativeId: 'nar-1', reviewRequired: false, emailed: 0, emailProblem: null }, 201),
+    )
     render(<CbamAuditNarrative caseId="case-1" narrative={null} />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Write the audit narrative' }))
@@ -51,7 +53,9 @@ describe('CbamAuditNarrative', () => {
   it('shows a narrative that needs review, and why, before its text', () => {
     render(<CbamAuditNarrative caseId="case-1" narrative={kept} />)
     expect(screen.getByText('Needs review before it is relied on')).toBeInTheDocument()
-    expect(screen.getByText('Direct emissions in the narrative do not match the package.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Direct emissions in the narrative do not match the package.'),
+    ).toBeInTheDocument()
     expect(screen.getByText('The organisation was emailed about the review.')).toBeInTheDocument()
     expect(screen.getByText('The case declares 850 tCO₂e.')).toBeInTheDocument()
     expect(screen.getByText(/Ask the supplier for the installation/)).toBeInTheDocument()
@@ -59,16 +63,29 @@ describe('CbamAuditNarrative', () => {
   })
 
   it('says why a narrative could not be written', async () => {
-    fetchMock.mockReturnValue(answer({ error: 'The case has gaps that stop a narrative being written.', code: 'BLOCKED' }, 422))
+    fetchMock.mockReturnValue(
+      answer({ error: 'The case has gaps that stop a narrative being written.', code: 'BLOCKED' }, 422),
+    )
     render(<CbamAuditNarrative caseId="case-1" narrative={null} />)
     await userEvent.click(screen.getByRole('button', { name: 'Write the audit narrative' }))
-    expect(await screen.findByText('The case has gaps that stop a narrative being written.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('The case has gaps that stop a narrative being written.'),
+    ).toBeInTheDocument()
     expect(refresh).not.toHaveBeenCalled()
   })
 
   it('passes on an email that could not be sent', async () => {
     fetchMock.mockReturnValue(
-      answer({ ok: true, narrativeId: 'nar-2', reviewRequired: true, emailed: 0, emailProblem: 'The review notice could not be emailed: RESEND_API_KEY is not set' }, 201),
+      answer(
+        {
+          ok: true,
+          narrativeId: 'nar-2',
+          reviewRequired: true,
+          emailed: 0,
+          emailProblem: 'The review notice could not be emailed: RESEND_API_KEY is not set',
+        },
+        201,
+      ),
     )
     render(<CbamAuditNarrative caseId="case-1" narrative={kept} />)
     await userEvent.click(screen.getByRole('button', { name: 'Write it again' }))

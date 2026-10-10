@@ -25,7 +25,10 @@ const recordSchema = z.object({
   domain: domainSchema,
   fieldName: z.string().min(1).max(120),
   value: z.number().finite(),
-  unit: z.string().min(1).max(60).refine(isStorableUnit, { message: 'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.' }),
+  unit: z.string().min(1).max(60).refine(isStorableUnit, {
+    message:
+      'Arbor does not recognise this unit. Use one listed at /api/records/convert/units, or "count" for a figure with no unit.',
+  }),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
   sourceSystem: z.string().max(120).optional(),
@@ -38,12 +41,22 @@ const bodySchema = z.object({
 
 type RecordResult =
   | { index: number; status: 'created'; recordId: string; domain: string; fieldName: string }
-  | { index: number; status: 'rejected'; reason: string; domain?: string; fieldName?: string; retryable?: boolean }
+  | {
+      index: number
+      status: 'rejected'
+      reason: string
+      domain?: string
+      fieldName?: string
+      retryable?: boolean
+    }
 
 export async function POST(req: NextRequest) {
   const authResult = await authenticateApiKeyRequest(req)
   if (!authResult.authorized) {
-    return NextResponse.json({ error: authResult.reason ?? 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
+    return NextResponse.json(
+      { error: authResult.reason ?? 'Unauthorized', code: 'UNAUTHORIZED' },
+      { status: 401 },
+    )
   }
   if (authResult.scope !== 'READ_WRITE') {
     return NextResponse.json({ error: 'This API key is read-only', code: 'FORBIDDEN' }, { status: 403 })
@@ -60,11 +73,14 @@ export async function POST(req: NextRequest) {
 
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({
-      error: 'Request body failed validation',
-      code: 'VALIDATION_ERROR',
-      issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })),
-    }, { status: 400 })
+    return NextResponse.json(
+      {
+        error: 'Request body failed validation',
+        code: 'VALIDATION_ERROR',
+        issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })),
+      },
+      { status: 400 },
+    )
   }
 
   const { records, idempotencyKey } = parsed.data
@@ -94,16 +110,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ idempotent: true, ...summarise(replayed, records.length) }, { status: 200 })
     }
     if (reservation.kind === 'conflict') {
-      return NextResponse.json({
-        error: 'This idempotency key was already used for a different request.',
-        code: 'IDEMPOTENCY_KEY_REUSED',
-      }, { status: 422 })
+      return NextResponse.json(
+        {
+          error: 'This idempotency key was already used for a different request.',
+          code: 'IDEMPOTENCY_KEY_REUSED',
+        },
+        { status: 422 },
+      )
     }
     if (reservation.kind === 'in_progress') {
-      return NextResponse.json({
-        error: 'A request with this idempotency key is still being processed. Retry shortly.',
-        code: 'IN_PROGRESS',
-      }, { status: 409 })
+      return NextResponse.json(
+        {
+          error: 'A request with this idempotency key is still being processed. Retry shortly.',
+          code: 'IN_PROGRESS',
+        },
+        { status: 409 },
+      )
     }
     operationId = reservation.id
     results.push(...(Object.values(reservation.done) as RecordResult[]))
@@ -127,14 +149,20 @@ export async function POST(req: NextRequest) {
     const r = records[i]
 
     if (new Date(r.periodEnd) <= new Date(r.periodStart)) {
-      const rejected: RecordResult = { index: i, status: 'rejected', reason: 'periodEnd must be after periodStart', domain: r.domain, fieldName: r.fieldName }
+      const rejected: RecordResult = {
+        index: i,
+        status: 'rejected',
+        reason: 'periodEnd must be after periodStart',
+        domain: r.domain,
+        fieldName: r.fieldName,
+      }
       if (operationId) await claimItem(prisma, operationId, i, rejected)
       results.push(rejected)
       continue
     }
 
     try {
-      const outcome = await runSerializable(async (tx) => {
+      const outcome = await runSerializable(async tx => {
         // Bound inside the transaction that writes, not just once for the batch:
         // otherwise two batches in flight can both fit against the same count.
         const room = await assertRecordCapacity(entityId, 1, tx)
@@ -154,7 +182,13 @@ export async function POST(req: NextRequest) {
           extractionMethod: ExtractionMethod.SYSTEM_INTEGRATION,
           submittedById: systemUser.id,
         })
-        const created: RecordResult = { index: i, status: 'created', recordId, domain: r.domain, fieldName: r.fieldName }
+        const created: RecordResult = {
+          index: i,
+          status: 'created',
+          recordId,
+          domain: r.domain,
+          fieldName: r.fieldName,
+        }
         // Committed with the record, so a retry after a crash knows it landed.
         // If another attempt already recorded this item, abort this write.
         if (operationId) {
@@ -175,7 +209,14 @@ export async function POST(req: NextRequest) {
         ? (e as Error).message
         : 'Internal error writing record'
       // Not recorded against the key: it may succeed on a retry of the same batch.
-      results.push({ index: i, status: 'rejected', reason, domain: r.domain, fieldName: r.fieldName, retryable: true })
+      results.push({
+        index: i,
+        status: 'rejected',
+        reason,
+        domain: r.domain,
+        fieldName: r.fieldName,
+        retryable: true,
+      })
     }
   }
 
@@ -184,7 +225,11 @@ export async function POST(req: NextRequest) {
     if (results.some(r => r.status === 'rejected' && r.retryable)) {
       await releaseIngestOperation(prisma, operationId)
     } else {
-      await completeIngestOperation(prisma, operationId, Object.fromEntries(results.map(r => [String(r.index), r])))
+      await completeIngestOperation(
+        prisma,
+        operationId,
+        Object.fromEntries(results.map(r => [String(r.index), r])),
+      )
     }
   }
 

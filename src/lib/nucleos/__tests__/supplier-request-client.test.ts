@@ -1,7 +1,4 @@
-import {
-  createSupplierToken,
-  SupplierRequestRejectedError,
-} from '../supplier-request-client'
+import { createSupplierToken, SupplierRequestRejectedError } from '../supplier-request-client'
 import { NucleosUnavailableError } from '../extraction-client'
 
 // A permanent failure reported as an outage is the bug that cost us a day on the
@@ -56,16 +53,12 @@ describe('createSupplierToken', () => {
   })
 
   it('still reports a genuine outage as unavailable', async () => {
-    await expect(createSupplierToken('abc', respond(503))).rejects.toBeInstanceOf(
-      NucleosUnavailableError,
-    )
+    await expect(createSupplierToken('abc', respond(503))).rejects.toBeInstanceOf(NucleosUnavailableError)
   })
 
   it('treats an unauthenticated response as a configuration fault, not a rejection', async () => {
     // 401 means the token was not accepted at all — wrong or absent. That is
     // ours to fix, and it is not the user's goods line that is wrong.
-    await expect(createSupplierToken('abc', respond(401))).rejects.toBeInstanceOf(
-      NucleosUnavailableError,
-    )
+    await expect(createSupplierToken('abc', respond(401))).rejects.toBeInstanceOf(NucleosUnavailableError)
   })
 })

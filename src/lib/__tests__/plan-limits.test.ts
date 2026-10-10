@@ -1,4 +1,10 @@
-import { PLAN_LIMITS, checkUploadAllowed, checkRecordCapacity, checkSupplierConnection, checkAuditPackageAllowed } from '@/lib/plan-limits'
+import {
+  PLAN_LIMITS,
+  checkUploadAllowed,
+  checkRecordCapacity,
+  checkSupplierConnection,
+  checkAuditPackageAllowed,
+} from '@/lib/plan-limits'
 
 describe('PLAN_LIMITS', () => {
   it('PILOT is uncapped everywhere (demo/pilot default — a demo can never hit a wall)', () => {

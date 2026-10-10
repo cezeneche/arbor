@@ -33,7 +33,12 @@ describe('classifyFieldType — kill-signal field types', () => {
 
 describe('buildCalibrationSamples', () => {
   const rows: GroundTruthRow[] = [
-    { fieldName: 'supplier_name', documentClass: 'ELECTRICITY_BILL', confidenceAtExtraction: 0.9, wasCorrect: true },
+    {
+      fieldName: 'supplier_name',
+      documentClass: 'ELECTRICITY_BILL',
+      confidenceAtExtraction: 0.9,
+      wasCorrect: true,
+    },
     { fieldName: 'supplier_name', documentClass: 'GAS_BILL', confidenceAtExtraction: 0.7, wasCorrect: false },
     { fieldName: 'invoice_number', documentClass: 'GAS_BILL', confidenceAtExtraction: 0.6, wasCorrect: true },
   ]

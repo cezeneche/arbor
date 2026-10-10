@@ -9,40 +9,40 @@ import { isSupportedUnit, normaliseToSI, type SupportedUnit } from '@/lib/layer3
 
 // Spellings that turn up on real documents and in API payloads.
 const ALIASES: Record<string, SupportedUnit> = {
-  't': 'tonnes',
-  'tonne': 'tonnes',
-  'mt': 'tonnes',
-  'kgs': 'kg',
-  'kilograms': 'kg',
+  t: 'tonnes',
+  tonne: 'tonnes',
+  mt: 'tonnes',
+  kgs: 'kg',
+  kilograms: 'kg',
   'cu.m': 'm3',
   'cu m': 'm3',
   'm³': 'm3',
-  'l': 'litres',
-  'liters': 'litres',
-  'liter': 'litres',
-  'litre': 'litres',
-  'tco2e': 'tonnes_co2e',
-  'kgco2e': 'kg_co2e',
-  'lb': 'lbs',
+  l: 'litres',
+  liters: 'litres',
+  liter: 'litres',
+  litre: 'litres',
+  tco2e: 'tonnes_co2e',
+  kgco2e: 'kg_co2e',
+  lb: 'lbs',
 }
 
 // Figures with no physical dimension. Stored as given; nothing converts them.
 const UNITLESS: Record<string, string> = {
-  'unknown': 'unknown',
-  'count': 'count',
-  'units': 'count',
-  'unit': 'count',
-  'percent': 'percent',
+  unknown: 'unknown',
+  count: 'count',
+  units: 'count',
+  unit: 'count',
+  percent: 'percent',
   '%': 'percent',
 }
 
-export type ResolvedUnit =
-  | { kind: 'measured'; unit: SupportedUnit }
-  | { kind: 'unitless'; unit: string }
+export type ResolvedUnit = { kind: 'measured'; unit: SupportedUnit } | { kind: 'unitless'; unit: string }
 
 export class UnsupportedUnitError extends Error {
   constructor(readonly unit: string) {
-    super(`Arbor does not recognise the unit "${unit}", so the figure could not be stored in a form every total can use.`)
+    super(
+      `Arbor does not recognise the unit "${unit}", so the figure could not be stored in a form every total can use.`,
+    )
     this.name = 'UnsupportedUnitError'
   }
 }

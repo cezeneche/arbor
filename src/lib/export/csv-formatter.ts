@@ -30,12 +30,24 @@ export interface ExportRecord {
 }
 
 const HEADERS = [
-  'id', 'domain', 'fieldName', 'value', 'unit',
-  'trustTier', 'confidenceScore',
-  'periodStart', 'periodEnd',
-  'extractionMethod', 'sourceDocumentId',
-  'definitionVersion', 'definitionLabel', 'definitionText', 'definitionBoundary',
-  'definitionSource', 'definitionAgreement', 'definitionAgreedVersion',
+  'id',
+  'domain',
+  'fieldName',
+  'value',
+  'unit',
+  'trustTier',
+  'confidenceScore',
+  'periodStart',
+  'periodEnd',
+  'extractionMethod',
+  'sourceDocumentId',
+  'definitionVersion',
+  'definitionLabel',
+  'definitionText',
+  'definitionBoundary',
+  'definitionSource',
+  'definitionAgreement',
+  'definitionAgreedVersion',
 ] as const
 
 function escapeCsv(value: string | number | null | undefined): string {
@@ -77,7 +89,9 @@ export function formatRecordsAsCSV(records: ExportRecord[]): string {
       def?.sourceStandard ?? '',
       r.agreement?.status ?? 'NONE',
       r.agreement?.agreedVersion ?? '',
-    ].map(escapeCsv).join(',')
+    ]
+      .map(escapeCsv)
+      .join(',')
   })
   return [header, ...rows].join('\r\n')
 }

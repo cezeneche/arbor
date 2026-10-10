@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { getSessionUser } from '@/lib/session'
-import {
-  createSupplierToken,
-  SupplierRequestRejectedError,
-} from '@/lib/nucleos/supplier-request-client'
+import { createSupplierToken, SupplierRequestRejectedError } from '@/lib/nucleos/supplier-request-client'
 import { resolveGoodsLineAccess } from '@/lib/nucleos/goods-line-access'
 
 // Creates a tokenised supplier form link for a goods line.

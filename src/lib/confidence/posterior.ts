@@ -63,9 +63,7 @@ export function wilsonInterval(p: number, n: number, z = DEFAULT_Z): Interval {
 /** Find the reliability bin covering `score`, or null if none does. */
 function coveringBin(group: GroupCalibration, score: number) {
   return (
-    group.reliability.find(
-      b => score >= b.bin_lower && (score < b.bin_upper || b.bin_upper >= 1),
-    ) ?? null
+    group.reliability.find(b => score >= b.bin_lower && (score < b.bin_upper || b.bin_upper >= 1)) ?? null
   )
 }
 

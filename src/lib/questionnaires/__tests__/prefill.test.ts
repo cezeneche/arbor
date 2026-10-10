@@ -65,7 +65,7 @@ describe('prefillQuestionnaire', () => {
 
   it('a question with no matching records returns status "gap"', () => {
     const answers = prefillQuestionnaire(template, [])
-    const water = answers.find((a) => a.questionId === 'water_use')!
+    const water = answers.find(a => a.questionId === 'water_use')!
     expect(water.status).toBe('gap')
     expect(water.value).toBeNull()
     expect(water.trustTier).toBeNull()
@@ -74,10 +74,17 @@ describe('prefillQuestionnaire', () => {
 
   it('direct mode fills the single canonical value with its tier and source id', () => {
     const records = [
-      rec({ id: 'co2-1', domain: 'EMISSIONS', fieldName: 'total_co2e', value: 1200, unit: 'tonnes_co2e', trustTier: 'A' }),
+      rec({
+        id: 'co2-1',
+        domain: 'EMISSIONS',
+        fieldName: 'total_co2e',
+        value: 1200,
+        unit: 'tonnes_co2e',
+        trustTier: 'A',
+      }),
     ]
     const answers = prefillQuestionnaire(template, records)
-    const ans = answers.find((a) => a.questionId === 'total_emissions')!
+    const ans = answers.find(a => a.questionId === 'total_emissions')!
     expect(ans.status).toBe('answered')
     expect(ans.value).toBe(1200)
     expect(ans.unit).toBe('tonnes_co2e')
@@ -88,10 +95,24 @@ describe('prefillQuestionnaire', () => {
 
   it('direct mode chooses the most recent record when several match', () => {
     const records = [
-      rec({ id: 'co2-old', domain: 'EMISSIONS', fieldName: 'total_co2e', value: 1000, unit: 'tonnes_co2e', periodEnd: '2025-12-31T00:00:00.000Z' }),
-      rec({ id: 'co2-new', domain: 'EMISSIONS', fieldName: 'total_co2e', value: 1500, unit: 'tonnes_co2e', periodEnd: '2026-12-31T00:00:00.000Z' }),
+      rec({
+        id: 'co2-old',
+        domain: 'EMISSIONS',
+        fieldName: 'total_co2e',
+        value: 1000,
+        unit: 'tonnes_co2e',
+        periodEnd: '2025-12-31T00:00:00.000Z',
+      }),
+      rec({
+        id: 'co2-new',
+        domain: 'EMISSIONS',
+        fieldName: 'total_co2e',
+        value: 1500,
+        unit: 'tonnes_co2e',
+        periodEnd: '2026-12-31T00:00:00.000Z',
+      }),
     ]
-    const ans = prefillQuestionnaire(template, records).find((a) => a.questionId === 'total_emissions')!
+    const ans = prefillQuestionnaire(template, records).find(a => a.questionId === 'total_emissions')!
     expect(ans.value).toBe(1500)
     expect(ans.sourceRecordIds).toEqual(['co2-new'])
   })
@@ -103,7 +124,7 @@ describe('prefillQuestionnaire', () => {
       rec({ id: 'q3', value: 275, unit: 'kwh' }),
       rec({ id: 'q4', value: 225, unit: 'kwh' }),
     ]
-    const ans = prefillQuestionnaire(template, records).find((a) => a.questionId === 'annual_electricity')!
+    const ans = prefillQuestionnaire(template, records).find(a => a.questionId === 'annual_electricity')!
     expect(ans.status).toBe('answered')
     expect(ans.value).toBe(1050)
     expect(ans.unit).toBe('kwh')
@@ -118,7 +139,7 @@ describe('prefillQuestionnaire', () => {
       rec({ id: 'kwh2', value: 300, unit: 'kwh' }),
       rec({ id: 'mj1', value: 9999, unit: 'mj' }), // wrong unit, must be excluded
     ]
-    const ans = prefillQuestionnaire(template, records).find((a) => a.questionId === 'annual_electricity')!
+    const ans = prefillQuestionnaire(template, records).find(a => a.questionId === 'annual_electricity')!
     expect(ans.value).toBe(550)
     expect(ans.contributingCount).toBe(2)
     expect(ans.sourceRecordIds).toEqual(['kwh1', 'kwh2'])
@@ -129,11 +150,11 @@ describe('prefillQuestionnaire', () => {
       rec({ id: 'a1', value: 100, unit: 'kwh', trustTier: 'A' }),
       rec({ id: 'b1', value: 100, unit: 'kwh', trustTier: 'B' }),
     ]
-    const ans = prefillQuestionnaire(template, records).find((a) => a.questionId === 'annual_electricity')!
+    const ans = prefillQuestionnaire(template, records).find(a => a.questionId === 'annual_electricity')!
     expect(ans.trustTier).toBe('B')
 
     const withC = [...records, rec({ id: 'c1', value: 100, unit: 'kwh', trustTier: 'C' })]
-    const ans2 = prefillQuestionnaire(template, withC).find((a) => a.questionId === 'annual_electricity')!
+    const ans2 = prefillQuestionnaire(template, withC).find(a => a.questionId === 'annual_electricity')!
     expect(ans2.trustTier).toBe('C')
   })
 
@@ -142,20 +163,32 @@ describe('prefillQuestionnaire', () => {
       rec({ id: 'e1', value: 250, unit: 'kwh', trustTier: 'A' }),
       rec({ id: 'e2', value: 300, unit: 'kwh', trustTier: 'B' }),
     ]
-    const ans = prefillQuestionnaire(template, records).find((a) => a.questionId === 'electricity_for_factor')!
+    const ans = prefillQuestionnaire(template, records).find(a => a.questionId === 'electricity_for_factor')!
     expect(ans.status).toBe('answered')
     expect(ans.value).toBeNull()
     expect(ans.trustTier).toBe('B') // worst of contributing
     expect(ans.contributingCount).toBe(2)
     expect(ans.contributingRecords).toHaveLength(2)
-    expect(ans.contributingRecords[0]).toMatchObject({ recordId: 'e1', value: 250, unit: 'kwh', trustTier: 'A' })
+    expect(ans.contributingRecords[0]).toMatchObject({
+      recordId: 'e1',
+      value: 250,
+      unit: 'kwh',
+      trustTier: 'A',
+    })
   })
 
   it('accepts Date objects for periods as well as ISO strings', () => {
     const records = [
-      rec({ id: 'd1', domain: 'EMISSIONS', fieldName: 'total_co2e', value: 42, unit: 'tonnes_co2e', periodEnd: new Date('2026-06-30T00:00:00.000Z') }),
+      rec({
+        id: 'd1',
+        domain: 'EMISSIONS',
+        fieldName: 'total_co2e',
+        value: 42,
+        unit: 'tonnes_co2e',
+        periodEnd: new Date('2026-06-30T00:00:00.000Z'),
+      }),
     ]
-    const ans = prefillQuestionnaire(template, records).find((a) => a.questionId === 'total_emissions')!
+    const ans = prefillQuestionnaire(template, records).find(a => a.questionId === 'total_emissions')!
     expect(ans.value).toBe(42)
     expect(ans.contributingRecords[0].periodEnd).toBe('2026-06-30T00:00:00.000Z')
   })

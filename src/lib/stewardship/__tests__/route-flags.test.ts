@@ -76,10 +76,13 @@ describe('planFlagOwnership', () => {
 
   it('gives an INFO flag an owner but no deadline', () => {
     // Someone is still accountable; they are simply not on the clock.
-    const [info] = planFlagOwnership(
-      [flag({ dataRecordId: 'rec-energy', severity: 'INFO' })],
-      { entityId: ENTITY, domainByRecordId, stewards, admins, now: NOW },
-    )
+    const [info] = planFlagOwnership([flag({ dataRecordId: 'rec-energy', severity: 'INFO' })], {
+      entityId: ENTITY,
+      domainByRecordId,
+      stewards,
+      admins,
+      now: NOW,
+    })
     expect(info.assigneeId).toBe('user-energy')
     expect(info.dueAt).toBeNull()
   })
@@ -111,18 +114,21 @@ describe('planFlagOwnership', () => {
   })
 
   it('preserves every field the caller planned', () => {
-    const [got] = planFlagOwnership(
-      [flag({ dataRecordId: 'rec-energy', message: 'Negative mass.' })],
-      { entityId: ENTITY, domainByRecordId, stewards, admins, now: NOW },
-    )
+    const [got] = planFlagOwnership([flag({ dataRecordId: 'rec-energy', message: 'Negative mass.' })], {
+      entityId: ENTITY,
+      domainByRecordId,
+      stewards,
+      admins,
+      now: NOW,
+    })
     expect(got.message).toBe('Negative mass.')
     expect(got.flagType).toBe('INTERNAL_INCONSISTENCY')
     expect(got.dataRecordId).toBe('rec-energy')
   })
 
   it('handles an empty plan without touching anything', () => {
-    expect(
-      planFlagOwnership([], { entityId: ENTITY, domainByRecordId, stewards, admins, now: NOW }),
-    ).toEqual([])
+    expect(planFlagOwnership([], { entityId: ENTITY, domainByRecordId, stewards, admins, now: NOW })).toEqual(
+      [],
+    )
   })
 })

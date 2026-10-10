@@ -75,14 +75,8 @@ export default function ResetPasswordForm() {
   if (!token) {
     return (
       <div style={cardStyle}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Reset link missing
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[2]} 0 ${spacing[3]}` }}
-        >
+        <h1 style={textStyles.pageTitle}>Reset link missing</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[2]} 0 ${spacing[3]}` }}>
           This page needs a valid reset link. Please request a new one.
         </p>
         <Link
@@ -98,14 +92,8 @@ export default function ResetPasswordForm() {
   return (
     <div style={cardStyle}>
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Choose a new password
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <h1 style={textStyles.pageTitle}>Choose a new password</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Enter a new password for your account.
         </p>
       </div>
@@ -134,7 +122,7 @@ export default function ResetPasswordForm() {
               id="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               required
               minLength={8}
               style={inputStyle}
@@ -149,7 +137,7 @@ export default function ResetPasswordForm() {
               id="confirm"
               type="password"
               value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
+              onChange={e => setConfirm(e.target.value)}
               required
               minLength={8}
               style={inputStyle}

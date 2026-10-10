@@ -4,7 +4,10 @@ import { LegalContents } from '@/components/marketing/LegalContents'
 import { legalContainer, legalH2, legalH3, legalLi, legalP } from '@/components/marketing/legal-styles'
 import { LegalDraftNotice } from '@/components/marketing/LegalDraftNotice'
 
-export const metadata: Metadata = { title: 'Terms of Service | Arbor', description: 'Terms governing access to and use of the Arbor service.' }
+export const metadata: Metadata = {
+  title: 'Terms of Service | Arbor',
+  description: 'Terms governing access to and use of the Arbor service.',
+}
 
 // IMPORTANT: This document must be reviewed by a qualified solicitor before publication.
 
@@ -41,8 +44,8 @@ export default function TermsPage() {
           </h1>
           <LegalDraftNotice />
           <p style={{ ...legalP, margin: 0 }}>
-            Last updated: 1 June 2026. By creating an account and using the arbor platform,
-            you agree to these terms.
+            Last updated: 1 June 2026. By creating an account and using the arbor platform, you agree to these
+            terms.
           </p>
         </div>
       </div>
@@ -50,85 +53,102 @@ export default function TermsPage() {
       {/* Body */}
       <div style={{ padding: '64px 0 96px' }}>
         <div id="terms-sections" className="mk-legal-reading" style={legalContainer}>
-          <LegalContents sections={[{ id: 'terms-service', label: 'About the service' }, { id: 'terms-data', label: 'Your data' }, { id: 'terms-certification', label: 'Trust certification' }, { id: 'terms-sharing', label: 'Sharing' }, { id: 'terms-termination', label: 'Termination' }, { id: 'terms-contact', label: 'Contact' }]} />
+          <LegalContents
+            sections={[
+              { id: 'terms-service', label: 'About the service' },
+              { id: 'terms-data', label: 'Your data' },
+              { id: 'terms-certification', label: 'Trust certification' },
+              { id: 'terms-sharing', label: 'Sharing' },
+              { id: 'terms-termination', label: 'Termination' },
+              { id: 'terms-contact', label: 'Contact' },
+            ]}
+          />
 
-          <h2 id="terms-service" style={legalH2}>1. About the service</h2>
+          <h2 id="terms-service" style={legalH2}>
+            1. About the service
+          </h2>
           <p style={legalP}>
-            arbor is a certified operational data repository. The service enables manufacturers,
-            suppliers, and producers (&quot;Suppliers&quot;) to upload operational documents, extract structured
-            data fields, and store those records with a linked audit history. It enables buyers,
-            large companies, and procurement teams (&quot;Buyers&quot;) to request and receive certified data
-            records from their supply chain.
+            arbor is a certified operational data repository. The service enables manufacturers, suppliers,
+            and producers (&quot;Suppliers&quot;) to upload operational documents, extract structured data
+            fields, and store those records with a linked audit history. It enables buyers, large companies,
+            and procurement teams (&quot;Buyers&quot;) to request and receive certified data records from
+            their supply chain.
           </p>
           <p style={legalP}>
             arbor certifies the provenance of data records, not their accuracy. A trust tier of
             &quot;Verified&quot; means document-derived data met the applicable source and review
-            requirements. Extraction confidence alone does not establish factual accuracy. It does not
-            mean arbor has independently verified the underlying document or business activity.
+            requirements. Extraction confidence alone does not establish factual accuracy. It does not mean
+            arbor has independently verified the underlying document or business activity.
           </p>
 
           <h2 style={legalH2}>2. Account eligibility and creation</h2>
           <p style={legalP}>
-            You must be at least 18 years old and have the authority to bind the company on whose
-            behalf you register. By creating an account, you represent that both conditions are met.
+            You must be at least 18 years old and have the authority to bind the company on whose behalf you
+            register. By creating an account, you represent that both conditions are met.
           </p>
           <p style={legalP}>
-            You are responsible for maintaining the confidentiality of your credentials and for all
-            activity that occurs under your account. Notify us immediately at hello@arbor.io if you
-            suspect unauthorised access.
+            You are responsible for maintaining the confidentiality of your credentials and for all activity
+            that occurs under your account. Notify us immediately at hello@arbor.io if you suspect
+            unauthorised access.
           </p>
           <p style={legalP}>
-            Arbor [contracting entity to confirm] reserves the right to decline or suspend accounts at its discretion,
-            including where use is inconsistent with these terms or applicable law.
+            Arbor [contracting entity to confirm] reserves the right to decline or suspend accounts at its
+            discretion, including where use is inconsistent with these terms or applicable law.
           </p>
 
-          <h2 id="terms-data" style={legalH2}>3. Data submitted to the service</h2>
+          <h2 id="terms-data" style={legalH2}>
+            3. Data submitted to the service
+          </h2>
 
           <h3 style={legalH3}>Ownership</h3>
           <p style={legalP}>
-            You retain ownership of all data and documents you submit to arbor. By submitting data,
-            you grant Arbor [contracting entity to confirm] a limited, non-exclusive, worldwide licence to store, process,
-            and serve that data for the purpose of providing the service to you and to authorised parties
-            you designate.
+            You retain ownership of all data and documents you submit to arbor. By submitting data, you grant
+            Arbor [contracting entity to confirm] a limited, non-exclusive, worldwide licence to store,
+            process, and serve that data for the purpose of providing the service to you and to authorised
+            parties you designate.
           </p>
 
           <h3 style={legalH3}>Responsibility for submitted content</h3>
           <p style={legalP}>
-            You are solely responsible for the accuracy and lawfulness of documents and data you submit.
-            You represent that you have all necessary rights and permissions to submit the content,
-            including where it contains third-party information or personal data.
+            You are solely responsible for the accuracy and lawfulness of documents and data you submit. You
+            represent that you have all necessary rights and permissions to submit the content, including
+            where it contains third-party information or personal data.
           </p>
 
           <h3 style={legalH3}>Permanent records</h3>
           <p style={legalP}>
             Data records stored in arbor are permanent. Corrections do not overwrite existing records.
-            Instead, a new record is created that supersedes the original, and the original is retained
-            in the audit chain. This behaviour is fundamental to the integrity of the certification system
-            and cannot be waived.
+            Instead, a new record is created that supersedes the original, and the original is retained in the
+            audit chain. This behaviour is fundamental to the integrity of the certification system and cannot
+            be waived.
           </p>
 
-          <h2 id="terms-certification" style={legalH2}>4. Trust certification</h2>
+          <h2 id="terms-certification" style={legalH2}>
+            4. Trust certification
+          </h2>
           <p style={legalP}>
-            Every data record stored in arbor carries a trust tier: Verified, Declared, or Estimated.
-            These tiers are determined automatically by applying the admissibility rules of the service.
-            You may not select or override a trust tier directly. You may upgrade a Declared record to
-            Verified by submitting a qualifying source document.
+            Every data record stored in arbor carries a trust tier: Verified, Declared, or Estimated. These
+            tiers are determined automatically by applying the admissibility rules of the service. You may not
+            select or override a trust tier directly. You may upgrade a Declared record to Verified by
+            submitting a qualifying source document.
           </p>
           <p style={legalP}>
-            Arbor includes trust tier labels in its record views and supported exports. A copy downloaded
-            or modified outside the service is beyond Arbor&apos;s control.
+            Arbor includes trust tier labels in its record views and supported exports. A copy downloaded or
+            modified outside the service is beyond Arbor&apos;s control.
           </p>
 
-          <h2 id="terms-sharing" style={legalH2}>5. Sharing and access control</h2>
+          <h2 id="terms-sharing" style={legalH2}>
+            5. Sharing and access control
+          </h2>
           <p style={legalP}>
-            Suppliers control which Buyers can access their certified records. Granting access authorises
-            the Buyer to read the records you specify for the duration you specify. You may revoke access
-            at any time. Revocation does not delete any data the Buyer has already downloaded or stored
-            outside arbor.
+            Suppliers control which Buyers can access their certified records. Granting access authorises the
+            Buyer to read the records you specify for the duration you specify. You may revoke access at any
+            time. Revocation does not delete any data the Buyer has already downloaded or stored outside
+            arbor.
           </p>
           <p style={legalP}>
-            Buyers must not share, resell, or republish certified records outside their own internal
-            systems without the explicit written consent of the Supplier whose data is involved.
+            Buyers must not share, resell, or republish certified records outside their own internal systems
+            without the explicit written consent of the Supplier whose data is involved.
           </p>
 
           <h2 style={legalH2}>6. Acceptable use</h2>
@@ -142,7 +162,9 @@ export default function TermsPage() {
               'Attempt to access accounts or data you are not authorised to access',
               'Use the service for any unlawful purpose or in violation of any applicable law',
             ].map(item => (
-              <li key={item} style={legalLi}>{item}</li>
+              <li key={item} style={legalLi}>
+                {item}
+              </li>
             ))}
           </ul>
           <p style={legalP}>
@@ -152,21 +174,21 @@ export default function TermsPage() {
 
           <h2 style={legalH2}>7. Intellectual property</h2>
           <p style={legalP}>
-            The arbor platform, including its extraction algorithms, trust certification methodology,
-            audit chain implementation, and user interface, is owned by Arbor [contracting entity to confirm]. Nothing in
-            these terms transfers any intellectual property rights to you.
+            The arbor platform, including its extraction algorithms, trust certification methodology, audit
+            chain implementation, and user interface, is owned by Arbor [contracting entity to confirm].
+            Nothing in these terms transfers any intellectual property rights to you.
           </p>
           <p style={legalP}>
-            &quot;arbor&quot;, the arbor wordmark, and associated logos are trademarks of Arbor [contracting entity to confirm]. You may
-            not use them without our prior written consent.
+            &quot;arbor&quot;, the arbor wordmark, and associated logos are trademarks of Arbor [contracting
+            entity to confirm]. You may not use them without our prior written consent.
           </p>
 
           <h2 style={legalH2}>8. Limitation of liability</h2>
           <p style={legalP}>
-            To the maximum extent permitted by applicable law, Arbor [contracting entity to confirm] shall not be liable for any
-            indirect, incidental, special, consequential, or punitive damages arising from or related to
-            your use of the service, including but not limited to loss of data, loss of profits, or business
-            interruption.
+            To the maximum extent permitted by applicable law, Arbor [contracting entity to confirm] shall not
+            be liable for any indirect, incidental, special, consequential, or punitive damages arising from
+            or related to your use of the service, including but not limited to loss of data, loss of profits,
+            or business interruption.
           </p>
           <p style={legalP}>
             Our total liability to you for any claim arising from or related to the service shall not exceed
@@ -179,50 +201,53 @@ export default function TermsPage() {
 
           <h2 style={legalH2}>9. Indemnification</h2>
           <p style={legalP}>
-            You agree to indemnify and hold harmless Arbor [contracting entity to confirm], its officers, directors, and employees
-            from any claims, damages, or costs (including reasonable legal fees) arising from your violation
-            of these terms, your submitted content, or your use of the service.
+            You agree to indemnify and hold harmless Arbor [contracting entity to confirm], its officers,
+            directors, and employees from any claims, damages, or costs (including reasonable legal fees)
+            arising from your violation of these terms, your submitted content, or your use of the service.
           </p>
 
           <h2 style={legalH2}>10. Service availability and changes</h2>
           <p style={legalP}>
             We aim to maintain high availability but do not guarantee uninterrupted access. We may update,
-            modify, or discontinue features of the service with reasonable notice. We will provide at least
-            30 days&apos; notice before any change that materially reduces the functionality you rely on.
+            modify, or discontinue features of the service with reasonable notice. We will provide at least 30
+            days&apos; notice before any change that materially reduces the functionality you rely on.
           </p>
 
-          <h2 id="terms-termination" style={legalH2}>11. Termination</h2>
+          <h2 id="terms-termination" style={legalH2}>
+            11. Termination
+          </h2>
           <p style={legalP}>
-            You may close your account at any time by contacting hello@arbor.io. We will provide an export
-            of your certified records before deletion, which must be requested before account closure is
+            You may close your account at any time by contacting hello@arbor.io. We will provide an export of
+            your certified records before deletion, which must be requested before account closure is
             confirmed.
           </p>
           <p style={legalP}>
             We may suspend or terminate your account for violation of these terms, non-payment, or any other
-            reason at our discretion, with 14 days&apos; notice where possible. Termination for material breach
-            may be immediate.
+            reason at our discretion, with 14 days&apos; notice where possible. Termination for material
+            breach may be immediate.
           </p>
 
           <h2 style={legalH2}>12. Governing law and disputes</h2>
           <p style={legalP}>
-            These terms are governed by the laws of England and Wales. Any dispute arising from or relating
-            to these terms or the service shall be subject to the exclusive jurisdiction of the courts of
-            England and Wales.
+            These terms are governed by the laws of England and Wales. Any dispute arising from or relating to
+            these terms or the service shall be subject to the exclusive jurisdiction of the courts of England
+            and Wales.
           </p>
 
           <h2 style={legalH2}>13. Changes to these terms</h2>
           <p style={legalP}>
-            We may update these terms from time to time. Where changes are material, we will notify you
-            by email at least 30 days before the changes take effect. Your continued use of the service
-            after the effective date constitutes acceptance.
+            We may update these terms from time to time. Where changes are material, we will notify you by
+            email at least 30 days before the changes take effect. Your continued use of the service after the
+            effective date constitutes acceptance.
           </p>
 
-          <h2 id="terms-contact" style={legalH2}>14. Contact</h2>
+          <h2 id="terms-contact" style={legalH2}>
+            14. Contact
+          </h2>
           <p style={legalP}>
-            For questions about these terms, contact us at legal@arbor.io or write to:
-            arbor (registered address to be confirmed).
+            For questions about these terms, contact us at legal@arbor.io or write to: arbor (registered
+            address to be confirmed).
           </p>
-
         </div>
       </div>
     </div>

@@ -7,10 +7,7 @@ import { generateOpaqueToken, hashOpaqueToken } from '@/lib/tokens/opaque-token'
 
 // Minting a 30-day public submission link is a write action — a read-only VIEWER
 // must not be able to create one, so gate on write access (not just membership).
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 

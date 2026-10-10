@@ -21,28 +21,19 @@ const LINE = {
 describe('applySupplierSubmission', () => {
   it('multiplies the intensity into a total', () => {
     // 1.8 tCO2e/t × 24500 kg = 44100 kgCO2e, because 1 tCO2e/t is 1 kgCO2e/kg.
-    const applied = applySupplierSubmission(
-      { see_tco2e_per_t: 1.8, production_route: 'BF_BOF' },
-      LINE,
-    )
+    const applied = applySupplierSubmission({ see_tco2e_per_t: 1.8, production_route: 'BF_BOF' }, LINE)
     expect(applied.directEmbeddedKgco2e).toBeCloseTo(44100)
   })
 
   it('never treats the submitted figure as a total', () => {
     // The failure this whole module exists to prevent: taking 1.8 as the total
     // understates a 24.5-tonne consignment by a factor of 24,500.
-    const applied = applySupplierSubmission(
-      { see_tco2e_per_t: 1.8, production_route: 'BF_BOF' },
-      LINE,
-    )
+    const applied = applySupplierSubmission({ see_tco2e_per_t: 1.8, production_route: 'BF_BOF' }, LINE)
     expect(applied.directEmbeddedKgco2e).not.toBe(1.8)
   })
 
   it('preserves the intensity as submitted, for the audit trail', () => {
-    const applied = applySupplierSubmission(
-      { see_tco2e_per_t: 1.8, production_route: 'EAF' },
-      LINE,
-    )
+    const applied = applySupplierSubmission({ see_tco2e_per_t: 1.8, production_route: 'EAF' }, LINE)
     expect(applied.seeTco2ePerT).toBe(1.8)
     expect(applied.netMassKg).toBe(24500)
   })
@@ -50,9 +41,9 @@ describe('applySupplierSubmission', () => {
   it('requires a production route', () => {
     // Annex VI defaults are differentiated by route, so without it the figure
     // cannot be checked against the right default.
-    expect(() =>
-      applySupplierSubmission({ see_tco2e_per_t: 1.8, production_route: '  ' }, LINE),
-    ).toThrow(SupplierSubmissionError)
+    expect(() => applySupplierSubmission({ see_tco2e_per_t: 1.8, production_route: '  ' }, LINE)).toThrow(
+      SupplierSubmissionError,
+    )
   })
 
   it('rejects a non-positive intensity', () => {
@@ -66,10 +57,7 @@ describe('applySupplierSubmission', () => {
   it('rejects a line with no usable mass rather than producing zero', () => {
     // A zero total would read as "measured, and it is zero".
     expect(() =>
-      applySupplierSubmission(
-        { see_tco2e_per_t: 1.8, production_route: 'EAF' },
-        { ...LINE, netMassKg: 0 },
-      ),
+      applySupplierSubmission({ see_tco2e_per_t: 1.8, production_route: 'EAF' }, { ...LINE, netMassKg: 0 }),
     ).toThrow(/net mass/i)
   })
 
@@ -81,8 +69,7 @@ describe('applySupplierSubmission', () => {
       ).installationName,
     ).toBe('Gemlik')
     expect(
-      applySupplierSubmission({ see_tco2e_per_t: 1.8, production_route: 'EAF' }, LINE)
-        .installationName,
+      applySupplierSubmission({ see_tco2e_per_t: 1.8, production_route: 'EAF' }, LINE).installationName,
     ).toBeNull()
   })
 })

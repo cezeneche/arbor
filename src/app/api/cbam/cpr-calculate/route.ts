@@ -32,10 +32,7 @@ export async function POST(request: Request) {
     if (res.status === 422) {
       // The engine rejected the inputs. Its reasons are the useful part.
       const detail = await res.json().catch(() => null)
-      return NextResponse.json(
-        { error: 'These figures do not make a valid claim.', detail },
-        { status: 422 },
-      )
+      return NextResponse.json({ error: 'These figures do not make a valid claim.', detail }, { status: 422 })
     }
     if (!res.ok) throw new NucleosUnavailableError(`cpr calculate failed: ${res.status}`)
     return NextResponse.json(await res.json())

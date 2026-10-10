@@ -189,9 +189,7 @@ describe('a goods line that carries the text its values were read from', () => {
   })
 
   it('still says so for a value the line has no evidence for', () => {
-    const rows = toExtractedFieldRows(
-      base({ lines: [{ ...line, description: 'Hot-rolled coil' }] } as never),
-    )
+    const rows = toExtractedFieldRows(base({ lines: [{ ...line, description: 'Hot-rolled coil' }] } as never))
     const description = rows.find(r => r.fieldName === 'lines[0].description')!
     expect(description.flagReason ?? '').toContain('no_source_text')
   })

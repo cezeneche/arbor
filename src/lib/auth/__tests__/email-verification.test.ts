@@ -12,9 +12,19 @@ function fakeDb() {
     tokens,
     users,
     emailVerificationToken: {
-      create: jest.fn(async ({ data }: any) => { tokens.push({ ...data, usedAt: null }); return data }),
-      findUnique: jest.fn(async ({ where }: any) => tokens.find(t => t.tokenHash === where.tokenHash) ?? null),
-      update: jest.fn(async ({ where, data }: any) => Object.assign(tokens.find(t => t.tokenHash === where.tokenHash), data)),
+      create: jest.fn(async ({ data }: any) => {
+        tokens.push({ ...data, usedAt: null })
+        return data
+      }),
+      findUnique: jest.fn(
+        async ({ where }: any) => tokens.find(t => t.tokenHash === where.tokenHash) ?? null,
+      ),
+      update: jest.fn(async ({ where, data }: any) =>
+        Object.assign(
+          tokens.find(t => t.tokenHash === where.tokenHash),
+          data,
+        ),
+      ),
     },
     user: { update: jest.fn(async ({ where, data }: any) => Object.assign(users.get(where.id), data)) },
     $transaction: async (fn: any) => fn(db),

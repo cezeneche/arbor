@@ -7,10 +7,7 @@ import { runSerializable } from '@/lib/layer2/serializable'
 import { appendAuditEntry } from '@/lib/layer2/audit-append'
 import { planDocumentRemoval, buildWithdrawalPayload } from '@/lib/layer2/document-removal'
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireAuth()
   if (!session) return response!
 
@@ -46,10 +43,7 @@ export async function GET(
 // chain's side nothing was erased, which is what keeps the earlier hashes valid.
 //
 // `planDocumentRemoval` decides which of the two applies; this only carries it out.
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
@@ -65,9 +59,20 @@ export async function DELETE(
       dataRecords: {
         where: { isActive: true },
         select: {
-          id: true, entityId: true, domain: true, fieldName: true, value: true, unit: true,
-          originalValue: true, originalUnit: true, periodStart: true, periodEnd: true,
-          trustTier: true, confidenceScore: true, sourceText: true, documentId: true,
+          id: true,
+          entityId: true,
+          domain: true,
+          fieldName: true,
+          value: true,
+          unit: true,
+          originalValue: true,
+          originalUnit: true,
+          periodStart: true,
+          periodEnd: true,
+          trustTier: true,
+          confidenceScore: true,
+          sourceText: true,
+          documentId: true,
           extractionMethod: true,
         },
       },

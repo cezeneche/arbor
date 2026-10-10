@@ -242,8 +242,7 @@ export function buildExtractionPrompt(
   // For non-English documents, instruct the model to preserve values verbatim and
   // only translate field names. Translating a numeric value or unit would corrupt
   // the record; the source text must stay in the original language.
-  const isForeign =
-    !!detectedLanguage && detectedLanguage !== 'en' && detectedLanguage !== 'unknown'
+  const isForeign = !!detectedLanguage && detectedLanguage !== 'en' && detectedLanguage !== 'unknown'
   const languageInstruction = isForeign
     ? `\nThis document is written in ${detectedLanguage}. Extract all field values exactly as they appear in the source document. Do not translate values, numbers, or units. Translate field names to English only. The sourceText for each field must be the original-language text verbatim.\n`
     : ''

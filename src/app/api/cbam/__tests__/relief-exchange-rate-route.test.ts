@@ -19,7 +19,12 @@ beforeEach(() => jest.clearAllMocks())
 
 describe('GET relief exchange rate', () => {
   it("returns HMRC's rate for the month, named", async () => {
-    rate.mockResolvedValue({ rate: '0.8365', effectiveFrom: '2027-04-01', source: 'HMRC monthly rates', tableVersion: '2027-uk-v1' })
+    rate.mockResolvedValue({
+      rate: '0.8365',
+      effectiveFrom: '2027-04-01',
+      source: 'HMRC monthly rates',
+      tableVersion: '2027-uk-v1',
+    })
     const res = await get('currency=EUR&date=2027-04-15')
     expect(res.status).toBe(200)
     expect(rate).toHaveBeenCalledWith('EUR', '2027-04-15')

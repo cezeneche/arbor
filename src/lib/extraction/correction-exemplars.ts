@@ -64,7 +64,7 @@ export function buildExemplarHints(
  *  no hints, so the prompt is byte-for-byte unchanged when there is nothing to say. */
 export function renderCorrectionHints(hints: ExemplarHint[]): string {
   if (hints.length === 0) return ''
-  const lines = hints.map((h) => {
+  const lines = hints.map(h => {
     const guidance =
       h.misreadCount >= h.clearedCount
         ? `mis-read ${h.timesCorrected} time(s) in past reviews — double-check its value against the document`

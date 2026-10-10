@@ -135,7 +135,7 @@ export interface AuditPackage {
 // folded into packageIntegrityHash: it is an additive commitment, so existing
 // package hashes (and the public-verify records that store them) are unchanged.
 function buildMerkleCommitment(records: AuditDataRecord[]): AuditMerkleCommitment {
-  const leaves = records.map((r) => r.auditHash)
+  const leaves = records.map(r => r.auditHash)
   const root = merkleRoot(leaves)
   const inclusionProofs = records.map((r, i) => ({
     recordId: r.id,
@@ -146,7 +146,7 @@ function buildMerkleCommitment(records: AuditDataRecord[]): AuditMerkleCommitmen
     root,
     leafCount: leaves.length,
     inclusionProofs,
-    consistent: inclusionProofs.every((p) => verifyInclusionProof(p.proof)),
+    consistent: inclusionProofs.every(p => verifyInclusionProof(p.proof)),
   }
 }
 
@@ -164,10 +164,12 @@ export function buildPackageCore(input: {
   periodStart: Date | string
   periodEnd: Date | string
   summary: AuditPackageSummary
-  dataRecords: Array<Omit<AuditDataRecord, 'periodStart' | 'periodEnd'> & {
-    periodStart: Date | string
-    periodEnd: Date | string
-  }>
+  dataRecords: Array<
+    Omit<AuditDataRecord, 'periodStart' | 'periodEnd'> & {
+      periodStart: Date | string
+      periodEnd: Date | string
+    }
+  >
   sourceDocuments: Array<Omit<AuditSourceDocument, 'submittedAt'> & { submittedAt: Date | string }>
   crossValidationResults: AuditCrossValidationResult[]
   verification: AuditVerification | null
@@ -199,11 +201,11 @@ export function computePackageIntegrityHash(input: Parameters<typeof buildPackag
 }
 
 export function generateAuditPackage(input: AuditPackageInput): AuditPackage {
-  const tierACount = input.dataRecords.filter((r) => r.trustTier === 'A').length
-  const tierBCount = input.dataRecords.filter((r) => r.trustTier === 'B').length
-  const tierCCount = input.dataRecords.filter((r) => r.trustTier === 'C').length
-  const passCount = input.crossValidationResults.filter((r) => r.passed).length
-  const failCount = input.crossValidationResults.filter((r) => !r.passed).length
+  const tierACount = input.dataRecords.filter(r => r.trustTier === 'A').length
+  const tierBCount = input.dataRecords.filter(r => r.trustTier === 'B').length
+  const tierCCount = input.dataRecords.filter(r => r.trustTier === 'C').length
+  const passCount = input.crossValidationResults.filter(r => r.passed).length
+  const failCount = input.crossValidationResults.filter(r => !r.passed).length
 
   const summary: AuditPackageSummary = {
     totalRecords: input.dataRecords.length,

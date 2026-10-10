@@ -30,7 +30,13 @@ export function SendAnswerButton({ requestId, toEmail }: { requestId: string; to
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
       {armed ? (
         <>
-          <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary }}>
+          <span
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.light,
+              color: colours.textSecondary,
+            }}
+          >
             Send these values to {toEmail}?
           </span>
           <button
@@ -87,7 +93,9 @@ export function SendAnswerButton({ requestId, toEmail }: { requestId: string; to
         </button>
       )}
       {error && (
-        <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.red }}>
+        <span
+          style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.red }}
+        >
           {error}
         </span>
       )}

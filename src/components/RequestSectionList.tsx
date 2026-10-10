@@ -44,9 +44,7 @@ export function RequestSectionList({
     <section
       style={{
         marginBottom: spacing[5],
-        ...(divider
-          ? { borderTop: `1px solid ${colours.border}`, paddingTop: spacing[4] }
-          : {}),
+        ...(divider ? { borderTop: `1px solid ${colours.border}`, paddingTop: spacing[4] } : {}),
       }}
     >
       {/* The page heading already names the section on every screen that passes
@@ -70,9 +68,7 @@ export function RequestSectionList({
       )}
 
       {items.length === 0 ? (
-        <p style={textStyles.sectionSubtitle}>
-          {emptyText}
-        </p>
+        <p style={textStyles.sectionSubtitle}>{emptyText}</p>
       ) : matrix ? (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -87,10 +83,7 @@ export function RequestSectionList({
             </thead>
             <tbody>
               {items.map(item => (
-                <tr
-                  key={`${item.source}-${item.id}`}
-                  style={{ borderBottom: `1px solid ${colours.border}` }}
-                >
+                <tr key={`${item.source}-${item.id}`} style={{ borderBottom: `1px solid ${colours.border}` }}>
                   <td style={cell}>
                     <Link href={item.href} style={{ ...textStyles.rowTitle, textDecoration: 'none' }}>
                       {item.title}
@@ -129,14 +122,33 @@ export function RequestSectionList({
               }}
             >
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.medium,
+                    color: colours.textPrimary,
+                    margin: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {item.title}
                 </p>
                 <p style={{ ...textStyles.caption, margin: '2px 0 0' }}>
                   {SOURCE_LABELS[item.source]} · {item.detail}
                 </p>
               </div>
-              <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textTertiary, flexShrink: 0 }}>→</span>
+              <span
+                style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.light,
+                  color: colours.textTertiary,
+                  flexShrink: 0,
+                }}
+              >
+                →
+              </span>
             </Link>
           ))}
         </div>

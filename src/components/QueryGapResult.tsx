@@ -44,11 +44,7 @@ export function QueryGapResult({ gapResult }: { gapResult: QueryGapResultData })
             padding: spacing[3],
           }}
         >
-          <p
-            style={{ ...textStyles.rowTitle, margin: '0 0 10px' }}
-          >
-            Areas where you have no records
-          </p>
+          <p style={{ ...textStyles.rowTitle, margin: '0 0 10px' }}>Areas where you have no records</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {gapResult.ownMissingDomains.map(d => (
               <span
@@ -80,7 +76,9 @@ export function QueryGapResult({ gapResult }: { gapResult: QueryGapResultData })
         >
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
+              <tr
+                style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}
+              >
                 {['Supplier', 'Areas with nothing shared'].map(col => (
                   <th
                     key={col}
@@ -103,7 +101,10 @@ export function QueryGapResult({ gapResult }: { gapResult: QueryGapResultData })
               {gapResult.supplierGaps.map((gap, i) => (
                 <tr
                   key={gap.supplierEntityId}
-                  style={{ borderBottom: i < gapResult.supplierGaps.length - 1 ? `1px solid ${colours.border}` : 'none' }}
+                  style={{
+                    borderBottom:
+                      i < gapResult.supplierGaps.length - 1 ? `1px solid ${colours.border}` : 'none',
+                  }}
                 >
                   <td
                     style={{

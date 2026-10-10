@@ -31,7 +31,8 @@ export function AuditPackageView({
   chainIntegrityVerified: boolean
   auditEntryCount: number
 }) {
-  const fmt = (d: Date) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmt = (d: Date) =>
+    new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
@@ -48,12 +49,22 @@ export function AuditPackageView({
             color: colours.green,
           }}
         >
-          Independently verified by <strong style={{ fontWeight: typography.weights.medium }}>{pkg.verification.verifierName}</strong> on {new Date(pkg.verification.verifiedAt).toLocaleDateString('en-GB')}. Signature {pkg.verification.signatureHash.slice(0, 16)}…
+          Independently verified by{' '}
+          <strong style={{ fontWeight: typography.weights.medium }}>{pkg.verification.verifierName}</strong>{' '}
+          on {new Date(pkg.verification.verifiedAt).toLocaleDateString('en-GB')}. Signature{' '}
+          {pkg.verification.signatureHash.slice(0, 16)}…
         </div>
       )}
 
       {/* Summary */}
-      <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', padding: spacing[3] }}>
+      <div
+        style={{
+          backgroundColor: colours.surface,
+          border: `1px solid ${colours.border}`,
+          borderRadius: '6px',
+          padding: spacing[3],
+        }}
+      >
         <div style={{ display: 'flex', gap: spacing[4], flexWrap: 'wrap' as const }}>
           <Stat label="Records" value={String(pkg.summary.totalRecords)} />
           <Stat label="Verified" value={String(pkg.summary.tierACount)} colour={colours.green} />
@@ -70,7 +81,14 @@ export function AuditPackageView({
       </div>
 
       {/* Records */}
-      <div style={{ backgroundColor: colours.surface, border: `1px solid ${colours.border}`, borderRadius: '6px', overflowX: 'auto' }}>
+      <div
+        style={{
+          backgroundColor: colours.surface,
+          border: `1px solid ${colours.border}`,
+          borderRadius: '6px',
+          overflowX: 'auto',
+        }}
+      >
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${colours.border}`, backgroundColor: colours.background }}>
@@ -83,23 +101,45 @@ export function AuditPackageView({
           </thead>
           <tbody>
             {pkg.dataRecords.map((r, i) => (
-              <tr key={r.id} style={{ borderBottom: i < pkg.dataRecords.length - 1 ? `1px solid ${colours.border}` : 'none' }}>
+              <tr
+                key={r.id}
+                style={{
+                  borderBottom: i < pkg.dataRecords.length - 1 ? `1px solid ${colours.border}` : 'none',
+                }}
+              >
                 <td style={td}>{r.fieldName}</td>
                 <td style={{ ...td, color: colours.textSecondary }}>{r.domain}</td>
-                <td style={{ ...td, fontVariantNumeric: 'tabular-nums' as const }}>{r.value} {r.unit}</td>
-                <td style={{ ...td, color: colours.textSecondary, whiteSpace: 'nowrap' as const }}>{fmt(r.periodStart)} – {fmt(r.periodEnd)}</td>
-                <td style={{ ...td, color: TIER_COLOUR[r.trustTier], fontWeight: typography.weights.medium }}>{TIER_LABEL[r.trustTier]}</td>
+                <td style={{ ...td, fontVariantNumeric: 'tabular-nums' as const }}>
+                  {r.value} {r.unit}
+                </td>
+                <td style={{ ...td, color: colours.textSecondary, whiteSpace: 'nowrap' as const }}>
+                  {fmt(r.periodStart)} – {fmt(r.periodEnd)}
+                </td>
+                <td style={{ ...td, color: TIER_COLOUR[r.trustTier], fontWeight: typography.weights.medium }}>
+                  {TIER_LABEL[r.trustTier]}
+                </td>
               </tr>
             ))}
             {pkg.dataRecords.length === 0 && (
-              <tr><td style={{ ...td, color: colours.textTertiary }} colSpan={5}>No records in this period.</td></tr>
+              <tr>
+                <td style={{ ...td, color: colours.textTertiary }} colSpan={5}>
+                  No records in this period.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
       </div>
 
       {/* Integrity hash */}
-      <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textTertiary, wordBreak: 'break-all' as const }}>
+      <div
+        style={{
+          fontSize: typography.sizes.xs,
+          fontWeight: typography.weights.light,
+          color: colours.textTertiary,
+          wordBreak: 'break-all' as const,
+        }}
+      >
         Package integrity hash: <span style={{ fontFamily: 'monospace' }}>{pkg.packageIntegrityHash}</span>
       </div>
     </div>
@@ -121,7 +161,14 @@ function Stat({ label, value, colour }: { label: string; value: string; colour?:
       >
         {label}
       </div>
-      <div style={{ fontSize: '22px', fontWeight: typography.weights.medium, color: colour ?? colours.textPrimary, lineHeight: 1 }}>
+      <div
+        style={{
+          fontSize: '22px',
+          fontWeight: typography.weights.medium,
+          color: colour ?? colours.textPrimary,
+          lineHeight: 1,
+        }}
+      >
         {value}
       </div>
     </div>

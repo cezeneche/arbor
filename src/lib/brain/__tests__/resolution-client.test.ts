@@ -61,9 +61,7 @@ describe('scoreEntityPairs', () => {
     const fetchImpl = jest.fn(
       async () => ({ ok: false, status: 500 }) as unknown as Response,
     ) as unknown as typeof fetch
-    await expect(scoreEntityPairs(NAMES, PAIRS, { fetchImpl })).rejects.toBeInstanceOf(
-      BrainUnavailableError,
-    )
+    await expect(scoreEntityPairs(NAMES, PAIRS, { fetchImpl })).rejects.toBeInstanceOf(BrainUnavailableError)
     expect(metrics[0].outcome).toBe('error')
   })
 
@@ -73,9 +71,7 @@ describe('scoreEntityPairs', () => {
       err.name = 'AbortError'
       throw err
     }) as unknown as typeof fetch
-    await expect(scoreEntityPairs(NAMES, PAIRS, { fetchImpl })).rejects.toBeInstanceOf(
-      BrainUnavailableError,
-    )
+    await expect(scoreEntityPairs(NAMES, PAIRS, { fetchImpl })).rejects.toBeInstanceOf(BrainUnavailableError)
     expect(metrics[0].outcome).toBe('timeout')
   })
 })

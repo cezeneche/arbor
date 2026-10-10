@@ -6,11 +6,7 @@ import { type AuditPayload } from '@/lib/layer2/audit-chain'
 import { appendAuditEntry } from '@/lib/layer2/audit-append'
 import { runSerializable } from '@/lib/layer2/serializable'
 
-export async function setBenchmarkConsent(
-  entityId: string,
-  userId: string,
-  allow: boolean,
-): Promise<void> {
+export async function setBenchmarkConsent(entityId: string, userId: string, allow: boolean): Promise<void> {
   // The flag and its audit entry move together. Splitting them left a window in
   // which the entity's data was opted in with nothing in the chain saying who
   // decided that, or the reverse.

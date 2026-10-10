@@ -16,8 +16,12 @@ export async function GET() {
     orderBy: { similarity: 'desc' },
     take: 200,
     include: {
-      entityA: { select: { id: true, legalName: true, registrationNumber: true, country: true, sector: true } },
-      entityB: { select: { id: true, legalName: true, registrationNumber: true, country: true, sector: true } },
+      entityA: {
+        select: { id: true, legalName: true, registrationNumber: true, country: true, sector: true },
+      },
+      entityB: {
+        select: { id: true, legalName: true, registrationNumber: true, country: true, sector: true },
+      },
     },
   })
 

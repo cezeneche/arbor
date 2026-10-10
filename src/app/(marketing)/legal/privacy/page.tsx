@@ -5,7 +5,10 @@ import { LegalContents } from '@/components/marketing/LegalContents'
 import { legalContainer, legalH2, legalH3, legalLi, legalP } from '@/components/marketing/legal-styles'
 import { LegalDraftNotice } from '@/components/marketing/LegalDraftNotice'
 
-export const metadata: Metadata = { title: 'Privacy Policy | Arbor', description: 'How Arbor describes its handling of personal data, rights and contact routes.' }
+export const metadata: Metadata = {
+  title: 'Privacy Policy | Arbor',
+  description: 'How Arbor describes its handling of personal data, rights and contact routes.',
+}
 
 // IMPORTANT: This document must be reviewed by a qualified solicitor before publication.
 // Placeholder company details (marked with []) must be replaced before going live.
@@ -51,27 +54,39 @@ export default function PrivacyPolicyPage() {
       {/* Body */}
       <div style={{ padding: '64px 0 96px' }}>
         <div id="privacy-sections" className="mk-legal-reading" style={legalContainer}>
-          <LegalContents sections={[{ id: 'privacy-identity', label: 'Who we are' }, { id: 'privacy-collection', label: 'Data we collect' }, { id: 'privacy-use', label: 'How we use data' }, { id: 'privacy-retention', label: 'Retention' }, { id: 'privacy-rights', label: 'Your rights' }, { id: 'privacy-contact', label: 'Contact' }]} />
+          <LegalContents
+            sections={[
+              { id: 'privacy-identity', label: 'Who we are' },
+              { id: 'privacy-collection', label: 'Data we collect' },
+              { id: 'privacy-use', label: 'How we use data' },
+              { id: 'privacy-retention', label: 'Retention' },
+              { id: 'privacy-rights', label: 'Your rights' },
+              { id: 'privacy-contact', label: 'Contact' },
+            ]}
+          />
 
-          <h2 id="privacy-identity" style={legalH2}>1. Who we are</h2>
+          <h2 id="privacy-identity" style={legalH2}>
+            1. Who we are
+          </h2>
           <p style={legalP}>
-            Arbor is operated by arbor. Its company number and registered address are pending confirmation
-            in this sample policy. &quot;We&quot;, &quot;us&quot; and &quot;our&quot; refer to arbor.
-            We operate the Arbor operational data platform accessible at arbor.io
-            and related subdomains.
+            Arbor is operated by arbor. Its company number and registered address are pending confirmation in
+            this sample policy. &quot;We&quot;, &quot;us&quot; and &quot;our&quot; refer to arbor. We operate
+            the Arbor operational data platform accessible at arbor.io and related subdomains.
           </p>
           <p style={legalP}>
             For the purposes of UK data protection law, the Arbor operator is the data controller for personal
             data collected from visitors to our website and users of our platform. Where we process personal
-            data on behalf of our business customers, we act as a data processor. This distinction is addressed
-            in our Data Processing Agreement.
+            data on behalf of our business customers, we act as a data processor. This distinction is
+            addressed in our Data Processing Agreement.
           </p>
           <p style={legalP}>
             Our ICO registration position is pending confirmation. Our data protection contact is
             legal@arbor.io.
           </p>
 
-          <h2 id="privacy-collection" style={legalH2}>2. Personal data we collect</h2>
+          <h2 id="privacy-collection" style={legalH2}>
+            2. Personal data we collect
+          </h2>
 
           <h3 style={legalH3}>Account and identity data</h3>
           <p style={legalP}>
@@ -101,7 +116,9 @@ export default function PrivacyPolicyPage() {
             you provide to handle your request and maintain a record of our communications.
           </p>
 
-          <h2 id="privacy-use" style={legalH2}>3. How we use your personal data</h2>
+          <h2 id="privacy-use" style={legalH2}>
+            3. How we use your personal data
+          </h2>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             {[
               'To create and manage your account',
@@ -112,7 +129,9 @@ export default function PrivacyPolicyPage() {
               'To investigate security incidents and enforce our Terms of Service',
               'To comply with our legal obligations',
             ].map(item => (
-              <li key={item} style={legalLi}>{item}</li>
+              <li key={item} style={legalLi}>
+                {item}
+              </li>
             ))}
           </ul>
           <p style={legalP}>
@@ -121,9 +140,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <h2 style={legalH2}>4. Legal basis for processing</h2>
-          <p style={legalP}>
-            We rely on the following legal bases under UK GDPR:
-          </p>
+          <p style={legalP}>We rely on the following legal bases under UK GDPR:</p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             <li style={legalLi}>
               <strong>Contract (Article 6(1)(b)):</strong> Processing necessary to perform our contract with
@@ -143,7 +160,8 @@ export default function PrivacyPolicyPage() {
           <h2 style={legalH2}>5. Third-party processors</h2>
           <p style={legalP}>
             This illustrative provider inventory is drawn from the application configuration. The actual
-            providers, processing locations and contractual terms must be verified before this policy is approved:
+            providers, processing locations and contractual terms must be verified before this policy is
+            approved:
           </p>
           <div
             tabIndex={0}
@@ -207,15 +225,17 @@ export default function PrivacyPolicyPage() {
           <h2 style={legalH2}>6. International transfers</h2>
           <p style={legalP}>
             Any international transfers and the applicable UK transfer safeguards must be mapped to the
-            deployed providers and reviewed before this draft is approved. No particular transfer mechanism
-            is asserted by this sample policy.
+            deployed providers and reviewed before this draft is approved. No particular transfer mechanism is
+            asserted by this sample policy.
           </p>
 
-          <h2 id="privacy-retention" style={legalH2}>7. Data retention</h2>
+          <h2 id="privacy-retention" style={legalH2}>
+            7. Data retention
+          </h2>
           <p style={legalP}>
             We retain account and service data while needed to provide the service. The period after account
-            closure, backup expiry and any lawful exceptions must be set in an approved retention schedule.
-            No fixed post-closure period is approved in this draft.
+            closure, backup expiry and any lawful exceptions must be set in an approved retention schedule. No
+            fixed post-closure period is approved in this draft.
           </p>
           <p style={legalP}>
             The retention and export process for operational records after account closure must be defined in
@@ -225,7 +245,9 @@ export default function PrivacyPolicyPage() {
             The retention period for server logs and technical data is also pending operational confirmation.
           </p>
 
-          <h2 id="privacy-rights" style={legalH2}>8. Your rights under UK GDPR</h2>
+          <h2 id="privacy-rights" style={legalH2}>
+            8. Your rights under UK GDPR
+          </h2>
           <p style={legalP}>You have the following rights regarding your personal data:</p>
           <ul style={{ paddingLeft: '20px', margin: '0 0 16px' }}>
             {[
@@ -236,12 +258,15 @@ export default function PrivacyPolicyPage() {
               'Right to data portability: you may request your personal data in a structured, machine-readable format.',
               'Right to object: you may object to processing based on legitimate interests.',
             ].map(item => (
-              <li key={item} style={legalLi}>{item}</li>
+              <li key={item} style={legalLi}>
+                {item}
+              </li>
             ))}
           </ul>
           <p style={legalP}>
             To exercise any of these rights, contact us at legal@arbor.io. We will respond within one month.
-            You also have the right to lodge a complaint with the Information Commissioner&apos;s Office (ico.org.uk).
+            You also have the right to lodge a complaint with the Information Commissioner&apos;s Office
+            (ico.org.uk).
           </p>
 
           <h2 style={legalH2}>9. Cookies</h2>
@@ -258,12 +283,13 @@ export default function PrivacyPolicyPage() {
             of changes constitutes acceptance of the updated policy.
           </p>
 
-          <h2 id="privacy-contact" style={legalH2}>11. Contact</h2>
+          <h2 id="privacy-contact" style={legalH2}>
+            11. Contact
+          </h2>
           <p style={legalP}>
             For any questions about this policy or our data practices, contact us at legal@arbor.io or write
             to: arbor (registered address to be confirmed).
           </p>
-
         </div>
       </div>
     </div>

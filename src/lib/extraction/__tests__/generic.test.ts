@@ -19,7 +19,15 @@ describe('parseGenericExtractionResponse', () => {
       documentClass: 'lease_agreement',
       extractionNotes: 'commercial lease',
       fields: [
-        { fieldName: 'monthly_rent', rawValue: '4500', rawUnit: 'GBP', sourceText: 'Rent: £4,500/month', confidenceScore: 0.95, flagged: false, flagReason: null },
+        {
+          fieldName: 'monthly_rent',
+          rawValue: '4500',
+          rawUnit: 'GBP',
+          sourceText: 'Rent: £4,500/month',
+          confidenceScore: 0.95,
+          flagged: false,
+          flagReason: null,
+        },
       ],
     })
     const out = parseGenericExtractionResponse(raw)

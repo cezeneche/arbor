@@ -12,8 +12,16 @@ function csvEscape(v: string | number | null): string {
 }
 
 function buildCsv(answers: PrefilledAnswer[]): string {
-  const header = ['question', 'answer', 'unit', 'trust_tier', 'status', 'contributing_records', 'source_record_ids']
-  const rows = answers.map((a) =>
+  const header = [
+    'question',
+    'answer',
+    'unit',
+    'trust_tier',
+    'status',
+    'contributing_records',
+    'source_record_ids',
+  ]
+  const rows = answers.map(a =>
     [
       a.questionText,
       a.value ?? '',

@@ -20,10 +20,7 @@ const bodySchema = z.object({
 
 const STATUS_BY_CODE = { NOT_FOUND: 404, NOT_WAITING: 409, INVALID: 400 } as const
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ documentId: string }> },
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ documentId: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 

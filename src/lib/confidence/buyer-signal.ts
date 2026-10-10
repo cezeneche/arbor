@@ -52,7 +52,7 @@ export function buildBuyerLabel(input: BuyerSignalInput): GroundTruthLabelInput 
     extractedValue: input.recordValue,
     // Confirm vouches for the stored value; dispute records the buyer's proposed
     // correction (or null if they only flagged it as wrong).
-    confirmedValue: confirmed ? input.recordValue : input.suggestedValue ?? null,
+    confirmedValue: confirmed ? input.recordValue : (input.suggestedValue ?? null),
     wasCorrect: confirmed,
     confidenceAtExtraction: clamp01(input.confidenceAtExtraction),
     source: confirmed ? 'BUYER_CONFIRMED' : 'BUYER_DISPUTED',

@@ -29,9 +29,7 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     cbamCaseLink: {
       findFirst: jest.fn(async ({ where }: { where: { nucleosCaseId: string; entityId: string } }) => {
-        const hit = LINKS.find(
-          l => l.nucleosCaseId === where.nucleosCaseId && l.entityId === where.entityId,
-        )
+        const hit = LINKS.find(l => l.nucleosCaseId === where.nucleosCaseId && l.entityId === where.entityId)
         return hit ? { documentId: hit.documentId } : null
       }),
       findMany: jest.fn(async () => []),
@@ -62,7 +60,11 @@ jest.mock('@/lib/nucleos/calculate-client', () => ({
   calculateDeclaration: () => calculateDeclaration(),
 }))
 
-const buildHmrcReturn = jest.fn(async () => ({ body: '{}', contentType: 'application/json', fileName: 'r.json' }))
+const buildHmrcReturn = jest.fn(async () => ({
+  body: '{}',
+  contentType: 'application/json',
+  fileName: 'r.json',
+}))
 jest.mock('@/lib/nucleos/return-client', () => ({
   buildHmrcReturn: () => buildHmrcReturn(),
   buildEuXmlDeclaration: jest.fn(),

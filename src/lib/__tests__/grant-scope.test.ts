@@ -1,8 +1,4 @@
-import {
-  grantCoversRecord,
-  anyGrantCoversRecord,
-  parseGrantFieldNames,
-} from '@/lib/layer3/grant-scope'
+import { grantCoversRecord, anyGrantCoversRecord, parseGrantFieldNames } from '@/lib/layer3/grant-scope'
 import type { DataDomain } from '@prisma/client'
 
 const rec = {
@@ -18,24 +14,35 @@ describe('grantCoversRecord', () => {
   })
 
   it('rejects a different domain', () => {
-    expect(grantCoversRecord({ domain: 'LOGISTICS' as DataDomain, periodStart: null, periodEnd: null }, rec)).toBe(false)
+    expect(
+      grantCoversRecord({ domain: 'LOGISTICS' as DataDomain, periodStart: null, periodEnd: null }, rec),
+    ).toBe(false)
   })
 
   it('matches the same domain', () => {
-    expect(grantCoversRecord({ domain: 'ENERGY' as DataDomain, periodStart: null, periodEnd: null }, rec)).toBe(true)
+    expect(
+      grantCoversRecord({ domain: 'ENERGY' as DataDomain, periodStart: null, periodEnd: null }, rec),
+    ).toBe(true)
   })
 
   it('rejects a record entirely before the grant period', () => {
-    expect(grantCoversRecord({ domain: null, periodStart: new Date('2026-07-01'), periodEnd: null }, rec)).toBe(false)
+    expect(
+      grantCoversRecord({ domain: null, periodStart: new Date('2026-07-01'), periodEnd: null }, rec),
+    ).toBe(false)
   })
 
   it('rejects a record entirely after the grant period', () => {
-    expect(grantCoversRecord({ domain: null, periodStart: null, periodEnd: new Date('2026-03-31') }, rec)).toBe(false)
+    expect(
+      grantCoversRecord({ domain: null, periodStart: null, periodEnd: new Date('2026-03-31') }, rec),
+    ).toBe(false)
   })
 
   it('accepts an overlapping period', () => {
     expect(
-      grantCoversRecord({ domain: null, periodStart: new Date('2026-01-01'), periodEnd: new Date('2026-12-31') }, rec),
+      grantCoversRecord(
+        { domain: null, periodStart: new Date('2026-01-01'), periodEnd: new Date('2026-12-31') },
+        rec,
+      ),
     ).toBe(true)
   })
 
@@ -57,9 +64,7 @@ describe('grantCoversRecord — field scope', () => {
   })
 
   it('covers a field the grant names', () => {
-    expect(
-      grantCoversRecord({ ...unscoped, fieldNames: ['total_consumption_kwh'] }, rec),
-    ).toBe(true)
+    expect(grantCoversRecord({ ...unscoped, fieldNames: ['total_consumption_kwh'] }, rec)).toBe(true)
   })
 
   // The defect: answering a request for one named field opened the whole domain
@@ -70,9 +75,7 @@ describe('grantCoversRecord — field scope', () => {
 
   it('treats a record with no field name as out of scope for a field-scoped grant', () => {
     const anonymous = { domain: rec.domain, periodStart: rec.periodStart, periodEnd: rec.periodEnd }
-    expect(grantCoversRecord({ ...unscoped, fieldNames: ['total_consumption_kwh'] }, anonymous)).toBe(
-      false,
-    )
+    expect(grantCoversRecord({ ...unscoped, fieldNames: ['total_consumption_kwh'] }, anonymous)).toBe(false)
   })
 
   it('an empty field list is treated as unrestricted, not as covering nothing', () => {

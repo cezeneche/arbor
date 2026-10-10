@@ -91,9 +91,7 @@ export function normaliseExtractionResponse(parsed: unknown): NormalisedExtracti
       flagged: toFlag(f.flagged) || !confidence.readable,
       flagReason:
         f.flagReason ??
-        (confidence.readable
-          ? null
-          : 'The extractor did not report how confident it was in this value.'),
+        (confidence.readable ? null : 'The extractor did not report how confident it was in this value.'),
     })
   }
 

@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  await sendEnquiryAlert({ kind: 'institutional', orgName, detail: interestArea.toLowerCase().replace('_', ' ') })
+  await sendEnquiryAlert({
+    kind: 'institutional',
+    orgName,
+    detail: interestArea.toLowerCase().replace('_', ' '),
+  })
   return NextResponse.json({ ok: true }, { status: 201 })
 }

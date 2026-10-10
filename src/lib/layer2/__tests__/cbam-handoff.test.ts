@@ -40,9 +40,7 @@ function blankRow(documentId: string): Row {
 }
 
 function fakeDb(seed: Partial<Row>[] = []) {
-  const rows = new Map<string, Row>(
-    seed.map(r => [r.documentId!, { ...blankRow(r.documentId!), ...r }]),
-  )
+  const rows = new Map<string, Row>(seed.map(r => [r.documentId!, { ...blankRow(r.documentId!), ...r }]))
   const matches = (row: Row, where: Record<string, unknown>) => {
     if (where.documentId && row.documentId !== where.documentId) return false
     const status = where.status as { in?: string[] } | undefined
@@ -208,7 +206,9 @@ describe('runCbamHandoff', () => {
   })
 
   it('refuses a case another organisation already holds, and links nothing', async () => {
-    const db = fakeDb([{ documentId: 'doc-other', entityId: 'ent-2', nucleosCaseId: 'case-1', status: 'CREATED' }])
+    const db = fakeDb([
+      { documentId: 'doc-other', entityId: 'ent-2', nucleosCaseId: 'case-1', status: 'CREATED' },
+    ])
     await enqueueCbamHandoff(db as never, input())
     const writeCase = landingWriter('case-1')
 
@@ -283,11 +283,7 @@ describe('runCbamHandoff', () => {
 
   it('finishes a PARTIAL handoff from its recorded progress, without re-posting what landed', async () => {
     const db = await enqueued({
-      confirmed: new Map([
-        ...CONFIRMED,
-        ['lines[1].cn_code', '76011000'],
-        ['lines[1].net_mass_kg', '22000'],
-      ]),
+      confirmed: new Map([...CONFIRMED, ['lines[1].cn_code', '76011000'], ['lines[1].net_mass_kg', '22000']]),
     })
     const halfway: CaseWriteProgress = {
       caseId: 'case-1',
@@ -296,7 +292,12 @@ describe('runCbamHandoff', () => {
     }
     const partial = jest.fn(async (_p: any, _s: any, opts: any) => {
       await opts.onProgress(halfway)
-      return { caseId: 'case-1', goodsLineIds: ['gl-0'], problems: ['Goods line 2 (76011000) could not be added'], progress: halfway }
+      return {
+        caseId: 'case-1',
+        goodsLineIds: ['gl-0'],
+        problems: ['Goods line 2 (76011000) could not be added'],
+        progress: halfway,
+      }
     })
     const first = await runCbamHandoff('doc-1', { db: db as never, writeCase: partial })
     expect(first.status).toBe('PARTIAL')
@@ -324,7 +325,12 @@ describe('runCbamHandoff', () => {
   // handoff used to be FAILED and retried until the sweep gave up; it now waits
   // for the person who can supply it, and says what it is waiting for.
   it('waits for input when no case can be built, and never calls the boundary', async () => {
-    const db = await enqueued({ confirmed: new Map([['lines[0].cn_code', '72081000'], ['lines[0].net_mass_kg', '24000']]) })
+    const db = await enqueued({
+      confirmed: new Map([
+        ['lines[0].cn_code', '72081000'],
+        ['lines[0].net_mass_kg', '24000'],
+      ]),
+    })
     const writeCase = landingWriter()
     const out = await runCbamHandoff('doc-1', { db: db as never, writeCase })
     expect(out.status).toBe('NEEDS_INPUT')
@@ -369,7 +375,12 @@ describe('supplyCbamHandoffIdentifiers', () => {
     const db = await waiting()
     const writeCase = landingWriter()
     const out = await supplyCbamHandoffIdentifiers(
-      { documentId: 'doc-1', entityId: 'ent-1', userId: 'usr-1', amendments: [{ fieldName: 'importer_eori', value: 'gb123456789000' }] },
+      {
+        documentId: 'doc-1',
+        entityId: 'ent-1',
+        userId: 'usr-1',
+        amendments: [{ fieldName: 'importer_eori', value: 'gb123456789000' }],
+      },
       { db: db as never, writeCase },
     )
     expect(out).toMatchObject({ ok: true, outcome: { status: 'CREATED', caseId: 'case-1' } })
@@ -384,7 +395,12 @@ describe('supplyCbamHandoffIdentifiers', () => {
   it("refuses another organisation's handoff", async () => {
     const db = await waiting()
     const out = await supplyCbamHandoffIdentifiers(
-      { documentId: 'doc-1', entityId: 'ent-2', userId: 'usr-9', amendments: [{ fieldName: 'importer_eori', value: 'GB123456789000' }] },
+      {
+        documentId: 'doc-1',
+        entityId: 'ent-2',
+        userId: 'usr-9',
+        amendments: [{ fieldName: 'importer_eori', value: 'GB123456789000' }],
+      },
       { db: db as never, writeCase: landingWriter() },
     )
     expect(out).toMatchObject({ ok: false, code: 'NOT_FOUND' })
@@ -393,7 +409,12 @@ describe('supplyCbamHandoffIdentifiers', () => {
   it('refuses a handoff that is not waiting for input', async () => {
     const db = await enqueued()
     const out = await supplyCbamHandoffIdentifiers(
-      { documentId: 'doc-1', entityId: 'ent-1', userId: 'usr-1', amendments: [{ fieldName: 'importer_eori', value: 'GB123456789000' }] },
+      {
+        documentId: 'doc-1',
+        entityId: 'ent-1',
+        userId: 'usr-1',
+        amendments: [{ fieldName: 'importer_eori', value: 'GB123456789000' }],
+      },
       { db: db as never, writeCase: landingWriter() },
     )
     expect(out).toMatchObject({ ok: false, code: 'NOT_WAITING' })
@@ -403,7 +424,12 @@ describe('supplyCbamHandoffIdentifiers', () => {
     const db = await waiting()
     const before = JSON.stringify(db.rows.get('doc-1')!.handoffInput)
     const out = await supplyCbamHandoffIdentifiers(
-      { documentId: 'doc-1', entityId: 'ent-1', userId: 'usr-1', amendments: [{ fieldName: 'importer_eori', value: '12' }] },
+      {
+        documentId: 'doc-1',
+        entityId: 'ent-1',
+        userId: 'usr-1',
+        amendments: [{ fieldName: 'importer_eori', value: '12' }],
+      },
       { db: db as never, writeCase: landingWriter() },
     )
     expect(out).toMatchObject({ ok: false, code: 'INVALID' })
@@ -416,7 +442,12 @@ describe('supplyCbamHandoffIdentifiers', () => {
 // still send the document's own words to the case.
 describe('the evidence behind a handoff', () => {
   const readFields = [
-    { fieldName: 'lines[0].net_mass_kg', extractedValue: '24000', sourceText: 'Net mass | 24 000 kg', confidence: 0.8 },
+    {
+      fieldName: 'lines[0].net_mass_kg',
+      extractedValue: '24000',
+      sourceText: 'Net mass | 24 000 kg',
+      confidence: 0.8,
+    },
   ]
 
   it('is stored with the handoff and reaches the case payload', async () => {

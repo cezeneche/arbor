@@ -51,11 +51,19 @@ export async function submitReliefStatement(
   try {
     claims = await deps.claims(input.goodsLineId)
   } catch {
-    return { ok: false, code: 'UNAVAILABLE', message: 'The relief claims could not be read just now. Try again shortly.' }
+    return {
+      ok: false,
+      code: 'UNAVAILABLE',
+      message: 'The relief claims could not be read just now. Try again shortly.',
+    }
   }
   const counting = newest(claims)
   if (!counting) {
-    return { ok: false, code: 'REFUSED', message: 'Record the relief claim first. The statement is attached to it.' }
+    return {
+      ok: false,
+      code: 'REFUSED',
+      message: 'Record the relief claim first. The statement is attached to it.',
+    }
   }
   if (counting.verification_document_hash) {
     return {

@@ -91,8 +91,6 @@ export function presentGoodsLine(raw: CaseGoodsLine, index: number): PresentedGo
   }
 }
 
-export function presentGoodsLines(
-  lines: readonly CaseGoodsLine[] | undefined,
-): PresentedGoodsLine[] {
+export function presentGoodsLines(lines: readonly CaseGoodsLine[] | undefined): PresentedGoodsLine[] {
   return (lines ?? []).map(presentGoodsLine)
 }

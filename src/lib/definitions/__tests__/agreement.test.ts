@@ -8,12 +8,7 @@
 // boundary changes, the old agreement does not silently carry forward — the pair
 // agreed the old meaning, not the new one.
 
-import {
-  resolveAgreementFor,
-  agreementLabel,
-  canRespondToProposal,
-  type StoredAgreement,
-} from '../agreement'
+import { resolveAgreementFor, agreementLabel, canRespondToProposal, type StoredAgreement } from '../agreement'
 
 const SUPPLIER = 'ent-supplier'
 const BUYER = 'ent-buyer'

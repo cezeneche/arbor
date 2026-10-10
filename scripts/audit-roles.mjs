@@ -20,7 +20,10 @@ function databaseUrl() {
   try {
     const env = readFileSync(new URL('../.env', import.meta.url), 'utf8')
     const line = env.split('\n').find(l => l.startsWith('DATABASE_URL='))
-    return line?.slice('DATABASE_URL='.length).trim().replace(/^["']|["']$/g, '')
+    return line
+      ?.slice('DATABASE_URL='.length)
+      .trim()
+      .replace(/^["']|["']$/g, '')
   } catch {
     return undefined
   }
@@ -65,10 +68,9 @@ try {
     const admins = users.filter(u => u.role === 'ADMIN' && u.active)
     console.log(`\n${entity}`)
     for (const u of users) {
-      const flags = [
-        u.active ? null : 'INACTIVE',
-        u.platform_admin ? 'platform-operator' : null,
-      ].filter(Boolean)
+      const flags = [u.active ? null : 'INACTIVE', u.platform_admin ? 'platform-operator' : null].filter(
+        Boolean,
+      )
       console.log(`  ${u.role.padEnd(12)} ${u.email}${flags.length ? `  [${flags.join(', ')}]` : ''}`)
     }
     if (admins.length === 0) {

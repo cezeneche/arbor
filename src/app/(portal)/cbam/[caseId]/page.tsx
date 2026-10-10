@@ -7,11 +7,7 @@ import { presentCase } from '@/lib/nucleos/case-presenter'
 import { presentGoodsLines } from '@/lib/nucleos/goods-line-presenter'
 import { presentGaps } from '@/lib/nucleos/gap-vocabulary'
 import { calculateCase, caseContext } from '@/lib/nucleos/case-calculation'
-import {
-  availableReturns,
-  describeJurisdiction,
-  resolveJurisdiction,
-} from '@/lib/nucleos/jurisdiction'
+import { availableReturns, describeJurisdiction, resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
 import type { CaseGoodsLine } from '@/lib/nucleos/declaration-payload'
 import { CbamEmissions } from '@/components/CbamEmissions'
 import { CbamReturnBuilder } from '@/components/CbamReturnBuilder'
@@ -35,11 +31,7 @@ import { latestStatements, presentVerification } from '@/lib/nucleos/verificatio
 // is the order the work happens in — what came in, what it declares, what is
 // still missing, what to file, and what has happened to the case.
 
-export default async function CbamCasePage({
-  params,
-}: {
-  params: Promise<{ caseId: string }>
-}) {
+export default async function CbamCasePage({ params }: { params: Promise<{ caseId: string }> }) {
   const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
   const { caseId } = await params
@@ -66,9 +58,7 @@ export default async function CbamCasePage({
           ← CBAM
         </Link>
         <h1 style={{ ...textStyles.pageTitle, marginTop: spacing[2] }}>CBAM case</h1>
-        <p style={{ ...textStyles.sectionSubtitle, marginTop: spacing[2] }}>
-          This case could not be found.
-        </p>
+        <p style={{ ...textStyles.sectionSubtitle, marginTop: spacing[2] }}>This case could not be found.</p>
       </div>
     )
   }
@@ -90,14 +80,32 @@ export default async function CbamCasePage({
     ? await prisma.cbamVerificationStatement.findMany({
         where: { entityId, nucleosCaseId: caseId, subject: 'EMISSIONS' },
         select: {
-          id: true, goodsLineId: true, status: true, verifierName: true, verifierAccreditation: true,
-          uploadedById: true, uploadedAt: true, decidedById: true, rejectionReason: true, syncedAt: true,
+          id: true,
+          goodsLineId: true,
+          status: true,
+          verifierName: true,
+          verifierAccreditation: true,
+          uploadedById: true,
+          uploadedAt: true,
+          decidedById: true,
+          rejectionReason: true,
+          syncedAt: true,
         },
       })
     : []
   const people = statementRows.length
     ? await prisma.user.findMany({
-        where: { id: { in: [...new Set(statementRows.flatMap(r => [r.uploadedById, r.decidedById].filter((x): x is string => Boolean(x))))] } },
+        where: {
+          id: {
+            in: [
+              ...new Set(
+                statementRows.flatMap(r =>
+                  [r.uploadedById, r.decidedById].filter((x): x is string => Boolean(x)),
+                ),
+              ),
+            ],
+          },
+        },
         select: { id: true, name: true, email: true },
       })
     : []
@@ -122,14 +130,19 @@ export default async function CbamCasePage({
   // A published default has no document text behind it; the panel says so
   // instead of looking for some.
   const usesDefault = new Set(
-    rawGoodsLines.filter(raw => String(raw.method ?? '').toLowerCase() === 'default').map(raw => String(raw.id ?? '')),
+    rawGoodsLines
+      .filter(raw => String(raw.method ?? '').toLowerCase() === 'default')
+      .map(raw => String(raw.id ?? '')),
   )
   const keptNarrative = await prisma.cbamNarrative.findFirst({
     where: { entityId, nucleosCaseId: caseId },
     orderBy: { generatedAt: 'desc' },
   })
   const narrativeAuthor = keptNarrative
-    ? await prisma.user.findUnique({ where: { id: keptNarrative.generatedById }, select: { name: true, email: true } })
+    ? await prisma.user.findUnique({
+        where: { id: keptNarrative.generatedById },
+        select: { name: true, email: true },
+      })
     : null
   const narrative = keptNarrative
     ? presentNarrative(keptNarrative, narrativeAuthor ? narrativeAuthor.name || narrativeAuthor.email : null)
@@ -202,9 +215,7 @@ export default async function CbamCasePage({
         ← CBAM
       </Link>
 
-      <h1 style={{ ...textStyles.pageTitle, marginTop: spacing[2] }}>
-        {row?.importer ?? 'CBAM case'}
-      </h1>
+      <h1 style={{ ...textStyles.pageTitle, marginTop: spacing[2] }}>{row?.importer ?? 'CBAM case'}</h1>
 
       {error ? (
         <p
@@ -216,9 +227,7 @@ export default async function CbamCasePage({
           }}
         >
           This case could not be loaded, so nothing below is showing its real state.
-          <span style={{ display: 'block', color: colours.textTertiary, marginTop: '4px' }}>
-            {error}
-          </span>
+          <span style={{ display: 'block', color: colours.textTertiary, marginTop: '4px' }}>{error}</span>
         </p>
       ) : row ? (
         <>
@@ -263,9 +272,7 @@ export default async function CbamCasePage({
 
             {/* What came in. */}
             <div style={section}>
-              <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[2] }}>
-                Goods on this case
-              </p>
+              <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[2] }}>Goods on this case</p>
               {goodsLines.length === 0 ? (
                 <p style={textStyles.sectionSubtitle}>
                   No goods lines yet. Confirm a customs declaration to add them.
@@ -307,7 +314,11 @@ export default async function CbamCasePage({
                           <td style={cell}>
                             {line.mass}
                             {line.mass !== '—' && (
-                              <CbamWhyThisNumber caseId={caseId} goodsLineId={line.id} figures={[{ field: 'net_mass_kg' }]} />
+                              <CbamWhyThisNumber
+                                caseId={caseId}
+                                goodsLineId={line.id}
+                                figures={[{ field: 'net_mass_kg' }]}
+                              />
                             )}
                           </td>
                           <td style={cell}>{line.origin}</td>
@@ -369,8 +380,8 @@ export default async function CbamCasePage({
             <div style={section}>
               <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>Emissions</p>
               <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[3] }}>
-                How each figure was arrived at, and how well evidenced the record behind it is.
-                They are separate questions.
+                How each figure was arrived at, and how well evidenced the record behind it is. They are
+                separate questions.
               </p>
               {calculation?.loadError ? (
                 <p style={{ ...textStyles.sectionSubtitle, color: colours.amber }}>
@@ -384,9 +395,7 @@ export default async function CbamCasePage({
             {/* What is still missing. */}
             {(gaps.blocking.length > 0 || gaps.advisory.length > 0) && (
               <div style={section}>
-                <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>
-                  What is still missing
-                </p>
+                <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>What is still missing</p>
                 {gaps.summary && (
                   <p
                     style={{
@@ -411,9 +420,7 @@ export default async function CbamCasePage({
                   {gaps.blocking.map(gap => (
                     <li key={gap.raw}>
                       {gap.where} is missing {gap.what}.{' '}
-                      <span style={{ ...textStyles.caption, color: colours.textTertiary }}>
-                        {gap.raw}
-                      </span>
+                      <span style={{ ...textStyles.caption, color: colours.textTertiary }}>{gap.raw}</span>
                     </li>
                   ))}
                 </ul>
@@ -530,9 +537,7 @@ export default async function CbamCasePage({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {event.created_at
-                            ? new Date(event.created_at).toLocaleString('en-GB')
-                            : '—'}
+                          {event.created_at ? new Date(event.created_at).toLocaleString('en-GB') : '—'}
                         </span>
                       </div>
                     ))}

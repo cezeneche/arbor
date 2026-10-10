@@ -19,8 +19,7 @@ const rec = (o: Partial<TotalRecord> = {}): TotalRecord => ({
 })
 
 const totals = (records: TotalRecord[], year = 2026) => buildOverviewTotals(records, year)
-const byKey = (records: TotalRecord[], key: string) =>
-  totals(records).find(t => t.key === key)!
+const byKey = (records: TotalRecord[], key: string) => totals(records).find(t => t.key === key)!
 
 describe('buildOverviewTotals', () => {
   it('always returns the same four figures, in order', () => {
@@ -42,11 +41,14 @@ describe('buildOverviewTotals', () => {
   it('refuses to sum across units, and counts the conflict instead', () => {
     // Adding MJ to kWh needs a conversion. arbor does not convert, so the
     // honest output is the majority unit plus a visible conflict count.
-    const energy = byKey([
-      rec({ id: 'a', value: 100, unit: 'mj' }),
-      rec({ id: 'b', value: 200, unit: 'mj' }),
-      rec({ id: 'c', value: 5, unit: 'kWh' }),
-    ], 'energy')
+    const energy = byKey(
+      [
+        rec({ id: 'a', value: 100, unit: 'mj' }),
+        rec({ id: 'b', value: 200, unit: 'mj' }),
+        rec({ id: 'c', value: 5, unit: 'kWh' }),
+      ],
+      'energy',
+    )
     expect(energy.value).toBe(300)
     expect(energy.unit).toBe('mj')
     expect(energy.conflictCount).toBe(1)
@@ -66,9 +68,10 @@ describe('buildOverviewTotals', () => {
   it('always treats total emissions as a placeholder, never a number', () => {
     // arbor stores declared figures; it does not compute a footprint. Rendering
     // a partial sum here would be the one number on the page nobody could trace.
-    const emissions = byKey([
-      rec({ domain: 'EMISSIONS', fieldName: 'total_co2e_kg', unit: 'kg', value: 412000 }),
-    ], 'emissions')
+    const emissions = byKey(
+      [rec({ domain: 'EMISSIONS', fieldName: 'total_co2e_kg', unit: 'kg', value: 412000 })],
+      'emissions',
+    )
     expect(emissions.value).toBeNull()
     expect(emissions.placeholderReason).toBeTruthy()
   })

@@ -29,8 +29,7 @@ export function RequestDataPrompt() {
           margin: `0 0 ${spacing[3]}`,
         }}
       >
-        What you are asking for changes what the supplier sees, so pick the one
-        that matches.
+        What you are asking for changes what the supplier sees, so pick the one that matches.
       </p>
 
       <div style={{ display: 'grid', gap: spacing[2], maxWidth: '640px' }}>

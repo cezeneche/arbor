@@ -90,8 +90,24 @@ describe('computeSectorBenchmarks', () => {
     // 9 entities with value 100, 1 entity with two records averaging to 100
     const records = makeRecords(9, 100)
     const doubleEntity = [
-      { entityId: 'entity-double', sector: 'steel', domain: 'ENERGY', fieldName: 'electricity_kwh', value: 80, unit: 'kWh', trustTier: 'A' as const },
-      { entityId: 'entity-double', sector: 'steel', domain: 'ENERGY', fieldName: 'electricity_kwh', value: 120, unit: 'kWh', trustTier: 'A' as const },
+      {
+        entityId: 'entity-double',
+        sector: 'steel',
+        domain: 'ENERGY',
+        fieldName: 'electricity_kwh',
+        value: 80,
+        unit: 'kWh',
+        trustTier: 'A' as const,
+      },
+      {
+        entityId: 'entity-double',
+        sector: 'steel',
+        domain: 'ENERGY',
+        fieldName: 'electricity_kwh',
+        value: 120,
+        unit: 'kWh',
+        trustTier: 'A' as const,
+      },
     ]
     const [r] = computeSectorBenchmarks({ records: [...records, ...doubleEntity], year: 2026 })
     expect(r.entityCount).toBe(10)

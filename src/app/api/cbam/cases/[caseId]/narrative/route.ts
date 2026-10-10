@@ -39,6 +39,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ ca
     { entityId, userId: user.id as string, caseId, caseLabel },
     await defaultNarrativeDeps(),
   )
-  if (!result.ok) return NextResponse.json({ error: result.message, code: result.code }, { status: STATUS[result.code] })
+  if (!result.ok)
+    return NextResponse.json({ error: result.message, code: result.code }, { status: STATUS[result.code] })
   return NextResponse.json(result, { status: 201 })
 }

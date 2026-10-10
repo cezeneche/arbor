@@ -24,9 +24,7 @@ describe('missingForCalculation', () => {
   })
 
   it('rejects a zero or negative emissions figure', () => {
-    expect(missingForCalculation({ ...complete, verifiedEmissions: '0' })).toContain(
-      'Verified emissions',
-    )
+    expect(missingForCalculation({ ...complete, verifiedEmissions: '0' })).toContain('Verified emissions')
   })
 
   it('accepts a carbon price of zero, which is a real answer', () => {
@@ -43,7 +41,9 @@ describe('missingForCalculation', () => {
   // the one for the import date, so the claim has to say which date it used.
   it('needs the date the exchange rate applies to', () => {
     expect(missingForCalculation({ ...complete, rateDate: '' })).toEqual(['Date of the exchange rate'])
-    expect(missingForCalculation({ ...complete, rateDate: '15/04/2027' })).toEqual(['Date of the exchange rate'])
+    expect(missingForCalculation({ ...complete, rateDate: '15/04/2027' })).toEqual([
+      'Date of the exchange rate',
+    ])
   })
 
   it('needs the currency the carbon price was paid in', () => {

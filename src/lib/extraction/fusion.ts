@@ -29,9 +29,7 @@ export interface FusedFieldResult {
 }
 
 /** Line up each field's value across the k runs (union of field names, first-seen order). */
-export function collectFieldSamples(
-  results: { fields: ExtractedFieldResult[] }[],
-): FieldSampleGroup[] {
+export function collectFieldSamples(results: { fields: ExtractedFieldResult[] }[]): FieldSampleGroup[] {
   const names: string[] = []
   const seen = new Set<string>()
   for (const r of results) {
@@ -49,10 +47,7 @@ export function collectFieldSamples(
 }
 
 /** A representative run for a field — prefer one whose value matches the consensus. */
-function pickRepresentative(
-  group: FieldSampleGroup,
-  consensus: string | null,
-): ExtractedFieldResult | null {
+function pickRepresentative(group: FieldSampleGroup, consensus: string | null): ExtractedFieldResult | null {
   for (const f of group.perSample) {
     if (f && valuesMatch(f.rawValue, consensus)) return f
   }

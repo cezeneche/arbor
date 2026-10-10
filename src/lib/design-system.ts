@@ -48,11 +48,11 @@ export const typography = {
     body: '1.6',
   },
   tracking: {
-    tight: '-0.03em',    // hero only
-    heading: '-0.01em',  // h2, h3 section headings
-    normal: '0',         // body
-    wide: '0.08em',      // buttons, status labels
-    wider: '0.1em',      // eyebrow caps
+    tight: '-0.03em', // hero only
+    heading: '-0.01em', // h2, h3 section headings
+    normal: '0', // body
+    wide: '0.08em', // buttons, status labels
+    wider: '0.1em', // eyebrow caps
   },
 } as const
 

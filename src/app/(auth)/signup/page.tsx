@@ -38,7 +38,9 @@ const COUNTRIES = [
 export default function SignupPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [entityType, setEntityType] = useState<'SUPPLIER' | 'BUYER'>(() => searchParams.get('audience') === 'buyer' ? 'BUYER' : 'SUPPLIER')
+  const [entityType, setEntityType] = useState<'SUPPLIER' | 'BUYER'>(() =>
+    searchParams.get('audience') === 'buyer' ? 'BUYER' : 'SUPPLIER',
+  )
   const [companyName, setCompanyName] = useState('')
   const [sector, setSector] = useState('')
   const [country, setCountry] = useState('GB')
@@ -79,7 +81,9 @@ export default function SignupPage() {
       }
       router.push('/onboarding')
     } catch {
-      setError('We could not complete signup. Your entries are still here; check your connection and try again.')
+      setError(
+        'We could not complete signup. Your entries are still here; check your connection and try again.',
+      )
     } finally {
       setLoading(false)
     }
@@ -119,14 +123,8 @@ export default function SignupPage() {
       }}
     >
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          arbor
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <h1 style={textStyles.pageTitle}>arbor</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Create your pilot account
         </p>
         <p style={{ ...textStyles.caption, color: colours.textSecondary, margin: `${spacing[2]} 0 0` }}>
@@ -139,15 +137,20 @@ export default function SignupPage() {
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
-
         {/* Entity type */}
         <div>
           <p style={{ ...labelStyle, marginBottom: '8px' }}>I am signing up as a</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            {([
-              { value: 'SUPPLIER', heading: 'Supplier / manufacturer', sub: 'Manage and share our operational data' },
-              { value: 'BUYER', heading: 'Buyer / large company', sub: 'Request and review supplier data' },
-            ] as const).map(opt => (
+            {(
+              [
+                {
+                  value: 'SUPPLIER',
+                  heading: 'Supplier / manufacturer',
+                  sub: 'Manage and share our operational data',
+                },
+                { value: 'BUYER', heading: 'Buyer / large company', sub: 'Request and review supplier data' },
+              ] as const
+            ).map(opt => (
               <button
                 key={opt.value}
                 type="button"
@@ -161,10 +164,24 @@ export default function SignupPage() {
                   textAlign: 'left' as const,
                 }}
               >
-                <div style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colours.textPrimary, marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.medium,
+                    color: colours.textPrimary,
+                    marginBottom: '4px',
+                  }}
+                >
                   {opt.heading}
                 </div>
-                <div style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.light, color: colours.textSecondary, lineHeight: '1.4' }}>
+                <div
+                  style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.light,
+                    color: colours.textSecondary,
+                    lineHeight: '1.4',
+                  }}
+                >
                   {opt.sub}
                 </div>
               </button>
@@ -175,7 +192,9 @@ export default function SignupPage() {
         <div style={{ borderTop: `1px solid ${colours.border}`, marginTop: '4px' }} />
 
         <div>
-          <label htmlFor="inviteCode" style={labelStyle}>Invite code</label>
+          <label htmlFor="inviteCode" style={labelStyle}>
+            Invite code
+          </label>
           <input
             id="inviteCode"
             type="text"
@@ -187,7 +206,9 @@ export default function SignupPage() {
         </div>
 
         <div>
-          <label htmlFor="companyName" style={labelStyle}>Company name</label>
+          <label htmlFor="companyName" style={labelStyle}>
+            Company name
+          </label>
           <input
             id="companyName"
             type="text"
@@ -201,7 +222,9 @@ export default function SignupPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[2] }}>
           <div>
-            <label htmlFor="sector" style={labelStyle}>Sector</label>
+            <label htmlFor="sector" style={labelStyle}>
+              Sector
+            </label>
             <select
               id="sector"
               value={sector}
@@ -211,12 +234,16 @@ export default function SignupPage() {
             >
               <option value="">Select…</option>
               {SECTORS.map(s => (
-                <option key={s.value} value={s.value}>{s.label}</option>
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label htmlFor="country" style={labelStyle}>Country</label>
+            <label htmlFor="country" style={labelStyle}>
+              Country
+            </label>
             <select
               id="country"
               value={country}
@@ -225,7 +252,9 @@ export default function SignupPage() {
               style={inputStyle}
             >
               {COUNTRIES.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
               ))}
             </select>
           </div>
@@ -234,7 +263,9 @@ export default function SignupPage() {
         <div style={{ borderTop: `1px solid ${colours.border}`, marginTop: '4px' }} />
 
         <div>
-          <label htmlFor="name" style={labelStyle}>Your name</label>
+          <label htmlFor="name" style={labelStyle}>
+            Your name
+          </label>
           <input
             id="name"
             type="text"
@@ -247,7 +278,9 @@ export default function SignupPage() {
         </div>
 
         <div>
-          <label htmlFor="email" style={labelStyle}>Email</label>
+          <label htmlFor="email" style={labelStyle}>
+            Email
+          </label>
           <input
             id="email"
             type="email"
@@ -259,7 +292,9 @@ export default function SignupPage() {
         </div>
 
         <div>
-          <label htmlFor="password" style={labelStyle}>Password</label>
+          <label htmlFor="password" style={labelStyle}>
+            Password
+          </label>
           <input
             id="password"
             type="password"
@@ -306,11 +341,21 @@ export default function SignupPage() {
             }}
           >
             I agree to the{' '}
-            <a href="/legal/terms" target="_blank" rel="noopener noreferrer" style={{ color: colours.navy, textDecoration: 'none' }}>
+            <a
+              href="/legal/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: colours.navy, textDecoration: 'none' }}
+            >
               Terms of Service
-            </a>
-            {' '}and{' '}
-            <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" style={{ color: colours.navy, textDecoration: 'none' }}>
+            </a>{' '}
+            and{' '}
+            <a
+              href="/legal/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: colours.navy, textDecoration: 'none' }}
+            >
               Privacy Policy
             </a>
           </span>

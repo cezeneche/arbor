@@ -113,7 +113,10 @@ describe('ungroundedNumbers', () => {
 
   it('accepts figures, dates and counts that are in the evidence', () => {
     expect(
-      ungroundedNumbers('Acme Steel Ltd used 44,640 MJ between 1 January and 31 March 2026, Verified. 3 records match.', grounding),
+      ungroundedNumbers(
+        'Acme Steel Ltd used 44,640 MJ between 1 January and 31 March 2026, Verified. 3 records match.',
+        grounding,
+      ),
     ).toEqual([])
   })
 

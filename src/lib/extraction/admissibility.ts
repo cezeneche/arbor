@@ -72,7 +72,7 @@ export function evaluateAdmissibility(
 
   // Compulsory and conditional fields
   for (const def of fieldDefs) {
-    const extracted = extractedFields.find((f) => f.fieldName === def.name)
+    const extracted = extractedFields.find(f => f.fieldName === def.name)
 
     if (def.admissibility === 'compulsory') {
       if (!extracted || extracted.rawValue === null || extracted.rawValue === '') {
@@ -149,7 +149,8 @@ export function evaluateAdmissibility(
       flags.push({
         fieldName: 'fuel_type',
         flagType: 'GENERIC_VALUE',
-        message: "fuel_type is OTHER but no description provided. Generic 'fuel' is not admissible at Tier A.",
+        message:
+          "fuel_type is OTHER but no description provided. Generic 'fuel' is not admissible at Tier A.",
         severity: 'CRITICAL',
       })
     }
@@ -309,7 +310,7 @@ export function evaluateAdmissibility(
   if (documentType === 'EMISSIONS_FACTOR_DOC') {
     if (fieldValues['source'] === 'OTHER') {
       const missingCitation = ['citation_author', 'citation_publisher', 'citation_url_or_doi'].filter(
-        f => !fieldValues[f] || fieldValues[f] === ''
+        f => !fieldValues[f] || fieldValues[f] === '',
       )
       for (const f of missingCitation) {
         flags.push({
@@ -325,7 +326,11 @@ export function evaluateAdmissibility(
   // ESG_DISCLOSURE: assurance_level != NONE requires assurance_body
   if (documentType === 'ESG_DISCLOSURE') {
     const level = fieldValues['assurance_level']
-    if (level !== null && level !== 'NONE' && (!fieldValues['assurance_body'] || fieldValues['assurance_body'] === '')) {
+    if (
+      level !== null &&
+      level !== 'NONE' &&
+      (!fieldValues['assurance_body'] || fieldValues['assurance_body'] === '')
+    ) {
       flags.push({
         fieldName: 'assurance_body',
         flagType: 'MISSING_CONDITIONAL_FIELD',
@@ -334,13 +339,21 @@ export function evaluateAdmissibility(
       })
     }
     // At least one emissions or resource figure is expected (not CRITICAL  -  report may exist without quantitative data)
-    const quantFields = ['scope_1_co2e', 'scope_2_co2e', 'scope_3_co2e', 'total_energy_gwh', 'water_withdrawal_m3', 'waste_generated_tonnes']
+    const quantFields = [
+      'scope_1_co2e',
+      'scope_2_co2e',
+      'scope_3_co2e',
+      'total_energy_gwh',
+      'water_withdrawal_m3',
+      'waste_generated_tonnes',
+    ]
     const hasAny = quantFields.some(f => fieldValues[f] && fieldValues[f] !== '')
     if (!hasAny) {
       flags.push({
         fieldName: 'scope_1_co2e',
         flagType: 'COMPLETENESS_GAP',
-        message: 'No quantitative data fields (emissions, energy, water, waste) extracted from this ESG disclosure. The record adds no operational data to the database.',
+        message:
+          'No quantitative data fields (emissions, energy, water, waste) extracted from this ESG disclosure. The record adds no operational data to the database.',
         severity: 'WARNING',
       })
     }
@@ -373,7 +386,7 @@ export function evaluateAdmissibility(
     }
   }
 
-  const criticalCount = flags.filter((f) => f.severity === 'CRITICAL').length
+  const criticalCount = flags.filter(f => f.severity === 'CRITICAL').length
   // documents with no admissibility spec (OTHER / unknown / generic) and
   // supplier questionnaires default to Tier B: there is no spec to verify against.
   const isGeneric = fieldDefs.length === 0

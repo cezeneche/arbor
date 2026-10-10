@@ -132,12 +132,8 @@ export function JurisdictionSelector({
         })}
       </div>
 
-      {error && (
-        <p style={{ ...textStyles.caption, color: colours.red, marginTop: spacing[1] }}>{error}</p>
-      )}
-      {saved && (
-        <p style={{ ...textStyles.caption, color: colours.green, marginTop: spacing[1] }}>Saved.</p>
-      )}
+      {error && <p style={{ ...textStyles.caption, color: colours.red, marginTop: spacing[1] }}>{error}</p>}
+      {saved && <p style={{ ...textStyles.caption, color: colours.green, marginTop: spacing[1] }}>Saved.</p>}
     </div>
   )
 }

@@ -21,7 +21,7 @@ function redirectTo(req: NextRequest, path: string): NextResponse {
   return NextResponse.redirect(new URL(path, base))
 }
 
-export default auth((req) => {
+export default auth(req => {
   const isAuthed = hasSignedInUser(req.auth)
   const isPublic = isPublicPath(req.nextUrl.pathname)
 
@@ -46,7 +46,12 @@ export default auth((req) => {
     if (!allowed) return redirectTo(req, '/auditor')
   }
   // Conversely, keep entity users out of the verifier/auditor areas.
-  if (isAuthed && role && role !== 'VERIFIER' && (path.startsWith('/verifier') || path.startsWith('/api/verifier'))) {
+  if (
+    isAuthed &&
+    role &&
+    role !== 'VERIFIER' &&
+    (path.startsWith('/verifier') || path.startsWith('/api/verifier'))
+  ) {
     return redirectTo(req, '/dashboard')
   }
   if (isAuthed && role && role !== 'AUDITOR' && path.startsWith('/auditor')) {

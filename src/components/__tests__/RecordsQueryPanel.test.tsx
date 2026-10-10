@@ -70,9 +70,7 @@ describe('RecordsQueryPanel', () => {
     render(<RecordsQueryPanel suggestions={[]}>content</RecordsQueryPanel>)
     await askAQuestion()
 
-    await waitFor(() =>
-      expect(screen.getByText(/1,284,500 kWh, marked Verified/)).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByText(/1,284,500 kWh, marked Verified/)).toBeInTheDocument())
   })
 
   it('shows the matching records underneath the answer', async () => {

@@ -11,7 +11,8 @@ const bodySchema = z.object({ token: z.string().min(1).max(200) })
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers.get('x-forwarded-for'), req.headers.get('x-real-ip'))
   const { allowed } = await checkRateLimit(RATE_LIMITS.resetPassword, ip)
-  if (!allowed) return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+  if (!allowed)
+    return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'This link could not be used.' }, { status: 400 })

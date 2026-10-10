@@ -110,9 +110,7 @@ describe('recordForeignChainSeal', () => {
   it('rejects a seal with no usable timestamp', async () => {
     mocked.foreignChainSeal.findUnique.mockResolvedValue(null)
 
-    await expect(
-      recordForeignChainSeal({ ...SEAL, sealedAt: 'not-a-date' }),
-    ).rejects.toThrow(/sealedAt/)
+    await expect(recordForeignChainSeal({ ...SEAL, sealedAt: 'not-a-date' })).rejects.toThrow(/sealedAt/)
   })
 
   it('accepts an empty chain', async () => {

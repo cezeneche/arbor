@@ -11,10 +11,7 @@
 // the one in force now. A record certified under v1 carries v1's boundary for the
 // rest of its life; that is what makes the certification mean anything.
 
-import {
-  resolveDefinitionAsOf,
-  type StoredFieldDefinition,
-} from '@/lib/definitions/registry'
+import { resolveDefinitionAsOf, type StoredFieldDefinition } from '@/lib/definitions/registry'
 import {
   resolveAgreementFor,
   agreementLabel,

@@ -45,7 +45,12 @@ describe('planConstraintFlags', () => {
       {
         id: 'doc1',
         violations: [
-          { field: 'quantity_tonnes', type: 'NON_NEGATIVITY', severity: 'CRITICAL', message: 'negative mass' },
+          {
+            field: 'quantity_tonnes',
+            type: 'NON_NEGATIVITY',
+            severity: 'CRITICAL',
+            message: 'negative mass',
+          },
         ],
         completions: [],
       },
@@ -61,7 +66,12 @@ describe('planConstraintFlags', () => {
       {
         id: 'doc1',
         violations: [
-          { field: 'embedded_emissions_per_tonne', type: 'IMPLAUSIBLE_INTENSITY', severity: 'WARNING', message: 'out of range' },
+          {
+            field: 'embedded_emissions_per_tonne',
+            type: 'IMPLAUSIBLE_INTENSITY',
+            severity: 'WARNING',
+            message: 'out of range',
+          },
         ],
         completions: [],
       },
@@ -76,7 +86,12 @@ describe('planConstraintFlags', () => {
       {
         id: 'doc1',
         violations: [
-          { field: 'quantity_tonnes', type: 'NON_NEGATIVITY', severity: 'CRITICAL', message: 'negative mass' },
+          {
+            field: 'quantity_tonnes',
+            type: 'NON_NEGATIVITY',
+            severity: 'CRITICAL',
+            message: 'negative mass',
+          },
         ],
         completions: [],
       },
@@ -90,9 +105,7 @@ describe('planConstraintFlags', () => {
     const results: ConstraintRecordResult[] = [
       {
         id: 'doc1',
-        violations: [
-          { field: 'quantity_tonnes', type: 'PERCENT_BOUND', severity: 'weird', message: 'odd' },
-        ],
+        violations: [{ field: 'quantity_tonnes', type: 'PERCENT_BOUND', severity: 'weird', message: 'odd' }],
         completions: [],
       },
     ]
@@ -106,7 +119,13 @@ describe('planConstraintFlags', () => {
         id: 'doc1',
         violations: [],
         completions: [
-          { field: 'embedded_emissions_tco2e', value: 150, method: 'balance', determined: true, entropy_bits: 0 },
+          {
+            field: 'embedded_emissions_tco2e',
+            value: 150,
+            method: 'balance',
+            determined: true,
+            entropy_bits: 0,
+          },
         ],
       },
     ]

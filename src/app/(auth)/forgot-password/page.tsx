@@ -56,14 +56,8 @@ export default function ForgotPasswordPage() {
       }}
     >
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
-          Reset your password
-        </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <h1 style={textStyles.pageTitle}>Reset your password</h1>
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Enter your email and we&apos;ll send you a link to set a new one.
         </p>
       </div>
@@ -80,8 +74,7 @@ export default function ForgotPasswordPage() {
             margin: 0,
           }}
         >
-          If an account exists for that email, a reset link is on its way. The link
-          expires in one hour.
+          If an account exists for that email, a reset link is on its way. The link expires in one hour.
         </p>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
@@ -93,7 +86,7 @@ export default function ForgotPasswordPage() {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               required
               style={inputStyle}
             />

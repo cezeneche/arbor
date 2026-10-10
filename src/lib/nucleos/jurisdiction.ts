@@ -63,8 +63,7 @@ export const CBAM_JURISDICTIONS: readonly JurisdictionOption[] = [
     id: 'BOTH',
     label: 'Both',
     detail:
-      'You import into the UK and the EU. Each import produces its own return, ' +
-      'under its own rules.',
+      'You import into the UK and the EU. Each import produces its own return, ' + 'under its own rules.',
   },
 ] as const
 

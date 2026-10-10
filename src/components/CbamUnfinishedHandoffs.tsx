@@ -45,14 +45,22 @@ export function CbamUnfinishedHandoffs({ handoffs }: { handoffs: UnfinishedHando
         {rows.length === 1 ? 'One case is not finished' : `${rows.length} cases are not finished`}
       </p>
       <p style={{ ...textStyles.caption, color: colours.textSecondary, margin: `${spacing[1]} 0 0` }}>
-        The figures are saved. Resume adds only what is missing from the case, and a case waiting for details opens once you add them.
+        The figures are saved. Resume adds only what is missing from the case, and a case waiting for details
+        opens once you add them.
       </p>
       {rows.map(row => (
         <div
           key={row.documentId}
           style={{ borderTop: `1px solid ${colours.border}`, marginTop: spacing[3], paddingTop: spacing[3] }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: spacing[3], alignItems: 'center' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: spacing[3],
+              alignItems: 'center',
+            }}
+          >
             <span style={textStyles.value}>
               {row.fileName}
               {row.status === 'PENDING'
@@ -77,7 +85,10 @@ export function CbamUnfinishedHandoffs({ handoffs }: { handoffs: UnfinishedHando
                 </Link>
               )}
               {row.status !== 'NEEDS_INPUT' && (
-                <CbamResumeHandoff documentId={row.documentId} onResult={next => update(row.documentId, next)} />
+                <CbamResumeHandoff
+                  documentId={row.documentId}
+                  onResult={next => update(row.documentId, next)}
+                />
               )}
             </span>
           </div>

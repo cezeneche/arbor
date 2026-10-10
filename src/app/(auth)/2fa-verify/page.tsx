@@ -93,14 +93,10 @@ export default function TwoFactorVerifyPage() {
   return (
     <div style={cardStyle}>
       <div style={{ marginBottom: spacing[5] }}>
-        <h1
-          style={textStyles.pageTitle}
-        >
+        <h1 style={textStyles.pageTitle}>
           {showRecovery ? 'Use a recovery code' : 'Two-factor verification'}
         </h1>
-        <p
-          style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}
-        >
+        <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           {showRecovery
             ? 'Enter one of your saved recovery codes.'
             : 'Enter the 6-digit code from your authenticator app.'}
@@ -188,7 +184,10 @@ export default function TwoFactorVerifyPage() {
         }}
       >
         <button
-          onClick={() => { setShowRecovery(r => !r); setError(null) }}
+          onClick={() => {
+            setShowRecovery(r => !r)
+            setError(null)
+          }}
           style={{
             background: 'none',
             border: 'none',

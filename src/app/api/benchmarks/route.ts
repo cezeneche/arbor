@@ -28,7 +28,14 @@ export interface BenchmarkPoint {
   mean: number
 }
 
-function computeStats(values: number[]): { min: number; q1: number; median: number; q3: number; max: number; mean: number } {
+function computeStats(values: number[]): {
+  min: number
+  q1: number
+  median: number
+  q3: number
+  max: number
+  mean: number
+} {
   const sorted = [...values].sort((a, b) => a - b)
   const n = sorted.length
   const median = n % 2 === 0 ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 : sorted[Math.floor(n / 2)]
@@ -144,7 +151,10 @@ export async function GET(req: NextRequest) {
     // One value per entity (median of that entity's records) to prevent prolific
     // entities from skewing the distribution.
     const entityMedians = [...distinctEntities].map(eid => {
-      const entityVals = group.values.filter(v => v.entityId === eid).map(v => v.value).sort((a, b) => a - b)
+      const entityVals = group.values
+        .filter(v => v.entityId === eid)
+        .map(v => v.value)
+        .sort((a, b) => a - b)
       const mid = Math.floor(entityVals.length / 2)
       return entityVals.length % 2 === 0 ? (entityVals[mid - 1] + entityVals[mid]) / 2 : entityVals[mid]
     })
@@ -161,11 +171,12 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  benchmarks.sort((a, b) =>
-    a.sector.localeCompare(b.sector) ||
-    a.domain.localeCompare(b.domain) ||
-    a.fieldName.localeCompare(b.fieldName) ||
-    b.year - a.year
+  benchmarks.sort(
+    (a, b) =>
+      a.sector.localeCompare(b.sector) ||
+      a.domain.localeCompare(b.domain) ||
+      a.fieldName.localeCompare(b.fieldName) ||
+      b.year - a.year,
   )
 
   // Distinct sectors and domains available (for filter UI)

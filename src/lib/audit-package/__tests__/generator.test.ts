@@ -121,7 +121,7 @@ describe('generateAuditPackage', () => {
 
   it('trust tier travels with each data record', () => {
     const pkg = generateAuditPackage(BASE_INPUT)
-    const tierBRecord = pkg.dataRecords.find((r) => r.id === 'r2')
+    const tierBRecord = pkg.dataRecords.find(r => r.id === 'r2')
     expect(tierBRecord?.trustTier).toBe('B')
   })
 

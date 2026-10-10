@@ -15,7 +15,14 @@ export async function loadRecordQualityRows(
 ): Promise<QualityRecord[]> {
   const horizon = new Date(now.getTime() + DEFAULT_EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000)
   const rows = await prisma.$queryRaw<
-    { domain: string; fieldName: string; trustTier: 'A' | 'B' | 'C'; documentType: string | null; expiring: boolean; count: number }[]
+    {
+      domain: string
+      fieldName: string
+      trustTier: 'A' | 'B' | 'C'
+      documentType: string | null
+      expiring: boolean
+      count: number
+    }[]
   >(Prisma.sql`
     SELECT r."domain"::text AS "domain", r."fieldName", r."trustTier"::text AS "trustTier",
            d."documentType"::text AS "documentType",

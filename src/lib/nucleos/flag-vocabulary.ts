@@ -47,8 +47,7 @@ const RULES: Rule[] = [
   },
   {
     match: /^claude_value_not_evidenced_in_text/,
-    explain: () =>
-      'The model produced a value that does not appear in the document text. It was rejected.',
+    explain: () => 'The model produced a value that does not appear in the document text. It was rejected.',
     serious: true,
   },
   {
@@ -58,8 +57,7 @@ const RULES: Rule[] = [
   },
   {
     match: /^claude_conflict_ignored/,
-    explain: () =>
-      'The model disagreed with a value read directly from the document. The document won.',
+    explain: () => 'The model disagreed with a value read directly from the document. The document won.',
     serious: false,
   },
   {
@@ -76,8 +74,7 @@ const RULES: Rule[] = [
   },
   {
     match: /^line_count_disagreement/,
-    explain: () =>
-      'The two extractors read a different number of goods lines from this document.',
+    explain: () => 'The two extractors read a different number of goods lines from this document.',
     serious: true,
   },
   {
@@ -104,8 +101,7 @@ const RULES: Rule[] = [
   },
   {
     match: /^no_source_text/,
-    explain: () =>
-      'No source text came with this value, so there is nothing to confirm it against.',
+    explain: () => 'No source text came with this value, so there is nothing to confirm it against.',
     serious: true,
   },
   {

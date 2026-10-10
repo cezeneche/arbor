@@ -46,9 +46,7 @@ export async function POST(req: NextRequest) {
   // Seed the initial catalogue
   const asSeed = seedSchema.safeParse(body)
   if (asSeed.success) {
-    const effectiveFrom = asSeed.data.effectiveFrom
-      ? new Date(asSeed.data.effectiveFrom)
-      : new Date()
+    const effectiveFrom = asSeed.data.effectiveFrom ? new Date(asSeed.data.effectiveFrom) : new Date()
     const rows = seedDefinitionsAsStored(effectiveFrom)
 
     // Idempotent: seed ids are derived from field+domain, so a re-run skips what

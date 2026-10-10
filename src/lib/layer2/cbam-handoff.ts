@@ -138,10 +138,7 @@ export async function enqueueCbamHandoff(tx: Db, input: CbamHandoffInput): Promi
  * alone, an attempt already running is left to finish, and anything that
  * already landed in Nucleos is not posted again.
  */
-export async function runCbamHandoff(
-  documentId: string,
-  deps: Deps = {},
-): Promise<CbamHandoffOutcome> {
+export async function runCbamHandoff(documentId: string, deps: Deps = {}): Promise<CbamHandoffOutcome> {
   const db = (deps.db ?? defaultPrisma) as PrismaClient
   const writeCase = deps.writeCase ?? writeCbamCase
 

@@ -47,22 +47,31 @@ describe('state', () => {
   })
 
   it('is attention when something needs doing but nothing is at stake', () => {
-    const r = buildAttention(input({
-      records: [rec()],
-      documents: [{ id: 'd1', fileName: 'q3.pdf', status: 'REVIEW_REQUIRED', valueCount: 4 }],
-    }))
+    const r = buildAttention(
+      input({
+        records: [rec()],
+        documents: [{ id: 'd1', fileName: 'q3.pdf', status: 'REVIEW_REQUIRED', valueCount: 4 }],
+      }),
+    )
     expect(r.state).toBe('attention')
     expect(r.clearLine).toBeNull()
   })
 
   it('is blocking as soon as one blocking item exists, whatever else is present', () => {
-    const r = buildAttention(input({
-      records: [rec()],
-      documents: [
-        { id: 'd1', fileName: 'q3.pdf', status: 'REVIEW_REQUIRED', valueCount: 4 },
-        { id: 'd2', fileName: 'broken.pdf', status: 'REJECTED', errorMessage: 'The file is password protected' },
-      ],
-    }))
+    const r = buildAttention(
+      input({
+        records: [rec()],
+        documents: [
+          { id: 'd1', fileName: 'q3.pdf', status: 'REVIEW_REQUIRED', valueCount: 4 },
+          {
+            id: 'd2',
+            fileName: 'broken.pdf',
+            status: 'REJECTED',
+            errorMessage: 'The file is password protected',
+          },
+        ],
+      }),
+    )
     expect(r.state).toBe('blocking')
     // Attention items survive; the renderer places them after Totals.
     expect(r.attention).toHaveLength(1)
@@ -72,42 +81,67 @@ describe('state', () => {
 describe('blocking conditions', () => {
   it('raises a record type with no record for a period closing within 45 days', () => {
     // Q3 closes in 53 days, so a Q3 gap is not yet blocking.
-    const far = buildAttention(input({
-      records: [rec({ periodStart: '2026-04-01', periodEnd: '2026-06-30' })],
-    }))
+    const far = buildAttention(
+      input({
+        records: [rec({ periodStart: '2026-04-01', periodEnd: '2026-06-30' })],
+      }),
+    )
     expect(far.blocking).toEqual([])
 
     // Ten days out, the same gap blocks.
-    const near = buildAttention(input({
-      now: new Date('2026-09-20T00:00:00Z'),
-      records: [rec({ periodStart: '2026-04-01', periodEnd: '2026-06-30' })],
-    }))
+    const near = buildAttention(
+      input({
+        now: new Date('2026-09-20T00:00:00Z'),
+        records: [rec({ periodStart: '2026-04-01', periodEnd: '2026-06-30' })],
+      }),
+    )
     expect(near.blocking).toHaveLength(1)
     expect(near.blocking[0].sentence).toMatch(/Q3 2026/)
     expect(near.blocking[0].sentence).toMatch(/Estimated/)
   })
 
   it('raises a document that failed to parse, naming the file and the reason', () => {
-    const r = buildAttention(input({
-      documents: [{ id: 'd2', fileName: 'heartlands-energy-q3.pdf', status: 'REJECTED', errorMessage: 'The file is password protected' }],
-    }))
+    const r = buildAttention(
+      input({
+        documents: [
+          {
+            id: 'd2',
+            fileName: 'heartlands-energy-q3.pdf',
+            status: 'REJECTED',
+            errorMessage: 'The file is password protected',
+          },
+        ],
+      }),
+    )
     expect(r.blocking[0].sentence).toContain('heartlands-energy-q3.pdf')
     expect(r.blocking[0].sentence).toContain('password protected')
     expect(r.blocking[0].actionLabel).toBe('Upload again')
   })
 
   it('raises two records for the same type and period that disagree', () => {
-    const r = buildAttention(input({
-      disagreements: [{ fieldName: 'total_consumption_kwh', discrepancyPercent: 18 }],
-    }))
+    const r = buildAttention(
+      input({
+        disagreements: [{ fieldName: 'total_consumption_kwh', discrepancyPercent: 18 }],
+      }),
+    )
     expect(r.blocking[0].sentence).toMatch(/disagree|differ/i)
     expect(r.blocking[0].sentence).toContain('18')
   })
 
   it('raises a record whose unit is inconsistent with its type', () => {
-    const r = buildAttention(input({
-      unitConflicts: [{ recordId: 'r9', domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'kWh', expected: 'mj' }],
-    }))
+    const r = buildAttention(
+      input({
+        unitConflicts: [
+          {
+            recordId: 'r9',
+            domain: 'ENERGY',
+            fieldName: 'total_consumption_kwh',
+            unit: 'kWh',
+            expected: 'mj',
+          },
+        ],
+      }),
+    )
     expect(r.blocking[0].sentence).toContain('kWh')
     expect(r.blocking[0].sentence).toContain('mj')
   })
@@ -116,13 +150,15 @@ describe('blocking conditions', () => {
     // Ten bills written in the wrong unit are one mistake to fix. Ten identical
     // sentences is a wall the reader stops reading.
     const conflict = { domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'kWh', expected: 'mj' }
-    const r = buildAttention(input({
-      unitConflicts: [
-        { recordId: 'a', ...conflict },
-        { recordId: 'b', ...conflict },
-        { recordId: 'c', ...conflict },
-      ],
-    }))
+    const r = buildAttention(
+      input({
+        unitConflicts: [
+          { recordId: 'a', ...conflict },
+          { recordId: 'b', ...conflict },
+          { recordId: 'c', ...conflict },
+        ],
+      }),
+    )
     expect(r.blocking).toHaveLength(1)
     expect(r.blocking[0].sentence).toMatch(/^3 total consumption kwh records are/)
   })
@@ -130,24 +166,34 @@ describe('blocking conditions', () => {
 
 describe('attention conditions', () => {
   it('raises an outbound request past its due date', () => {
-    const r = buildAttention(input({
-      requests: [{ id: 'q1', counterpartyName: 'Northern Foods', domain: 'ENERGY', deadline: '2026-07-01' }],
-    }))
+    const r = buildAttention(
+      input({
+        requests: [
+          { id: 'q1', counterpartyName: 'Northern Foods', domain: 'ENERGY', deadline: '2026-07-01' },
+        ],
+      }),
+    )
     expect(r.attention[0].sentence).toContain('Northern Foods')
     expect(r.attention[0].severity).toBe('attention')
   })
 
   it('leaves a request that is not yet due alone', () => {
-    const r = buildAttention(input({
-      requests: [{ id: 'q1', counterpartyName: 'Northern Foods', domain: 'ENERGY', deadline: '2026-12-01' }],
-    }))
+    const r = buildAttention(
+      input({
+        requests: [
+          { id: 'q1', counterpartyName: 'Northern Foods', domain: 'ENERGY', deadline: '2026-12-01' },
+        ],
+      }),
+    )
     expect(r.attention).toEqual([])
   })
 
   it('raises drafts awaiting review', () => {
-    const r = buildAttention(input({
-      documents: [{ id: 'd1', fileName: 'q3.pdf', status: 'REVIEW_REQUIRED', valueCount: 4 }],
-    }))
+    const r = buildAttention(
+      input({
+        documents: [{ id: 'd1', fileName: 'q3.pdf', status: 'REVIEW_REQUIRED', valueCount: 4 }],
+      }),
+    )
     expect(r.attention[0].sentence).toMatch(/4 values/)
     expect(r.attention[0].href).toBe('/review')
   })
@@ -169,24 +215,36 @@ describe('attention conditions', () => {
 
 describe('ordering and shape', () => {
   it('sorts blocking items by deadline, soonest first', () => {
-    const r = buildAttention(input({
-      now: new Date('2026-09-20T00:00:00Z'),
-      records: [rec({ periodStart: '2026-04-01', periodEnd: '2026-06-30' })],
-      documents: [{ id: 'd2', fileName: 'broken.pdf', status: 'REJECTED', errorMessage: 'unreadable' }],
-    }))
+    const r = buildAttention(
+      input({
+        now: new Date('2026-09-20T00:00:00Z'),
+        records: [rec({ periodStart: '2026-04-01', periodEnd: '2026-06-30' })],
+        documents: [{ id: 'd2', fileName: 'broken.pdf', status: 'REJECTED', errorMessage: 'unreadable' }],
+      }),
+    )
     // The closing period has a date; a failed upload has none, so it follows.
     expect(r.blocking[0].deadline).not.toBeNull()
     expect(r.blocking[r.blocking.length - 1].deadline).toBeNull()
   })
 
   it('gives every item a sentence, an action and a unique key', () => {
-    const r = buildAttention(input({
-      documents: [
-        { id: 'd1', fileName: 'q3.pdf', status: 'REVIEW_REQUIRED', valueCount: 4 },
-        { id: 'd2', fileName: 'broken.pdf', status: 'REJECTED', errorMessage: 'unreadable' },
-      ],
-      unitConflicts: [{ recordId: 'r9', domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'kWh', expected: 'mj' }],
-    }))
+    const r = buildAttention(
+      input({
+        documents: [
+          { id: 'd1', fileName: 'q3.pdf', status: 'REVIEW_REQUIRED', valueCount: 4 },
+          { id: 'd2', fileName: 'broken.pdf', status: 'REJECTED', errorMessage: 'unreadable' },
+        ],
+        unitConflicts: [
+          {
+            recordId: 'r9',
+            domain: 'ENERGY',
+            fieldName: 'total_consumption_kwh',
+            unit: 'kWh',
+            expected: 'mj',
+          },
+        ],
+      }),
+    )
     const all = [...r.blocking, ...r.attention]
     expect(new Set(all.map(i => i.key)).size).toBe(all.length)
     for (const item of all) {
@@ -207,9 +265,20 @@ describe('bounded inputs', () => {
   })
 
   it('counts a grouped unit conflict by the records it stands for', () => {
-    const r = buildAttention(input({
-      unitConflicts: [{ recordId: 'r1', domain: 'ENERGY', fieldName: 'total_consumption_kwh', unit: 'kwh', expected: 'mj', count: 7 }],
-    }))
+    const r = buildAttention(
+      input({
+        unitConflicts: [
+          {
+            recordId: 'r1',
+            domain: 'ENERGY',
+            fieldName: 'total_consumption_kwh',
+            unit: 'kwh',
+            expected: 'mj',
+            count: 7,
+          },
+        ],
+      }),
+    )
     expect(r.blocking[0].sentence).toMatch(/^7 total consumption kwh records are stored in kwh/)
   })
 })

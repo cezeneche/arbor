@@ -47,7 +47,10 @@ export default function VerifyEmailForm() {
       <h1 style={textStyles.pageTitle}>Confirm your email address</h1>
       {state === 'done' ? (
         <p style={{ ...textStyles.sectionSubtitle, marginTop: spacing[2] }}>
-          Thank you — your email address is confirmed. <a href="/dashboard" style={{ color: colours.textPrimary }}>Go to arbor</a>
+          Thank you — your email address is confirmed.{' '}
+          <a href="/dashboard" style={{ color: colours.textPrimary }}>
+            Go to arbor
+          </a>
         </p>
       ) : (
         <>

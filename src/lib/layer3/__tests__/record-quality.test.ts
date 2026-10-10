@@ -13,16 +13,29 @@ const compulsory = {
 }
 
 function rec(p: Partial<QualityRecord>): QualityRecord {
-  return { domain: 'ENERGY', fieldName: 'supplier_name', trustTier: 'A', staleAfterDate: null, documentType: 'ELECTRICITY_BILL', ...p }
+  return {
+    domain: 'ENERGY',
+    fieldName: 'supplier_name',
+    trustTier: 'A',
+    staleAfterDate: null,
+    documentType: 'ELECTRICITY_BILL',
+    ...p,
+  }
 }
 
 describe('summariseRecordQuality', () => {
   it('returns all zeros for no records', () => {
     expect(summariseRecordQuality([], compulsory)).toEqual({
-      total: 0, verified: 0, declared: 0, estimated: 0, missingCompulsoryFields: 0, expiringSoon: 0,
+      total: 0,
+      verified: 0,
+      declared: 0,
+      estimated: 0,
+      missingCompulsoryFields: 0,
+      expiringSoon: 0,
       // an empty set makes no tier claim.
       tierComposition: {
-        meet: null, total: 0,
+        meet: null,
+        total: 0,
         counts: { A: 0, B: 0, C: 0 },
         distribution: { A: 0, B: 0, C: 0 },
       },
@@ -78,7 +91,7 @@ describe('summariseRecordQuality', () => {
         rec({ staleAfterDate: '2026-05-01T00:00:00Z' }), // already stale
         rec({ staleAfterDate: '2026-07-10T00:00:00Z' }), // within 30 days
         rec({ staleAfterDate: '2026-12-01T00:00:00Z' }), // far future — not counted
-        rec({ staleAfterDate: null }),                   // never stales — not counted
+        rec({ staleAfterDate: null }), // never stales — not counted
       ],
       compulsory,
       { now, expiryWindowDays: 30 },
@@ -95,9 +108,27 @@ describe('summariseRecordQuality — grouped input', () => {
     const now = new Date('2026-09-19T00:00:00Z')
     const soon = new Date('2026-09-25T00:00:00Z')
     const rows = [
-      ...Array.from({ length: 3 }, () => ({ domain: 'ENERGY', fieldName: 'total_consumption_kwh', trustTier: 'A' as const, documentType: 'ELECTRICITY_BILL', staleAfterDate: null })),
-      ...Array.from({ length: 2 }, () => ({ domain: 'MATERIALS', fieldName: 'net_mass', trustTier: 'B' as const, documentType: null, staleAfterDate: soon })),
-      { domain: 'EMISSIONS', fieldName: 'co2e', trustTier: 'C' as const, documentType: null, staleAfterDate: null },
+      ...Array.from({ length: 3 }, () => ({
+        domain: 'ENERGY',
+        fieldName: 'total_consumption_kwh',
+        trustTier: 'A' as const,
+        documentType: 'ELECTRICITY_BILL',
+        staleAfterDate: null,
+      })),
+      ...Array.from({ length: 2 }, () => ({
+        domain: 'MATERIALS',
+        fieldName: 'net_mass',
+        trustTier: 'B' as const,
+        documentType: null,
+        staleAfterDate: soon,
+      })),
+      {
+        domain: 'EMISSIONS',
+        fieldName: 'co2e',
+        trustTier: 'C' as const,
+        documentType: null,
+        staleAfterDate: null,
+      },
     ]
     const grouped = [
       { ...rows[0], count: 3 },

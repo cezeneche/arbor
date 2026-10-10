@@ -53,7 +53,10 @@ export async function GET(req: NextRequest) {
   // If specific suppliers requested, intersect with authorised set
   let targetIds = [...authorisedSupplierIds]
   if (supplierIdsParam) {
-    const requested = supplierIdsParam.split(',').map(s => s.trim()).filter(Boolean)
+    const requested = supplierIdsParam
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
     targetIds = requested.filter(id => authorisedSupplierIds.has(id))
     if (targetIds.length === 0) {
       return NextResponse.json({ error: 'None of the requested suppliers are authorised.' }, { status: 403 })
@@ -90,10 +93,7 @@ export async function GET(req: NextRequest) {
   // than a local restatement of the rule — an export that reads on its own copy of
   // the rules is an export that keeps reading on the old ones.
   const records = candidateRecords.filter(record =>
-    anyGrantCoversRecord(
-      grants.filter(g => g.grantorEntityId === record.entityId).map(toGrantScope),
-      record,
-    ),
+    anyGrantCoversRecord(grants.filter(g => g.grantorEntityId === record.entityId).map(toGrantScope), record),
   )
 
   // Attach the agreed business definition in force when each record was submitted,
@@ -105,13 +105,19 @@ export async function GET(req: NextRequest) {
     const xml = formatRecordsAsXML(decorated)
     return new NextResponse(xml, {
       status: 200,
-      headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-export.xml"' },
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="arbor-export.xml"',
+      },
     })
   }
 
   const csv = formatRecordsAsCSV(decorated)
   return new NextResponse(csv, {
     status: 200,
-    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="arbor-export.csv"' },
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="arbor-export.csv"',
+    },
   })
 }

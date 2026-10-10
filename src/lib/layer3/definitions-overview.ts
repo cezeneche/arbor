@@ -143,7 +143,11 @@ export async function loadDefinitionsOverview(
             proposedAt: a.proposedAt,
           }
         })
-        .sort((a, b) => Number(b.awaitingUs) - Number(a.awaitingUs) || a.counterpartyName.localeCompare(b.counterpartyName))
+        .sort(
+          (a, b) =>
+            Number(b.awaitingUs) - Number(a.awaitingUs) ||
+            a.counterpartyName.localeCompare(b.counterpartyName),
+        )
 
       return {
         id: def.id,
@@ -163,8 +167,7 @@ export async function loadDefinitionsOverview(
     .sort(
       (a, b) =>
         // Anything needing an answer floats to the top — the screen's one action.
-        Number(b.counterparties.some(c => c.awaitingUs)) -
-          Number(a.counterparties.some(c => c.awaitingUs)) ||
+        Number(b.counterparties.some(c => c.awaitingUs)) - Number(a.counterparties.some(c => c.awaitingUs)) ||
         a.domainLabel.localeCompare(b.domainLabel) ||
         a.label.localeCompare(b.label),
     )
@@ -178,10 +181,7 @@ export async function loadDefinitionsOverview(
   return {
     asOf,
     definitions,
-    awaitingYou: definitions.reduce(
-      (n, d) => n + d.counterparties.filter(c => c.awaitingUs).length,
-      0,
-    ),
+    awaitingYou: definitions.reduce((n, d) => n + d.counterparties.filter(c => c.awaitingUs).length, 0),
     counterparties: [...counterpartyMap.entries()]
       .map(([entityId, legalName]) => ({ entityId, legalName }))
       .sort((a, b) => a.legalName.localeCompare(b.legalName)),

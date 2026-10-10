@@ -19,7 +19,10 @@ export async function POST(req: NextRequest) {
 
   // Enforce uniqueness: an org can bind to only one entity.
   if (orgId) {
-    const clash = await prisma.entity.findUnique({ where: { workosOrganisationId: orgId }, select: { id: true } })
+    const clash = await prisma.entity.findUnique({
+      where: { workosOrganisationId: orgId },
+      select: { id: true },
+    })
     if (clash && clash.id !== entityId) {
       return err('That WorkOS organisation is already linked to another account', 'ORG_IN_USE', 409)
     }

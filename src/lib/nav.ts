@@ -87,7 +87,5 @@ export function getNavLinks(
 
 export function isLinkActive(link: NavLink, pathname: string): boolean {
   const prefixes = [link.href, ...(link.match ?? [])]
-  return prefixes.some(
-    p => pathname === p || (p !== '/dashboard' && pathname.startsWith(p + '/')),
-  )
+  return prefixes.some(p => pathname === p || (p !== '/dashboard' && pathname.startsWith(p + '/')))
 }

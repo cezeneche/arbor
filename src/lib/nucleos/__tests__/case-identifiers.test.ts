@@ -19,7 +19,9 @@ const confirmed = (over: Record<string, string> = {}) =>
 
 describe('missingCaseIdentifiers', () => {
   it('asks for the importer EORI when none was confirmed', () => {
-    expect(missingCaseIdentifiers(confirmed())).toEqual([{ fieldName: 'importer_eori', label: 'Importer EORI' }])
+    expect(missingCaseIdentifiers(confirmed())).toEqual([
+      { fieldName: 'importer_eori', label: 'Importer EORI' },
+    ])
   })
 
   it('asks for the code of a goods line that has a weight but no code', () => {
@@ -39,7 +41,9 @@ describe('missingCaseIdentifiers', () => {
 
 describe('amendCaseIdentifiers', () => {
   it('adds a missing EORI, normalised', () => {
-    const r = amendCaseIdentifiers(confirmed(), [{ fieldName: 'importer_eori', value: ' gb 1234 5678 9000 ' }])
+    const r = amendCaseIdentifiers(confirmed(), [
+      { fieldName: 'importer_eori', value: ' gb 1234 5678 9000 ' },
+    ])
     expect(r.errors).toEqual([])
     expect(r.confirmed!.get('importer_eori')).toBe('GB123456789000')
   })

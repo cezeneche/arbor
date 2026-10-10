@@ -38,7 +38,9 @@ function ItemRow({ item, tone }: { item: AttentionItem; tone: 'blocking' | 'atte
         }}
       >
         {tone === 'blocking' && (
-          <span aria-hidden style={{ color: colours.red, marginRight: '8px' }}>●</span>
+          <span aria-hidden style={{ color: colours.red, marginRight: '8px' }}>
+            ●
+          </span>
         )}
         {item.sentence}
       </span>

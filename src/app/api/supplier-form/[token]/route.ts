@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getClientIp } from '@/lib/rate-limit-pure'
-import {
-  submitSupplierForm,
-  SupplierTokenInvalidError,
-} from '@/lib/nucleos/supplier-form-client'
+import { submitSupplierForm, SupplierTokenInvalidError } from '@/lib/nucleos/supplier-form-client'
 
 // Submission proxy for the public supplier form.
 //
@@ -23,10 +20,7 @@ const MAX_SEE_TCO2E_PER_T = 1000
 const MAX_TEXT = 200
 const MAX_TOKEN = 256
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ token: string }> },
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const ip = getClientIp(request.headers.get('x-forwarded-for'), request.headers.get('x-real-ip'))
   const { allowed } = await checkRateLimit(RATE_LIMITS.supplierForm, ip)
   if (!allowed) {
@@ -48,7 +42,10 @@ export async function POST(
   const intensity = Number(body.see_tco2e_per_t)
   if (!Number.isFinite(intensity) || intensity <= 0 || intensity > MAX_SEE_TCO2E_PER_T) {
     return NextResponse.json(
-      { error: 'Enter the emissions figure in tonnes of CO2e per tonne of product, as a number greater than zero.' },
+      {
+        error:
+          'Enter the emissions figure in tonnes of CO2e per tonne of product, as a number greater than zero.',
+      },
       { status: 400 },
     )
   }

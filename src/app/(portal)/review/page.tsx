@@ -27,7 +27,19 @@ export default async function ReviewPage() {
       extractionJobs: {
         orderBy: { completedAt: 'desc' },
         take: 1,
-        select: { extractedFields: { select: { fieldName: true, rawValue: true, rawUnit: true, flagged: true, flagReason: true, sourceText: true, confidenceScore: true } } },
+        select: {
+          extractedFields: {
+            select: {
+              fieldName: true,
+              rawValue: true,
+              rawUnit: true,
+              flagged: true,
+              flagReason: true,
+              sourceText: true,
+              confidenceScore: true,
+            },
+          },
+        },
       },
     },
   })
@@ -45,7 +57,7 @@ export default async function ReviewPage() {
     const numeric = selectReviewableFields(fields)
     if (numeric.length === 0) continue
 
-    flaggedTotal += numeric.filter((f) => f.flagged).length
+    flaggedTotal += numeric.filter(f => f.flagged).length
 
     items.push({
       documentId: doc.id,
@@ -56,7 +68,7 @@ export default async function ReviewPage() {
       periodEnd: periodEnd.toISOString(),
       autoAccepted: doc.autoAcceptedAt !== null,
       needsImportDate: missingCbamDocumentDate(doc.documentType, values),
-      fields: numeric.map((f) => ({
+      fields: numeric.map(f => ({
         fieldName: f.fieldName,
         value: f.rawValue ?? '',
         unit: f.rawUnit,
@@ -73,10 +85,16 @@ export default async function ReviewPage() {
 
   return (
     <div style={{ width: '100%' }}>
-      <h1 style={textStyles.pageTitle}>
-        Review
-      </h1>
-      <p style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.textSecondary, margin: `${spacing[1]} 0 ${spacing[4]}`, maxWidth: '640px' }}>
+      <h1 style={textStyles.pageTitle}>Review</h1>
+      <p
+        style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.light,
+          color: colours.textSecondary,
+          margin: `${spacing[1]} 0 ${spacing[4]}`,
+          maxWidth: '640px',
+        }}
+      >
         {items.length === 0
           ? 'Everything is up to date - nothing needs checking right now.'
           : `${totalFields} value${totalFields === 1 ? '' : 's'} across ${items.length} document${items.length === 1 ? '' : 's'} to check - about ${estimatedMinutes} minute${estimatedMinutes === 1 ? '' : 's'}.${flaggedTotal > 0 ? ` ${flaggedTotal} we weren't sure about are highlighted.` : ''}`}

@@ -148,13 +148,18 @@ execFileSync(
   path.join(REPO, 'node_modules/.bin/tsc'),
   [
     path.join(outDir, 'src/lib/audit/foreign-chain-seal.ts'),
-    '--outDir', path.join(outDir, 'out'),
+    '--outDir',
+    path.join(outDir, 'out'),
     // Pinned, not inferred. tsc otherwise derives rootDir from the common source
     // directory, which moves the output path when the set of files changes.
-    '--rootDir', path.join(outDir, 'src'),
-    '--module', 'commonjs',
-    '--target', 'es2022',
-    '--moduleResolution', 'node',
+    '--rootDir',
+    path.join(outDir, 'src'),
+    '--module',
+    'commonjs',
+    '--target',
+    'es2022',
+    '--moduleResolution',
+    'node',
     '--skipLibCheck',
     '--esModuleInterop',
   ],

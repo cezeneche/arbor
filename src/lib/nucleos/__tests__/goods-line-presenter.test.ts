@@ -63,8 +63,7 @@ describe('presentGoodsLine', () => {
 
   it('prefers an installation name over its id', () => {
     expect(
-      presentGoodsLine({ installation_id: 'INST-1', installation_name: 'Bhilai Works' }, 0)
-        .installation,
+      presentGoodsLine({ installation_id: 'INST-1', installation_name: 'Bhilai Works' }, 0).installation,
     ).toBe('Bhilai Works')
     expect(presentGoodsLine({ installation_id: 'INST-1' }, 0).installation).toBe('INST-1')
   })

@@ -12,7 +12,9 @@ describe('shareState', () => {
   })
 
   it('is revoked when revokedAt is set, regardless of expiry', () => {
-    expect(shareState({ revokedAt: '2026-06-01T00:00:00.000Z', expiresAt: '2026-12-31T00:00:00.000Z' }, NOW)).toBe('revoked')
+    expect(
+      shareState({ revokedAt: '2026-06-01T00:00:00.000Z', expiresAt: '2026-12-31T00:00:00.000Z' }, NOW),
+    ).toBe('revoked')
   })
 
   it('is expired when expiry is in the past', () => {

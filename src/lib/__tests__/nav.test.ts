@@ -17,7 +17,13 @@ describe('getNavLinks — supplier spine', () => {
 
   it('adds CBAM after Requests when it is relevant to the organisation', () => {
     expect(getNavLinks('SUPPLIER', { showCbam: true }).map(l => l.label)).toEqual([
-      'Overview', 'Upload', 'Review', 'Records', 'Requests', 'CBAM', 'Settings',
+      'Overview',
+      'Upload',
+      'Review',
+      'Records',
+      'Requests',
+      'CBAM',
+      'Settings',
     ])
   })
 
@@ -38,12 +44,29 @@ describe('getNavLinks — buyer spine', () => {
   const hrefs = links.map(l => l.href)
 
   it('relabels upload as Ingest and keeps the buyer-only surfaces', () => {
-    expect(labels).toEqual(['Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'Export', 'Settings'])
+    expect(labels).toEqual([
+      'Overview',
+      'Ingest',
+      'Review',
+      'Records',
+      'Requests',
+      'Entity network',
+      'Export',
+      'Settings',
+    ])
   })
 
   it('adds CBAM after Entity network when it is relevant to the organisation', () => {
     expect(getNavLinks('BUYER', { showCbam: true }).map(l => l.label)).toEqual([
-      'Overview', 'Ingest', 'Review', 'Records', 'Requests', 'Entity network', 'CBAM', 'Export', 'Settings',
+      'Overview',
+      'Ingest',
+      'Review',
+      'Records',
+      'Requests',
+      'Entity network',
+      'CBAM',
+      'Export',
+      'Settings',
     ])
   })
 
@@ -159,7 +182,9 @@ describe('operator links', () => {
   it('adds Enquiry review for platform operators only', () => {
     const operator = getNavLinks('SUPPLIER', { isPlatformAdmin: true })
     expect(operator[operator.length - 1]).toEqual({ href: '/admin/enquiries', label: 'Enquiry review' })
-    expect(getNavLinks('BUYER', { isPlatformAdmin: true }).some(l => l.href === '/admin/enquiries')).toBe(true)
+    expect(getNavLinks('BUYER', { isPlatformAdmin: true }).some(l => l.href === '/admin/enquiries')).toBe(
+      true,
+    )
     expect(getNavLinks('SUPPLIER').some(l => l.href === '/admin/enquiries')).toBe(false)
   })
 })

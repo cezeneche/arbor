@@ -43,7 +43,15 @@ export function CbamSectionToggle({
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3], marginBottom: spacing[3] }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: spacing[3],
+        marginBottom: spacing[3],
+      }}
+    >
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ ...textStyles.sectionTitle, marginBottom: spacing[1] }}>Show CBAM</p>
         <p style={{ ...textStyles.sectionSubtitle, lineHeight: '1.6' }}>
@@ -51,9 +59,7 @@ export function CbamSectionToggle({
             ? 'CBAM is shown because you have customs declarations or import cases.'
             : 'For businesses that import steel, aluminium, cement, fertilisers or hydrogen. Switch it on to check whether your goods are covered before you upload anything.'}
         </p>
-        {error && (
-          <p style={{ ...textStyles.caption, color: colours.red, marginTop: spacing[1] }}>{error}</p>
-        )}
+        {error && <p style={{ ...textStyles.caption, color: colours.red, marginTop: spacing[1] }}>{error}</p>}
       </div>
       {!hasActivity && isAdmin && (
         <button

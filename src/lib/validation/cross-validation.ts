@@ -36,8 +36,7 @@ export function crossValidate(input: CrossValidationInput): CrossValidationOutpu
   const comparison = input.comparison ?? 'AGREE'
 
   const reference = Math.max(Math.abs(input.valueA), Math.abs(input.valueB))
-  const discrepancyPercent =
-    reference === 0 ? 0 : (Math.abs(input.valueA - input.valueB) / reference) * 100
+  const discrepancyPercent = reference === 0 ? 0 : (Math.abs(input.valueA - input.valueB) / reference) * 100
 
   if (comparison === 'B_MUST_NOT_EXCEED_A') {
     // Only the overshoot matters, and only beyond the tolerance.
@@ -189,16 +188,13 @@ export async function runCrossValidation(
   newDocumentType: string,
 ): Promise<void> {
   const applicable = CROSS_VALIDATION_RULES.filter(
-    (r) => r.docTypeA === newDocumentType || r.docTypeB === newDocumentType,
+    r => r.docTypeA === newDocumentType || r.docTypeB === newDocumentType,
   )
 
   for (const rule of applicable) {
-    const counterpartType =
-      rule.docTypeA === newDocumentType ? rule.docTypeB : rule.docTypeA
-    const counterpartField =
-      rule.docTypeA === newDocumentType ? rule.fieldB : rule.fieldA
-    const thisField =
-      rule.docTypeA === newDocumentType ? rule.fieldA : rule.fieldB
+    const counterpartType = rule.docTypeA === newDocumentType ? rule.docTypeB : rule.docTypeA
+    const counterpartField = rule.docTypeA === newDocumentType ? rule.fieldB : rule.fieldA
+    const thisField = rule.docTypeA === newDocumentType ? rule.fieldA : rule.fieldB
 
     const counterpartDocs = await prisma.document.findMany({
       where: { entityId, documentType: counterpartType as DocumentType, status: 'ACCEPTED' },

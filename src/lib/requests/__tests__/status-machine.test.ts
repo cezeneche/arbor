@@ -1,8 +1,4 @@
-import {
-  canTransitionRequest,
-  canSubmitAgainstStatus,
-  SUBMITTABLE_STATUSES,
-} from '../status-machine'
+import { canTransitionRequest, canSubmitAgainstStatus, SUBMITTABLE_STATUSES } from '../status-machine'
 
 describe('canTransitionRequest — the happy path', () => {
   it('lets a supplier answer a pending request', () => {

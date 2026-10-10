@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   if (!dbUser || !dbUser.isActive) {
     return NextResponse.json({ error: 'This account has been deactivated.' }, { status: 403 })
   }
-  if (dbUser.tokenVersion !== (user.tokenVersion as number | undefined ?? 0)) {
+  if (dbUser.tokenVersion !== ((user.tokenVersion as number | undefined) ?? 0)) {
     return NextResponse.json(
       { error: 'Session has been revoked. Please sign in again.', code: 'SESSION_REVOKED' },
       { status: 401 },
@@ -85,7 +85,10 @@ export async function POST(req: NextRequest) {
     })
     const match = all.find(r => verifyRecoveryCode(r.codeHash, code))
     if (!match) {
-      return NextResponse.json({ error: 'Recovery code is invalid or has already been used.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Recovery code is invalid or has already been used.' },
+        { status: 400 },
+      )
     }
     // Atomically consume it
     const consumed = await prisma.totpRecoveryCode.updateMany({
@@ -93,7 +96,10 @@ export async function POST(req: NextRequest) {
       data: { usedAt: new Date() },
     })
     if (consumed.count === 0) {
-      return NextResponse.json({ error: 'Recovery code is invalid or has already been used.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Recovery code is invalid or has already been used.' },
+        { status: 400 },
+      )
     }
     return NextResponse.json({ ok: true, nonce: await issueVerificationNonce() })
   }

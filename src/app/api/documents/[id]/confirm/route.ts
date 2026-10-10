@@ -28,17 +28,22 @@ import { dispatchWebhook } from '@/lib/webhooks/dispatch'
 import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
 import { isCbamFieldName, parseGoodsLineFieldName } from '@/lib/nucleos/cbam-fields'
 import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
-import {
-  enqueueCbamHandoff,
-  runCbamHandoff,
-  type CbamHandoffOutcome,
-} from '@/lib/layer2/cbam-handoff'
+import { enqueueCbamHandoff, runCbamHandoff, type CbamHandoffOutcome } from '@/lib/layer2/cbam-handoff'
 
 const fieldSchema = z.object({
   fieldName: z.string(),
   confirmedValue: z.string(),
   confirmedUnit: z.string().optional(),
-  domain: z.enum(['ENERGY', 'MATERIALS', 'PRODUCTION', 'LOGISTICS', 'EMISSIONS', 'AGRICULTURE', 'WASTE_AND_WATER', 'COMPLIANCE']),
+  domain: z.enum([
+    'ENERGY',
+    'MATERIALS',
+    'PRODUCTION',
+    'LOGISTICS',
+    'EMISSIONS',
+    'AGRICULTURE',
+    'WASTE_AND_WATER',
+    'COMPLIANCE',
+  ]),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
   sourceText: z.string().optional(),
@@ -66,10 +71,7 @@ const bodySchema = z.object({
   onDuplicate: z.enum(['replace', 'keep_both']).optional(),
 })
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, response } = await requireWriteAccess()
   if (!session) return response!
 
@@ -220,7 +222,7 @@ export async function POST(
 
   // Pre-compute normalised values outside the transaction (pure, no DB).
   type PreparedField = {
-    field: typeof parsed.data.fields[number]
+    field: (typeof parsed.data.fields)[number]
     rawNum: number
     siValue: number
     siUnit: string
@@ -263,8 +265,7 @@ export async function POST(
   // miss the case it is meant to catch, since the same goods can arrive at a
   // different index. A document can only be confirmed once, so within one
   // document there is nothing to duplicate either.
-  const isPositional = (fieldName: string) =>
-    cbamDocument && parseGoodsLineFieldName(fieldName) !== null
+  const isPositional = (fieldName: string) => cbamDocument && parseGoodsLineFieldName(fieldName) !== null
 
   const candidates = preparedFields
     .filter(({ field }) => !isPositional(field.fieldName))
@@ -281,7 +282,15 @@ export async function POST(
       fieldName: { in: [...new Set(candidates.map(c => c.fieldName))] },
       documentId: { not: documentId },
     },
-    select: { id: true, fieldName: true, domain: true, value: true, unit: true, periodStart: true, periodEnd: true },
+    select: {
+      id: true,
+      fieldName: true,
+      domain: true,
+      value: true,
+      unit: true,
+      periodStart: true,
+      periodEnd: true,
+    },
   })
   const duplicates = findDuplicates(candidates, priors)
 
@@ -298,9 +307,8 @@ export async function POST(
     )
   }
   // Per field: each new record supersedes its own field's duplicates only.
-  const replacePriorIds = parsed.data.onDuplicate === 'replace'
-    ? replacementsByField(duplicates)
-    : new Map<string, string[]>()
+  const replacePriorIds =
+    parsed.data.onDuplicate === 'replace' ? replacementsByField(duplicates) : new Map<string, string[]>()
 
   type SupersededScope = { domain: string; periodStart: Date; periodEnd: Date }
 
@@ -309,7 +317,9 @@ export async function POST(
   // is not a write conflict, so it reaches the handler below untouched.
   class AlreadyConfirmed extends Error {}
   class OverCapacity extends Error {
-    constructor(readonly detail: string) { super(detail) }
+    constructor(readonly detail: string) {
+      super(detail)
+    }
   }
 
   // The CBAM handoff is recorded inside the transaction below, so a confirmed
@@ -321,10 +331,12 @@ export async function POST(
         entityId,
         documentType: document.documentType,
         jurisdiction: resolveJurisdiction(
-          (await prisma.entity.findUnique({
-            where: { id: entityId },
-            select: { cbamJurisdiction: true },
-          }))?.cbamJurisdiction,
+          (
+            await prisma.entity.findUnique({
+              where: { id: entityId },
+              select: { cbamJurisdiction: true },
+            })
+          )?.cbamJurisdiction,
         ),
         confirmed: confirmedValues,
         // From the confirmed document date, checked above, rather than the
@@ -350,121 +362,139 @@ export async function POST(
   // Scopes whose prior records were superseded, so buyers can be told.
   let supersededScopes: SupersededScope[]
   try {
-    ;({ recordIds: createdRecords, supersededScopes } = await runSerializable(async (tx) => {
-    const recordIds: string[] = []
-    const supersededScopes: SupersededScope[] = []
+    ;({ recordIds: createdRecords, supersededScopes } = await runSerializable(async tx => {
+      const recordIds: string[] = []
+      const supersededScopes: SupersededScope[] = []
 
-    // The interactive confirm path wrote records without ever consulting the
-    // plan cap. Counted inside the transaction that writes, so concurrent
-    // confirmations cannot both take the last of the allowance.
-    const capacity = await assertRecordCapacity(entityId, preparedFields.length, tx)
-    if (!capacity.allowed) throw new OverCapacity(capacity.reason!)
+      // The interactive confirm path wrote records without ever consulting the
+      // plan cap. Counted inside the transaction that writes, so concurrent
+      // confirmations cannot both take the last of the allowance.
+      const capacity = await assertRecordCapacity(entityId, preparedFields.length, tx)
+      if (!capacity.allowed) throw new OverCapacity(capacity.reason!)
 
-    // Claim the document inside the transaction. The check above is a fast path
-    // for the common case; on its own it left a window in which two confirmations
-    // in flight together both passed it and both wrote a full set of records.
-    const claimed = await tx.document.updateMany({
-      where: {
-        id: documentId,
-        entityId,
-        OR: [
-          { status: { notIn: ['ACCEPTED', 'WITHDRAWN'] } },
-          { status: 'ACCEPTED', autoAcceptedAt: { not: null } },
-        ],
-      },
-      data: { status: 'ACCEPTED', autoAcceptedAt: null },
-    })
-    if (claimed.count === 0) throw new AlreadyConfirmed()
-
-    // Records this document already wrote — auto-accepted, or left behind when
-    // the constraint gate sent it back to review — are replaced by this
-    // confirmation, whatever the period or the duplicate choice.
-    const own = await tx.dataRecord.findMany({
-      where: { documentId, isActive: true },
-      select: {
-        id: true, entityId: true, domain: true, fieldName: true, value: true, unit: true,
-        originalValue: true, originalUnit: true, periodStart: true, periodEnd: true,
-        trustTier: true, confidenceScore: true, sourceText: true, documentId: true,
-        extractionMethod: true,
-      },
-    })
-    const ownPlan = planOwnRecordReplacement(own, preparedFields.map(p => p.field.fieldName))
-
-    for (const { field, rawNum, siValue, siUnit, periodStart, periodEnd } of preparedFields) {
-      // Supersede any existing active records for the same entity+domain+fieldName+period.
-      // keep_both means exactly that: write alongside, supersede nothing.
-      //
-      // A positional goods-line field supersedes nothing either, for the same
-      // reason it is not a duplicate candidate: matching on `lines[0].*` would
-      // retire another shipment's first goods line because this document also
-      // has one.
-      const ownIds = ownPlan.supersedeByField.get(field.fieldName) ?? []
-      const prior = parsed.data.onDuplicate === 'keep_both' || isPositional(field.fieldName)
-        ? ownIds.map(id => ({ id }))
-        : await tx.dataRecord.findMany({
-            where: {
-              entityId,
-              isActive: true,
-              OR: [
-                { domain: field.domain, fieldName: field.fieldName, periodStart, periodEnd },
-                { id: { in: replacePriorIds.get(field.fieldName) ?? [] } },
-                { id: { in: ownIds } },
-              ],
-            },
-            select: { id: true },
-          })
-
-      const result = await writeRecordWithAuditEntry(
-        tx,
-        {
+      // Claim the document inside the transaction. The check above is a fast path
+      // for the common case; on its own it left a window in which two confirmations
+      // in flight together both passed it and both wrote a full set of records.
+      const claimed = await tx.document.updateMany({
+        where: {
+          id: documentId,
           entityId,
-          domain: field.domain,
-          fieldName: field.fieldName,
-          value: siValue,
-          unit: siUnit,
-          originalValue: rawNum,
-          originalUnit: field.confirmedUnit ?? 'unknown',
-          periodStart,
-          periodEnd,
-          trustTier,
-          extractionMethod: ExtractionMethod.DOCUMENT_AI,
-          submittedById: session.user!.id!,
-          documentId,
-          sourceText: field.sourceText,
-          confidenceScore: field.confidenceScore,
-          staleAfterDate: computeStaleAfterDate(document.documentType, periodEnd),
+          OR: [
+            { status: { notIn: ['ACCEPTED', 'WITHDRAWN'] } },
+            { status: 'ACCEPTED', autoAcceptedAt: { not: null } },
+          ],
         },
-        'CREATED',
+        data: { status: 'ACCEPTED', autoAcceptedAt: null },
+      })
+      if (claimed.count === 0) throw new AlreadyConfirmed()
+
+      // Records this document already wrote — auto-accepted, or left behind when
+      // the constraint gate sent it back to review — are replaced by this
+      // confirmation, whatever the period or the duplicate choice.
+      const own = await tx.dataRecord.findMany({
+        where: { documentId, isActive: true },
+        select: {
+          id: true,
+          entityId: true,
+          domain: true,
+          fieldName: true,
+          value: true,
+          unit: true,
+          originalValue: true,
+          originalUnit: true,
+          periodStart: true,
+          periodEnd: true,
+          trustTier: true,
+          confidenceScore: true,
+          sourceText: true,
+          documentId: true,
+          extractionMethod: true,
+        },
+      })
+      const ownPlan = planOwnRecordReplacement(
+        own,
+        preparedFields.map(p => p.field.fieldName),
       )
 
-      if (prior.length > 0) {
-        await tx.dataRecord.updateMany({
-          where: { id: { in: prior.map(p => p.id) } },
-          data: { isActive: false, supersededById: result.recordId },
-        })
-        supersededScopes.push({ domain: field.domain, periodStart, periodEnd })
+      for (const { field, rawNum, siValue, siUnit, periodStart, periodEnd } of preparedFields) {
+        // Supersede any existing active records for the same entity+domain+fieldName+period.
+        // keep_both means exactly that: write alongside, supersede nothing.
+        //
+        // A positional goods-line field supersedes nothing either, for the same
+        // reason it is not a duplicate candidate: matching on `lines[0].*` would
+        // retire another shipment's first goods line because this document also
+        // has one.
+        const ownIds = ownPlan.supersedeByField.get(field.fieldName) ?? []
+        const prior =
+          parsed.data.onDuplicate === 'keep_both' || isPositional(field.fieldName)
+            ? ownIds.map(id => ({ id }))
+            : await tx.dataRecord.findMany({
+                where: {
+                  entityId,
+                  isActive: true,
+                  OR: [
+                    { domain: field.domain, fieldName: field.fieldName, periodStart, periodEnd },
+                    { id: { in: replacePriorIds.get(field.fieldName) ?? [] } },
+                    { id: { in: ownIds } },
+                  ],
+                },
+                select: { id: true },
+              })
+
+        const result = await writeRecordWithAuditEntry(
+          tx,
+          {
+            entityId,
+            domain: field.domain,
+            fieldName: field.fieldName,
+            value: siValue,
+            unit: siUnit,
+            originalValue: rawNum,
+            originalUnit: field.confirmedUnit ?? 'unknown',
+            periodStart,
+            periodEnd,
+            trustTier,
+            extractionMethod: ExtractionMethod.DOCUMENT_AI,
+            submittedById: session.user!.id!,
+            documentId,
+            sourceText: field.sourceText,
+            confidenceScore: field.confidenceScore,
+            staleAfterDate: computeStaleAfterDate(document.documentType, periodEnd),
+          },
+          'CREATED',
+        )
+
+        if (prior.length > 0) {
+          await tx.dataRecord.updateMany({
+            where: { id: { in: prior.map(p => p.id) } },
+            data: { isActive: false, supersededById: result.recordId },
+          })
+          supersededScopes.push({ domain: field.domain, periodStart, periodEnd })
+        }
+
+        recordIds.push(result.recordId)
       }
 
-      recordIds.push(result.recordId)
-    }
+      // An earlier record whose field the reviewer cleared: nothing replaces it,
+      // and the figure it holds is one the reviewer says the document does not
+      // state. Withdrawn, with its chain entry, rather than left standing.
+      const ownById = new Map(own.map(r => [r.id, r]))
+      for (const recordId of ownPlan.withdraw) {
+        await appendAuditEntry(tx, {
+          entityId,
+          recordId,
+          eventType: 'WITHDRAWN',
+          payload: buildWithdrawalPayload(ownById.get(recordId)!, {
+            at: new Date(),
+            byId: session.user!.id!,
+          }),
+        })
+        await tx.dataRecord.update({ where: { id: recordId }, data: { isActive: false } })
+      }
 
-    // An earlier record whose field the reviewer cleared: nothing replaces it,
-    // and the figure it holds is one the reviewer says the document does not
-    // state. Withdrawn, with its chain entry, rather than left standing.
-    const ownById = new Map(own.map(r => [r.id, r]))
-    for (const recordId of ownPlan.withdraw) {
-      await appendAuditEntry(tx, {
-        entityId,
-        recordId,
-        eventType: 'WITHDRAWN',
-        payload: buildWithdrawalPayload(ownById.get(recordId)!, { at: new Date(), byId: session.user!.id! }),
-      })
-      await tx.dataRecord.update({ where: { id: recordId }, data: { isActive: false } })
-    }
+      if (cbamHandoff) await enqueueCbamHandoff(tx, cbamHandoff)
 
-    if (cbamHandoff) await enqueueCbamHandoff(tx, cbamHandoff)
-
-    return { recordIds, supersededScopes }
+      return { recordIds, supersededScopes }
     }))
   } catch (e) {
     if (e instanceof AlreadyConfirmed) {
@@ -478,16 +508,16 @@ export async function POST(
 
   // Cross-validation runs after commit — it reads accepted records and writes CV results.
   // Failures here do not roll back the confirmation (warnings only, not blocking).
-  await runCrossValidation(entityId, documentId, document.documentType).catch(
-    (e) => console.error('[confirm] runCrossValidation failed:', e)
+  await runCrossValidation(entityId, documentId, document.documentType).catch(e =>
+    console.error('[confirm] runCrossValidation failed:', e),
   )
 
   // algebraic-constraint intake flagging: raise non-blocking
   // ValidationFlags for physically impossible / fraudulent records (mass
   // balance, non-negativity, implausible sector intensity). Post-commit,
   // fail-soft — the brain must never block or roll back a confirmation.
-  await runConstraintValidation(documentId).catch(
-    (e) => console.error('[confirm] runConstraintValidation failed:', e)
+  await runConstraintValidation(documentId).catch(e =>
+    console.error('[confirm] runConstraintValidation failed:', e),
   )
 
   // capture calibration ground truth: compare what the reviewer
@@ -505,14 +535,14 @@ export async function POST(
         documentId,
         documentClass: job.documentClass ?? document.documentType,
         extractorVersion: job.extractorVersion ?? null,
-        extractedFields: job.extractedFields.map((f) => ({
+        extractedFields: job.extractedFields.map(f => ({
           fieldName: f.fieldName,
           rawValue: f.rawValue,
           confidenceScore: f.confidenceScore,
           admissibility: f.admissibility,
           flagged: f.flagged,
         })),
-        confirmedFields: parsed.data.fields.map((f) => ({
+        confirmedFields: parsed.data.fields.map(f => ({
           fieldName: f.fieldName,
           confirmedValue: f.confirmedValue,
           domain: f.domain,
@@ -521,7 +551,7 @@ export async function POST(
       })
       if (labels.length > 0) {
         await prisma.groundTruthLabel.createMany({
-          data: labels.map((l) => ({
+          data: labels.map(l => ({
             entityId: l.entityId,
             documentId: l.documentId,
             recordId: l.recordId,
@@ -548,10 +578,18 @@ export async function POST(
   // corrected. Deduplicated per grantee+domain. Non-fatal.
   if (supersededScopes.length > 0) {
     try {
-      const supplier = await prisma.entity.findUnique({ where: { id: entityId }, select: { legalName: true } })
+      const supplier = await prisma.entity.findUnique({
+        where: { id: entityId },
+        select: { legalName: true },
+      })
       const notified = new Set<string>()
       for (const scope of supersededScopes) {
-        const grantees = await findActiveGranteeEntityIds(entityId, scope.domain, scope.periodStart, scope.periodEnd)
+        const grantees = await findActiveGranteeEntityIds(
+          entityId,
+          scope.domain,
+          scope.periodStart,
+          scope.periodEnd,
+        )
         for (const granteeEntityId of grantees) {
           const dedupKey = `${granteeEntityId}:${scope.domain}`
           if (notified.has(dedupKey)) continue
@@ -594,7 +632,12 @@ export async function POST(
       }
       const fired = new Set<string>()
       for (const scope of certifiedScopes.values()) {
-        const grantees = await findActiveGranteeEntityIds(entityId, scope.domain, scope.periodStart, scope.periodEnd)
+        const grantees = await findActiveGranteeEntityIds(
+          entityId,
+          scope.domain,
+          scope.periodStart,
+          scope.periodEnd,
+        )
         for (const granteeEntityId of grantees) {
           const key = `${granteeEntityId}:${scope.domain}`
           if (fired.has(key)) continue
@@ -644,7 +687,14 @@ export async function POST(
     recordIds: createdRecords,
     documentStatus: 'ACCEPTED',
     ...(cbam
-      ? { cbam: { caseId: cbam.caseId, status: cbam.status, problems: cbam.problems, needs: cbam.needs ?? [] } }
+      ? {
+          cbam: {
+            caseId: cbam.caseId,
+            status: cbam.status,
+            problems: cbam.problems,
+            needs: cbam.needs ?? [],
+          },
+        }
       : {}),
   })
 }

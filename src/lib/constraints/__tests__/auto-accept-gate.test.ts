@@ -1,7 +1,4 @@
-import {
-  routeAutoAcceptToReview,
-  gateAutoAcceptOnConstraints,
-} from '../auto-accept-gate'
+import { routeAutoAcceptToReview, gateAutoAcceptOnConstraints } from '../auto-accept-gate'
 import type { PlannedFlag } from '../plan-flags'
 
 // auto-accept physics gate. Auto-accepted documents get no human
@@ -36,7 +33,9 @@ describe('gateAutoAcceptOnConstraints (control flow, DB-free via injected deps)'
     const rerouted: string[] = []
     const result = await gateAutoAcceptOnConstraints('doc1', {
       runValidation: async () => [flag('CRITICAL')],
-      setReviewRequired: async (id) => { rerouted.push(id) },
+      setReviewRequired: async id => {
+        rerouted.push(id)
+      },
     })
     expect(result).toEqual({ routedToReview: true, flagsRaised: 1 })
     expect(rerouted).toEqual(['doc1'])
@@ -46,7 +45,9 @@ describe('gateAutoAcceptOnConstraints (control flow, DB-free via injected deps)'
     const rerouted: string[] = []
     const result = await gateAutoAcceptOnConstraints('doc1', {
       runValidation: async () => [],
-      setReviewRequired: async (id) => { rerouted.push(id) },
+      setReviewRequired: async id => {
+        rerouted.push(id)
+      },
     })
     expect(result).toEqual({ routedToReview: false, flagsRaised: 0 })
     expect(rerouted).toEqual([])
@@ -57,7 +58,9 @@ describe('gateAutoAcceptOnConstraints (control flow, DB-free via injected deps)'
     // runConstraintValidation returns [] when the brain is unavailable.
     const result = await gateAutoAcceptOnConstraints('doc1', {
       runValidation: async () => [],
-      setReviewRequired: async (id) => { rerouted.push(id) },
+      setReviewRequired: async id => {
+        rerouted.push(id)
+      },
     })
     expect(result.routedToReview).toBe(false)
     expect(rerouted).toEqual([])
@@ -67,7 +70,9 @@ describe('gateAutoAcceptOnConstraints (control flow, DB-free via injected deps)'
     const rerouted: string[] = []
     const result = await gateAutoAcceptOnConstraints('doc1', {
       runValidation: async () => [flag('WARNING')],
-      setReviewRequired: async (id) => { rerouted.push(id) },
+      setReviewRequired: async id => {
+        rerouted.push(id)
+      },
     })
     expect(result).toEqual({ routedToReview: false, flagsRaised: 1 })
     expect(rerouted).toEqual([])

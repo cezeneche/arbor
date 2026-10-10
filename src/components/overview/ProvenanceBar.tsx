@@ -83,7 +83,15 @@ export function ProvenanceBar({
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            <span style={{ ...SEGMENT[p.key], display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px' }} />
+            <span
+              style={{
+                ...SEGMENT[p.key],
+                display: 'inline-block',
+                width: '10px',
+                height: '10px',
+                borderRadius: '2px',
+              }}
+            />
             {p.label}{' '}
             <span style={{ fontWeight: typography.weights.medium, color: colours.textPrimary }}>
               {showPct ? `${Math.round((p.count / total) * 100)}% · ${p.count}` : p.count}

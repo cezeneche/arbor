@@ -70,9 +70,7 @@ export function resolveAgreementFor(
   lookup: AgreementLookup,
 ): AgreementResolution {
   const forPair = agreements.filter(
-    a =>
-      a.supplierEntityId === lookup.supplierEntityId &&
-      a.buyerEntityId === lookup.buyerEntityId,
+    a => a.supplierEntityId === lookup.supplierEntityId && a.buyerEntityId === lookup.buyerEntityId,
   )
 
   const exact = forPair.find(a => a.fieldDefinitionId === lookup.fieldDefinitionId)
@@ -139,8 +137,7 @@ export function canRespondToProposal(
   respondingEntityId: string,
 ): RespondPermission {
   const isParty =
-    respondingEntityId === agreement.supplierEntityId ||
-    respondingEntityId === agreement.buyerEntityId
+    respondingEntityId === agreement.supplierEntityId || respondingEntityId === agreement.buyerEntityId
   if (!isParty) {
     return { allowed: false, reason: 'Only the supplier or the buyer named on this definition can respond.' }
   }

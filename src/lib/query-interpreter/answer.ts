@@ -66,10 +66,7 @@ function isoDate(value: string | Date): string {
  * who it belongs to, what it is, what it says, when it covers, and how it is
  * certified.
  */
-export function buildEvidenceBlock(
-  records: AnswerRecord[],
-  opts: { limit?: number } = {},
-): string {
+export function buildEvidenceBlock(records: AnswerRecord[], opts: { limit?: number } = {}): string {
   if (records.length === 0) {
     return 'No records in the store match this question.'
   }
@@ -90,9 +87,7 @@ export function buildEvidenceBlock(
   )
 
   if (omitted > 0) {
-    lines.push(
-      `(${omitted} further record${omitted === 1 ? '' : 's'} matched but are not listed here.)`,
-    )
+    lines.push(`(${omitted} further record${omitted === 1 ? '' : 's'} matched but are not listed here.)`)
   }
 
   return lines.join('\n')
@@ -140,10 +135,7 @@ This user is a professional data buyer. Full technical detail is expected: field
  * The answer when the model is unavailable. The records are the product, so the
  * page degrades to a plain factual sentence above the table — never an error.
  */
-export function answerWithoutModel(params: {
-  recordCount: number
-  interpretation: string
-}): string {
+export function answerWithoutModel(params: { recordCount: number; interpretation: string }): string {
   const { recordCount, interpretation } = params
   if (recordCount === 0) {
     return `No stored records match ${interpretation}. Upload a supporting document, or enter the figure directly, and it will be answerable from then on.`

@@ -12,7 +12,7 @@ export async function logRecordAccess(
   if (recordIds.length === 0) return
   try {
     await prisma.recordAccessLog.createMany({
-      data: recordIds.map((recordId) => ({ recordId, granteeEntityId, accessMethod })),
+      data: recordIds.map(recordId => ({ recordId, granteeEntityId, accessMethod })),
     })
   } catch (e) {
     console.error('[grant-access] logRecordAccess failed:', e)

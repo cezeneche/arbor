@@ -98,10 +98,12 @@ export async function POST(req: NextRequest) {
     // user has no way to tell that nothing is happening. Mark it so the state is
     // the truth and the sweeper below can pick it up.
     console.error('[upload] inngest.send failed for document', document.id, e)
-    await prisma.document.update({
-      where: { id: document.id },
-      data: { status: 'REVIEW_REQUIRED' },
-    }).catch(() => {})
+    await prisma.document
+      .update({
+        where: { id: document.id },
+        data: { status: 'REVIEW_REQUIRED' },
+      })
+      .catch(() => {})
     return ok(
       {
         documentId: document.id,

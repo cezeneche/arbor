@@ -21,18 +21,31 @@ export default async function AuditorEntityPage({ params }: { params: Promise<{ 
   })
   if (!access) redirect('/auditor')
 
-  const { package: pkg, chainIntegrityVerified, auditEntryCount } = await assembleAuditPackage({
+  const {
+    package: pkg,
+    chainIntegrityVerified,
+    auditEntryCount,
+  } = await assembleAuditPackage({
     entityId,
     periodStart: access.periodStart,
     periodEnd: access.periodEnd,
     logRequestedById: userId,
   })
 
-  const fmt = (d: Date) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmt = (d: Date) =>
+    new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <div>
-      <Link href="/auditor" style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.light, color: colours.navy, textDecoration: 'none' }}>
+      <Link
+        href="/auditor"
+        style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.light,
+          color: colours.navy,
+          textDecoration: 'none',
+        }}
+      >
         ← All audit access
       </Link>
       <h1
@@ -50,7 +63,11 @@ export default async function AuditorEntityPage({ params }: { params: Promise<{ 
         Read-only audit package · {fmt(access.periodStart)} – {fmt(access.periodEnd)}
       </p>
 
-      <AuditPackageView pkg={pkg} chainIntegrityVerified={chainIntegrityVerified} auditEntryCount={auditEntryCount} />
+      <AuditPackageView
+        pkg={pkg}
+        chainIntegrityVerified={chainIntegrityVerified}
+        auditEntryCount={auditEntryCount}
+      />
     </div>
   )
 }

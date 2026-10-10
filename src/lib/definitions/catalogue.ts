@@ -117,8 +117,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     fieldName: 'total_value',
     domain: 'MATERIALS',
     label: 'Invoice total',
-    definition:
-      'The total amount charged on this supplier invoice, in the currency shown on the invoice.',
+    definition: 'The total amount charged on this supplier invoice, in the currency shown on the invoice.',
     boundary:
       'Includes the goods and services billed on this invoice document. Excludes amounts on separate credit notes, amounts billed on other invoices for the same order, and any figure converted into another currency — the value stands in the currency it was issued in.',
     canonicalUnit: null,
@@ -297,8 +296,7 @@ export const SEED_DEFINITIONS: SeedDefinition[] = [
     fieldName: 'area_hectares',
     domain: 'AGRICULTURE',
     label: 'Area farmed',
-    definition:
-      'The area of the field or parcel this yield record covers, as stated on the record.',
+    definition: 'The area of the field or parcel this yield record covers, as stated on the record.',
     boundary:
       'Includes the cropped area of the parcel named. Excludes uncropped margins, tracks and buildings within the parcel boundary, and excludes any area double-counted where two crops were grown on the same ground in one season.',
     canonicalUnit: 'm2',
