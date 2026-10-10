@@ -15,7 +15,12 @@ export default async function PortalLayout({ children }: { children: React.React
   const entityId = getSessionUser(session).entityId as string | undefined
   const account = await prisma.user.findUnique({
     where: { id: getSessionUser(session).id as string },
-    select: { email: true, emailVerifiedAt: true, isPlatformAdmin: true },
+    select: {
+      email: true,
+      emailVerifiedAt: true,
+      isPlatformAdmin: true,
+      _count: { select: { emailVerificationTokens: true } },
+    },
   })
 
   let entityName = 'Your organisation'
@@ -64,7 +69,9 @@ export default async function PortalLayout({ children }: { children: React.React
         isPlatformAdmin={account?.isPlatformAdmin ?? false}
       />
       <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '40px' }}>
-        {account && !account.emailVerifiedAt && <VerifyEmailReminder email={account.email} />}
+        {account && !account.emailVerifiedAt && (
+          <VerifyEmailReminder email={account.email} linkSent={account._count.emailVerificationTokens > 0} />
+        )}
         {children}
       </main>
     </div>
