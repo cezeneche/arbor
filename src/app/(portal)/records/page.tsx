@@ -49,6 +49,7 @@ export default async function RecordsPage({
   const sp = await searchParams
   const domainFilter = sp.domain ?? null
   const tierFilter = sp.tier ?? null
+  const recordFilter = typeof sp.record === 'string' ? sp.record : null
   const page = parsePage(sp.page)
   const view = sp.view === 'trends' ? 'trends' : sp.view === 'benchmarks' ? 'benchmarks' : 'records'
 
@@ -61,6 +62,7 @@ export default async function RecordsPage({
   const where = {
     entityId,
     isActive: true,
+    ...(recordFilter ? { id: recordFilter } : {}),
     ...(domain.success ? { domain: domain.data } : {}),
     ...(tier.success ? { trustTier: tier.data } : {}),
   }
@@ -173,6 +175,7 @@ export default async function RecordsPage({
     const qs = new URLSearchParams()
     if (domainFilter) qs.set('domain', domainFilter)
     if (tierFilter) qs.set('tier', tierFilter)
+    if (recordFilter) qs.set('record', recordFilter)
     if (p > 1) qs.set('page', String(p))
     return `/records${qs.toString() ? '?' + qs.toString() : ''}`
   }
@@ -189,7 +192,12 @@ export default async function RecordsPage({
           }}
         >
           <div>
-            <h1 style={textStyles.pageTitle}>Records</h1>
+            <h1 style={textStyles.pageTitle}>{recordFilter ? 'Selected record' : 'Records'}</h1>
+            {recordFilter && (
+              <Link href="/records" style={textStyles.caption}>
+                Browse all records →
+              </Link>
+            )}
             <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
               {total.toLocaleString()} active record{total !== 1 ? 's' : ''}
               {domainFilter ? ` · ${DOMAIN_LABELS[domainFilter] ?? domainFilter}` : ''}

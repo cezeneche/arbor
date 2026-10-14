@@ -30,7 +30,7 @@ export default async function InboundRequestsPage() {
   const [entity, pending] = await Promise.all([
     prisma.entity.findUnique({ where: { id: entityId }, select: { uploadEmailToken: true } }),
     prisma.inboundRequest.findMany({
-      where: { entityId, status: 'NEEDS_DATA' },
+      where: { entityId, status: { in: ['NEW', 'NEEDS_DATA'] } },
       orderBy: { createdAt: 'desc' },
     }),
   ])
@@ -40,7 +40,10 @@ export default async function InboundRequestsPage() {
   const readyToSend = pending.filter(
     r => (r.parsedFields as ParsedShape | null)?.awaiting === 'supplier_review',
   )
-  const missing = pending.filter(r => (r.parsedFields as ParsedShape | null)?.awaiting !== 'supplier_review')
+  const reading = pending.filter(r => r.status === 'NEW')
+  const missing = pending.filter(
+    r => r.status === 'NEEDS_DATA' && (r.parsedFields as ParsedShape | null)?.awaiting !== 'supplier_review',
+  )
 
   // Null until INBOUND_EMAIL_DOMAIN is configured — never show an address that bounces.
   const requestsEmail = requestsAddress(entity?.uploadEmailToken)
@@ -196,6 +199,26 @@ export default async function InboundRequestsPage() {
         </div>
       )}
 
+      {reading.length > 0 && (
+        <section style={{ marginBottom: spacing[3] }}>
+          <h2 style={textStyles.sectionTitle}>Being read</h2>
+          {reading.map(r => (
+            <div
+              key={r.id}
+              id={`request-${r.id}`}
+              style={{ padding: spacing[2], borderBottom: `1px solid ${colours.border}` }}
+            >
+              <p style={textStyles.rowTitle}>
+                {r.fromEmail ? `Request from ${r.fromEmail}` : 'Email request'}
+              </p>
+              <p style={textStyles.caption}>
+                This request is still being processed. Refresh to check for a draft or missing information.
+              </p>
+            </div>
+          ))}
+        </section>
+      )}
+
       {/* Ready to send — matched to certified records, awaiting supplier approval */}
       {readyToSend.length > 0 && (
         <div style={{ marginBottom: spacing[4] }}>
@@ -225,6 +248,7 @@ export default async function InboundRequestsPage() {
               return (
                 <div
                   key={r.id}
+                  id={`request-${r.id}`}
                   style={{
                     padding: `${spacing[2]} ${spacing[3]}`,
                     borderBottom: i < readyToSend.length - 1 ? `1px solid ${colours.border}` : 'none',
@@ -362,6 +386,7 @@ export default async function InboundRequestsPage() {
               return (
                 <div
                   key={r.id}
+                  id={`request-${r.id}`}
                   style={{
                     padding: `${spacing[2]} ${spacing[3]}`,
                     borderBottom: i < missing.length - 1 ? `1px solid ${colours.border}` : 'none',

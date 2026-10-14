@@ -1,0 +1,47 @@
+.shell {
+  display: flex;
+  height: 100dvh;
+  overflow: hidden;
+}
+.main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: var(--portal-padding);
+}
+.nav {
+  width: 216px;
+  height: 100dvh;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+.links {
+  flex: 1;
+}
+@media (max-width: 760px) {
+  .shell {
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .nav {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    padding-bottom: var(--portal-small);
+  }
+  .main {
+    overflow: visible;
+    padding: var(--portal-small);
+  }
+  .navFooter {
+    display: flex;
+    align-items: center;
+    gap: var(--portal-small);
+  }
+}

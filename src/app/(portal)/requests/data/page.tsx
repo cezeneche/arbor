@@ -4,17 +4,24 @@ import { prisma } from '@/lib/prisma'
 import { spacing, textStyles } from '@/lib/design-system'
 import { BackLink } from '@/components/BackLink'
 import { RequestsList } from '@/components/RequestsList'
+import Link from 'next/link'
 
 // The data-request depth (respond, generate share link, pagination) lives here.
 // The unified /requests landing routes into it; this keeps the interaction intact.
-export default async function DataRequestsPage() {
+export default async function DataRequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ request?: string }>
+}) {
   const session = await requirePageSession()
 
   const entityId = getSessionUser(session).entityId as string
+  const { request } = await searchParams
 
   const allRequests = await prisma.dataRequest.findMany({
     where: {
       OR: [{ buyerEntityId: entityId }, { supplierEntityId: entityId }],
+      ...(typeof request === 'string' ? { id: request } : {}),
     },
     include: {
       buyerEntity: { select: { legalName: true } },
@@ -50,6 +57,15 @@ export default async function DataRequestsPage() {
           {incoming.length} incoming · {outgoing.length} sent
         </p>
       </div>
+
+      {request && (
+        <p style={{ ...textStyles.sectionSubtitle, marginBottom: spacing[3] }}>
+          <Link href="/requests/data">View all data requests</Link>
+          {allRequests.length === 0
+            ? ' · This request is unavailable.'
+            : ' · Showing the request opened from your dashboard.'}
+        </p>
+      )}
 
       <RequestsList incoming={serialisedIncoming} outgoing={serialisedOutgoing} />
     </div>
