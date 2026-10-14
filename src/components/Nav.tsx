@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { colours, typography, spacing, onNavy } from '@/lib/design-system'
 import { getNavLinks, isLinkActive } from '@/lib/nav'
+import shellStyles from './PortalShell.module.css'
 
 export function Nav({
   entityName,
@@ -24,9 +25,8 @@ export function Nav({
 
   return (
     <nav
+      className={shellStyles.nav}
       style={{
-        width: '216px',
-        height: '100vh',
         backgroundColor: colours.navy,
         display: 'flex',
         flexDirection: 'column',
@@ -66,7 +66,7 @@ export function Nav({
       <div style={{ height: '1px', backgroundColor: onNavy.divider, margin: `0 ${spacing[2]}` }} />
 
       {/* Navigation links */}
-      <div style={{ flex: 1, paddingTop: spacing[1] }}>
+      <div className={shellStyles.links} style={{ paddingTop: spacing[1] }}>
         {links.map(link => {
           const active = isLinkActive(link, pathname)
           return (
@@ -93,6 +93,7 @@ export function Nav({
 
       {/* Footer */}
       <div
+        className={shellStyles.navFooter}
         style={{
           padding: spacing[2],
           borderTop: `1px solid ${onNavy.divider}`,

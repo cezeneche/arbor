@@ -310,7 +310,7 @@ export function RequestsList({ incoming, outgoing }: Props) {
                     </p>
                   )}
 
-                  {req.status === 'PENDING' && respondingTo !== req.id && (
+                  {['PENDING', 'QUERY_RAISED'].includes(req.status) && respondingTo !== req.id && (
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <button
                         onClick={() => setRespondingTo(req.id)}

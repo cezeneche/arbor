@@ -12,16 +12,16 @@ describe('getNavLinks — supplier spine', () => {
   const hrefs = links.map(l => l.href)
 
   it('is the four-verb spine plus Overview and Settings, in order', () => {
-    expect(labels).toEqual(['Overview', 'Upload', 'Review', 'Records', 'Requests', 'Settings'])
+    expect(labels).toEqual(['Home', 'Your data', 'Documents', 'Requests', 'Sharing', 'Settings'])
   })
 
   it('adds CBAM after Requests when it is relevant to the organisation', () => {
     expect(getNavLinks('SUPPLIER', { showCbam: true }).map(l => l.label)).toEqual([
-      'Overview',
-      'Upload',
-      'Review',
-      'Records',
+      'Home',
+      'Your data',
+      'Documents',
       'Requests',
+      'Sharing',
       'CBAM',
       'Settings',
     ])
@@ -33,7 +33,7 @@ describe('getNavLinks — supplier spine', () => {
     expect(hrefs).not.toContain('/analytics')
     expect(hrefs).not.toContain('/query')
     expect(hrefs).not.toContain('/inbound-requests')
-    expect(hrefs).not.toContain('/shares')
+    expect(hrefs).toContain('/shares')
     expect(hrefs).not.toContain('/questionnaires')
   })
 })
@@ -45,12 +45,12 @@ describe('getNavLinks — buyer spine', () => {
 
   it('relabels upload as Ingest and keeps the buyer-only surfaces', () => {
     expect(labels).toEqual([
-      'Overview',
-      'Ingest',
-      'Review',
-      'Records',
+      'Home',
+      'Your data',
+      'Documents',
       'Requests',
-      'Entity network',
+      'Sharing',
+      'Suppliers',
       'Export',
       'Settings',
     ])
@@ -58,12 +58,12 @@ describe('getNavLinks — buyer spine', () => {
 
   it('adds CBAM after Entity network when it is relevant to the organisation', () => {
     expect(getNavLinks('BUYER', { showCbam: true }).map(l => l.label)).toEqual([
-      'Overview',
-      'Ingest',
-      'Review',
-      'Records',
+      'Home',
+      'Your data',
+      'Documents',
       'Requests',
-      'Entity network',
+      'Sharing',
+      'Suppliers',
       'CBAM',
       'Export',
       'Settings',
@@ -88,7 +88,25 @@ describe('isLinkActive', () => {
   it('marks Requests active across its grouped sibling routes', () => {
     expect(isLinkActive(requests, '/requests')).toBe(true)
     expect(isLinkActive(requests, '/inbound-requests')).toBe(true)
-    expect(isLinkActive(requests, '/shares')).toBe(true)
+    expect(isLinkActive(requests, '/shares')).toBe(false)
+    expect(
+      isLinkActive(
+        supplier.find(l => l.href === '/shares')!,
+        '/access',
+      ),
+    ).toBe(true)
+    expect(
+      isLinkActive(
+        supplier.find(l => l.href === '/documents')!,
+        '/upload/doc/review',
+      ),
+    ).toBe(true)
+    expect(
+      isLinkActive(
+        supplier.find(l => l.href === '/documents')!,
+        '/review',
+      ),
+    ).toBe(true)
     expect(isLinkActive(requests, '/questionnaires')).toBe(true)
     expect(isLinkActive(requests, '/questionnaires/cbam')).toBe(true)
   })
@@ -150,7 +168,7 @@ describe('CBAM section', () => {
   it('does not claim Records', () => {
     // CBAM cases, consignments and goods lines are not records and must not be
     // pushed into Arbor's record model.
-    const records = getNavLinks('SUPPLIER', { showCbam: true }).find(l => l.label === 'Records')!
+    const records = getNavLinks('SUPPLIER', { showCbam: true }).find(l => l.href === '/records')!
     expect(isLinkActive(records, '/cbam')).toBe(false)
   })
 })

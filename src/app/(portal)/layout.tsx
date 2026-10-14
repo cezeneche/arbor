@@ -3,7 +3,9 @@ import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { Nav } from '@/components/Nav'
 import { VerifyEmailReminder } from '@/components/VerifyEmailReminder'
-import { colours } from '@/lib/design-system'
+import { colours, spacing } from '@/lib/design-system'
+import type { CSSProperties } from 'react'
+import shellStyles from '@/components/PortalShell.module.css'
 import { showsCbam } from '@/lib/nav'
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -59,7 +61,14 @@ export default async function PortalLayout({ children }: { children: React.React
 
   return (
     <div
-      style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: colours.background }}
+      className={shellStyles.shell}
+      style={
+        {
+          backgroundColor: colours.background,
+          '--portal-padding': spacing[5],
+          '--portal-small': spacing[2],
+        } as CSSProperties
+      }
     >
       <Nav
         entityName={entityName}
@@ -68,7 +77,7 @@ export default async function PortalLayout({ children }: { children: React.React
         showCbam={showCbam}
         isPlatformAdmin={account?.isPlatformAdmin ?? false}
       />
-      <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '40px' }}>
+      <main className={shellStyles.main}>
         {account && !account.emailVerifiedAt && (
           <VerifyEmailReminder email={account.email} linkSent={account._count.emailVerificationTokens > 0} />
         )}
