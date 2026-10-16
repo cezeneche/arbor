@@ -235,6 +235,13 @@
   gap: var(--dash-s4);
   margin-top: var(--dash-s4);
 }
+.columns > :only-child {
+  grid-column: 1 / -1;
+}
+.processing {
+  margin-top: var(--dash-s3) !important;
+  color: var(--dash-secondary);
+}
 .row {
   display: flex;
   justify-content: space-between;

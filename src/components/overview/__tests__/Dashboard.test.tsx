@@ -39,9 +39,7 @@ const data: ComponentProps<typeof Dashboard>['data'] = {
   entity: { legalName: 'Example company', entityType: 'SUPPLIER', cbamEnabled: false },
   members: [{ id: 'alex', name: 'Alex' }],
   domains: [],
-  recent: [],
   processingCount: 0,
-  grantCount: 0,
   shares: [],
   reviewCount: 1,
   caseCount: 0,
@@ -64,7 +62,7 @@ it('gives the organisation its own decision hierarchy', () => {
   render(<Dashboard {...props} view="organisation" />)
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Organisation overview')
   expect(screen.getByRole('heading', { name: 'Your intervention' })).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: 'Access and dependencies' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Review documents →' })).toHaveAttribute('href', '/review')
   expect(screen.queryByRole('heading', { name: 'Start here' })).not.toBeInTheDocument()
 })
 
@@ -82,6 +80,52 @@ it('keeps search scoped to the current dashboard view', () => {
   expect(screen.getByRole('search')).toHaveAttribute('action', '/dashboard')
   expect(screen.getByRole('search').querySelector('input[name="view"]')).toHaveValue('organisation')
   expect(screen.getByRole('link', { name: 'Open →' })).toHaveAttribute('href', '/records?record=r')
+  expect(screen.queryByRole('heading', { name: 'Your intervention' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Stored data' })).not.toBeInTheDocument()
+})
+
+it.each(['work', 'organisation'] as const)(
+  'keeps an idle %s view free of empty panels and activity noise',
+  view => {
+    render(<Dashboard {...props} view={view} data={{ ...data, tasks: [], reviewCount: 0, showCbam: true }} />)
+    for (const name of [
+      'Also on your list',
+      'Waiting on others',
+      'Quality and ownership',
+      'Document progress',
+      'Access and dependencies',
+      'CBAM work',
+      'Recently stored',
+    ]) {
+      expect(screen.queryByRole('heading', { name })).not.toBeInTheDocument()
+    }
+    expect(screen.queryByText('open data requests')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Prepare an export →' })).not.toBeInTheDocument()
+  },
+)
+
+it('keeps real ownership and expiring access issues visible after decluttering', () => {
+  const issue = {
+    ...model.tasks[0],
+    id: 'critical',
+    kind: 'quality' as const,
+    flagId: 'flag',
+    title: 'Resolve missing source',
+    tone: 'danger' as const,
+  }
+  render(
+    <Dashboard
+      {...props}
+      view="organisation"
+      data={{
+        ...data,
+        interventions: [issue],
+        shares: [{ id: 'share', domain: 'ENERGY', expiresAt: new Date('2026-10-16'), isSnapshot: true }],
+      }}
+    />,
+  )
+  expect(screen.getByRole('heading', { name: 'Resolve missing source' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Review shared link →' })).toHaveAttribute('href', '/shares')
 })
 
 it('switches views without discarding the search', () => {
