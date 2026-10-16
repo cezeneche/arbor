@@ -16,9 +16,7 @@ export async function loadDashboard(entityId: string, userId: string, now: Date)
     inbound,
     handoffs,
     groups,
-    recent,
     shares,
-    grantCount,
     processingCount,
   ] = await Promise.all([
     prisma.entity.findUnique({
@@ -108,24 +106,11 @@ export async function loadDashboard(entityId: string, userId: string, now: Date)
       _count: { _all: true },
       _max: { periodEnd: true },
     }),
-    prisma.dataRecord.findMany({
-      where: { entityId, isActive: true },
-      select: {
-        id: true,
-        fieldName: true,
-        domain: true,
-        submittedAt: true,
-        submittedBy: { select: { name: true } },
-      },
-      orderBy: { submittedAt: 'desc' },
-      take: 3,
-    }),
     prisma.sharedExport.findMany({
       where: { entityId, revokedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
       select: { id: true, domain: true, expiresAt: true, isSnapshot: true },
       orderBy: { expiresAt: 'asc' },
     }),
-    prisma.dataAccessGrant.count({ where: { grantorEntityId: entityId, isActive: true, revokedAt: null } }),
     prisma.document.count({ where: { entityId, status: { in: ['PENDING', 'EXTRACTING'] } } }),
   ])
   if (!entity) return null
@@ -228,9 +213,7 @@ export async function loadDashboard(entityId: string, userId: string, now: Date)
     entity,
     members,
     domains,
-    recent,
     processingCount,
-    grantCount,
     shares,
     reviewCount: documents.filter(d => d.status === 'REVIEW_REQUIRED' || d.autoAcceptedAt).length,
     caseCount: new Set(handoffs.map(h => h.nucleosCaseId).filter(Boolean)).size,

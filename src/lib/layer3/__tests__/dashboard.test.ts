@@ -40,6 +40,19 @@ const input = (overrides: Partial<DashboardInput> = {}): DashboardInput => ({
 })
 
 describe('dashboard decisions', () => {
+  it('keeps colleagues’ supplier dependencies out of the personal waiting list', () => {
+    const model = buildDashboard(
+      input({
+        requests: [
+          { ...request, id: 'mine', direction: 'outgoing', requestedById: 'alex' },
+          { ...request, id: 'colleague', direction: 'outgoing', requestedById: 'priya' },
+          { ...request, id: 'shared', status: 'SUBMITTED' },
+        ],
+      }),
+    )
+    expect(model.personalWaiting.map(task => task.id)).toEqual(['request-mine', 'request-shared'])
+    expect(model.commitments).toHaveLength(3)
+  })
   it('does not call a quarter complete when only one month is present', () => {
     expect(requestCoverage(request, [{ ...record, periodEnd: new Date('2026-07-31') }], now).ready).toBe(
       false,

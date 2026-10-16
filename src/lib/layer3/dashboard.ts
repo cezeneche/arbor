@@ -384,5 +384,11 @@ export function buildDashboard(input: DashboardInput) {
       (a.deadline ? Date.parse(a.deadline) : Infinity) - (b.deadline ? Date.parse(b.deadline) : Infinity) ||
       a.id.localeCompare(b.id),
   )
-  return { tasks, interventions, waiting, commitments }
+  return {
+    tasks,
+    interventions,
+    waiting,
+    personalWaiting: waiting.filter(task => own(task.ownerId)),
+    commitments,
+  }
 }

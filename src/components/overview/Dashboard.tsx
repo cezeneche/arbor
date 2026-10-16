@@ -2,8 +2,7 @@ import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import { colours, typography, spacing } from '@/lib/design-system'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
-import { fieldLabel } from '@/lib/layer3/field-label'
-import { dashboardDate, deadlineLabel, recordHref, type DashboardTask } from '@/lib/layer3/dashboard'
+import { dashboardDate, deadlineLabel, type DashboardTask } from '@/lib/layer3/dashboard'
 import type { loadDashboard, DashboardSearchResult } from '@/lib/layer3/dashboard-data'
 import { AssignFlag, DashboardViewSwitch } from './DashboardControls'
 import styles from './Dashboard.module.css'
@@ -92,7 +91,7 @@ function Hero({
     <div className={`${styles.hero} ${task.tone === 'danger' ? styles.heroDanger : ''}`}>
       <div className={styles.kicker}>
         <Badge task={task} />
-        <span>{deadlineLabel(task.deadline, now)}</span>
+        {task.deadline && <span>{deadlineLabel(task.deadline, now)}</span>}
       </div>
       <h3>{task.title}</h3>
       <p className={styles.rowDetail}>{task.detail}</p>
@@ -110,11 +109,12 @@ function Hero({
 }
 
 function StoredData({ data, canWrite }: { data: DashboardData; canWrite: boolean }) {
+  if (!data.domains.length && (data.reviewCount || data.processingCount)) return null
   return (
     <section className={styles.section}>
       <div className={styles.sectionHead}>
         <div>
-          <h2>Use what is already stored</h2>
+          <h2>Stored data</h2>
           <p className={styles.caption}>
             Find the records and sources for a response, questionnaire or export.
           </p>
@@ -127,16 +127,11 @@ function StoredData({ data, canWrite }: { data: DashboardData; canWrite: boolean
         <div className={styles.quiet}>
           <h3>Build your organisation’s data record</h3>
           <p>
-            {data.reviewCount
-              ? 'Documents are waiting for review. Confirm their values to make them available here.'
-              : 'Start with an energy bill, delivery note or production record. Confirmed values stay linked to their source for reuse.'}
+            Start with an energy bill, delivery note or production record. Confirmed values stay linked to
+            their source for reuse.
           </p>
-          <Link
-            className={styles.outlineButton}
-            href={data.reviewCount ? '/review' : canWrite ? '/upload' : '/records'}
-          >
-            {data.reviewCount ? 'Open review queue' : canWrite ? 'Add your first document' : 'Browse records'}{' '}
-            →
+          <Link className={styles.outlineButton} href={canWrite ? '/upload' : '/records'}>
+            {canWrite ? 'Add your first document' : 'Browse records'} →
           </Link>
         </div>
       ) : (
@@ -160,43 +155,6 @@ function StoredData({ data, canWrite }: { data: DashboardData; canWrite: boolean
           ))}
         </div>
       )}
-      <div className={styles.actions}>
-        <Link className={styles.textLink} href="/questionnaires">
-          Answer a questionnaire →
-        </Link>
-        <Link className={styles.textLink} href="/export">
-          Prepare an export →
-        </Link>
-        {data.entity.entityType === 'BUYER' && (
-          <Link className={styles.textLink} href="/supply-chain">
-            Find shared supplier data →
-          </Link>
-        )}
-      </div>
-    </section>
-  )
-}
-
-function CbamSummary({ data }: { data: DashboardData }) {
-  if (!data.showCbam) return null
-  return (
-    <section className={styles.section}>
-      <div className={styles.sectionHead}>
-        <h2>CBAM work</h2>
-        <Link className={styles.textLink} href="/cbam?view=cases">
-          Open CBAM →
-        </Link>
-      </div>
-      <p>
-        {data.caseCount} linked case{data.caseCount === 1 ? '' : 's'}
-        {data.unfinishedCases > 0
-          ? ` · ${data.unfinishedCases} document handoff${data.unfinishedCases === 1 ? '' : 's'} unfinished`
-          : ''}
-      </p>
-      <p className={styles.caption}>
-        Check goods lines, supplier information and return readiness inside each case. A saved document does
-        not establish a complete return.
-      </p>
     </section>
   )
 }
@@ -224,7 +182,7 @@ export function Dashboard({
     c => c.deadline && Date.parse(c.deadline) <= now.getTime() + 14 * 86_400_000,
   )
   const due = upcoming.find(c => !c.ready && !['Awaiting buyer', 'Response received'].includes(c.status))
-  const intervention: DashboardTask | undefined =
+  const urgent: DashboardTask | undefined =
     data.interventions[0] ??
     (due
       ? {
@@ -241,6 +199,24 @@ export function Dashboard({
           label: 'Commitment approaching',
         }
       : undefined)
+  const intervention: DashboardTask | undefined =
+    urgent ??
+    (data.reviewCount > 0
+      ? {
+          id: 'document-review',
+          kind: 'review',
+          title: `${data.reviewCount} document${data.reviewCount === 1 ? '' : 's'} awaiting review`,
+          detail: 'Review the extracted values so your team can use the data.',
+          href: '/review',
+          action: 'Review documents',
+          owner: 'Organisation review queue',
+          ownerId: null,
+          deadline: null,
+          tone: 'neutral',
+          label: 'Review needed',
+        }
+      : undefined)
+  const furtherInterventions = data.interventions.filter(task => task.id !== intervention?.id)
   const expiringShares = data.shares.filter(
     s => s.expiresAt && s.expiresAt.getTime() <= now.getTime() + 7 * 86_400_000,
   )
@@ -251,8 +227,7 @@ export function Dashboard({
         <div>
           <p className={styles.entity}>{data.entity.legalName}</p>
           <p className={styles.caption}>
-            {dashboardDate(now)} ·{' '}
-            {personal ? 'Your work and the shared team queue' : 'Organisation-wide work and dependencies'}
+            {personal ? 'Your work and the shared team queue' : 'Organisation-wide work'}
           </p>
         </div>
         <DashboardViewSwitch view={view} query={query} />
@@ -324,301 +299,297 @@ export function Dashboard({
         </section>
       )}
 
-      {personal ? (
+      {!query && (
         <>
-          <section>
-            <div className={styles.sectionHead}>
-              <h2>Start here</h2>
-              <span className={styles.caption}>Deadline, impact and the next useful action</span>
-            </div>
-            {first ? (
-              <Hero task={first} now={now} canAssign={false} members={data.members} canWrite={canWrite} />
-            ) : (
-              <div className={styles.quiet}>
-                <h3>{data.processingCount ? 'Your documents are being read' : 'No actions in your queue'}</h3>
-                <p>
-                  {data.processingCount
-                    ? `${data.processingCount} document${data.processingCount === 1 ? ' is' : 's are'} processing. Check back for extracted values to review.`
-                    : 'Browse your stored data, answer a questionnaire or check the organisation view for work owned by your colleagues.'}
-                </p>
-                <Link href="/records" className={styles.primaryButton}>
-                  Find stored data →
-                </Link>
-              </div>
-            )}
-          </section>
-          <div className={styles.columns}>
-            <section>
-              <div className={styles.sectionHead}>
-                <h2>Also on your list</h2>
-                <span className={styles.caption}>
-                  {remaining.length} further item{remaining.length === 1 ? '' : 's'}
-                </span>
-              </div>
-              {remaining.length === 0 ? (
-                <p className={styles.empty}>
-                  No other actions assigned to you or waiting in the shared queue.
-                </p>
-              ) : (
-                remaining.slice(0, 8).map(task => <TaskRow key={task.id} task={task} now={now} />)
+          {personal ? (
+            <>
+              <section>
+                <div className={styles.sectionHead}>
+                  <h2>Start here</h2>
+                </div>
+                {first ? (
+                  <Hero task={first} now={now} canAssign={false} members={data.members} canWrite={canWrite} />
+                ) : (
+                  <div className={styles.quiet}>
+                    <h3>{data.processingCount ? 'Documents are being read' : 'No actions in your queue'}</h3>
+                    <p>
+                      {data.processingCount
+                        ? `${data.processingCount} document${data.processingCount === 1 ? ' is' : 's are'} processing. Check back for extracted values to review.`
+                        : 'Browse your stored data, answer a questionnaire or check the organisation view for work owned by your colleagues.'}
+                    </p>
+                    <Link href="/records" className={styles.primaryButton}>
+                      Find stored data →
+                    </Link>
+                  </div>
+                )}
+              </section>
+              {(remaining.length > 0 ||
+                data.personalWaiting.length > 0 ||
+                (first && data.processingCount > 0)) && (
+                <div className={styles.columns}>
+                  {remaining.length > 0 && (
+                    <section>
+                      <div className={styles.sectionHead}>
+                        <h2>Also on your list</h2>
+                        <span className={styles.caption}>{remaining.length} items</span>
+                      </div>
+                      {remaining.slice(0, 5).map(task => (
+                        <TaskRow key={task.id} task={task} now={now} />
+                      ))}
+                      {remaining.length > 5 && (
+                        <details>
+                          <summary className={styles.textButton}>
+                            Show {remaining.length - 5} more items
+                          </summary>
+                          {remaining.slice(5).map(task => (
+                            <TaskRow key={task.id} task={task} now={now} />
+                          ))}
+                        </details>
+                      )}
+                    </section>
+                  )}
+                  {(data.personalWaiting.length > 0 || (first && data.processingCount > 0)) && (
+                    <aside>
+                      {data.personalWaiting.length > 0 && (
+                        <>
+                          <div className={styles.sectionHead}>
+                            <h2>Waiting on others</h2>
+                          </div>
+                          {data.personalWaiting.slice(0, 3).map(task => (
+                            <TaskRow key={task.id} task={task} now={now} />
+                          ))}
+                          {data.personalWaiting.length > 3 && (
+                            <details>
+                              <summary className={styles.textButton}>
+                                Show {data.personalWaiting.length - 3} more dependencies
+                              </summary>
+                              {data.personalWaiting.slice(3).map(task => (
+                                <TaskRow key={task.id} task={task} now={now} />
+                              ))}
+                            </details>
+                          )}
+                        </>
+                      )}
+                      {first && data.processingCount > 0 && (
+                        <p className={styles.processing}>
+                          {data.processingCount} document{data.processingCount === 1 ? ' is' : 's are'} being
+                          read. <Link href="/documents">Check progress →</Link>
+                        </p>
+                      )}
+                    </aside>
+                  )}
+                </div>
               )}
-              {remaining.length > 8 && (
-                <details>
-                  <summary className={styles.textButton}>Show {remaining.length - 8} more items</summary>
-                  {remaining.slice(8).map(task => (
-                    <TaskRow key={task.id} task={task} now={now} />
-                  ))}
-                </details>
-              )}
-            </section>
-            <aside>
-              <div className={styles.sectionHead}>
-                <h2>Waiting on others</h2>
-              </div>
-              {data.waiting.length === 0 ? (
-                <p className={styles.empty}>No outstanding supplier responses or buyer reviews.</p>
-              ) : (
-                data.waiting.slice(0, 5).map(task => <TaskRow key={task.id} task={task} now={now} />)
-              )}
-              {data.waiting.length > 5 && (
-                <Link className={styles.textLink} href="/requests?view=request">
-                  View all requests →
-                </Link>
-              )}
-              <div className={styles.section}>
-                <h2>Document progress</h2>
-                <p className={styles.rowDetail}>
-                  {data.reviewCount} awaiting review · {data.processingCount} being read
-                </p>
-                <Link href="/review" className={styles.textLink}>
-                  Open review queue →
-                </Link>
-              </div>
-            </aside>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className={styles.summary}>
-            <div>
-              <div className={styles.stat}>
-                <span className={styles.number}>{data.commitments.length}</span>
-                <span>open data requests</span>
-              </div>
-              <p className={styles.caption}>Incoming commitments and supplier requests</p>
-            </div>
-            <div>
-              <div className={styles.stat}>
-                <span className={styles.number}>{upcoming.length}</span>
-                <span>due within 14 days or overdue</span>
-              </div>
-              <p className={styles.caption}>Only deadlines set on the actual request</p>
-            </div>
-            <div>
-              <div className={styles.stat}>
-                <span className={styles.number}>{data.commitments.filter(c => c.ready).length}</span>
-                <span>with requested fields available</span>
-              </div>
-              <p className={styles.caption}>Review sources and labels before responding</p>
-            </div>
-          </div>
-          <section>
-            <div className={styles.sectionHead}>
-              <h2>Your intervention</h2>
-              <Link className={styles.textLink} href="/settings/stewards">
-                Data owners →
-              </Link>
-            </div>
-            {intervention ? (
-              <Hero
-                task={intervention}
-                now={now}
-                canAssign={canAssign}
-                members={data.members}
-                canWrite={canWrite}
-              />
-            ) : (
-              <div className={styles.quiet}>
-                <h3>No urgent intervention flagged</h3>
-                <p>
-                  Review open requests and document progress below. This status does not certify data
-                  completeness or filing readiness.
-                </p>
-                <Link className={styles.outlineButton} href="/requests">
-                  Review requests →
-                </Link>
-              </div>
-            )}
-          </section>
-          <section className={styles.section}>
-            <div className={styles.sectionHead}>
-              <div>
-                <h2>What the organisation is working towards</h2>
-                <p className={styles.caption}>
-                  Requested period, deadline, remaining work and responsibility.
-                </p>
-              </div>
-              <Link className={styles.textLink} href="/requests">
-                All requests →
-              </Link>
-            </div>
-            {data.commitments.length === 0 ? (
-              <div className={styles.quiet}>
-                <h3>No open data requests</h3>
-                <p>
-                  Your stored data is available for reuse. Create a supplier request when you need specific
-                  fields and periods.
-                </p>
-                <Link className={styles.textLink} href="/requests?view=request">
-                  Request data →
-                </Link>
-              </div>
-            ) : (
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th scope="col">Commitment</th>
-                      <th scope="col">Due</th>
-                      <th scope="col">Readiness and next step</th>
-                      <th scope="col">Responsibility</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.commitments.map(c => (
-                      <tr key={c.id}>
-                        <td>
-                          <Link className={styles.textLink} href={c.href}>
-                            {c.title}
-                          </Link>
-                          <p className={styles.caption}>{c.scope}</p>
-                          <p className={styles.caption}>
-                            {c.direction === 'incoming'
-                              ? 'They requested our data'
-                              : 'We requested their data'}
-                          </p>
-                        </td>
-                        <td className={styles.date}>{dashboardDate(c.deadline)}</td>
-                        <td>
-                          <span className={`${styles.badge} ${c.ready ? styles.good : styles.warning}`}>
-                            {c.status}
-                          </span>
-                          <p className={styles.rowDetail}>{c.detail}</p>
-                        </td>
-                        <td>
-                          <p className={styles.rowTitle}>{c.owner}</p>
-                          <p className={styles.caption}>
-                            {c.direction === 'incoming' ? 'Data stewardship' : 'Requested by'}
-                          </p>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-          <div className={styles.columns}>
-            <section>
-              <div className={styles.sectionHead}>
-                <h2>Quality and ownership</h2>
-              </div>
-              {data.interventions.filter(t => t.id !== intervention?.id).length === 0 ? (
-                <p className={styles.empty}>No further critical, overdue or unassigned issues flagged.</p>
-              ) : (
-                data.interventions
-                  .filter(t => t.id !== intervention?.id)
-                  .slice(0, 6)
-                  .map(task => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      now={now}
-                      canAssign={canAssign}
-                      members={data.members}
-                    />
-                  ))
-              )}
-              {data.interventions.length > 7 && (
-                <Link className={styles.textLink} href="/settings/stewards">
-                  View the full team workload →
-                </Link>
-              )}
-              <div className={styles.section}>
-                <h2>Document progress</h2>
-                <p className={styles.rowDetail}>
-                  {data.reviewCount} awaiting review · {data.processingCount} being read
-                </p>
-                <Link className={styles.textLink} href="/review">
-                  Inspect the review queue →
-                </Link>
-              </div>
-            </section>
-            <aside>
-              <div className={styles.sectionHead}>
-                <h2>Access and dependencies</h2>
-              </div>
-              <p>
-                {data.grantCount} active access grant{data.grantCount === 1 ? '' : 's'} · {data.shares.length}{' '}
-                active shared link{data.shares.length === 1 ? '' : 's'}
-              </p>
-              {expiringShares.length > 0 ? (
-                expiringShares.slice(0, 3).map(s => (
-                  <div key={s.id} className={styles.row}>
-                    <div>
-                      <p className={styles.rowTitle}>
-                        {s.domain ? DOMAIN_LABELS[s.domain] : 'All-domain'} share ends{' '}
-                        {dashboardDate(s.expiresAt)}
-                      </p>
-                      <p className={styles.caption}>
-                        {s.isSnapshot
-                          ? 'Snapshot of the records selected when shared'
-                          : 'Ongoing scoped access'}
-                      </p>
-                      <Link className={styles.textLink} href="/shares">
-                        Review shared link →
-                      </Link>
+            </>
+          ) : (
+            <>
+              {data.commitments.length > 0 && (
+                <div className={styles.summary}>
+                  <div>
+                    <div className={styles.stat}>
+                      <span className={styles.number}>{data.commitments.length}</span>
+                      <span>open data requests</span>
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className={styles.caption}>No active shared links expire in the next seven days.</p>
+                  <div>
+                    <div className={styles.stat}>
+                      <span className={styles.number}>{upcoming.length}</span>
+                      <span>due within 14 days or overdue</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.stat}>
+                      <span className={styles.number}>{data.commitments.filter(c => c.ready).length}</span>
+                      <span>with requested fields available</span>
+                    </div>
+                  </div>
+                </div>
               )}
-              <div className={styles.actions}>
-                <Link className={styles.textLink} href="/access">
-                  Review access →
-                </Link>
-                <Link className={styles.textLink} href="/shares">
-                  Shared links →
-                </Link>
-              </div>
-              {data.waiting.slice(0, 3).map(task => (
-                <TaskRow key={task.id} task={task} now={now} />
-              ))}
-            </aside>
-          </div>
+              <section>
+                <div className={styles.sectionHead}>
+                  <h2>Your intervention</h2>
+                  <Link className={styles.textLink} href="/settings/stewards">
+                    Data owners →
+                  </Link>
+                </div>
+                {intervention ? (
+                  <Hero
+                    task={intervention}
+                    now={now}
+                    canAssign={canAssign}
+                    members={data.members}
+                    canWrite={canWrite}
+                  />
+                ) : (
+                  <div className={styles.quiet}>
+                    <h3>No urgent intervention flagged</h3>
+                    <p>
+                      {data.commitments.length
+                        ? 'Open requests and their owners are listed below.'
+                        : 'There are no open data requests or urgent issues in the team queue.'}
+                    </p>
+                    <Link className={styles.primaryButton} href="/records">
+                      Browse stored data →
+                    </Link>
+                  </div>
+                )}
+              </section>
+              {data.commitments.length > 0 && (
+                <section className={styles.section}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Open commitments</h2>
+                      <p className={styles.caption}>
+                        Requested period, deadline, remaining work and responsibility.
+                      </p>
+                    </div>
+                    <Link className={styles.textLink} href="/requests">
+                      All requests →
+                    </Link>
+                  </div>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th scope="col">Commitment</th>
+                          <th scope="col">Due</th>
+                          <th scope="col">Readiness and next step</th>
+                          <th scope="col">Responsibility</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.commitments.slice(0, 6).map(c => (
+                          <tr key={c.id}>
+                            <td>
+                              <Link className={styles.textLink} href={c.href}>
+                                {c.title}
+                              </Link>
+                              <p className={styles.caption}>{c.scope}</p>
+                              <p className={styles.caption}>
+                                {c.direction === 'incoming'
+                                  ? 'They requested our data'
+                                  : 'We requested their data'}
+                              </p>
+                            </td>
+                            <td className={styles.date}>{dashboardDate(c.deadline)}</td>
+                            <td>
+                              <span className={`${styles.badge} ${c.ready ? styles.good : styles.warning}`}>
+                                {c.status}
+                              </span>
+                              <p className={styles.rowDetail}>{c.detail}</p>
+                            </td>
+                            <td>
+                              <p className={styles.rowTitle}>{c.owner}</p>
+                              <p className={styles.caption}>
+                                {c.direction === 'incoming' ? 'Data stewardship' : 'Requested by'}
+                              </p>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {data.commitments.length > 6 && (
+                    <p className={styles.caption}>
+                      Showing the six nearest deadlines.{' '}
+                      <Link href="/requests/data">View all {data.commitments.length} open requests →</Link>
+                    </p>
+                  )}
+                </section>
+              )}
+              {(furtherInterventions.length > 0 || expiringShares.length > 0) && (
+                <div className={styles.columns}>
+                  {furtherInterventions.length > 0 && (
+                    <section>
+                      <div className={styles.sectionHead}>
+                        <h2>Other issues needing attention</h2>
+                      </div>
+                      {furtherInterventions.slice(0, 5).map(task => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          now={now}
+                          canAssign={canAssign}
+                          members={data.members}
+                        />
+                      ))}
+                      {furtherInterventions.length > 5 && (
+                        <details>
+                          <summary className={styles.textButton}>
+                            Show {furtherInterventions.length - 5} more issues
+                          </summary>
+                          {furtherInterventions.slice(5).map(task => (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              now={now}
+                              canAssign={canAssign}
+                              members={data.members}
+                            />
+                          ))}
+                        </details>
+                      )}
+                    </section>
+                  )}
+                  {expiringShares.length > 0 && (
+                    <aside>
+                      <div className={styles.sectionHead}>
+                        <h2>Sharing expires soon</h2>
+                      </div>
+                      {expiringShares.slice(0, 3).map(s => (
+                        <div key={s.id} className={styles.row}>
+                          <div>
+                            <p className={styles.rowTitle}>
+                              {s.domain ? DOMAIN_LABELS[s.domain] : 'All data'} share ends{' '}
+                              {dashboardDate(s.expiresAt)}
+                            </p>
+                            <Link className={styles.textLink} href="/shares">
+                              Review shared link →
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                      {expiringShares.length > 3 && (
+                        <Link className={styles.textLink} href="/shares">
+                          View all {expiringShares.length} expiring links →
+                        </Link>
+                      )}
+                    </aside>
+                  )}
+                </div>
+              )}
+              {(data.processingCount > 0 || (urgent && data.reviewCount > 0)) && (
+                <p className={styles.processing}>
+                  {urgent && data.reviewCount > 0 && (
+                    <>
+                      <Link href="/review">{data.reviewCount} documents awaiting review →</Link>
+                      {data.processingCount > 0 ? ' · ' : ''}
+                    </>
+                  )}
+                  {data.processingCount > 0 && (
+                    <>
+                      <span>{data.processingCount} documents being read. </span>
+                      <Link href="/documents">Check progress →</Link>
+                    </>
+                  )}
+                </p>
+              )}
+            </>
+          )}
+          <StoredData data={data} canWrite={canWrite} />
+          {data.caseCount > 0 && (
+            <div className={styles.footer}>
+              <p>
+                {data.caseCount} CBAM case{data.caseCount === 1 ? '' : 's'} · check return readiness in each
+                case
+              </p>
+              <Link className={styles.textLink} href="/cbam?view=cases">
+                Open CBAM cases →
+              </Link>
+            </div>
+          )}
         </>
       )}
-      <StoredData data={data} canWrite={canWrite} />
-      <CbamSummary data={data} />
-      <footer className={styles.footer}>
-        <div>
-          <h2>Recently stored</h2>
-          {data.recent.length === 0 ? (
-            <p className={styles.caption}>Confirmed records will appear here with their source history.</p>
-          ) : (
-            data.recent.map(r => (
-              <p className={styles.caption} key={r.id}>
-                <Link href={recordHref(r.id)}>{fieldLabel(r.fieldName, r.domain)}</Link> ·{' '}
-                {r.submittedBy.name} · {dashboardDate(r.submittedAt)}
-              </p>
-            ))
-          )}
-        </div>
-        <Link className={styles.textLink} href="/activity">
-          Full history →
-        </Link>
-      </footer>
     </div>
   )
 }
