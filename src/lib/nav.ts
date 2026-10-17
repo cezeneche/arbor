@@ -1,4 +1,4 @@
-// Home is the decision surface. Documents contains upload and review; Records
+// Home is the decision surface. Uploads contains the upload form, document history and review; Records
 // contains reusable data. Shared links belong to the Requests workflow.
 
 export type EntityType = 'SUPPLIER' | 'BUYER'
@@ -36,7 +36,7 @@ function supplierLinks(showCbam: boolean): NavLink[] {
   return [
     { href: '/dashboard', label: 'Home' },
     { href: '/records', label: 'Records', match: RECORDS_GROUP },
-    { href: '/documents', label: 'Documents', match: ['/upload', '/review'] },
+    { href: '/upload', label: 'Uploads', match: ['/documents', '/review'] },
     { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
     ...(showCbam ? [CBAM] : []),
     { href: '/settings', label: 'Settings', match: ['/access'] },
@@ -47,7 +47,7 @@ function buyerLinks(showCbam: boolean): NavLink[] {
   return [
     { href: '/dashboard', label: 'Home' },
     { href: '/records', label: 'Records', match: RECORDS_GROUP },
-    { href: '/documents', label: 'Documents', match: ['/upload', '/review'] },
+    { href: '/upload', label: 'Uploads', match: ['/documents', '/review'] },
     { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
     { href: '/supply-chain', label: 'Suppliers' },
     ...(showCbam ? [CBAM] : []),

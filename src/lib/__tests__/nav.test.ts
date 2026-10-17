@@ -1,21 +1,21 @@
 import { getNavLinks, isLinkActive, showsCbam } from '@/lib/nav'
 
-// Documents owns upload and review. Requests includes shared data.
+// Uploads contains the upload form and document history. Requests includes shared data.
 
 describe('getNavLinks — supplier spine', () => {
   const links = getNavLinks('SUPPLIER')
   const labels = links.map(l => l.label)
   const hrefs = links.map(l => l.href)
 
-  it('keeps Records and Documents separate with sharing inside Requests', () => {
-    expect(labels).toEqual(['Home', 'Records', 'Documents', 'Requests', 'Settings'])
+  it('keeps Records and Uploads separate with sharing inside Requests', () => {
+    expect(labels).toEqual(['Home', 'Records', 'Uploads', 'Requests', 'Settings'])
   })
 
   it('adds CBAM after Requests when it is relevant to the organisation', () => {
     expect(getNavLinks('SUPPLIER', { showCbam: true }).map(l => l.label)).toEqual([
       'Home',
       'Records',
-      'Documents',
+      'Uploads',
       'Requests',
       'CBAM',
       'Settings',
@@ -38,15 +38,15 @@ describe('getNavLinks — buyer spine', () => {
   const labels = links.map(l => l.label)
   const hrefs = links.map(l => l.href)
 
-  it('keeps the buyer-only surfaces alongside Records and Documents', () => {
-    expect(labels).toEqual(['Home', 'Records', 'Documents', 'Requests', 'Suppliers', 'Export', 'Settings'])
+  it('keeps the buyer-only surfaces alongside Records and Uploads', () => {
+    expect(labels).toEqual(['Home', 'Records', 'Uploads', 'Requests', 'Suppliers', 'Export', 'Settings'])
   })
 
   it('adds CBAM after Entity network when it is relevant to the organisation', () => {
     expect(getNavLinks('BUYER', { showCbam: true }).map(l => l.label)).toEqual([
       'Home',
       'Records',
-      'Documents',
+      'Uploads',
       'Requests',
       'Suppliers',
       'CBAM',
@@ -82,13 +82,13 @@ describe('isLinkActive', () => {
     ).toBe(true)
     expect(
       isLinkActive(
-        supplier.find(l => l.href === '/documents')!,
+        supplier.find(l => l.href === '/upload')!,
         '/upload/doc/review',
       ),
     ).toBe(true)
     expect(
       isLinkActive(
-        supplier.find(l => l.href === '/documents')!,
+        supplier.find(l => l.href === '/upload')!,
         '/review',
       ),
     ).toBe(true)
