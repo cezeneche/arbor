@@ -74,7 +74,7 @@ export function getNavLinks(
   const showCbam = opts.showCbam ?? false
   const links = entityType === 'BUYER' ? buyerLinks(showCbam) : supplierLinks(showCbam)
   // Operators review pilot and institutional enquiries; nobody else sees the link.
-  return opts.isPlatformAdmin ? [...links, { href: '/admin/enquiries', label: 'Enquiry review' }] : links
+  return opts.isPlatformAdmin ? [...links, { href: '/admin/enquiries', label: 'Enquiries' }] : links
 }
 
 export function isLinkActive(link: NavLink, pathname: string): boolean {

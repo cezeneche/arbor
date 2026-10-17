@@ -1,0 +1,102 @@
+.history {
+  margin-top: var(--dash-s4);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--history-radius);
+  background: var(--dash-surface);
+}
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--dash-s2);
+  padding: var(--dash-s3);
+  border-radius: var(--history-radius);
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 160ms ease;
+}
+.summary::-webkit-details-marker {
+  display: none;
+}
+.summary:hover {
+  background: var(--dash-background);
+}
+.summary:focus-visible {
+  outline: 2px solid var(--dash-navy);
+  outline-offset: 4px;
+}
+.icon,
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--dash-navy);
+}
+.icon {
+  width: var(--dash-s4);
+  height: var(--dash-s4);
+}
+.description {
+  flex: 1;
+  min-width: 0;
+}
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--dash-s1);
+  font-size: var(--dash-base);
+  font-weight: var(--dash-medium);
+}
+.count {
+  padding: 0 var(--dash-s1);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--history-radius);
+  color: var(--dash-secondary);
+  font-size: var(--dash-xs);
+}
+.caption {
+  display: block;
+  color: var(--dash-secondary);
+  font-size: var(--dash-xs);
+}
+.reviewBadge {
+  padding: var(--dash-s1) var(--dash-s2);
+  border-radius: var(--history-radius);
+  background: var(--dash-amber-bg);
+  color: var(--dash-amber);
+  font-size: var(--dash-xs);
+  font-weight: var(--dash-medium);
+}
+.chevron {
+  transition: transform 160ms ease;
+}
+.history[open] > .summary {
+  border-bottom: 1px solid var(--dash-border);
+  border-radius: var(--history-radius) var(--history-radius) 0 0;
+}
+.history[open] .chevron {
+  transform: rotate(180deg);
+}
+.content {
+  padding: var(--dash-s3);
+}
+@media (max-width: 600px) {
+  .summary {
+    flex-wrap: wrap;
+    gap: var(--dash-s1);
+    padding: var(--dash-s2);
+  }
+  .reviewBadge {
+    order: 1;
+    margin-left: calc(var(--dash-s4) + var(--dash-s1));
+  }
+  .content {
+    padding: var(--dash-s2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .summary,
+  .chevron {
+    transition: none;
+  }
+}
