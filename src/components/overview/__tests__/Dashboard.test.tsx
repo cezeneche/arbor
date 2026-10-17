@@ -128,12 +128,17 @@ it('keeps real ownership and expiring access issues visible after decluttering',
   expect(screen.getByRole('link', { name: 'Review shared link →' })).toHaveAttribute('href', '/shares')
 })
 
-it('switches views without discarding the search', () => {
-  render(<DashboardViewSwitch view="work" query="energy" />)
-  fireEvent.change(screen.getByRole('combobox', { name: 'Dashboard view' }), {
-    target: { value: 'organisation' },
-  })
-  expect(push).toHaveBeenCalledWith('/dashboard?view=organisation&q=energy')
+it.each([
+  ['work', 'Personal', 'Organisation', 'organisation'],
+  ['organisation', 'Organisation', 'Personal', 'work'],
+] as const)('switches from %s without discarding the search', (view, active, next, destination) => {
+  render(<DashboardViewSwitch view={view} query="energy" />)
+  expect(screen.getByRole('button', { name: active })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('button', { name: next })).toHaveAttribute('aria-pressed', 'false')
+  fireEvent.click(screen.getByRole('button', { name: active }))
+  expect(push).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: next }))
+  expect(push).toHaveBeenCalledWith(`/dashboard?view=${destination}&q=energy`)
 })
 
 it('offers no upload action to a read-only account', () => {
