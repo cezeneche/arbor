@@ -1,27 +1,22 @@
 import { getNavLinks, isLinkActive, showsCbam } from '@/lib/nav'
 
-// The Jobs restructure: the portal collapses to a spine the user actually walks.
-// Supplier verbs: Upload → Review → Records → Requests, plus Overview + Settings.
-// Buyer keeps the richer surface (Entity network, Export) but with the same discipline.
-// Reads-not-fills tools (Benchmarks, Activity, Access) move under Settings — they must
-// NOT appear in the primary nav. Query and Data quality fold into Records.
+// Documents owns upload and review. Requests includes shared data.
 
 describe('getNavLinks — supplier spine', () => {
   const links = getNavLinks('SUPPLIER')
   const labels = links.map(l => l.label)
   const hrefs = links.map(l => l.href)
 
-  it('is the four-verb spine plus Overview and Settings, in order', () => {
-    expect(labels).toEqual(['Home', 'Your data', 'Documents', 'Requests', 'Sharing', 'Settings'])
+  it('keeps Records and Documents separate with sharing inside Requests', () => {
+    expect(labels).toEqual(['Home', 'Records', 'Documents', 'Requests', 'Settings'])
   })
 
   it('adds CBAM after Requests when it is relevant to the organisation', () => {
     expect(getNavLinks('SUPPLIER', { showCbam: true }).map(l => l.label)).toEqual([
       'Home',
-      'Your data',
+      'Records',
       'Documents',
       'Requests',
-      'Sharing',
       'CBAM',
       'Settings',
     ])
@@ -33,7 +28,7 @@ describe('getNavLinks — supplier spine', () => {
     expect(hrefs).not.toContain('/analytics')
     expect(hrefs).not.toContain('/query')
     expect(hrefs).not.toContain('/inbound-requests')
-    expect(hrefs).toContain('/shares')
+    expect(hrefs).not.toContain('/shares')
     expect(hrefs).not.toContain('/questionnaires')
   })
 })
@@ -43,26 +38,16 @@ describe('getNavLinks — buyer spine', () => {
   const labels = links.map(l => l.label)
   const hrefs = links.map(l => l.href)
 
-  it('relabels upload as Ingest and keeps the buyer-only surfaces', () => {
-    expect(labels).toEqual([
-      'Home',
-      'Your data',
-      'Documents',
-      'Requests',
-      'Sharing',
-      'Suppliers',
-      'Export',
-      'Settings',
-    ])
+  it('keeps the buyer-only surfaces alongside Records and Documents', () => {
+    expect(labels).toEqual(['Home', 'Records', 'Documents', 'Requests', 'Suppliers', 'Export', 'Settings'])
   })
 
   it('adds CBAM after Entity network when it is relevant to the organisation', () => {
     expect(getNavLinks('BUYER', { showCbam: true }).map(l => l.label)).toEqual([
       'Home',
-      'Your data',
+      'Records',
       'Documents',
       'Requests',
-      'Sharing',
       'Suppliers',
       'CBAM',
       'Export',
@@ -88,10 +73,10 @@ describe('isLinkActive', () => {
   it('marks Requests active across its grouped sibling routes', () => {
     expect(isLinkActive(requests, '/requests')).toBe(true)
     expect(isLinkActive(requests, '/inbound-requests')).toBe(true)
-    expect(isLinkActive(requests, '/shares')).toBe(false)
+    expect(isLinkActive(requests, '/shares')).toBe(true)
     expect(
       isLinkActive(
-        supplier.find(l => l.href === '/shares')!,
+        supplier.find(l => l.href === '/settings')!,
         '/access',
       ),
     ).toBe(true)

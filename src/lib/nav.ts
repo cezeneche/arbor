@@ -1,5 +1,5 @@
-// Home is the decision surface. Documents contains upload and review; Your data
-// contains the reusable records. Requests and sharing have distinct ownership.
+// Home is the decision surface. Documents contains upload and review; Records
+// contains reusable data. Shared links belong to the Requests workflow.
 
 export type EntityType = 'SUPPLIER' | 'BUYER'
 
@@ -10,7 +10,7 @@ export type NavLink = {
   match?: string[]
 }
 
-const REQUESTS_GROUP = ['/inbound-requests', '/questionnaires']
+const REQUESTS_GROUP = ['/inbound-requests', '/questionnaires', '/shares']
 
 // Definitions describes what the stored records mean, so it folds into Records
 // rather than claiming a seventh slot — the same treatment Query and Data quality
@@ -35,26 +35,24 @@ const CBAM: NavLink = { href: '/cbam', label: 'CBAM' }
 function supplierLinks(showCbam: boolean): NavLink[] {
   return [
     { href: '/dashboard', label: 'Home' },
-    { href: '/records', label: 'Your data', match: RECORDS_GROUP },
+    { href: '/records', label: 'Records', match: RECORDS_GROUP },
     { href: '/documents', label: 'Documents', match: ['/upload', '/review'] },
     { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
-    { href: '/shares', label: 'Sharing', match: ['/access'] },
     ...(showCbam ? [CBAM] : []),
-    { href: '/settings', label: 'Settings' },
+    { href: '/settings', label: 'Settings', match: ['/access'] },
   ]
 }
 
 function buyerLinks(showCbam: boolean): NavLink[] {
   return [
     { href: '/dashboard', label: 'Home' },
-    { href: '/records', label: 'Your data', match: RECORDS_GROUP },
+    { href: '/records', label: 'Records', match: RECORDS_GROUP },
     { href: '/documents', label: 'Documents', match: ['/upload', '/review'] },
     { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
-    { href: '/shares', label: 'Sharing', match: ['/access'] },
     { href: '/supply-chain', label: 'Suppliers' },
     ...(showCbam ? [CBAM] : []),
     { href: '/export', label: 'Export' },
-    { href: '/settings', label: 'Settings' },
+    { href: '/settings', label: 'Settings', match: ['/access'] },
   ]
 }
 

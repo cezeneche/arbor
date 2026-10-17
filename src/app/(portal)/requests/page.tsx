@@ -101,7 +101,14 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
       )}
 
       {view === 'shared' && (
-        <RequestSectionList items={shared} emptyText="You haven't shared any data yet." />
+        <>
+          <div style={{ display: 'flex', gap: spacing[3], marginBottom: spacing[3], flexWrap: 'wrap' }}>
+            <Link href="/shares" style={{ color: colours.navy, fontSize: typography.sizes.sm }}>
+              Manage shared links →
+            </Link>
+          </div>
+          <RequestSectionList items={shared} emptyText="You haven't shared any data yet." />
+        </>
       )}
 
       {/* Asking, and what has already been asked. The list is context for the
