@@ -8,23 +8,33 @@ export function DashboardViewSwitch({ view, query }: { view: 'work' | 'organisat
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   return (
-    <label className={styles.viewControl}>
+    <div className={styles.viewControl}>
       <span>Dashboard view</span>
-      <select
-        value={view}
-        aria-label="Dashboard view"
-        disabled={pending}
-        onChange={event => {
-          const params = new URLSearchParams({ view: event.target.value })
-          if (query) params.set('q', query)
-          startTransition(() => router.push(`/dashboard?${params}`))
-        }}
-      >
-        <option value="work">My work</option>
-        <option value="organisation">Organisation</option>
-      </select>
+      <div className={styles.viewToggle} role="group" aria-label="Dashboard view" aria-busy={pending}>
+        {(
+          [
+            ['organisation', 'Organisation'],
+            ['work', 'Personal'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={view === value}
+            disabled={pending}
+            onClick={() => {
+              if (view === value) return
+              const params = new URLSearchParams({ view: value })
+              if (query) params.set('q', query)
+              startTransition(() => router.push(`/dashboard?${params}`))
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       {pending && <span role="status">Updating…</span>}
-    </label>
+    </div>
   )
 }
 

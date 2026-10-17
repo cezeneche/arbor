@@ -81,7 +81,31 @@
   color: var(--dash-secondary);
   font-size: var(--dash-xs);
 }
-.viewControl select,
+.viewToggle {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  background: var(--dash-surface);
+}
+.viewToggle button {
+  min-height: 32px;
+  padding: var(--dash-s1) var(--dash-s2);
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dash-secondary);
+  font-weight: var(--dash-medium);
+  white-space: nowrap;
+}
+.viewToggle button:hover:not(:disabled) {
+  color: var(--dash-navy);
+}
+.viewToggle button[aria-pressed='true'],
+.viewToggle button[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--dash-navy);
+  color: var(--dash-surface);
+}
 .assignment select {
   border: 1px solid var(--dash-border);
   border-radius: 4px;
