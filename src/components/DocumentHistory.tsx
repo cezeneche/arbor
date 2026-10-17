@@ -1,10 +1,12 @@
 import Link from 'next/link'
+import type { CSSProperties } from 'react'
 import { prisma } from '@/lib/prisma'
 import { Pagination, PAGE_SIZE } from '@/components/Pagination'
 import { dashboardDate } from '@/lib/layer3/dashboard'
 import { dashboardTokens } from '@/components/overview/Dashboard'
 import styles from '@/components/overview/Dashboard.module.css'
-import { colours, spacing, typography } from '@/lib/design-system'
+import { borders } from '@/lib/design-system'
+import historyStyles from './DocumentHistory.module.css'
 
 export async function DocumentHistory({
   entityId,
@@ -49,21 +51,52 @@ export async function DocumentHistory({
   }
   return (
     <details
-      className={styles.dashboard}
+      className={`${styles.dashboard} ${historyStyles.history}`}
       open={open}
-      style={{ ...dashboardTokens, marginTop: spacing[4], borderTop: `1px solid ${colours.border}` }}
+      style={{ ...dashboardTokens, '--history-radius': borders.radius.lg } as CSSProperties}
     >
-      <summary
-        style={{
-          cursor: 'pointer',
-          padding: `${spacing[2]} 0`,
-          fontSize: typography.sizes.base,
-          fontWeight: typography.weights.medium,
-        }}
-      >
-        Documents
+      <summary className={historyStyles.summary}>
+        <span className={historyStyles.icon} aria-hidden="true">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z" />
+            <path d="M14 3v5h5M9 12h6M9 16h6" />
+          </svg>
+        </span>
+        <span className={historyStyles.description}>
+          <span className={historyStyles.title}>
+            Documents{' '}
+            <span className={historyStyles.count} aria-label={`${total} documents`}>
+              {total}
+            </span>
+          </span>
+          <span className={historyStyles.caption}>Your uploaded files and their progress</span>
+        </span>
+        {awaiting > 0 && <span className={historyStyles.reviewBadge}>{awaiting} awaiting review</span>}
+        <span className={historyStyles.chevron} aria-hidden="true">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </span>
       </summary>
-      <div style={{ paddingBottom: spacing[2] }}>
+      <div className={historyStyles.content}>
         <div className={styles.sectionHead}>
           <p>
             {total} document{total === 1 ? '' : 's'} · {awaiting} awaiting review

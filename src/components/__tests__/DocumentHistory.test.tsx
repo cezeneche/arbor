@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 
 jest.mock('@/lib/prisma', () => ({ prisma: { document: { findMany: jest.fn(), count: jest.fn() } } }))
 jest.mock('../overview/Dashboard.module.css', () => ({}))
+jest.mock('../DocumentHistory.module.css', () => ({}))
 jest.mock('../overview/Dashboard', () => ({ dashboardTokens: {} }))
 
 const findMany = jest.mocked(prisma.document.findMany)

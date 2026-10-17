@@ -6,7 +6,7 @@ import { requirePageSession } from '@/lib/page-auth'
 import { getSessionUser } from '@/lib/session'
 import { colours, controls, spacing, textStyles, typography } from '@/lib/design-system'
 
-export const metadata: Metadata = { title: 'Enquiry review | Arbor' }
+export const metadata: Metadata = { title: 'Enquiries | Arbor' }
 
 const statuses = ['NEW', 'IN_PROGRESS', 'CLOSED'] as const
 type Status = (typeof statuses)[number]
@@ -68,8 +68,8 @@ export default async function EnquiriesPage({
   ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', color: colours.textPrimary }}>
-      <h1 style={{ ...textStyles.pageTitle, marginBottom: spacing[1] }}>Enquiry review</h1>
+    <div style={{ width: '100%', color: colours.textPrimary }}>
+      <h1 style={{ ...textStyles.pageTitle, marginBottom: spacing[1] }}>Enquiries</h1>
       <p style={{ ...textStyles.sectionSubtitle, marginTop: 0 }}>
         Platform operators can review saved pilot and institutional enquiries here. New submissions are not
         emailed automatically.
