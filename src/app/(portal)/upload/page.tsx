@@ -4,6 +4,8 @@ import { requirePageSession } from '@/lib/page-auth'
 import { prisma } from '@/lib/prisma'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { UploadZone } from '@/components/UploadZone'
+import { DocumentHistory } from '@/components/DocumentHistory'
+import { parsePage } from '@/lib/pagination'
 import { uploadAddress } from '@/lib/email/config'
 
 export default async function UploadPage({
@@ -12,7 +14,8 @@ export default async function UploadPage({
   searchParams: Promise<Record<string, string | undefined>>
 }) {
   const session = await requirePageSession()
-  const entityId = getSessionUser(session).entityId as string
+  const user = getSessionUser(session)
+  const entityId = user.entityId as string
   const sp = await searchParams
   const initialType = sp.type ?? ''
 
@@ -26,7 +29,16 @@ export default async function UploadPage({
   return (
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: spacing[5] }}>
-        <h1 style={textStyles.pageTitle}>{isBuyer ? 'Ingest documents' : 'Upload document'}</h1>
+        <h1 style={textStyles.pageTitle}>Uploads</h1>
+        <h2
+          style={{
+            fontSize: typography.sizes.base,
+            fontWeight: typography.weights.medium,
+            margin: `${spacing[3]} 0 ${spacing[1]}`,
+          }}
+        >
+          Upload document
+        </h2>
         <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
           Upload a document to extract and certify its data. Fields below the confidence threshold will be
           flagged for your review before records are written.
@@ -70,7 +82,13 @@ export default async function UploadPage({
           padding: spacing[4],
         }}
       >
-        <UploadZone initialType={initialType} />
+        {user.role === 'ADMIN' || user.role === 'CONTRIBUTOR' ? (
+          <UploadZone initialType={initialType} />
+        ) : (
+          <p style={textStyles.caption}>
+            Your account has read-only access. You can view uploaded documents below.
+          </p>
+        )}
       </div>
 
       <div
@@ -108,6 +126,11 @@ export default async function UploadPage({
           </p>
         )}
       </div>
+      <DocumentHistory
+        entityId={entityId}
+        page={parsePage(sp.page)}
+        open={sp.documents === 'open' || parsePage(sp.page) > 1}
+      />
     </div>
   )
 }
