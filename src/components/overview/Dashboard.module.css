@@ -1,7 +1,6 @@
 .dashboard {
-  max-width: 1200px;
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
   color: var(--dash-text);
   font-family: var(--dash-font);
   font-size: var(--dash-sm);
