@@ -72,17 +72,22 @@ export async function DocumentHistory({
           </svg>
         </span>
         <span className={historyStyles.description}>
-          <span className={historyStyles.title}>
-            Documents{' '}
-            <span className={historyStyles.count} aria-label={`${total} documents`}>
-              {total}
-            </span>
+          <span className={historyStyles.title}>Documents</span>
+          <span className={historyStyles.caption}>
+            {total} uploaded {total === 1 ? 'file' : 'files'}
+            {awaiting > 0 && (
+              <span className={historyStyles.reviewBadge}>
+                <span aria-hidden="true">·</span> {awaiting} awaiting review
+              </span>
+            )}
           </span>
-          <span className={historyStyles.caption}>Your uploaded files and their progress</span>
         </span>
-        {awaiting > 0 && <span className={historyStyles.reviewBadge}>{awaiting} awaiting review</span>}
-        <span className={historyStyles.chevron} aria-hidden="true">
+        <span className={historyStyles.action}>
+          <span className={historyStyles.closedLabel}>View history</span>
+          <span className={historyStyles.openLabel}>Hide history</span>
           <svg
+            className={historyStyles.chevron}
+            aria-hidden="true"
             width="18"
             height="18"
             viewBox="0 0 24 24"
@@ -98,9 +103,7 @@ export async function DocumentHistory({
       </summary>
       <div className={historyStyles.content}>
         <div className={styles.sectionHead}>
-          <p>
-            {total} document{total === 1 ? '' : 's'} · {awaiting} awaiting review
-          </p>
+          <h2>Document history</h2>
           <Link className={styles.textLink} href="/review">
             Open review queue →
           </Link>

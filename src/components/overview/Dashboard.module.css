@@ -101,6 +101,10 @@
 .viewToggle button:hover:not(:disabled) {
   color: var(--dash-navy);
 }
+.viewToggle button:disabled {
+  opacity: 1;
+  cursor: default;
+}
 .viewToggle button[aria-pressed='true'],
 .viewToggle button[aria-pressed='true']:hover:not(:disabled) {
   background: var(--dash-navy);

@@ -33,7 +33,6 @@ export function DashboardViewSwitch({ view, query }: { view: 'work' | 'organisat
           </button>
         ))}
       </div>
-      {pending && <span role="status">Updating…</span>}
     </div>
   )
 }
