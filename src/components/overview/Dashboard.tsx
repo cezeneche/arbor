@@ -224,12 +224,7 @@ export function Dashboard({
   return (
     <div className={styles.dashboard} style={dashboardTokens}>
       <div className={styles.context}>
-        <div>
-          <p className={styles.entity}>{data.entity.legalName}</p>
-          <p className={styles.caption}>
-            {personal ? 'Your work and the shared team queue' : 'Organisation-wide work'}
-          </p>
-        </div>
+        <p className={styles.entity}>{data.entity.legalName}</p>
         <DashboardViewSwitch view={view} query={query} />
       </div>
       <header className={styles.heading}>
