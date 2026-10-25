@@ -9,7 +9,6 @@ export function DashboardViewSwitch({ view, query }: { view: 'work' | 'organisat
   const [pending, startTransition] = useTransition()
   return (
     <div className={styles.viewControl}>
-      <span>Dashboard view</span>
       <div className={styles.viewToggle} role="group" aria-label="Dashboard view" aria-busy={pending}>
         {(
           [

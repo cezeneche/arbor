@@ -183,11 +183,11 @@ describe('showsCbam', () => {
 // other link so it looks and behaves the same.
 describe('operator links', () => {
   it('adds Enquiries for platform operators only', () => {
-    const operator = getNavLinks('SUPPLIER', { isPlatformAdmin: true })
-    expect(operator[operator.length - 1]).toEqual({ href: '/admin/enquiries', label: 'Enquiries' })
-    expect(getNavLinks('BUYER', { isPlatformAdmin: true }).some(l => l.href === '/admin/enquiries')).toBe(
-      true,
-    )
+    for (const entityType of ['SUPPLIER', 'BUYER'] as const) {
+      const operator = getNavLinks(entityType, { isPlatformAdmin: true })
+      expect(operator[operator.length - 2]).toEqual({ href: '/admin/enquiries', label: 'Enquiries' })
+      expect(operator[operator.length - 1]).toMatchObject({ href: '/settings', label: 'Settings' })
+    }
     expect(getNavLinks('SUPPLIER').some(l => l.href === '/admin/enquiries')).toBe(false)
   })
 })

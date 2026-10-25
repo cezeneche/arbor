@@ -7,6 +7,7 @@ import { shareState } from '@/lib/shares/share-status'
 import { categoriseRequests } from '@/lib/layer3/requests-overview'
 import { RequestSectionList } from '@/components/RequestSectionList'
 import { RequestDataPrompt } from '@/components/RequestDataPrompt'
+import { SectionViewNav } from '@/components/SectionViewNav'
 import { REQUEST_VIEWS, resolveRequestView, type RequestView } from '@/lib/requests/request-views'
 
 // Unified Requests landing. The supplier sees one idea - "someone wants my data,
@@ -69,32 +70,15 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
         </p>
       </div>
 
-      {/* Views of one section, not tabs — the same quiet toggle Records and CBAM
-          use, so the product has one navigation pattern rather than two. */}
-      <div
-        style={{
-          display: 'flex',
-          gap: spacing[3],
-          marginBottom: spacing[4],
-          paddingBottom: spacing[2],
-          borderBottom: `1px solid ${colours.border}`,
-        }}
-      >
-        {REQUEST_VIEWS.map(v => (
-          <Link
-            key={v.id}
-            href={v.id === 'waiting' ? '/requests' : `/requests?view=${v.id}`}
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: view === v.id ? typography.weights.medium : typography.weights.light,
-              color: view === v.id ? colours.textPrimary : colours.textSecondary,
-              textDecoration: 'none',
-            }}
-          >
-            {v.label}
-          </Link>
-        ))}
-      </div>
+      <SectionViewNav
+        label="Request views"
+        active={view}
+        items={REQUEST_VIEWS.map(v => ({
+          id: v.id,
+          label: v.label,
+          href: v.id === 'waiting' ? '/requests' : `/requests?view=${v.id}`,
+        }))}
+      />
 
       {view === 'waiting' && (
         <RequestSectionList items={waiting} emptyText="You're all caught up, nothing to respond to." accent />
