@@ -1,5 +1,6 @@
-// Home is the decision surface. Uploads contains the upload form, document history and review; Records
-// contains reusable data. Shared links belong to the Requests workflow.
+// Home is the decision surface. Uploads contains the upload form and document history;
+// Review contains documents awaiting confirmation. Records contains reusable data.
+// Shared links belong to the Requests workflow.
 
 export type EntityType = 'SUPPLIER' | 'BUYER'
 
@@ -36,7 +37,8 @@ function supplierLinks(showCbam: boolean): NavLink[] {
   return [
     { href: '/dashboard', label: 'Home' },
     { href: '/records', label: 'Records', match: RECORDS_GROUP },
-    { href: '/upload', label: 'Uploads', match: ['/documents', '/review'] },
+    { href: '/upload', label: 'Uploads', match: ['/documents'] },
+    { href: '/review', label: 'Review' },
     { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
     ...(showCbam ? [CBAM] : []),
     { href: '/settings', label: 'Settings', match: ['/access'] },
@@ -47,7 +49,8 @@ function buyerLinks(showCbam: boolean): NavLink[] {
   return [
     { href: '/dashboard', label: 'Home' },
     { href: '/records', label: 'Records', match: RECORDS_GROUP },
-    { href: '/upload', label: 'Uploads', match: ['/documents', '/review'] },
+    { href: '/upload', label: 'Uploads', match: ['/documents'] },
+    { href: '/review', label: 'Review' },
     { href: '/requests', label: 'Requests', match: REQUESTS_GROUP },
     { href: '/supply-chain', label: 'Suppliers' },
     ...(showCbam ? [CBAM] : []),
@@ -82,6 +85,10 @@ export function getNavLinks(
 }
 
 export function isLinkActive(link: NavLink, pathname: string): boolean {
+  // Individual reviews retain their upload URLs but belong to the Review section.
+  if (/^\/upload\/[^/]+\/review(?:\/|$)/.test(pathname)) {
+    return link.href === '/review'
+  }
   const prefixes = [link.href, ...(link.match ?? [])]
   return prefixes.some(p => pathname === p || (p !== '/dashboard' && pathname.startsWith(p + '/')))
 }
