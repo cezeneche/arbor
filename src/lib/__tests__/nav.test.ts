@@ -8,7 +8,7 @@ describe('getNavLinks — supplier spine', () => {
   const hrefs = links.map(l => l.href)
 
   it('keeps Records and Uploads separate with sharing inside Requests', () => {
-    expect(labels).toEqual(['Home', 'Records', 'Uploads', 'Requests', 'Settings'])
+    expect(labels).toEqual(['Home', 'Records', 'Uploads', 'Review', 'Requests', 'Settings'])
   })
 
   it('adds CBAM after Requests when it is relevant to the organisation', () => {
@@ -16,6 +16,7 @@ describe('getNavLinks — supplier spine', () => {
       'Home',
       'Records',
       'Uploads',
+      'Review',
       'Requests',
       'CBAM',
       'Settings',
@@ -39,7 +40,16 @@ describe('getNavLinks — buyer spine', () => {
   const hrefs = links.map(l => l.href)
 
   it('keeps the buyer-only surfaces alongside Records and Uploads', () => {
-    expect(labels).toEqual(['Home', 'Records', 'Uploads', 'Requests', 'Suppliers', 'Export', 'Settings'])
+    expect(labels).toEqual([
+      'Home',
+      'Records',
+      'Uploads',
+      'Review',
+      'Requests',
+      'Suppliers',
+      'Export',
+      'Settings',
+    ])
   })
 
   it('adds CBAM after Entity network when it is relevant to the organisation', () => {
@@ -47,6 +57,7 @@ describe('getNavLinks — buyer spine', () => {
       'Home',
       'Records',
       'Uploads',
+      'Review',
       'Requests',
       'Suppliers',
       'CBAM',
@@ -80,20 +91,20 @@ describe('isLinkActive', () => {
         '/access',
       ),
     ).toBe(true)
-    expect(
-      isLinkActive(
-        supplier.find(l => l.href === '/upload')!,
-        '/upload/doc/review',
-      ),
-    ).toBe(true)
-    expect(
-      isLinkActive(
-        supplier.find(l => l.href === '/upload')!,
-        '/review',
-      ),
-    ).toBe(true)
     expect(isLinkActive(requests, '/questionnaires')).toBe(true)
     expect(isLinkActive(requests, '/questionnaires/cbam')).toBe(true)
+  })
+
+  it('keeps only Review active for the queue and individual document reviews', () => {
+    for (const entityType of ['SUPPLIER', 'BUYER'] as const) {
+      const links = getNavLinks(entityType)
+      for (const path of ['/review', '/upload/doc/review', '/upload/doc/review/']) {
+        expect(links.filter(link => isLinkActive(link, path)).map(link => link.label)).toEqual(['Review'])
+      }
+      for (const path of ['/upload', '/documents', '/documents/doc', '/upload/doc/review-copy']) {
+        expect(links.filter(link => isLinkActive(link, path)).map(link => link.label)).toEqual(['Uploads'])
+      }
+    }
   })
 
   it('does not mark Overview active on other top-level routes', () => {
