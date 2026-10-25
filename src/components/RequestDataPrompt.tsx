@@ -32,42 +32,49 @@ export function RequestDataPrompt() {
         What you are asking for changes what the supplier sees, so pick the one that matches.
       </p>
 
-      <div style={{ display: 'grid', gap: spacing[2], maxWidth: '640px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+          gap: spacing[2],
+        }}
+      >
         {REQUEST_KINDS.map(kind => (
-          <Link key={kind.id} href={kind.href} style={{ textDecoration: 'none' }}>
+          <Link
+            key={kind.id}
+            href={kind.href}
+            style={{
+              textDecoration: 'none',
+              border: `1px solid ${colours.border}`,
+              borderRadius: '6px',
+              padding: spacing[3],
+              backgroundColor: colours.surface,
+            }}
+          >
             <div
               style={{
-                border: `1px solid ${colours.border}`,
-                borderRadius: '6px',
-                padding: spacing[3],
-                backgroundColor: colours.surface,
+                ...textStyles.sectionTitle,
+                marginBottom: '4px',
               }}
             >
-              <div
-                style={{
-                  ...textStyles.sectionTitle,
-                  marginBottom: '4px',
-                }}
-              >
-                {kind.label}
-              </div>
-              <p
-                style={{
-                  ...textStyles.value,
-                  margin: 0,
-                }}
-              >
-                {kind.asks}
-              </p>
-              <p
-                style={{
-                  ...textStyles.caption,
-                  margin: '6px 0 0',
-                }}
-              >
-                {kind.produces}
-              </p>
+              {kind.label}
             </div>
+            <p
+              style={{
+                ...textStyles.value,
+                margin: 0,
+              }}
+            >
+              {kind.asks}
+            </p>
+            <p
+              style={{
+                ...textStyles.caption,
+                margin: '6px 0 0',
+              }}
+            >
+              {kind.produces}
+            </p>
           </Link>
         ))}
       </div>
