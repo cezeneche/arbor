@@ -27,7 +27,6 @@ distro==1.9.0
 fastapi==0.128.8
 filelock==3.24.2
 filetype==1.2.0
-flatbuffers==25.12.19
 frozenlist==1.8.0
 fsspec==2026.2.0
 greenlet==3.3.1
@@ -54,14 +53,12 @@ MarkupSafe==3.0.3
 marshmallow==3.26.2
 mdurl==0.1.2
 mmh3==5.2.0
-mpmath==1.3.0
 multidict==6.7.1
 mypy_extensions==1.1.0
 nest-asyncio==1.6.0
 networkx==3.6.1
 nltk==3.9.2
 numpy==2.2.0
-onnxruntime==1.24.1
 packaging==26.0
 pandas==2.3.3
 pillow==11.3.0
@@ -107,9 +104,7 @@ sentry-sdk[fastapi]
 
 starlette==0.52.1
 striprtf==0.0.26
-sympy==1.14.0
 tiktoken==0.12.0
-tokenizers==0.22.2
 tqdm==4.67.3
 typer==0.24.0
 typer-slim==0.24.0
