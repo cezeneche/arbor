@@ -7,6 +7,8 @@ import { prisma } from '@/lib/prisma'
 import { EMAIL_FROM } from '@/lib/email/config'
 import { buildAnswerHtml, type FieldAnswerShape } from '@/lib/requests/answer-email'
 import type { Prisma } from '@prisma/client'
+import { logError } from '@/lib/log'
+import { REQUEST_ID_HEADER } from '@/lib/request-id'
 
 // Supplier-initiated approve-and-send for an inbound data request that was
 // matched to certified records and held for review (the S2 fix: nothing is ever
@@ -83,7 +85,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     // Delivery failed, so release the claim and let the supplier try again. The
     // trade is deliberate: a released claim can be re-sent, whereas a claim held
     // through a failure would leave the buyer with no answer and no way to get one.
-    console.error(`[inbound-requests] send for ${id} failed:`, error)
+    logError('inbound-requests: send failed', error, {
+      requestId: _req.headers.get(REQUEST_ID_HEADER),
+      inboundRequestId: id,
+    })
     await prisma.inboundRequest.updateMany({
       where: { id, status: 'ANSWERED' },
       data: {

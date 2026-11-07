@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { EMAIL_FROM } from '@/lib/email/config'
 import type { NotificationType, Prisma } from '@prisma/client'
 import { escapeHtml, getResend } from '@/lib/email/client'
+import { logError } from '@/lib/log'
 
 export type { NotificationType }
 
@@ -129,7 +130,7 @@ export async function sendNotification<T extends NotificationType>(
   // has been removed.
   const users = await prisma.user.findMany({
     where: { entityId: input.entityId, role: { not: 'SYSTEM' }, isActive: true },
-    select: { email: true, name: true },
+    select: { id: true, email: true, name: true },
   })
 
   if (users.length === 0) return
@@ -157,9 +158,9 @@ export async function sendNotification<T extends NotificationType>(
   )
   results.forEach((r, i) => {
     if (r.status === 'rejected') {
-      console.error(`[notifications] send to ${users[i].email} threw:`, r.reason)
+      logError('notifications: send threw', r.reason, { userId: users[i].id, type: input.type })
     } else if (r.value.error) {
-      console.error(`[notifications] send to ${users[i].email} failed:`, r.value.error)
+      logError('notifications: send failed', r.value.error, { userId: users[i].id, type: input.type })
     }
   })
 }

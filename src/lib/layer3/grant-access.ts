@@ -1,6 +1,7 @@
 // Layer 3 — Access & Sharing helpers. Read-only queries over grants.
 import { prisma } from '@/lib/prisma'
 import type { AccessMethod } from '@prisma/client'
+import { logError } from '@/lib/log'
 
 // record that a grantee viewed specific records. Best-effort; logging
 // failures never block the read. Skips when there are no records.
@@ -15,7 +16,7 @@ export async function logRecordAccess(
       data: recordIds.map(recordId => ({ recordId, granteeEntityId, accessMethod })),
     })
   } catch (e) {
-    console.error('[grant-access] logRecordAccess failed:', e)
+    logError('grant-access: logRecordAccess failed', e)
   }
 }
 

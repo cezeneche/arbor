@@ -1,5 +1,6 @@
 import { EMAIL_FROM } from '@/lib/email/config'
 import { escapeHtml, getResend } from '@/lib/email/client'
+import { logError } from '@/lib/log'
 
 /**
  * Sends the password reset link. Delivery is best-effort: a missing API key or a
@@ -28,10 +29,10 @@ export async function sendPasswordResetEmail(to: string, name: string, resetUrl:
     })
     // Resend reports most failures (e.g. sandbox sender restrictions) in the
     // result, not as a throw — log them or delivery problems stay invisible.
-    if (error) console.error('[reset-email] delivery failed:', error)
+    if (error) logError('reset-email: delivery failed', error)
   } catch (e) {
     // Non-fatal for the caller (constant response prevents account enumeration),
     // but must be visible in logs.
-    console.error('[reset-email] send threw:', e)
+    logError('reset-email: send threw', e)
   }
 }

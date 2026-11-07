@@ -2,6 +2,7 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { rateLimitKey } from '@/lib/rate-limit-pure'
 import { redisCredentials } from '@/lib/redis-credentials'
+import { logError, logWarn } from '@/lib/log'
 
 // Sliding-window rate limiting backed by Upstash Redis.
 // The client is instantiated lazily so `next build` never needs the secrets,
@@ -110,7 +111,7 @@ export async function checkRateLimit(
     return { allowed: success, remaining }
   } catch (e) {
     // A Redis hiccup must not silently drop a fail-closed brute-force gate.
-    console.error(`[rate-limit] check failed for '${config.prefix}', failing ${failMode}:`, e)
+    logError('rate-limit: check failed', e, { prefix: config.prefix, failMode })
     return { allowed: failMode === 'open', remaining: failMode === 'open' ? config.limit : 0 }
   }
 }
@@ -147,7 +148,7 @@ export async function claimOnce(key: string, ttlSeconds: number): Promise<boolea
   const redis = getRedis()
   if (!redis) {
     if (process.env.NODE_ENV === 'production') {
-      console.warn('[replay-guard] Upstash not configured — deliveries are not de-duplicated')
+      logWarn('replay-guard: Upstash not configured, deliveries are not de-duplicated')
     }
     return true
   }
@@ -155,7 +156,7 @@ export async function claimOnce(key: string, ttlSeconds: number): Promise<boolea
     const stored = await redis.set(`once:${key}`, '1', { nx: true, ex: ttlSeconds })
     return stored === 'OK'
   } catch (e) {
-    console.error('[replay-guard] claim failed, allowing delivery:', e)
+    logError('replay-guard: claim failed, allowing delivery', e)
     return true
   }
 }

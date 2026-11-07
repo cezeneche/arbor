@@ -1,5 +1,9 @@
 const getVercelOidcToken = jest.fn()
 jest.mock('@vercel/oidc', () => ({ getVercelOidcToken: (...a: unknown[]) => getVercelOidcToken(...a) }))
+const incoming: { requestId: string | null } = { requestId: null }
+jest.mock('next/headers', () => ({
+  headers: async () => ({ get: () => incoming.requestId }),
+}))
 
 import { monitoredServiceToken, nucleosAuthMode, nucleosHeaders, serviceTokenExpiry } from '../service-auth'
 import { NucleosUnavailableError } from '../extraction-client'
@@ -45,6 +49,17 @@ describe('nucleosHeaders with the static token', () => {
     expect(a['x-request-id']).toMatch(/^[0-9a-f-]{36}$/)
     expect(a['x-request-id']).not.toBe(b['x-request-id'])
     expect(getVercelOidcToken).not.toHaveBeenCalled()
+  })
+
+  // E6: the ID the proxy gave the browser's request, so Arbor's logs and
+  // Nucleos's (which logs X-Request-Id) meet on one value.
+  it('sends the current request’s id when there is one', async () => {
+    incoming.requestId = 'req_from_proxy_9'
+    try {
+      expect((await nucleosHeaders())['x-request-id']).toBe('req_from_proxy_9')
+    } finally {
+      incoming.requestId = null
+    }
   })
 
   it('keeps extra headers and an explicit request id', async () => {

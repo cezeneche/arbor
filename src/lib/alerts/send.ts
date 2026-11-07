@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { EMAIL_FROM } from '@/lib/email/config'
 import { getResend } from '@/lib/email/client'
 import { renderEmail, renderSlack, type Alert } from './format'
+import { logError } from '@/lib/log'
 
 export type AlertChannel = 'ops' | 'enquiries'
 
@@ -70,9 +71,9 @@ async function postToSlack(
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
     if (res.ok) return 'sent'
-    console.error(`[alerts] Slack answered ${res.status} for "${alert.title}"`)
+    logError('alerts: Slack refused', undefined, { status: res.status, alert: alert.title })
   } catch (e) {
-    console.error(`[alerts] could not reach Slack for "${alert.title}":`, e)
+    logError('alerts: could not reach Slack', e, { alert: alert.title })
   }
   return 'failed'
 }
@@ -82,15 +83,15 @@ async function emailAdmins(alert: Alert, deps: SendDeps): Promise<number> {
   try {
     to = await deps.recipients()
   } catch (e) {
-    console.error(`[alerts] could not list platform admins for "${alert.title}":`, e)
+    logError('alerts: could not list platform admins', e, { alert: alert.title })
     return 0
   }
-  if (to.length === 0) console.error(`[alerts] no platform admin to email about "${alert.title}"`)
+  if (to.length === 0) logError('alerts: no platform admin to email', undefined, { alert: alert.title })
 
   const message = renderEmail(alert)
   const results = await Promise.allSettled(to.map(address => deps.sendEmail({ ...message, to: address })))
   for (const r of results) {
-    if (r.status === 'rejected') console.error(`[alerts] email failed for "${alert.title}":`, r.reason)
+    if (r.status === 'rejected') logError('alerts: email failed', r.reason, { alert: alert.title })
   }
   return results.filter(r => r.status === 'fulfilled').length
 }

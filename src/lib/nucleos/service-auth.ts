@@ -14,9 +14,10 @@
 //
 // NUCLEOS_INTERNAL_TOKEN, the year-long HS256 token minted by hand, is the
 // fallback: used when no audience is set, or when the exchange fails.
-import { randomUUID } from 'node:crypto'
 import { getVercelOidcToken } from '@vercel/oidc'
+import { currentRequestId } from '@/lib/request-id'
 import { NucleosUnavailableError } from './extraction-client'
+import { logWarn } from '@/lib/log'
 
 export type NucleosAuthMode = 'oidc' | 'token' | 'none'
 
@@ -35,9 +36,10 @@ async function nucleosCredential(env: Env): Promise<string> {
     try {
       return await getVercelOidcToken({ audience })
     } catch (err) {
-      console.warn(
-        `[nucleos] OIDC token unavailable, ${staticToken ? 'using the static token' : 'no fallback'}: ${(err as Error).message}`,
-      )
+      logWarn('nucleos: OIDC token unavailable', {
+        fallback: staticToken ? 'static token' : 'none',
+        detail: (err as Error).message,
+      })
       if (!staticToken) throw new NucleosUnavailableError(`No Nucleos credential: ${(err as Error).message}`)
     }
   }
@@ -48,11 +50,12 @@ async function nucleosCredential(env: Env): Promise<string> {
 
 export async function nucleosHeaders(
   extra: Record<string, string> = {},
-  requestId: string = randomUUID(),
+  requestId?: string,
 ): Promise<Record<string, string>> {
   return {
     authorization: `Bearer ${await nucleosCredential(process.env)}`,
-    'x-request-id': requestId,
+    // The proxy's ID for this request (E6), so both systems log the same one.
+    'x-request-id': requestId ?? (await currentRequestId()),
     ...extra,
   }
 }

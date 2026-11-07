@@ -16,6 +16,7 @@ import { monitoredServiceToken, serviceTokenExpiry } from '@/lib/nucleos/service
 import { sendTokenExpiryAlert } from '@/lib/nucleos/token-expiry-alert'
 import { arborAlert, sendAlert } from '@/lib/alerts/send'
 import { keepaliveAlert } from '@/lib/monitoring/keepalive-alert'
+import { logError } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,12 +27,12 @@ async function run() {
   try {
     await prisma.$queryRaw`SELECT 1`
   } catch (e) {
-    console.error('[cron/keepalive] database ping failed:', e)
+    logError('cron/keepalive: database ping failed', e)
     database = 'The database did not answer.'
   }
 
   const limiter = await rateLimiterHealth()
-  if (!limiter.ok) console.error('[cron/keepalive] rate limiter unreachable:', limiter.detail)
+  if (!limiter.ok) logError('cron/keepalive: rate limiter unreachable', limiter.detail)
 
   const token = serviceTokenExpiry(monitoredServiceToken())
   const alert = await sendTokenExpiryAlert(token)

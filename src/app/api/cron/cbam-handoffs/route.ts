@@ -11,6 +11,7 @@ import { cronRoute } from '@/lib/cron'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { runCbamHandoff, SWEEP_MAX_ATTEMPTS } from '@/lib/layer2/cbam-handoff'
+import { logError } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +43,7 @@ async function run() {
       if (outcome.status === 'CREATED') created++
     } catch (e) {
       errors++
-      console.error('[cron/cbam-handoffs] resume failed for', documentId, e)
+      logError('cron/cbam-handoffs: resume failed', e, { documentId })
     }
   }
 

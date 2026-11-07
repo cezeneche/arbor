@@ -5,6 +5,8 @@ import { requireWriteAccess } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
 import { dispatchWebhook } from '@/lib/webhooks/dispatch'
+import { logError } from '@/lib/log'
+import { REQUEST_ID_HEADER } from '@/lib/request-id'
 
 const schema = z.object({ granteeEntityId: z.string().min(1) })
 
@@ -31,7 +33,9 @@ export async function POST(req: NextRequest) {
       entityId: granteeEntityId,
       type: 'ACCESS_REVOKED',
       payload: { grantId: 'all', grantorEntityId: entityId },
-    }).catch(e => console.error('[grants/revoke-all] notify failed:', e))
+    }).catch(e =>
+      logError('grants/revoke-all: notify failed', e, { requestId: req.headers.get(REQUEST_ID_HEADER) }),
+    )
     await dispatchWebhook(granteeEntityId, 'access.revoked', { grantId: 'all', grantorEntityId: entityId })
   }
 
