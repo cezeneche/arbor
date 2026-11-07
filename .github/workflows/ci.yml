@@ -46,10 +46,53 @@ jobs:
       - name: Production build
         run: npx next build
 
+      # High and critical advisories in production dependencies fail the build,
+      # except the few with no fixed version, accepted per copy with a review date
+      # in scripts/ci/audit-allowlist.json.
+      - name: Dependency audit
+        run: node scripts/ci/audit-gate.mjs
+
       # The TypeScript contract is generated from the Python one; a hand edit to
       # either side drifts them apart silently.
       - name: Contract drift
         run: npm run contract:check
+
+  # The schema and the migrations must describe the same database. A model
+  # edited without a migration deploys fine and then fails at the first query
+  # that touches the change; this applies every migration to an empty Postgres
+  # and diffs the result against schema.prisma.
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply every migration to an empty database
+        run: npx prisma migrate deploy
+
+      - name: Migrations match schema.prisma
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
 
   nucleos:
     runs-on: ubuntu-latest
