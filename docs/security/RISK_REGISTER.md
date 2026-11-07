@@ -2,20 +2,23 @@
 
 **Owner:** Nucleos Compliance Ltd
 **Status:** SOC 2 Type I evidence artefact (internal)
-**Last reviewed:** June 2026
+**Last reviewed:** 7 November 2026, after the production-readiness audit (`docs/production-readiness.md`) and the incidents in `docs/postmortems/`
 
-Top risks to the confidentiality, integrity, and availability of operational data
-held in Arbor, with mitigations. Likelihood/impact are L/M/H.
+Top risks to the confidentiality, integrity and availability of operational data held in Arbor, with mitigations. Likelihood and impact are L/M/H. The owner and the open action say who is moving each risk and what's next.
 
-| # | Risk | Likelihood | Impact | Mitigation |
-|---|------|------------|--------|------------|
-| 1 | **Data breach / unauthorised access** | M | H | Role-based access, mandatory 2FA for admins, entity-scoped API keys (bcrypt-hashed), `tokenVersion` session revocation, TLS 1.3, AES-256 at rest. See WISP §2–3. |
-| 2 | **Extraction error writes a wrong value** | M | M | Confidence threshold (0.85) with calibration for non-English/degraded docs; sub-threshold fields are routed to human review and never silently accepted; corrections create superseding records, never overwrite. |
-| 3 | **Audit-chain failure / tampering** | L | H | HMAC-SHA256 chain per entity; `verifyChain` on demand; public package-hash verification; secret stored only in env, never logged. Incident path: INCIDENT_RESPONSE §4. |
-| 4 | **Third-party / sub-processor failure or breach** | M | M | DPA with sub-processor list; credentials encrypted (AES-256-GCM); rate limiting fails open but logs; integration credentials never returned in API responses. |
-| 5 | **GDPR enforcement / data-subject rights** | L | M | DPA, privacy policy, data minimisation (we store provenance, not derived outputs); entity-scoped data is private by default and shared only by deliberate, revocable grant. |
+| # | Risk | Likelihood | Impact | Mitigation in place | Owner | Open action |
+|---|------|------------|--------|---------------------|-------|-------------|
+| 1 | **Data breach / unauthorised access** | M | H | Role-based access, mandatory 2FA for admins, entity-scoped API keys (bcrypt-hashed), `tokenVersion` session revocation, AES-256 at rest. Database connections use **verified** TLS (E1, `src/lib/db-tls.ts`). Supabase Data API grants to `anon`/`authenticated` revoked in both databases (#151). See WISP §2–3. | Engineering | Vercel Firewall rate limit on sign-in and public token routes (O5). |
+| 2 | **Extraction error writes a wrong value** | M | M | Confidence threshold (0.85) with calibration; sub-threshold fields go to human review and are never silently accepted. Corrections create superseding records, never overwrites. A nightly accuracy and drift monitor alerts #drift-checker. | Engineering | Fill the evaluation golden set (`eval/golden-set.json`). |
+| 3 | **Audit-chain failure / tampering** | L | H | HMAC-SHA256 chain per entity; `verifyChain` on demand; public package-hash verification; the secret is only in the environment, never logged. The nightly backup drill proves each restored chain is identical to production. Incident path: INCIDENT_RESPONSE §4. | Engineering | — |
+| 4 | **Third-party / sub-processor failure or breach** | M | M | DPA with sub-processor list (Sentry added November 2026); credentials encrypted (AES-256-GCM). **The login rate limiter fails closed**, refusing sign-in when Redis is down. Other limiters fail open and log. Integration credentials are never returned in API responses. | Engineering | — |
+| 5 | **GDPR enforcement / data-subject rights** | L | M | DPA, privacy policy, data minimisation (we store provenance, not derived outputs); entity data is private by default and shared only by deliberate, revocable grant. Server logs carry IDs, not email addresses (E6). | Owner | — |
+| 6 | **A managed service disappears or pauses** (Supabase, Upstash on free tiers) | **H** (happened twice, September 2026) | H | A daily keepalive touches Postgres and Redis and alerts if either fails. Readiness checks the database, Redis and Nucleos. **Nightly encrypted backups of both databases outside Supabase**, each restored and checked before it's kept (E3). Error alerts go to #arbor-alerts (E2). | Owner | Uptime monitor on `/api/health/ready` (O1). Supabase Pro with point-in-time recovery at customer onboarding (O3). Back up Supabase Storage files. |
+| 7 | **A deploy breaks production** | M | M | CI must pass: tests, types, lint, production build, the migration drift check and the dependency audit (E5). Sentry error alerts. Recovery is a Vercel instant rollback. Happened once, 7 November ([postmortem](../postmortems/2026-11-07-nucleos-bundle-tmp-full.md)). | Engineering | Nucleos's bundle is still over Vercel's standard size: add a size check or move off the legacy `builds` config. Uptime monitor (O1). |
+| 8 | **A production credential is changed, broken or leaked** | M | H | Secrets are held only in Vercel and GitHub as encrypted variables. Backups use a separate read-only database login, so backup work never touches an app credential. New credentials are tested against the real service before they're saved. Happened once, 7 November ([postmortem](../postmortems/2026-11-07-nucleos-database-credential.md)). | Owner | Give Arbor's backup a read-only login too. Write down the credential-change steps: test, change, redeploy, check readiness. |
+| 9 | **A dependency has a known vulnerability** | M | H | CI fails on any high or critical advisory in production dependencies (E5, `scripts/ci/audit-gate.mjs`). Dependabot alerts, security updates and weekly version PRs. The first audit found a critical Next.js RCE, fixed in #162. Accepted until 1 February 2027: zod inside inngest, which has no fixed zod 3. | Engineering | Review the accepted zod advisory by 1 February 2027. |
+| 10 | **A backup can't be restored, or the key is lost** | L | H | Every backup is restored and verified before it's kept. Encrypted to an age key held only by the owner, in a password manager. Restore runbook: `docs/runbooks/restore-database.md`. | Owner | Quarterly decrypt-and-restore drill with the private key (first by February 2027). Only one person holds the key: decide on a second holder or sealed copy. |
 
 ## Review
 
-This register is reviewed at least annually and after any SEV-1/SEV-2 incident.
-New risks are added with an owner and a target mitigation date.
+This register is reviewed at least annually and after any SEV-1/SEV-2 incident. New risks are added with an owner and an open action. Service targets that show these risks in numbers are in `docs/slos.md`.
