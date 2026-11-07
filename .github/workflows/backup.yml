@@ -1,0 +1,98 @@
+name: Database backups
+
+# E3 of the production-readiness audit (docs/production-readiness.md): a backup
+# the company holds outside Supabase, proven restorable every night.
+#
+# For Arbor and Nucleos, scripts/backup/backup.sh dumps production (read only,
+# verified TLS), restores the dump into the scratch Postgres below, checks the
+# restore is whole and identical to production (scripts/backup/verify-restore.mjs),
+# encrypts it to the owner's age public key and uploads it to Cloudflare R2.
+# A dump that does not restore never becomes a backup. Nothing in CI or R2 can
+# decrypt one: the private key is held by the owner alone. Restoring is
+# docs/runbooks/restore-database.md.
+#
+# Secrets: ARBOR_BACKUP_DATABASE_URL, NUCLEOS_BACKUP_DATABASE_URL (session-mode
+# or direct connection strings, not the transaction pooler), R2_ACCOUNT_ID,
+# R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_ENDPOINT (EU-jurisdiction
+# buckets), OPS_SLACK_WEBHOOK_URL.
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-backups
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: ${{ matrix.kind }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: arbor
+            schemas: public
+            source: ARBOR_BACKUP_DATABASE_URL
+          - kind: nucleos
+            schemas: public,cbam
+            source: NUCLEOS_BACKUP_DATABASE_URL
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # The drill needs only pg; no build, no Prisma client.
+      - name: Install node dependencies
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+
+      # A newer pg_dump reads any older server; the scratch Postgres matches it.
+      - name: Install the PostgreSQL 18 client and age
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -yq postgresql-client-18 age
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
+      - name: Back up, prove the restore, encrypt, upload
+        env:
+          KIND: ${{ matrix.kind }}
+          SCHEMAS: ${{ matrix.schemas }}
+          SOURCE_URL: ${{ secrets[matrix.source] }}
+          SCRATCH_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: scripts/backup/backup.sh
+
+      - name: Tell the ops channel
+        if: failure()
+        env:
+          KIND: ${{ matrix.kind }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OPS_SLACK_WEBHOOK_URL: ${{ secrets.OPS_SLACK_WEBHOOK_URL }}
+        run: python3 scripts/backup/notify_failure.py
