@@ -13,7 +13,8 @@
 #
 # Required: KIND (arbor | nucleos), SOURCE_URL, SCRATCH_URL (admin URL of an empty
 # Postgres the drill may create databases on). Optional: SCHEMAS (default public),
-# R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET.
+# R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_ENDPOINT
+# (for a bucket in the EU jurisdiction).
 # BACKUP_STOP_AFTER_DRILL=1 stops after step 3, for running the drill locally.
 set -euo pipefail
 
@@ -123,7 +124,8 @@ node -e '
 export AWS_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is required to upload}"
 export AWS_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is required to upload}"
 export AWS_DEFAULT_REGION=auto
-endpoint="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+# EU-jurisdiction buckets live at <account>.eu.r2.cloudflarestorage.com.
+endpoint="${R2_ENDPOINT:-https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com}"
 
 day_prefix="daily/$KIND/${stamp:0:4}/${stamp:4:2}/${stamp:6:2}"
 for f in "$dump.age" "$WORK/$name.json"; do

@@ -24,7 +24,7 @@ You need `age`, the PostgreSQL client tools (version 18 or newer), and either th
 2. **Download the backup and its manifest.** Use the Cloudflare dashboard (R2 → the bucket → the file → Download), or the CLI with an R2 API token:
    ```
    export AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… AWS_DEFAULT_REGION=auto
-   R2=https://<account-id>.r2.cloudflarestorage.com
+   R2=https://<account-id>.eu.r2.cloudflarestorage.com   # the R2_ENDPOINT secret; no ".eu" outside the EU jurisdiction
    aws s3 ls --endpoint-url $R2 s3://<bucket>/daily/arbor/2026/11/
    aws s3 cp --endpoint-url $R2 s3://<bucket>/daily/arbor/2026/11/07/arbor-20261107T021700Z.dump.age .
    aws s3 cp --endpoint-url $R2 s3://<bucket>/daily/arbor/2026/11/07/arbor-20261107T021700Z.json .
