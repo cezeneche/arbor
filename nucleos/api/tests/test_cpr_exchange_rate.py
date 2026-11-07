@@ -8,6 +8,9 @@ month, the answer is "not held", never the nearest rate it does hold.
 """
 from __future__ import annotations
 
+import calendar
+
+from app.services.hmrc_exchange_rates_data import HMRC_MONTHLY_UNITS_PER_GBP
 from fastapi.testclient import TestClient
 from main import app
 from shared_auth.testing import make_test_token
@@ -30,12 +33,21 @@ def test_the_rate_for_the_month_of_the_date():
     assert body["table_version"]
 
 
+def _first_month_not_held() -> tuple[int, int]:
+    """The month after the newest one in the table. Worked out from the table,
+    not written in: a fixed date stops being unpublished the day HMRC publishes
+    it, and this test then blocked the weekly job from proposing that month."""
+    year, month = map(int, max(row[0] for row in HMRC_MONTHLY_UNITS_PER_GBP).split("-"))
+    return (year + 1, 1) if month == 12 else (year, month + 1)
+
+
 def test_an_earlier_months_rate_is_not_offered_as_this_months():
-    # The table holds October; November's rate is HMRC's November figure, which
-    # is not published yet. October's must not stand in for it.
-    res = _get("EUR", "2026-11-15")
+    # The next month's rate is HMRC's figure for that month, which the table does
+    # not hold yet. The newest month it does hold must not stand in for it.
+    year, month = _first_month_not_held()
+    res = _get("EUR", f"{year}-{month:02d}-15")
     assert res.status_code == 404
-    assert "November 2026" in res.json()["detail"]
+    assert f"{calendar.month_name[month]} {year}" in res.json()["detail"]
 
 
 def test_a_currency_hmrc_does_not_publish():
