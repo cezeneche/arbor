@@ -11,6 +11,7 @@ import { evaluateReadiness } from '@/lib/readiness'
 import { rateLimiterHealth } from '@/lib/rate-limit'
 import { monitoredServiceToken, serviceTokenExpiry } from '@/lib/nucleos/service-auth'
 import { probeNucleos } from '@/lib/nucleos/readiness-probe'
+import { isCronRequest } from '@/lib/cron'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,8 +40,7 @@ export async function GET(req: NextRequest) {
     serviceToken: serviceTokenExpiry(monitoredServiceToken()),
   })
 
-  const secret = process.env.CRON_SECRET
-  const operator = Boolean(secret) && req.headers.get('authorization') === `Bearer ${secret}`
+  const operator = isCronRequest(req.headers.get('authorization'))
   return NextResponse.json(operator ? readiness : { ready: readiness.ready }, {
     status: readiness.ready ? 200 : 503,
     headers: { 'cache-control': 'no-store' },

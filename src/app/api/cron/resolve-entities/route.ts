@@ -5,9 +5,8 @@
 // review. Non-destructive: it never merges or mutates entities — it only
 // proposes edges. Runs off any write path; brain-down degrades to a no-op.
 //
-// Auth: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Fail closed if
-// the secret is unset.
-import { NextRequest } from 'next/server'
+// Auth and the Sentry cron monitor: src/lib/cron.ts.
+import { cronRoute } from '@/lib/cron'
 import { prisma } from '@/lib/prisma'
 import { candidatePairs, normaliseIdentityName, type BlockableEntity } from '@/lib/entity-resolution/blocking'
 import { planEntityLinks, pairKey, type ExistingLink } from '@/lib/entity-resolution/link-planner'
@@ -19,15 +18,7 @@ export const dynamic = 'force-dynamic'
 
 const ENTITY_CAP = 5000
 
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
-export async function GET(req: NextRequest) {
-  if (!authorized(req)) return new Response('Unauthorized', { status: 401 })
-
+async function run() {
   // 1. Corpus → blockable entities → candidate pairs (deterministic, cheap).
   const entities = await prisma.entity.findMany({
     select: { id: true, legalName: true, registrationNumber: true, country: true, sector: true },
@@ -95,3 +86,5 @@ export async function GET(req: NextRequest) {
     updated: toUpdate.length,
   })
 }
+
+export const GET = cronRoute('/api/cron/resolve-entities', run)

@@ -2,7 +2,7 @@
 // actual deployment, provider contracts, processing locations and transfer
 // safeguards before using this list in an executed DPA.
 export const DPA_VERSION = 'v1'
-export const DPA_LAST_UPDATED = '9 July 2026'
+export const DPA_LAST_UPDATED = '7 November 2026'
 
 export interface SubProcessor {
   name: string
@@ -50,9 +50,17 @@ export const SUB_PROCESSORS: SubProcessor[] = [
   },
   {
     name: 'Slack Technologies, LLC',
-    activity: 'Internal alerts: new enquiries (organisation name) and CBAM cases needing review',
+    activity:
+      'Internal alerts: new enquiries (organisation name), CBAM cases needing review, and operational alerts (no customer figures)',
     location: 'To confirm',
     dpaUrl: 'https://slack.com/terms-of-service/data-processing',
+  },
+  {
+    name: 'Functional Software, Inc. (Sentry)',
+    activity:
+      'Error and performance monitoring; no request bodies, cookies, user data or extracted figures are sent',
+    location: 'EU (Frankfurt, Germany)',
+    dpaUrl: 'https://sentry.io/legal/dpa/',
   },
   {
     name: 'WorkOS, Inc.',

@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs/config'
 import type { NextConfig } from 'next'
 import { missingProductionEnv } from './src/lib/production-env'
 
@@ -48,4 +49,16 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+// Sentry: source maps uploaded at build time (SENTRY_AUTH_TOKEN), and browser
+// errors sent through /monitoring on our own domain so the CSP need not allow
+// Sentry. Runtime settings are in src/lib/sentry-options.ts.
+export default withSentryConfig(nextConfig, {
+  org: 'nucleos-7q',
+  project: 'arbor',
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  tunnelRoute: '/monitoring',
+  webpack: {
+    treeshake: { removeDebugLogging: true },
+  },
+})

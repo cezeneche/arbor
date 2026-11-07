@@ -1,12 +1,12 @@
 """Fire-and-forget notification service for the Nucleos CBAM platform.
 
 Flow 1 — notify_pipeline_error  (sync)
-    Slack Block Kit POST to SLACK_WEBHOOK_URL when document parsing, ingestion,
+    Slack POST to SLACK_WEBHOOK_URL when document parsing, ingestion,
     or a post-calculation step fails.  Called from sync background threads
     (drafts._mark_error, emissions 500 paths) via a plain httpx.Client.
 
 Flow 2 — notify_review_required  (async)
-    Slack Block Kit POST to SLACK_WEBHOOK_URL when a narrative validation
+    Slack POST to SLACK_WEBHOOK_URL, in the format shared with Arbor, when a narrative validation
     sets human_review_required = True.  Called via FastAPI BackgroundTasks from the
     narrative pipeline route so the HTTP response is returned first.
 
@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import logging
 import os
+from urllib.parse import quote
 
 import httpx
 
@@ -93,7 +94,7 @@ async def notify_review_required(
     flags: list[str],
     base_url: str = "",
 ) -> None:
-    """POST a Slack Block Kit message when human_review_required is True.
+    """POST a Slack message when human_review_required is True.
 
     Parameters
     ----------
@@ -111,45 +112,21 @@ async def notify_review_required(
         )
         return
 
+    from ledger_app.services.alert_format import nucleos_alert, render_slack
+
     effective_base = base_url or _base_url()
-    case_url = f"{effective_base}/cbam/{case_id}" if effective_base else f"/cbam/{case_id}"
-    flags_text = (
-        "\n".join(f"• {f}" for f in flags) if flags else "_No specific flags provided_"
+    count = len(flags)
+    # The validator's issue text can quote figures from the case, so it stays in
+    # Arbor behind the link; Slack gets the count (contract/alerts/README.md).
+    alert = nucleos_alert(
+        "warning",
+        f"The audit narrative for {tenant_name} needs review",
+        f"The validator found {count} issue{'s' if count != 1 else ''} to resolve before the narrative can be used.",
+        facts=[("Case", case_id)],
+        action="Open the case and resolve each issue the validator listed.",
+        link=("Open the case", f"{effective_base}/cbam/{quote(case_id, safe='')}") if effective_base else None,
     )
-
-    issue_count = len(flags)
-    issue_label = f"*:warning: {issue_count} issue{'s' if issue_count != 1 else ''} requiring review:*"
-
-    payload = {
-        # Fallback text carries all identity info — attachment blocks do not repeat it
-        "text": f":rotating_light: Human Review Required — *{tenant_name}* (Case `{case_id}`)",
-        "attachments": [
-            {
-                "color": "#e01e5a",
-                "blocks": [
-                    # Issues list — no header or metadata repeated from the top line
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": f"{issue_label}\n{flags_text}",
-                        },
-                    },
-                    {
-                        "type": "actions",
-                        "elements": [
-                            {
-                                "type": "button",
-                                "text": {"type": "plain_text", "text": "Open Case"},
-                                "url": case_url,
-                                "style": "danger",
-                            }
-                        ],
-                    },
-                ],
-            }
-        ],
-    }
+    payload = render_slack(alert)
 
     try:
         timeout = httpx.Timeout(

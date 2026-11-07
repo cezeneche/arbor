@@ -8,25 +8,18 @@
 // It is also the daily check on the Nucleos service token, which Arbor cannot
 // renew itself: the platform admins are emailed as its expiry approaches.
 //
-// Auth: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Fail closed if the
-// secret is unset. Scheduled in vercel.json.
-import { NextRequest } from 'next/server'
+// Auth and the Sentry cron monitor: src/lib/cron.ts. Scheduled in vercel.json.
+import { cronRoute } from '@/lib/cron'
 import { prisma } from '@/lib/prisma'
 import { rateLimiterHealth } from '@/lib/rate-limit'
 import { monitoredServiceToken, serviceTokenExpiry } from '@/lib/nucleos/service-auth'
 import { sendTokenExpiryAlert } from '@/lib/nucleos/token-expiry-alert'
+import { arborAlert, sendAlert } from '@/lib/alerts/send'
+import { keepaliveAlert } from '@/lib/monitoring/keepalive-alert'
 
 export const dynamic = 'force-dynamic'
 
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
-export async function GET(req: NextRequest) {
-  if (!authorized(req)) return new Response('Unauthorized', { status: 401 })
-
+async function run() {
   // SELECT 1 opens a real connection to Postgres, and PING one to Upstash —
   // enough activity to reset either inactivity timer, touching no table.
   let database = 'ok'
@@ -44,6 +37,8 @@ export async function GET(req: NextRequest) {
   const alert = await sendTokenExpiryAlert(token)
 
   const ok = database === 'ok' && limiter.ok
+  const down = keepaliveAlert(database === 'ok', limiter.ok)
+  if (down) await sendAlert(arborAlert(down), 'ops')
   return Response.json(
     {
       status: ok ? 'ok' : 'error',
@@ -55,3 +50,5 @@ export async function GET(req: NextRequest) {
     { status: ok ? 200 : 500 },
   )
 }
+
+export const GET = cronRoute('/api/cron/keepalive', run)

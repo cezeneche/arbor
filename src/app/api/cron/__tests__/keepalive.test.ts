@@ -18,6 +18,12 @@ jest.mock('@/lib/nucleos/token-expiry-alert', () => ({
   sendTokenExpiryAlert: (...a: unknown[]) => sendTokenExpiryAlert(...(a as [])),
 }))
 
+const sendAlert = jest.fn(async () => ({ slack: 'sent', emailed: 1 }))
+jest.mock('@/lib/alerts/send', () => ({
+  ...jest.requireActual('@/lib/alerts/send'),
+  sendAlert: (...a: unknown[]) => sendAlert(...(a as [])),
+}))
+
 import { NextRequest } from 'next/server'
 
 import { GET } from '../keepalive/route'
@@ -66,6 +72,41 @@ describe('GET /api/cron/keepalive', () => {
       database: 'ok',
       rateLimiter: 'Upstash did not answer, so nobody can sign in.',
     })
+  })
+
+  // Expected: a healthy run alerts nobody. Reason: a daily "all fine" message
+  // trains people to ignore the channel.
+  it('sends no alert when both answer', async () => {
+    await GET(request('Bearer secret'))
+    expect(sendAlert).not.toHaveBeenCalled()
+  })
+
+  // Expected: one critical ops alert naming what is down. Reason: both past
+  // losses of these services were found by a user; the 500 alone reaches nobody.
+  it.each([
+    ['Redis', () => rateLimiterHealth.mockResolvedValueOnce({ ok: false, detail: 'no answer' }), /sign-in/i],
+    ['the database', () => queryRaw.mockRejectedValueOnce(new Error('ECONNREFUSED')), /database/i],
+  ])('raises a critical alert when %s is down', async (_name, breakIt, title) => {
+    breakIt()
+    await GET(request('Bearer secret'))
+    expect(sendAlert).toHaveBeenCalledTimes(1)
+    const [alert, channel] = sendAlert.mock.calls[0] as unknown as [
+      { severity: string; title: string },
+      string,
+    ]
+    expect(channel).toBe('ops')
+    expect(alert.severity).toBe('critical')
+    expect(alert.title).toMatch(title)
+  })
+
+  it('raises one alert, not two, when both are down', async () => {
+    rateLimiterHealth.mockResolvedValueOnce({ ok: false, detail: 'no answer' })
+    queryRaw.mockRejectedValueOnce(new Error('ECONNREFUSED'))
+    await GET(request('Bearer secret'))
+    expect(sendAlert).toHaveBeenCalledTimes(1)
+    expect((sendAlert.mock.calls[0] as unknown as [{ title: string }])[0].title).toMatch(
+      /database.*Redis|Redis.*database/i,
+    )
   })
 
   // Arbor cannot renew the Nucleos token itself, so the daily job is where

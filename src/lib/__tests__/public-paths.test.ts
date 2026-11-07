@@ -77,6 +77,21 @@ describe('token-authenticated entry links reachable without an account', () => {
     expect(isPublicPath('/share/abc123')).toBe(true)
   })
 
+  // The Sentry receiver authenticates by signature; nothing else under
+  // /api/alerts is opened by it.
+  it('lets Sentry deliver alerts, and nothing beside it', () => {
+    expect(isPublicPath('/api/alerts/sentry')).toBe(true)
+    expect(isPublicPath('/api/alerts')).toBe(false)
+    expect(isPublicPath('/api/alerts/other')).toBe(false)
+  })
+
+  // Browser errors reach Sentry through this rewrite. Behind a session, every
+  // error on the marketing site, sign-in and supplier links would be lost.
+  it('lets browser error reports through the Sentry tunnel', () => {
+    expect(isPublicPath('/monitoring')).toBe(true)
+    expect(isPublicPath('/monitoring-dashboard')).toBe(false)
+  })
+
   it('keeps the portal behind a session', () => {
     // The allowlist is prefix-based, so a careless entry opens more than it means to.
     expect(isPublicPath('/cbam')).toBe(false)

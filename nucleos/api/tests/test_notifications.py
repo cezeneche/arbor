@@ -42,16 +42,20 @@ class TestNotifyReviewRequired:
     """Slack internal-webhook notification for human_review_required."""
 
     def test_slack_called_with_correct_payload(self):
-        """Webhook receives Block Kit JSON containing case ID, tenant name and flags."""
+        """House-style message: names the importer, counts the issues, links to the case.
+
+        The validator's issue text can quote figures from the case, so it stays in
+        Arbor behind the link (contract/alerts/README.md).
+        """
         from app.services.notifications import notify_review_required
 
         client = _mock_client()
-        flags  = ["Missing calculation_method: goods_line abc-123 (cn_code=7208)"]
+        flags  = ["Numeric mismatch: goods_line abc-123 states 1,204.5 tCO2e, report says 1,200.0"]
 
         with patch("app.services.notifications.httpx.AsyncClient", return_value=client):
             with patch.dict(
                 os.environ,
-                {"SLACK_WEBHOOK_URL": "https://hooks.slack.com/test-webhook"},
+                {"SLACK_WEBHOOK_URL": "https://hooks.slack.com/test-webhook", "VERCEL_ENV": "production"},
             ):
                 asyncio.run(
                     notify_review_required(
@@ -67,17 +71,13 @@ class TestNotifyReviewRequired:
         payload   = client.post.call_args[1]["json"]
 
         assert call_url == "https://hooks.slack.com/test-webhook"
-        # Fallback text carries all identity info (no repetition in blocks)
-        assert "case-001"       in payload["text"]
-        assert "Acme Steel Ltd" in payload["text"]
-        # Attachment blocks: issues section + action button only
-        blocks = payload["attachments"][0]["blocks"]
-        # Issues section contains the flag string
-        flag_block = next(b for b in blocks if b["type"] == "section")
-        assert flags[0] in flag_block["text"]["text"]
-        # Action button deep-links to the case
-        action_block = next(b for b in blocks if b["type"] == "actions")
-        assert "case-001" in action_block["elements"][0]["url"]
+        assert payload["text"] == "Warning: The audit narrative for Acme Steel Ltd needs review"
+        assert "attachments" not in payload
+        body = str(payload["blocks"])
+        assert "1 issue to resolve" in body
+        assert "1,204.5" not in body
+        action_block = next(b for b in payload["blocks"] if b["type"] == "actions")
+        assert action_block["elements"][0]["url"] == "https://app.nucleos.io/cbam/case-001"
 
     def test_no_op_when_webhook_url_not_set(self):
         """Returns silently — no HTTP call — when SLACK_WEBHOOK_URL is absent."""
@@ -309,7 +309,7 @@ class TestCaseLinksPointAtArbor:
                         case_id="case-001", tenant_name="Acme", flags=["x"], base_url="https://arbor.example"
                     )
                 )
-        blocks = client.post.call_args[1]["json"]["attachments"][0]["blocks"]
+        blocks = client.post.call_args[1]["json"]["blocks"]
         button = next(b for b in blocks if b["type"] == "actions")["elements"][0]
         assert button["url"] == "https://arbor.example/cbam/case-001"
 

@@ -1,0 +1,257 @@
+[
+  {
+    "name": "critical alert with every field",
+    "alert": {
+      "severity": "critical",
+      "source": "Arbor",
+      "environment": "production",
+      "title": "Sign-in is failing",
+      "summary": "The rate limiter cannot reach Redis, so every sign-in is refused.",
+      "facts": [
+        {
+          "label": "Service",
+          "value": "Upstash Redis"
+        },
+        {
+          "label": "Since",
+          "value": "17 Oct 2026, 13:58 UTC"
+        }
+      ],
+      "action": "Check the Upstash database still exists in Vercel → Storage.",
+      "link": {
+        "label": "Open readiness",
+        "url": "https://arbor.example/api/health/ready"
+      },
+      "ref": "cron/keepalive",
+      "at": "2026-10-17T14:03:27Z"
+    },
+    "slack": {
+      "text": "Action needed: Sign-in is failing",
+      "blocks": [
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": ":red_circle: *Action needed* · Arbor · production"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Sign-in is failing*\nThe rate limiter cannot reach Redis, so every sign-in is refused."
+          }
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Service*\nUpstash Redis"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Since*\n17 Oct 2026, 13:58 UTC"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*What to do*\nCheck the Upstash database still exists in Vercel → Storage."
+          }
+        },
+        {
+          "type": "actions",
+          "elements": [
+            {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "Open readiness",
+                "emoji": false
+              },
+              "url": "https://arbor.example/api/health/ready",
+              "style": "primary"
+            }
+          ]
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "17 Oct 2026, 14:03 UTC · ref `cron/keepalive`"
+            }
+          ]
+        }
+      ]
+    },
+    "email": {
+      "subject": "[Arbor] Action needed: Sign-in is failing",
+      "text": "Action needed · Arbor · production\n\nSign-in is failing\nThe rate limiter cannot reach Redis, so every sign-in is refused.\n\nService: Upstash Redis\nSince: 17 Oct 2026, 13:58 UTC\n\nWhat to do: Check the Upstash database still exists in Vercel → Storage.\n\nOpen readiness: https://arbor.example/api/health/ready\n\n17 Oct 2026, 14:03 UTC · ref cron/keepalive",
+      "html": "<p><strong>Action needed</strong> · Arbor · production</p>\n<p><strong>Sign-in is failing</strong><br>The rate limiter cannot reach Redis, so every sign-in is refused.</p>\n<ul><li><strong>Service:</strong> Upstash Redis</li><li><strong>Since:</strong> 17 Oct 2026, 13:58 UTC</li></ul>\n<p><strong>What to do:</strong> Check the Upstash database still exists in Vercel → Storage.</p>\n<p><a href=\"https://arbor.example/api/health/ready\">Open readiness</a></p>\n<p>17 Oct 2026, 14:03 UTC · ref cron/keepalive</p>"
+    }
+  },
+  {
+    "name": "info alert with only the required fields",
+    "alert": {
+      "severity": "info",
+      "source": "Nucleos",
+      "environment": "production",
+      "title": "CBAM calculation complete",
+      "summary": "Case 3f2a is ready for review.",
+      "at": "2026-01-05T09:07:00Z"
+    },
+    "slack": {
+      "text": "Update: CBAM calculation complete",
+      "blocks": [
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": ":large_blue_circle: *Update* · Nucleos · production"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*CBAM calculation complete*\nCase 3f2a is ready for review."
+          }
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "5 Jan 2026, 09:07 UTC"
+            }
+          ]
+        }
+      ]
+    },
+    "email": {
+      "subject": "[Nucleos] Update: CBAM calculation complete",
+      "text": "Update · Nucleos · production\n\nCBAM calculation complete\nCase 3f2a is ready for review.\n\n5 Jan 2026, 09:07 UTC",
+      "html": "<p><strong>Update</strong> · Nucleos · production</p>\n<p><strong>CBAM calculation complete</strong><br>Case 3f2a is ready for review.</p>\n<p>5 Jan 2026, 09:07 UTC</p>"
+    }
+  },
+  {
+    "name": "outside text is escaped and an unsafe link is dropped",
+    "alert": {
+      "severity": "warning",
+      "source": "Arbor",
+      "environment": "preview",
+      "title": "New pilot enquiry from A&B <Steel> Ltd <!channel>",
+      "summary": "They wrote \"<https://evil.example|click>\" & left.",
+      "facts": [
+        {
+          "label": "Organisation",
+          "value": "A&B <Steel> 'Ltd'"
+        }
+      ],
+      "link": {
+        "label": "Open it",
+        "url": "javascript:alert(1)"
+      },
+      "ref": "run<1>",
+      "at": "2026-12-31T23:59:59Z"
+    },
+    "slack": {
+      "text": "Warning: New pilot enquiry from A&amp;B &lt;Steel&gt; Ltd &lt;!channel&gt;",
+      "blocks": [
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": ":large_orange_circle: *Warning* · Arbor · preview"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*New pilot enquiry from A&amp;B &lt;Steel&gt; Ltd &lt;!channel&gt;*\nThey wrote \"&lt;https://evil.example|click&gt;\" &amp; left."
+          }
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Organisation*\nA&amp;B &lt;Steel&gt; 'Ltd'"
+            }
+          ]
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "31 Dec 2026, 23:59 UTC · ref `run&lt;1&gt;`"
+            }
+          ]
+        }
+      ]
+    },
+    "email": {
+      "subject": "[Arbor preview] Warning: New pilot enquiry from A&B <Steel> Ltd <!channel>",
+      "text": "Warning · Arbor · preview\n\nNew pilot enquiry from A&B <Steel> Ltd <!channel>\nThey wrote \"<https://evil.example|click>\" & left.\n\nOrganisation: A&B <Steel> 'Ltd'\n\n31 Dec 2026, 23:59 UTC · ref run<1>",
+      "html": "<p><strong>Warning</strong> · Arbor · preview</p>\n<p><strong>New pilot enquiry from A&amp;B &lt;Steel&gt; Ltd &lt;!channel&gt;</strong><br>They wrote &quot;&lt;https://evil.example|click&gt;&quot; &amp; left.</p>\n<ul><li><strong>Organisation:</strong> A&amp;B &lt;Steel&gt; &#39;Ltd&#39;</li></ul>\n<p>31 Dec 2026, 23:59 UTC · ref run&lt;1&gt;</p>"
+    }
+  },
+  {
+    "name": "an over-long title is cut to 150 characters",
+    "alert": {
+      "severity": "resolved",
+      "source": "Arbor",
+      "environment": "production",
+      "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "summary": "Sign-in works again.",
+      "at": "2026-10-17T15:00:00Z"
+    },
+    "slack": {
+      "text": "Resolved: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…",
+      "blocks": [
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": ":large_green_circle: *Resolved* · Arbor · production"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…*\nSign-in works again."
+          }
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "17 Oct 2026, 15:00 UTC"
+            }
+          ]
+        }
+      ]
+    },
+    "email": {
+      "subject": "[Arbor] Resolved: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…",
+      "text": "Resolved · Arbor · production\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…\nSign-in works again.\n\n17 Oct 2026, 15:00 UTC",
+      "html": "<p><strong>Resolved</strong> · Arbor · production</p>\n<p><strong>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…</strong><br>Sign-in works again.</p>\n<p>17 Oct 2026, 15:00 UTC</p>"
+    }
+  }
+]

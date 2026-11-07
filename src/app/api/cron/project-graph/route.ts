@@ -5,9 +5,8 @@
 // tables. A derived view rebuilt off any write path — never a second source of
 // truth in the Layer 2 critical section, and it touches no certified data.
 //
-// Auth: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Fail closed if
-// the secret is unset.
-import { NextRequest } from 'next/server'
+// Auth and the Sentry cron monitor: src/lib/cron.ts.
+import { cronRoute } from '@/lib/cron'
 import { prisma } from '@/lib/prisma'
 import { projectGraph, type GraphProjectionInput } from '@/lib/graph/project'
 import type { Prisma } from '@prisma/client'
@@ -16,15 +15,7 @@ export const dynamic = 'force-dynamic'
 
 const CAP = 20000
 
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
-export async function GET(req: NextRequest) {
-  if (!authorized(req)) return new Response('Unauthorized', { status: 401 })
-
+async function run() {
   // 1. Snapshot the relationship-bearing rows.
   const [entities, documents, records, sameAsLinks, requests] = await Promise.all([
     prisma.entity.findMany({
@@ -90,3 +81,5 @@ export async function GET(req: NextRequest) {
     edges: edges.length,
   })
 }
+
+export const GET = cronRoute('/api/cron/project-graph', run)

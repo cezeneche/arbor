@@ -128,7 +128,7 @@ class AppConfig:
     def slack_notify_events() -> str:
         return os.getenv(
             "SLACK_NOTIFY_EVENTS",
-            "human_review_required,cbam_calculation_completed",
+            "human_review_required,pipeline_error",
         )
 
     @staticmethod

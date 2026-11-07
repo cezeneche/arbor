@@ -1,5 +1,6 @@
 'use client'
 
+import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
 import { colours, typography, spacing } from '@/lib/design-system'
 
@@ -15,6 +16,7 @@ export default function RootError({
   useEffect(() => {
     // Surface in the browser console / monitoring; the digest links to server logs.
     console.error('[error-boundary]', error)
+    Sentry.captureException(error)
   }, [error])
 
   return (

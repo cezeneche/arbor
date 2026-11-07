@@ -8,6 +8,7 @@ import { syncIntegrationFunction, syncCdsDailyFunction } from '@/inngest/functio
 import { weeklyReviewDigestFunction } from '@/inngest/functions/weekly-review-digest'
 import { parseInboundRequestFunction } from '@/inngest/functions/parse-inbound-request'
 import { recoverStalledDocumentsFunction } from '@/inngest/functions/recover-stalled-documents'
+import { reportFailuresFunction } from '@/inngest/functions/report-failures'
 
 export const runtime = 'nodejs'
 
@@ -23,5 +24,6 @@ export const { GET, POST, PUT } = serve({
     weeklyReviewDigestFunction,
     parseInboundRequestFunction,
     recoverStalledDocumentsFunction,
+    reportFailuresFunction,
   ],
 })
