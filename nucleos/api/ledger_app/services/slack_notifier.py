@@ -1,8 +1,8 @@
 """
 Slack notification service for CBAM audit events.
 
-Sends Slack Block Kit messages to an Incoming Webhook when specific audit
-events are written to the ledger.  Fully opt-in — disabled unless
+Sends Slack messages, in the format shared with Arbor (contract/alerts), to an
+Incoming Webhook when specific audit events are written to the ledger.  Fully opt-in — disabled unless
 ``SLACK_WEBHOOK_URL`` is set.
 
 Configuration env vars
@@ -12,7 +12,7 @@ SLACK_WEBHOOK_URL
 
 SLACK_NOTIFY_EVENTS
     Comma-separated list of audit event types that trigger a notification.
-    Default: ``human_review_required,cbam_calculation_completed``
+    Default: ``human_review_required,pipeline_error``
     Set to ``all`` to notify on every audit event.
 """
 from __future__ import annotations
@@ -21,13 +21,16 @@ import logging
 import os
 import time
 from typing import Any
+from urllib.parse import quote
+
+from ledger_app.services.alert_format import Alert, nucleos_alert, render_slack
 
 logger = logging.getLogger("ledger.slack")
 
 _WEBHOOK_URL: str | None = os.getenv("SLACK_WEBHOOK_URL", "").strip() or None
 
 _RAW_EVENTS = os.getenv(
-    "SLACK_NOTIFY_EVENTS", "human_review_required,cbam_calculation_completed,pipeline_error"
+    "SLACK_NOTIFY_EVENTS", "human_review_required,pipeline_error"
 )
 _NOTIFY_EVENTS: set[str] | None = (
     None  # None == "all"
@@ -48,166 +51,80 @@ def _should_notify(event_type: str) -> bool:
     return event_type in _NOTIFY_EVENTS
 
 
+_STAGES = {
+    "calculation": "The CBAM calculation",
+    "document_parsing": "CBAM document parsing",
+    "ingestion": "CBAM ingestion",
+}
+
+_ACRONYMS = {"eu": "EU", "uk": "UK", "xml": "XML", "cbam": "CBAM", "cpr": "CPR", "hmrc": "HMRC"}
+
+
+def _case_link(case_id: str) -> tuple[str, str] | None:
+    base = os.getenv("BASE_URL", "").strip().rstrip("/")
+    if not base or case_id == "unknown":
+        return None
+    return ("Open the case", f"{base}/cbam/{quote(case_id, safe='')}")
+
+
+def _event_words(event_type: str) -> str:
+    words = [_ACRONYMS.get(w, w) for w in event_type.split("_")]
+    first = words[0] if words[0] in _ACRONYMS.values() else words[0].capitalize()
+    return " ".join([first, *words[1:]])
+
+
+def _review_required(case_id: str, data: dict[str, Any]) -> Alert:
+    issues = [str(i) for i in data.get("blocking_issues") or []]
+    count = len(issues)
+    facts = [("Case", case_id)]
+    if issues:
+        facts.append(("Missing fields", ", ".join(issues)))
+    if data.get("score") is not None:
+        facts.append(("Data quality score", str(data["score"])))
+    missing = f"{count} required field{'s' if count != 1 else ''}" if count else "required fields"
+    return nucleos_alert(
+        "warning",
+        "A CBAM report was stopped for missing data",
+        f"The case is missing {missing}, so its report cannot be built until they are filled in.",
+        facts=facts,
+        action="Fill in the missing fields on the case, then build the report again.",
+        link=_case_link(case_id),
+        ref=data.get("run_id") or None,
+    )
+
+
+def _pipeline_error(case_id: str, data: dict[str, Any]) -> Alert:
+    stage = str(data.get("stage") or "processing")
+    # A traceback is unreadable in Slack; the whole error is in the logs and Sentry.
+    first_line = str(data.get("error") or "Unknown error").strip().splitlines()[0]
+    facts = [] if case_id == "unknown" else [("Case", case_id)]
+    if data.get("filename"):
+        facts.append(("File", str(data["filename"])))
+    facts.append(("Error", first_line))
+    return nucleos_alert(
+        "critical",
+        f"{_STAGES.get(stage, f'CBAM {stage}')} failed",
+        "The case cannot move on until this step succeeds. The full error is in the Nucleos logs and Sentry.",
+        facts=facts,
+        link=_case_link(case_id),
+    )
+
+
 def _build_message(case_id: str, event_type: str, event_data: dict[str, Any]) -> dict:
-    """Build a Slack Block Kit message payload for the given audit event."""
-
+    """The Slack payload for an audit event, in the format shared with Arbor."""
     if event_type == "human_review_required":
-        blocking = event_data.get("blocking_issues") or []
-        issues_text = ", ".join(str(i) for i in blocking) if blocking else "—"
-        run_id = event_data.get("run_id") or "—"
-        return {
-            "text": f"\U0001f6a8 Human Review Required \u2014 Case `{case_id}`",
-            "attachments": [
-                {
-                    "color": "#e01e5a",
-                    "blocks": [
-                        {
-                            "type": "header",
-                            "text": {
-                                "type": "plain_text",
-                                "text": "\U0001f6a8 Human Review Required",
-                            },
-                        },
-                        {
-                            "type": "section",
-                            "fields": [
-                                {"type": "mrkdwn", "text": f"*Case ID:*\n`{case_id}`"},
-                                {
-                                    "type": "mrkdwn",
-                                    "text": f"*Risk Tier:*\n`{event_data.get('risk_tier', 'blocking')}`",
-                                },
-                                {
-                                    "type": "mrkdwn",
-                                    "text": f"*Score:*\n{event_data.get('score', '—')}",
-                                },
-                                {
-                                    "type": "mrkdwn",
-                                    "text": f"*Blocking Issues:*\n{issues_text}",
-                                },
-                            ],
-                        },
-                        {
-                            "type": "context",
-                            "elements": [
-                                {
-                                    "type": "mrkdwn",
-                                    "text": f"Run ID: `{run_id}` \u2502 Source: CBAM ledger",
-                                }
-                            ],
-                        },
-                    ],
-                }
-            ],
-        }
-
-    if event_type == "cbam_calculation_completed":
-        run_id = event_data.get("run_id") or "—"
-        return {
-            "text": f"\u2705 CBAM Calculation Complete \u2014 Case `{case_id}`",
-            "attachments": [
-                {
-                    "color": "#2eb886",
-                    "blocks": [
-                        {
-                            "type": "header",
-                            "text": {
-                                "type": "plain_text",
-                                "text": "\u2705 CBAM Calculation Complete",
-                            },
-                        },
-                        {
-                            "type": "section",
-                            "fields": [
-                                {"type": "mrkdwn", "text": f"*Case ID:*\n`{case_id}`"},
-                                {
-                                    "type": "mrkdwn",
-                                    "text": f"*Origin Country:*\n{event_data.get('origin_country', '—')}",
-                                },
-                                {
-                                    "type": "mrkdwn",
-                                    "text": f"*Net Liability (tCO\u2082e):*\n{event_data.get('net_liability_tco2e', '—')}",
-                                },
-                                {
-                                    "type": "mrkdwn",
-                                    "text": f"*CBAM Certificates:*\n{event_data.get('cbam_certificates', '—')}",
-                                },
-                            ],
-                        },
-                        {
-                            "type": "context",
-                            "elements": [
-                                {
-                                    "type": "mrkdwn",
-                                    "text": (
-                                        f"Run ID: `{run_id}`"
-                                        f" \u2502 Table: {event_data.get('emission_factor_table', '—')}"
-                                    ),
-                                }
-                            ],
-                        },
-                    ],
-                }
-            ],
-        }
-
-    if event_type == "pipeline_error":
-        stage = event_data.get("stage") or "unknown"
-        error = event_data.get("error") or "Unknown error"
-        filename = event_data.get("filename")
-        context_parts = [f"*Stage:* `{stage}`", f"*Case:* `{case_id}`"]
-        if filename:
-            context_parts.append(f"*File:* `{filename}`")
-        return {
-            "text": f"\u274c Pipeline error ({stage}) \u2014 Case `{case_id}`",
-            "attachments": [
-                {
-                    "color": "#e01e5a",
-                    "blocks": [
-                        {
-                            "type": "header",
-                            "text": {"type": "plain_text", "text": "\u274c Pipeline Error"},
-                        },
-                        {
-                            "type": "section",
-                            "text": {"type": "mrkdwn", "text": "  ".join(context_parts)},
-                        },
-                        {
-                            "type": "section",
-                            "text": {"type": "mrkdwn", "text": f"```{error}```"},
-                        },
-                    ],
-                }
-            ],
-        }
-
-    # Generic fallback for any other event type
-    run_id = event_data.get("run_id") or "—"
-    return {
-        "text": f"\U0001f4cb CBAM Event: `{event_type}` \u2014 Case `{case_id}`",
-        "attachments": [
-            {
-                "color": "#36a64f",
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": f"*Event:* `{event_type}`\n*Case:* `{case_id}`",
-                        },
-                    },
-                    {
-                        "type": "context",
-                        "elements": [
-                            {
-                                "type": "mrkdwn",
-                                "text": f"Run ID: `{run_id}` \u2502 Source: CBAM ledger",
-                            }
-                        ],
-                    },
-                ],
-            }
-        ],
-    }
+        alert = _review_required(case_id, event_data)
+    elif event_type == "pipeline_error":
+        alert = _pipeline_error(case_id, event_data)
+    else:
+        alert = nucleos_alert(
+            "info",
+            f"{_event_words(event_type)} on a CBAM case",
+            "Recorded in the case's audit log.",
+            facts=[("Case", case_id)],
+            link=_case_link(case_id),
+        )
+    return render_slack(alert)
 
 
 def notify(case_id: str, event_type: str, event_data: dict[str, Any]) -> None:

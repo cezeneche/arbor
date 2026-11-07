@@ -410,20 +410,18 @@ def test_cement_importer_missing_data_slack_review(
     )
 
     slack_payload = json.loads(slack_calls[-1].request.content)
-    # Slack Block Kit: top-level "text" is the notification summary
-    assert "Human Review Required" in (slack_payload.get("text") or ""), (
-        f"Slack message must contain 'Human Review Required'. "
+    # The format shared with Arbor (contract/alerts): the preview names the importer.
+    assert slack_payload.get("text") == "Warning: The audit narrative for Cimentas Turkey needs review", (
         f"Got text={slack_payload.get('text')!r}"
     )
     # case_id must appear somewhere in the Slack payload for the reviewer to navigate
     slack_str = str(slack_payload)
     assert case_id in slack_str, (
-        f"case_id {case_id!r} must appear in the Slack Block Kit payload"
+        f"case_id {case_id!r} must appear in the Slack payload"
     )
-    # Verify the flags text reached the Slack message body
-    assert "25232900" in slack_str or "cement" in slack_str.lower(), (
-        "The cement CN code or 'cement' must be referenced in the Slack flags"
-    )
+    # The validator's issue text stays in Arbor behind the case link; Slack gets the count.
+    assert "1 issue to resolve" in slack_str
+    assert "25232900" not in slack_str
 
     # Step 6: No Resend email for a blocked / unfinished cement case
     # Resend fires only after a case is formally approved — not for blocked cases.

@@ -6,7 +6,7 @@ Suggested order: A1 and A3 first (small; A1 corrects wrong information shown to 
 
 ## A. Build
 
-- [x] **A1. Correct the product's EU CBAM wording.** `src/lib/nucleos/jurisdiction.ts` tells EU importers they lodge a *quarterly* declaration and that *both* direct and indirect emissions are counted. Under the definitive regime it is an annual declaration, and indirect emissions count only for cement and fertilisers. Check the wording against the Commission's guidance and fix every screen that repeats it.
+- [x] **A1. Correct the product's EU CBAM wording.** `src/lib/nucleos/jurisdiction.ts` tells EU importers they lodge a _quarterly_ declaration and that _both_ direct and indirect emissions are counted. Under the definitive regime it is an annual declaration, and indirect emissions count only for cement and fertilisers. Check the wording against the Commission's guidance and fix every screen that repeats it.
   - Done. It turned out to be a calculation bug too: the engine and the EU declaration file added indirect emissions for every good. They now count them only for EU cement and fertilisers, and never in the UK (`cbam_indirect_scope.py`). The owner approved the change and the four golden cases it moved (steel lines only; each now equals its direct emissions).
 - [x] **A2. Keep HMRC reference data current.**
   - Exchange rates: Nucleos's table (`nucleos/api/app/services/cpr_reference.py`) holds only 2026 rates for EUR and USD (and January 2026 only for CNY, TRY and INR), and none for CHF or SEK. The relief form therefore says "not held" for every 2027 claim.
@@ -63,3 +63,29 @@ Suggested order: A1 and A3 first (small; A1 corrects wrong information shown to 
 - [x] **D1. Delete two stale branches**, `docs/launch-readiness-audit-2026-09-16` and `fix/product-trim`. Everything in them is already in `main`.
   - Done 30 September 2026, locally and on GitHub, after checking each commit's patch and each changed file against `main`.
 - [x] **D2. Update `docs/marketing/todo.md` D3.** The enquiry webhook is now set and tested; the file still lists it as to do.
+
+## E. Production hardening
+
+From the 17 October 2026 audit in `docs/production-readiness.md`, which says why each item is here and which checklist items need nothing. Owner actions O1–O5 are listed there.
+
+- [x] **E1. Require TLS on the database connection.** Set `ssl` in `src/lib/prisma.ts` for any non-local host, whatever the URL says.
+  - Done (17 October 2026). Confirmed first: the Supabase pooler accepted a plaintext connection, and verified TLS failed because Supabase's chain ends at its own root. `src/lib/db-tls.ts` now gives every remote connection verified TLS against the public roots plus Supabase Root 2021 CA (fingerprint checked against both the live pooler and Supabase's published file, pinned in a test that fails 90 days before the 2031 expiry). It strips the URL's TLS parameters, because pg lets them override the `ssl` option. Checked against the real database: TLS 1.3, verified, even with `sslmode=disable` in the URL.
+  - Not covered: `npm run migrate:deploy` connects through Prisma's schema engine, not this adapter. Add `?sslmode=require` to the URL used for migrations.
+- [ ] **E2. Alert on production failures.** Owner decision (17 October 2026): Sentry catches errors; Slack and email deliver every message, in one well-crafted format.
+  - [x] One format for every Slack message and ops email, in both languages: rules and golden cases in `contract/alerts/`, rendered by `src/lib/alerts/format.ts` and `nucleos/api/ledger_app/services/alert_format.py`, each tested against the same `golden.json`.
+  - [x] One sender (`src/lib/alerts/send.ts`): Slack for everything, email to platform admins for critical and warning, never throws.
+  - [x] Every existing message moved onto it: enquiries, extraction drift (now also emailed), Nucleos token expiry (now also in Slack), and Nucleos's review-required and pipeline-error messages. Nucleos's never-emitted `cbam_calculation_completed` template deleted. Customer figures and validator text no longer go to Slack; messages name the case and link to it.
+  - [x] Keepalive raises a critical alert when the database or Redis stops answering.
+  - [x] `/api/alerts/sentry` turns Sentry issue and metric alerts into the same format (signature-verified, answers before sending). Nucleos tags its Sentry events `service: nucleos`.
+  - [x] Sentry in Arbor (`@sentry/nextjs` 11, org `nucleos-7q`, EU region, confirmed from the DSN). One settings module, `src/lib/sentry-options.ts`, for server, edge and browser: on only in Vercel production and preview; no bodies, cookies, user data, query values, local variables, database parameters or AI text; token routes and query strings scrubbed from errors and spans; trace headers only to Arbor and Nucleos; tagged `service: arbor`. Session Replay off. Browser errors through the `/monitoring` tunnel (public path). All three error pages report. A test event reached Sentry scrubbed.
+  - [x] Failed Inngest functions reach Sentry through one `inngest/function.failed` handler, without the triggering event's data.
+  - [x] Cron monitors on the five Vercel crons (`src/lib/cron.ts`): schedule read from `vercel.json`, only authorised runs check in, a 5xx counts as a failed run.
+  - [x] Nucleos: Sentry sends no request bodies or local variables; environment from `VERCEL_ENV`.
+  - [ ] Owner: `SENTRY_AUTH_TOKEN` and `OPS_SLACK_WEBHOOK_URL` in Vercel (arbor); a `nucleos-api` FastAPI project and its DSN (then `SENTRY_DSN_API` on nucleos-api); the Sentry internal integration whose client secret becomes `SENTRY_WEBHOOK_SECRET`, and an alert rule per project pointing at it. Then add Sentry (EU, Frankfurt) to `src/lib/legal/subprocessors.ts`.
+- [ ] **E3. Off-provider backups and a restore drill.** Nightly encrypted `pg_dump` from a GitHub Actions job; a documented restore; a drill that restores into a scratch database and runs `verifyChain` on every entity, so a restore is proven intact, not just loaded. Needs O4.
+- [ ] **E4. Timeouts on AI calls.** Explicit `timeout` and `maxRetries` on every Anthropic client, a `maxDuration` on `/api/query/nl`, and a timeout on the readiness database check.
+- [ ] **E5. CI drift and dependency checks.** `prisma migrate diff` against a Postgres service (schema and migrations must agree); `npm audit --omit=dev --audit-level=high`; Dependabot for npm, pip (Nucleos, brain) and GitHub Actions.
+- [ ] **E6. Request IDs and structured logs.** A small JSON logger with a request ID, sent to Nucleos as `x-request-id`; replace bare `console.error` on server paths.
+- [x] **E7. One timing-safe cron auth helper** replacing the seven copies.
+  - Done with E2: `isCronRequest` in `src/lib/cron.ts` (SHA-256 then `timingSafeEqual`), used by the seven cron routes and readiness.
+- [ ] **E8. Write it down.** Postmortems for the Supabase and Upstash losses (`docs/postmortems/`); three SLOs (readiness availability, extraction completion time, certified-write success); refresh the risk register.

@@ -1,5 +1,6 @@
 'use client'
 
+import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
 import { colours, typography, spacing } from '@/lib/design-system'
 
@@ -14,6 +15,7 @@ export default function PortalError({
 }) {
   useEffect(() => {
     console.error('[portal-error-boundary]', error)
+    Sentry.captureException(error)
   }, [error])
 
   return (

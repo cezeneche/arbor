@@ -1,4 +1,5 @@
-import { enquiryAlertText, sendEnquiryAlert } from '../enquiry-alert'
+import { enquiryAlert, sendEnquiryAlert } from '../enquiry-alert'
+import { renderSlack } from '@/lib/alerts/format'
 
 // A new pilot or institutional enquiry is announced in Slack so it is not left
 // unseen in the database. Only the organisation, the kind of enquiry and a link
@@ -11,17 +12,23 @@ afterEach(() => {
 
 const pilot = { kind: 'pilot' as const, orgName: 'Example Imports Ltd', detail: 'importer' }
 
-describe('enquiryAlertText', () => {
+describe('enquiryAlert', () => {
+  // Expected: an update naming the organisation and kind, with the detail as a
+  // fact and a button to the review page. Reason: the house style (contract/alerts).
   it('names the organisation and the kind of enquiry, and links to the review page', () => {
-    expect(enquiryAlertText(pilot, 'https://arbor.test')).toBe(
-      'New pilot enquiry from Example Imports Ltd (importer). Review it: https://arbor.test/admin/enquiries',
-    )
+    expect(enquiryAlert(pilot, 'https://arbor.test')).toEqual({
+      severity: 'info',
+      title: 'New pilot enquiry from Example Imports Ltd',
+      summary: 'Their contact details and message are on the review page.',
+      facts: [{ label: 'Details', value: 'importer' }],
+      link: { label: 'Review the enquiry', url: 'https://arbor.test/admin/enquiries' },
+    })
   })
 
   it('leaves out an empty detail', () => {
-    expect(
-      enquiryAlertText({ kind: 'institutional', orgName: 'Uni', detail: '' }, 'https://arbor.test'),
-    ).toBe('New institutional enquiry from Uni. Review it: https://arbor.test/admin/enquiries')
+    const alert = enquiryAlert({ kind: 'institutional', orgName: 'Uni', detail: '' }, 'https://arbor.test')
+    expect(alert.title).toBe('New institutional enquiry from Uni')
+    expect(alert.facts).toEqual([])
   })
 })
 
@@ -33,16 +40,27 @@ describe('sendEnquiryAlert', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
-  it('posts the text to the webhook', async () => {
+  // Expected: the house-style payload, posted to the enquiries webhook.
+  it('posts the formatted message to the enquiries webhook', async () => {
     process.env.ENQUIRY_SLACK_WEBHOOK_URL = 'https://hooks.slack.test/x'
     process.env.NEXT_PUBLIC_APP_URL = 'https://arbor.test'
     const fetchImpl = jest.fn(async () => new Response('ok', { status: 200 }))
     await expect(sendEnquiryAlert(pilot, fetchImpl as unknown as typeof fetch)).resolves.toBe(true)
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('https://hooks.slack.test/x')
-    expect(JSON.parse(String(init.body))).toEqual({
-      text: 'New pilot enquiry from Example Imports Ltd (importer). Review it: https://arbor.test/admin/enquiries',
-    })
+    const body = JSON.parse(String(init.body)) as ReturnType<typeof renderSlack>
+    expect(body.text).toBe('Update: New pilot enquiry from Example Imports Ltd')
+    expect(JSON.stringify(body.blocks)).toContain('https://arbor.test/admin/enquiries')
+  })
+
+  // Expected: a pasted contact detail never reaches Slack. Reason: contact
+  // details stay in Arbor; only the organisation name is sent.
+  it('sends no contact details', async () => {
+    process.env.ENQUIRY_SLACK_WEBHOOK_URL = 'https://hooks.slack.test/x'
+    const fetchImpl = jest.fn(async () => new Response('ok', { status: 200 }))
+    await sendEnquiryAlert(pilot, fetchImpl as unknown as typeof fetch)
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+    expect(String(init.body)).not.toMatch(/@|phone|email/i)
   })
 
   it('never throws: a failed alert must not fail the enquiry', async () => {

@@ -9,9 +9,8 @@
 // The flag's severity, message and assignee are unchanged — escalation is a
 // notification event, so the certified store is untouched by a missed deadline.
 //
-// Auth: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Fails closed if
-// the secret is unset.
-import { NextRequest } from 'next/server'
+// Auth and the Sentry cron monitor: src/lib/cron.ts.
+import { cronRoute } from '@/lib/cron'
 import { prisma } from '@/lib/prisma'
 import { flagsNeedingEscalation, type SlaFlag } from '@/lib/stewardship/sla'
 import { sendNotification } from '@/lib/notifications'
@@ -21,15 +20,7 @@ export const dynamic = 'force-dynamic'
 
 const FLAG_CAP = 5000
 
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
-export async function GET(req: NextRequest) {
-  if (!authorized(req)) return new Response('Unauthorized', { status: 401 })
-
+async function run() {
   const now = new Date()
 
   // Narrow in SQL to what could possibly be overdue; the pure policy makes the
@@ -127,3 +118,5 @@ export async function GET(req: NextRequest) {
     notifications: grouped.size,
   })
 }
+
+export const GET = cronRoute('/api/cron/escalate-flags', run)

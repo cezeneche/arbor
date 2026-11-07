@@ -51,6 +51,11 @@ const PUBLIC_PREFIXES = [
   '/api/institutional',
   '/api/pilot-enquiry',
   '/api/audit/verify-public',
+  // Sentry's alert webhook — verified by its Sentry-Hook-Signature HMAC.
+  '/api/alerts/sentry',
+  // Sentry's browser tunnel (tunnelRoute in next.config.ts): a rewrite that
+  // forwards error envelopes to Sentry and reads nothing of ours.
+  '/monitoring',
   // Scheduled jobs — each route enforces its own CRON_SECRET Bearer auth.
   '/api/cron',
   // Readiness for uptime monitors: ready / not ready only without the

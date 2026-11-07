@@ -43,10 +43,16 @@ _sentry_dsn = os.getenv("SENTRY_DSN_API")
 if _sentry_dsn:
     sentry_sdk.init(
         dsn=_sentry_dsn,
-        environment=os.getenv("ENVIRONMENT", "development"),
+        environment=os.getenv("VERCEL_ENV") or os.getenv("ENVIRONMENT", "development"),
         traces_sample_rate=0.2,
         send_default_pii=False,
+        # Request bodies carry document text from Arbor, and local variables can
+        # hold extracted figures; neither leaves for a third party.
+        max_request_body_size="never",
+        include_local_variables=False,
     )
+    # Arbor's alert receiver names the system from this tag (contract/alerts).
+    sentry_sdk.get_global_scope().set_tag("service", "nucleos")
 
 validate_startup_config()
 

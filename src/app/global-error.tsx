@@ -1,5 +1,7 @@
 'use client'
 
+import * as Sentry from '@sentry/nextjs'
+import { useEffect } from 'react'
 import { colours, typography } from '@/lib/design-system'
 
 // Last-resort boundary — catches errors thrown by the root layout itself.
@@ -11,6 +13,11 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // The root layout crashed, so nothing else will report this one.
+  useEffect(() => {
+    Sentry.captureException(error)
+  }, [error])
+
   return (
     <html lang="en">
       <body

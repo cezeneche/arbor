@@ -6,10 +6,12 @@
 // extraction-accuracy degradation and input drift are tracked over time and made
 // alertable. Pure measurement — no writes to certified data, no audit chain.
 //
-// Auth: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Fail closed if
-// the secret is unset. Runs in TS, not the brain: the arithmetic is trivial and
-// a monitoring job must not depend on the brain being up to notice it going down.
+// Auth and the Sentry cron monitor: src/lib/cron.ts.
+//
+// Runs in TS, not the brain: the arithmetic is trivial and a monitoring job must
+// not depend on the brain being up to notice it going down.
 import { NextRequest } from 'next/server'
+import { cronRoute } from '@/lib/cron'
 import { prisma } from '@/lib/prisma'
 import {
   evaluateAccuracyDrift,
@@ -24,12 +26,6 @@ export const dynamic = 'force-dynamic'
 
 const LABEL_CAP = 50000
 
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
 // Positive-integer query override, else the production default.
 function parsePositiveInt(raw: string | null, fallback: number): number {
   if (raw === null) return fallback
@@ -37,9 +33,7 @@ function parsePositiveInt(raw: string | null, fallback: number): number {
   return Number.isInteger(n) && n > 0 ? n : fallback
 }
 
-export async function GET(req: NextRequest) {
-  if (!authorized(req)) return new Response('Unauthorized', { status: 401 })
-
+async function run(req: NextRequest) {
   const params = new URL(req.url).searchParams
   const recentWindow = parsePositiveInt(params.get('recentWindow'), DEFAULT_RECENT_WINDOW)
   const minSamples = parsePositiveInt(params.get('minSamples'), DEFAULT_MIN_SAMPLES)
@@ -127,3 +121,5 @@ export async function GET(req: NextRequest) {
     })),
   })
 }
+
+export const GET = cronRoute('/api/cron/accuracy', run)

@@ -4,10 +4,9 @@
 // confidencePosterior back onto active DataRecords, grouped by field type. Runs
 // off the write path; brain-down degrades to a no-op rather than erroring.
 //
-// Auth: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Fail closed if
-// the secret is unset. Schedule this in Vercel (dashboard or a `crons` entry),
-// e.g. daily: { "path": "/api/cron/calibrate", "schedule": "0 3 * * *" }.
+// Auth and the Sentry cron monitor: src/lib/cron.ts. Scheduled in vercel.json.
 import { NextRequest } from 'next/server'
+import { cronRoute } from '@/lib/cron'
 import { prisma } from '@/lib/prisma'
 import {
   buildCalibrationSamples,
@@ -26,15 +25,7 @@ export const dynamic = 'force-dynamic'
 const RECORD_BATCH = 1000
 const LABEL_CAP = 50000
 
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return false
-  return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
-export async function GET(req: NextRequest) {
-  if (!authorized(req)) return new Response('Unauthorized', { status: 401 })
-
+async function run(req: NextRequest) {
   // Optional override: how many labels a group needs before its calibration is
   // trusted enough to write back. Absent → the production default (30). Used to
   // observe a posterior land during verification without waiting for volume.
@@ -152,3 +143,5 @@ export async function GET(req: NextRequest) {
     fittedAt: fit.fitted_at,
   })
 }
+
+export const GET = cronRoute('/api/cron/calibrate', run)
