@@ -90,7 +90,7 @@ soupsieve==2.8.3
 SQLAlchemy==2.0.46
 python-json-logger
 apscheduler>=3.10,<4.0
-cryptography>=42.0.0
+cryptography>=50.0.2
 reportlab>=4.0.0
 respx>=0.20.0
 pytest
