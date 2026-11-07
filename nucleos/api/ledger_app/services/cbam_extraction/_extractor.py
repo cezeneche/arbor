@@ -245,7 +245,7 @@ class ClaudeCBAMExtractor:
     def _call_claude(self, document_text: str) -> str:
         import anthropic  # lazy import; fails gracefully if not installed
 
-        client = anthropic.Anthropic(timeout=25.0)
+        client = anthropic.Anthropic(timeout=25.0, max_retries=2)
         message = client.messages.create(
             model=self.model,
             max_tokens=1500,

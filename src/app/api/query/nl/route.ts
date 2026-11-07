@@ -31,6 +31,9 @@ import type { VocabularyEntry } from '@/lib/query-interpreter/field-vocabulary'
 import { periodOverlapWhere } from '@/lib/layer3/period-filter'
 import type { DataDomain, TrustTier } from '@prisma/client'
 
+// Two interactive AI calls in a row (parse, then answer); see AI_CALL_LIMITS.
+export const maxDuration = 75
+
 const CALCULATION_NOTE =
   'arbor stores the operational data but does not perform this calculation. ' +
   'Here are the records you need to calculate it yourself or pass to your reporting tool.'

@@ -912,7 +912,7 @@ def _call_llm(
     )
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, timeout=25.0, max_retries=2)
         response = client.messages.create(
             model=model,
             max_tokens=256,

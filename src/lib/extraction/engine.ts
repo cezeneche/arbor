@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { anthropicClient } from '@/lib/ai/anthropic-client'
 import type { ContentBlockParam, MessageParam } from '@anthropic-ai/sdk/resources/messages'
 import type {
   ExtractionInput,
@@ -29,10 +30,8 @@ const EXTRACTION_SAMPLES = readPositiveIntEnv(process.env.EXTRACTION_SAMPLES, 3,
 
 // Lazily instantiated so importing this module (e.g. during `next build` page
 // data collection) never requires ANTHROPIC_API_KEY to be present.
-let _client: Anthropic | null = null
 function getClient(): Anthropic {
-  if (!_client) _client = new Anthropic()
-  return _client
+  return anthropicClient('extraction')
 }
 
 // Build the document content block once — shared by all three Layer 1 calls.

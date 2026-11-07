@@ -3,6 +3,7 @@
 // Sits in front of Layer 3 (Access and Sharing); is not part of the data pipeline.
 
 import Anthropic from '@anthropic-ai/sdk'
+import { anthropicClient } from '@/lib/ai/anthropic-client'
 import { z } from 'zod'
 import { describeVocabulary, resolveFieldName, type VocabularyEntry } from './field-vocabulary'
 
@@ -136,10 +137,8 @@ DOMAIN MAPPING:
 
 // Lazily instantiated so importing this module (e.g. during `next build` page
 // data collection) never requires ANTHROPIC_API_KEY to be present.
-let _client: Anthropic | null = null
 function getClient(): Anthropic {
-  if (!_client) _client = new Anthropic()
-  return _client
+  return anthropicClient('interactive')
 }
 
 export async function parseNlQuery(
