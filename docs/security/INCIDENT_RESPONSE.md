@@ -36,7 +36,8 @@ Severity levels:
    required by UK GDPR, and notify affected entities. Use the supersession
    notification path for any record correction.
 6. **Review.** Within 5 working days, complete a post-incident review with root
-   cause and preventive actions.
+   cause and preventive actions, in `docs/postmortems/` using the template in
+   its README, and update `docs/security/RISK_REGISTER.md`.
 
 ## 4. Audit-chain compromise
 
