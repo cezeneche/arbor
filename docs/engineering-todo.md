@@ -81,7 +81,9 @@ From the 17 October 2026 audit in `docs/production-readiness.md`, which says why
   - [x] Failed Inngest functions reach Sentry through one `inngest/function.failed` handler, without the triggering event's data.
   - [x] Cron monitors on the five Vercel crons (`src/lib/cron.ts`): schedule read from `vercel.json`, only authorised runs check in, a 5xx counts as a failed run.
   - [x] Nucleos: Sentry sends no request bodies or local variables; environment from `VERCEL_ENV`.
-  - [ ] Owner: `SENTRY_AUTH_TOKEN` and `OPS_SLACK_WEBHOOK_URL` in Vercel (arbor); a `nucleos-api` FastAPI project and its DSN (then `SENTRY_DSN_API` on nucleos-api); the Sentry internal integration whose client secret becomes `SENTRY_WEBHOOK_SECRET`, and an alert rule per project pointing at it. Then add Sentry (EU, Frankfurt) to `src/lib/legal/subprocessors.ts`.
+  - [x] Owner (7 November 2026): `SENTRY_AUTH_TOKEN` (production, preview) and `OPS_SLACK_WEBHOOK_URL` (production, #arbor-alerts) in Vercel (arbor); `nucleos-api` Sentry project created. Sentry (EU, Frankfurt) added to `src/lib/legal/subprocessors.ts`.
+  - [ ] After this merges: `SENTRY_DSN_API` on nucleos-api. Held until now because `main`'s Nucleos Sentry setup sent request bodies and local variables.
+  - [ ] Owner: the Sentry internal integration (webhook `https://arbor-indol.vercel.app/api/alerts/sentry`) whose client secret becomes `SENTRY_WEBHOOK_SECRET`, and an alert rule per project pointing at it.
 - [ ] **E3. Off-provider backups and a restore drill.** Nightly encrypted `pg_dump` from a GitHub Actions job; a documented restore; a drill that restores into a scratch database and runs `verifyChain` on every entity, so a restore is proven intact, not just loaded. Needs O4.
 - [ ] **E4. Timeouts on AI calls.** Explicit `timeout` and `maxRetries` on every Anthropic client, a `maxDuration` on `/api/query/nl`, and a timeout on the readiness database check.
 - [ ] **E5. CI drift and dependency checks.** `prisma migrate diff` against a Postgres service (schema and migrations must agree); `npm audit --omit=dev --audit-level=high`; Dependabot for npm, pip (Nucleos, brain) and GitHub Actions.
