@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { revalidatePath } from 'next/cache'
-import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { requirePageSession } from '@/lib/page-auth'
-import { getSessionUser } from '@/lib/session'
+import { requirePageOperator as requireOperator } from '@/lib/page-auth'
 import { SectionViewNav } from '@/components/SectionViewNav'
 import { colours, controls, spacing, textStyles, typography } from '@/lib/design-system'
 
@@ -12,15 +10,6 @@ export const metadata: Metadata = { title: 'Enquiries | Arbor' }
 const statuses = ['NEW', 'IN_PROGRESS', 'CLOSED'] as const
 type Status = (typeof statuses)[number]
 const statusLabels: Record<Status, string> = { NEW: 'New', IN_PROGRESS: 'In progress', CLOSED: 'Closed' }
-
-async function requireOperator() {
-  const session = await requirePageSession()
-  const user = await prisma.user.findUnique({
-    where: { id: getSessionUser(session).id as string },
-    select: { isPlatformAdmin: true },
-  })
-  if (!user?.isPlatformAdmin) notFound()
-}
 
 async function updateEnquiry(formData: FormData) {
   'use server'

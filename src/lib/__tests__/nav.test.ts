@@ -193,12 +193,18 @@ describe('showsCbam', () => {
 // Enquiries is for platform operators only, and sits in the nav like any
 // other link so it looks and behaves the same.
 describe('operator links', () => {
-  it('adds Enquiries for platform operators only', () => {
+  it('adds Enquiries and Matches for platform operators only', () => {
     for (const entityType of ['SUPPLIER', 'BUYER'] as const) {
       const operator = getNavLinks(entityType, { isPlatformAdmin: true })
-      expect(operator[operator.length - 2]).toEqual({ href: '/admin/enquiries', label: 'Enquiries' })
+      expect(operator[operator.length - 3]).toEqual({ href: '/admin/enquiries', label: 'Enquiries' })
+      expect(operator[operator.length - 2]).toEqual({ href: '/admin/matches', label: 'Matches' })
       expect(operator[operator.length - 1]).toMatchObject({ href: '/settings', label: 'Settings' })
     }
-    expect(getNavLinks('SUPPLIER').some(l => l.href === '/admin/enquiries')).toBe(false)
+    for (const entityType of ['SUPPLIER', 'BUYER'] as const) {
+      const hrefs = getNavLinks(entityType).map(l => l.href)
+      expect(hrefs).not.toContain('/admin/enquiries')
+      // Matches pair companies across organisations; a customer must never see one.
+      expect(hrefs).not.toContain('/admin/matches')
+    }
   })
 })
