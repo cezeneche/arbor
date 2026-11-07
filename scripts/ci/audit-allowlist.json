@@ -1,0 +1,8 @@
+[
+  {
+    "advisory": "GHSA-mrhx-c7xc-m3w5",
+    "nodes": ["node_modules/inngest/node_modules/zod"],
+    "reason": "inngest (latest 4.26.2) requires zod ^3.25, and no zod 3 release carries the fix (only zod >=4.6.6). inngest validates its own signed messages with it, not user input. Arbor's own zod is 4.6.7.",
+    "reviewBy": "2027-02-01"
+  }
+]
