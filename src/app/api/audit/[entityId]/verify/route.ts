@@ -5,7 +5,7 @@ import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 import { verifyChain } from '@/lib/layer2/audit-chain'
 import type { AuditPayload } from '@/lib/layer2/audit-chain'
-import { auditPayloadMismatches } from '@/lib/layer2/audit-record-match'
+import { auditPayloadMismatches, isSyntheticRecordId } from '@/lib/layer2/audit-record-match'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ entityId: string }> }) {
   const { session, response } = await requireAuth()
@@ -55,14 +55,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ent
   const chainValid = verifyChain(chainEntries)
 
   // Cross-check each audit entry's payload against the live DataRecord.
-  // Skip synthetic entries (consent, batch tombstones) whose recordId is not a DataRecord id.
+  // Skip synthetic entries (see isSyntheticRecordId) whose recordId is not a DataRecord id.
   const tampered: string[] = []
   for (const entry of chainEntries) {
     const p = entry.payload
     const record = recordMap.get(p.recordId)
     if (!record) {
-      // Synthetic entries (e.g. consent_, batch_) legitimately have no DataRecord
-      if (!p.recordId.startsWith('consent_') && !p.recordId.startsWith('batch_')) {
+      if (!isSyntheticRecordId(p.recordId)) {
         tampered.push(`${p.recordId}: record missing from database`)
       }
       continue

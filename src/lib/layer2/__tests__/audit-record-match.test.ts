@@ -1,4 +1,4 @@
-import { auditPayloadMismatches, type StoredRecordFields } from '../audit-record-match'
+import { auditPayloadMismatches, isSyntheticRecordId, type StoredRecordFields } from '../audit-record-match'
 import type { AuditPayload } from '../audit-chain'
 
 // The verify endpoint compares each chain entry against the live record it
@@ -81,5 +81,20 @@ describe('auditPayloadMismatches', () => {
         bare,
       ),
     ).toEqual([])
+  })
+})
+
+// Some chain entries record an event, not a record: consent, ingest batches,
+// third-party verification, and a supplier keeping a flagged value with a note.
+// Their recordId is namespaced and names no DataRecord, so verification must
+// not read the missing record as tampering. verification_ was missing from the
+// list, so every third-party verification was reported as a tampered record.
+describe('isSyntheticRecordId', () => {
+  it.each(['consent_abc', 'batch_key-1', 'verification_assign-1', 'flag_flag-1'])('%s names an event', id => {
+    expect(isSyntheticRecordId(id)).toBe(true)
+  })
+
+  it('a real record id is not synthetic', () => {
+    expect(isSyntheticRecordId('clx0record0id')).toBe(false)
   })
 })

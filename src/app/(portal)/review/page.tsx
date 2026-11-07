@@ -6,10 +6,39 @@ import { DOMAIN_BY_DOCUMENT_TYPE, DataDomain } from '@/lib/constants'
 import { derivePeriod, missingCbamDocumentDate, summariseReviewQueue } from '@/lib/review/review-policy'
 import { selectReviewableFields } from '@/lib/review/reviewable-fields'
 import { ReviewQueue, type ReviewDoc } from '@/components/ReviewQueue'
+import { FlaggedRecords } from '@/components/FlaggedRecords'
+import { toFlaggedRecordItems, type FlaggedRecordRow } from '@/lib/review/flagged-records'
 
 export default async function ReviewPage() {
   const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
+
+  // Review is everything waiting on this organisation: documents to check, then
+  // saved records with an open flag. Only active records: a replaced record's
+  // flags went with it.
+  const flagged: FlaggedRecordRow[] = await prisma.validationFlag.findMany({
+    where: { resolvedAt: null, dataRecord: { entityId, isActive: true } },
+    select: {
+      id: true,
+      severity: true,
+      message: true,
+      dueAt: true,
+      dataRecord: {
+        select: {
+          domain: true,
+          fieldName: true,
+          value: true,
+          unit: true,
+          originalValue: true,
+          originalUnit: true,
+          periodStart: true,
+          periodEnd: true,
+        },
+      },
+    },
+    take: 200,
+  })
+  const flaggedItems = toFlaggedRecordItems(flagged, new Date())
 
   const documents = await prisma.document.findMany({
     // Auto-accepted documents too: saved Declared with nobody checking them,
@@ -96,11 +125,17 @@ export default async function ReviewPage() {
         }}
       >
         {items.length === 0
-          ? 'Everything is up to date - nothing needs checking right now.'
+          ? flaggedItems.length === 0
+            ? 'Everything is up to date - nothing needs checking right now.'
+            : 'No documents to check. Some saved records need a decision - see below.'
           : `${totalFields} value${totalFields === 1 ? '' : 's'} across ${items.length} document${items.length === 1 ? '' : 's'} to check - about ${estimatedMinutes} minute${estimatedMinutes === 1 ? '' : 's'}.${flaggedTotal > 0 ? ` ${flaggedTotal} we weren't sure about are highlighted.` : ''}`}
       </p>
 
-      <ReviewQueue initial={items} />
+      <ReviewQueue
+        initial={items}
+        {...(flaggedItems.length > 0 ? { emptyText: 'No documents to check.' } : {})}
+      />
+      <FlaggedRecords initial={flaggedItems} />
     </div>
   )
 }
