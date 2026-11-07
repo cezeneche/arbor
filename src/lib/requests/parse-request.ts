@@ -2,13 +2,12 @@
 // {domain, fields, period}. The actual matching against stored records is pure and
 // lives in inbound-parse.ts; this module only does the probabilistic extraction.
 import Anthropic from '@anthropic-ai/sdk'
+import { anthropicClient } from '@/lib/ai/anthropic-client'
 import { parseRequestResponse, type ParsedRequest } from './inbound-parse'
 import { ALL_DOMAINS } from '@/lib/constants'
 
-let _client: Anthropic | null = null
 function getClient(): Anthropic {
-  if (!_client) _client = new Anthropic()
-  return _client
+  return anthropicClient('background')
 }
 
 const MODEL = 'claude-sonnet-4-6'

@@ -15,6 +15,7 @@
 // stripped on the way to the answer (PRD §20.2).
 
 import Anthropic from '@anthropic-ai/sdk'
+import { anthropicClient } from '@/lib/ai/anthropic-client'
 
 // Chosen by measurement, not by reflex.
 //
@@ -176,10 +177,8 @@ export function ungroundedNumbers(answer: string, grounding: readonly string[]):
   return missing
 }
 
-let client: Anthropic | null = null
 function getClient(): Anthropic {
-  if (!client) client = new Anthropic()
-  return client
+  return anthropicClient('interactive')
 }
 
 export interface ComposeAnswerParams {

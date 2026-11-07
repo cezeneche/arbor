@@ -17,12 +17,20 @@ export const dynamic = 'force-dynamic'
 
 const TIMEOUT_MS = 3000
 
+// Bounded like the Nucleos probe: a hung connection must read as not ready,
+// not hang the check an uptime monitor is waiting on.
 async function checkDatabase(): Promise<{ ok: boolean; detail?: string }> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timedOut = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
+  })
   try {
-    await prisma.$queryRaw`SELECT 1`
+    await Promise.race([prisma.$queryRaw`SELECT 1`, timedOut])
     return { ok: true }
   } catch {
     return { ok: false, detail: 'The database did not answer.' }
+  } finally {
+    clearTimeout(timer)
   }
 }
 

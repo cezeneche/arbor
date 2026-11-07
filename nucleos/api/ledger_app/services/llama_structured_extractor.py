@@ -67,7 +67,7 @@ def extract_structured_invoice(full_text: str) -> InvoiceSchema:
     )
 
     try:
-        client = anthropic.Anthropic(api_key=api_key, timeout=25.0)
+        client = anthropic.Anthropic(api_key=api_key, timeout=25.0, max_retries=2)
         model = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
         response = client.messages.create(
             model=model,

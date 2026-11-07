@@ -12,6 +12,7 @@
 // truncation manufactures a VERIFIED record from a document nobody read in full.
 
 import Anthropic from '@anthropic-ai/sdk'
+import { anthropicClient } from '@/lib/ai/anthropic-client'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages'
 import type { ExtractionInput } from './types'
 import { EXTRACTION_MODEL } from './extractor-version'
@@ -83,10 +84,8 @@ export interface ExtractDocumentTextOptions {
   adapter?: TextAdapter
 }
 
-let _client: Anthropic | null = null
 function getClient(): Anthropic {
-  if (!_client) _client = new Anthropic()
-  return _client
+  return anthropicClient('extraction')
 }
 
 function documentContentBlock(base64: string, mediaType: ExtractionInput['mediaType']): ContentBlockParam {

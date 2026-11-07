@@ -24,6 +24,11 @@ from fastapi import BackgroundTasks, HTTPException, Request
 
 log = logging.getLogger("nucleos.narrative")
 
+# Arbor's narrative route gives up at 120 s, so every attempt together must end
+# well inside that: 50 s, retried once.
+NARRATIVE_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "50"))
+NARRATIVE_MAX_RETRIES = 1
+
 _REQUIRED_NARRATIVE_KEYS = (
     "executive_summary",
     "methodology",
@@ -224,9 +229,9 @@ def _call_claude(packet: dict) -> dict:
         raise RuntimeError("anthropic SDK is not installed") from exc
 
     model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
-    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "60"))
-
-    client = anthropic.Anthropic(api_key=api_key)
+    client = anthropic.Anthropic(
+        api_key=api_key, timeout=NARRATIVE_TIMEOUT_SECONDS, max_retries=NARRATIVE_MAX_RETRIES
+    )
 
     t0 = time.monotonic()
     try:
@@ -234,7 +239,6 @@ def _call_claude(packet: dict) -> dict:
             model=model,
             max_tokens=4096,
             temperature=0.0,
-            timeout=timeout,
             messages=[
                 {
                     "role": "user",
