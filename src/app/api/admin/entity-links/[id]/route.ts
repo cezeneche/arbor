@@ -4,13 +4,11 @@ import { z } from 'zod'
 import { requirePlatformAdmin } from '@/lib/auth-helpers'
 import { ok, err } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { decideEntityLink } from '@/lib/entity-resolution/decide'
 
-// a human resolves a candidate link (ADMIN). Confirm or reject only;
-// a decision is terminal, so a link can only be acted on while PENDING. This
-// records the decision on the edge — it never merges or rewrites the entities,
-// preserving record immutability and the audit chain. A CONFIRMED link is the
-// authoritative "same entity" signal downstream consumers (and the property
-// graph) rely on.
+// a human resolves a candidate link (ADMIN). The rules — terminal decision,
+// PENDING only, entities never merged — live in decideEntityLink, which the
+// Matches page uses too.
 const bodySchema = z.object({ action: z.enum(['confirm', 'reject']) })
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,22 +20,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return err('Invalid request body', 'VALIDATION_ERROR', 400)
 
-  const link = await prisma.entityLink.findUnique({ where: { id }, select: { status: true } })
-  if (!link) return err('Candidate link not found', 'NOT_FOUND', 404)
-  if (link.status !== 'PENDING') {
-    return err('This candidate has already been reviewed', 'ALREADY_REVIEWED', 409)
+  const reviewedAt = new Date()
+  const result = await decideEntityLink(prisma, { id, action: parsed.data.action, userId, now: reviewedAt })
+  if (!result.ok) {
+    return result.reason === 'NOT_FOUND'
+      ? err('Candidate link not found', 'NOT_FOUND', 404)
+      : err('This candidate has already been reviewed', 'ALREADY_REVIEWED', 409)
   }
 
-  const status = parsed.data.action === 'confirm' ? 'CONFIRMED' : 'REJECTED'
-  const updated = await prisma.entityLink.update({
-    where: { id },
-    data: { status, reviewedById: userId, reviewedAt: new Date() },
-    select: { id: true, status: true, reviewedAt: true },
-  })
-
-  return ok({
-    id: updated.id,
-    status: updated.status,
-    reviewedAt: updated.reviewedAt?.toISOString() ?? null,
-  })
+  return ok({ id, status: result.status, reviewedAt: reviewedAt.toISOString() })
 }

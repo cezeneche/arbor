@@ -218,6 +218,18 @@ export const controls = {
     letterSpacing: typography.tracking.wide,
     fontFamily: 'inherit',
   },
+  // The quieter of two actions on one row, so the row still has one primary.
+  secondaryButton: {
+    padding: '9px 18px',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colours.textPrimary,
+    backgroundColor: colours.surface,
+    border: `1px solid ${colours.border}`,
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
 } as const
 
 export const confidenceThreshold = 0.85
