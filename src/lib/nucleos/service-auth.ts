@@ -15,9 +15,11 @@
 // NUCLEOS_INTERNAL_TOKEN, the year-long HS256 token minted by hand, is the
 // fallback: used when no audience is set, or when the exchange fails.
 import { getVercelOidcToken } from '@vercel/oidc'
-import { currentRequestId } from '@/lib/request-id'
+// Relative, not '@/': scripts/verify-boundary.mjs compiles these clients with
+// plain tsc and loads them in Node, where the alias does not exist.
+import { currentRequestId } from '../request-id'
 import { NucleosUnavailableError } from './extraction-client'
-import { logWarn } from '@/lib/log'
+import { logWarn } from '../log'
 
 export type NucleosAuthMode = 'oidc' | 'token' | 'none'
 
