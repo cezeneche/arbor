@@ -1,0 +1,5 @@
+# Public key(s) the nightly backups are encrypted to (age). Public keys are
+# safe to commit; the matching private key is held by the owner alone, in their
+# password manager, and is the only thing that can decrypt a backup.
+# Generate with: age-keygen -o arbor-backup-key.txt   (see docs/runbooks/restore-database.md)
+# One key per line, starting age1…
