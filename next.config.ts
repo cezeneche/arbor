@@ -27,7 +27,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.inngest.com https://*.resend.com https://*.supabase.co https://*.vercel-blob.com https://*.upstash.io https://api.anthropic.com https://api.workos.com",
+      "connect-src 'self' https://*.inngest.com https://*.resend.com https://*.supabase.co https://*.upstash.io https://api.anthropic.com https://api.workos.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
