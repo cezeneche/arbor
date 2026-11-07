@@ -3,3 +3,4 @@
 # password manager, and is the only thing that can decrypt a backup.
 # Generate with: age-keygen -o arbor-backup-key.txt   (see docs/runbooks/restore-database.md)
 # One key per line, starting age1…
+age19entp90agxu2p70e7l882z0c6288l9j7llgn9hsfvj6rjvq4z3dqqas5mz
