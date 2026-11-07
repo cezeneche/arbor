@@ -154,7 +154,7 @@ try {
       '--outDir',
       outDir,
       '--rootDir',
-      'src/lib/nucleos',
+      'src/lib',
       '--module',
       'commonjs',
       '--target',
@@ -165,7 +165,7 @@ try {
     { cwd: REPO, stdio: 'pipe' },
   )
   const require = createRequire(import.meta.url)
-  const compiled = outDir
+  const compiled = path.join(outDir, 'nucleos')
   const { extractCbamFields } = require(path.join(compiled, 'extraction-client.js'))
   const { toExtractedFieldRows } = require(path.join(compiled, 'field-mapper.js'))
   const { getSupplierFormContext } = require(path.join(compiled, 'supplier-form-client.js'))

@@ -9,6 +9,8 @@ import { appendAuditEntry } from '@/lib/layer2/audit-append'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { dispatchWebhook } from '@/lib/webhooks/dispatch'
 import type { DataDomain } from '@prisma/client'
+import { logError } from '@/lib/log'
+import { REQUEST_ID_HEADER } from '@/lib/request-id'
 
 const createSchema = z.object({
   granteeEntityId: z.string().min(1),
@@ -108,7 +110,9 @@ export async function POST(req: NextRequest) {
     entityId: granteeEntityId,
     type: 'ACCESS_GRANTED',
     payload: { grantId: grant.id, grantorEntityId: entityId },
-  }).catch(e => console.error('[grants] sendNotification failed:', e))
+  }).catch(e =>
+    logError('grants: sendNotification failed', e, { requestId: req.headers.get(REQUEST_ID_HEADER) }),
+  )
 
   // webhook to the buyer that access was granted.
   await dispatchWebhook(granteeEntityId, 'access.granted', {

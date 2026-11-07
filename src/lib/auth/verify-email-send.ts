@@ -2,6 +2,7 @@ import { EMAIL_FROM } from '@/lib/email/config'
 import { prisma } from '@/lib/prisma'
 import { issueEmailVerification } from './email-verification'
 import { escapeHtml, getResend } from '@/lib/email/client'
+import { logError } from '@/lib/log'
 
 // Sends the confirm-your-address link. Best-effort: verification is not a
 // sign-in gate, so a missing key or a failed send leaves the account working
@@ -28,8 +29,8 @@ export async function sendEmailVerification(user: {
         `<p><a href="${escapeHtml(url)}">Confirm my email address</a></p>` +
         `<p>If you did not create an arbor account, you can ignore this email.</p>`,
     })
-    if (error) console.error('[verify-email] delivery failed:', error)
+    if (error) logError('verify-email: delivery failed', error)
   } catch (e) {
-    console.error('[verify-email] send failed:', e)
+    logError('verify-email: send failed', e)
   }
 }

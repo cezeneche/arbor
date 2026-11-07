@@ -14,6 +14,7 @@ import {
   NarrativeNotAllowedError,
   type CompliancePackResult,
 } from '@/lib/nucleos/narrative-client'
+import { logError } from '@/lib/log'
 
 export interface NarrativeEmail {
   subject: string
@@ -89,7 +90,7 @@ export async function writeNarrative(
           ' Fill them, then try again.',
       }
     }
-    if (!(err instanceof NucleosUnavailableError)) console.error('[cbam-narrative] unexpected failure:', err)
+    if (!(err instanceof NucleosUnavailableError)) logError('cbam-narrative: unexpected failure', err)
     return {
       ok: false,
       code: 'UNAVAILABLE',

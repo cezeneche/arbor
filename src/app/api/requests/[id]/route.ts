@@ -7,6 +7,8 @@ import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifications'
 import { canTransitionRequest } from '@/lib/requests/status-machine'
 import { Prisma } from '@prisma/client'
+import { logError } from '@/lib/log'
+import { REQUEST_ID_HEADER } from '@/lib/request-id'
 
 const patchSchema = z.object({
   status: z.enum(['SUBMITTED', 'ACCEPTED', 'QUERY_RAISED', 'CLOSED']),
@@ -108,7 +110,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       entityId: dataRequest.buyerEntityId,
       type: 'DATA_REQUEST_RESPONDED',
       payload: { requestId: id, supplierEntityId: dataRequest.supplierEntityId },
-    }).catch(e => console.error('[requests] sendNotification failed:', e))
+    }).catch(e =>
+      logError('requests: sendNotification failed', e, { requestId: req.headers.get(REQUEST_ID_HEADER) }),
+    )
   }
 
   return ok(updated)

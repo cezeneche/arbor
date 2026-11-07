@@ -10,6 +10,8 @@ import { inngest } from '@/inngest/client'
 import { documentTypeSchema, DOCUMENT_MAX_BYTES, ALLOWED_MIME_TYPES } from '@/lib/constants'
 import { assertUploadAllowed } from '@/lib/plan-guard'
 import { createDocumentWithinQuota, UploadQuotaError } from '@/lib/document-quota'
+import { logError } from '@/lib/log'
+import { REQUEST_ID_HEADER } from '@/lib/request-id'
 
 const bodySchema = z.object({
   documentType: documentTypeSchema,
@@ -97,7 +99,10 @@ export async function POST(req: NextRequest) {
     // document sits in the list saying "Reading your document…" for ever, and the
     // user has no way to tell that nothing is happening. Mark it so the state is
     // the truth and the sweeper below can pick it up.
-    console.error('[upload] inngest.send failed for document', document.id, e)
+    logError('upload: inngest.send failed', e, {
+      requestId: req.headers.get(REQUEST_ID_HEADER),
+      documentId: document.id,
+    })
     await prisma.document
       .update({
         where: { id: document.id },

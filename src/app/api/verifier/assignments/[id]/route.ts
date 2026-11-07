@@ -9,6 +9,8 @@ import { type AuditPayload } from '@/lib/layer2/audit-chain'
 import { appendAuditEntry } from '@/lib/layer2/audit-append'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { sendNotification } from '@/lib/notifications'
+import { logError } from '@/lib/log'
+import { REQUEST_ID_HEADER } from '@/lib/request-id'
 
 const bodySchema = z.object({
   action: z.enum(['verify', 'reject']),
@@ -105,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       entityId: assignment.entityId,
       type: 'TIER_UPGRADED',
       payload: { recordId: `verification_${assignment.id}`, domain: 'COMPLIANCE' },
-    }).catch(e => console.error('[verifier] notify failed:', e))
+    }).catch(e => logError('verifier: notify failed', e, { requestId: req.headers.get(REQUEST_ID_HEADER) }))
   }
 
   return ok({

@@ -2,6 +2,7 @@
 // receive it, enqueuing one Inngest delivery per subscription.
 import { prisma } from '@/lib/prisma'
 import { inngest } from '@/inngest/client'
+import { logError } from '@/lib/log'
 
 export type WebhookEvent = 'record.certified' | 'record.superseded' | 'access.granted' | 'access.revoked'
 
@@ -34,6 +35,6 @@ export async function dispatchWebhook(
       matching.map(s => ({ name: 'webhook/deliver', data: { subscriptionId: s.id, payload } })),
     )
   } catch (e) {
-    console.error('[webhooks] dispatch failed:', e)
+    logError('webhooks: dispatch failed', e)
   }
 }

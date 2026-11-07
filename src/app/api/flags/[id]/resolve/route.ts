@@ -10,6 +10,8 @@ import { notifyBuyersOfSupersession } from '@/lib/supersession-notice'
 import { tellDisputingBuyer } from '@/lib/dispute-answer'
 import { captureCorrectionLabel } from '@/lib/confidence/correction-label'
 import { prisma } from '@/lib/prisma'
+import { logError } from '@/lib/log'
+import { REQUEST_ID_HEADER } from '@/lib/request-id'
 
 // A supplier settles a flag on their own record from Review: keep the value
 // with a note, or correct it. The rules are in resolveFlag (Layer 2); this reads
@@ -80,7 +82,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ...(request.action === 'keep' ? { note: request.note.trim() } : {}),
       })
     } catch (e) {
-      console.error('[flags/resolve] dispute answer notification failed:', e)
+      logError('flags/resolve: dispute answer notification failed', e, {
+        requestId: req.headers.get(REQUEST_ID_HEADER),
+      })
     }
   }
 
@@ -90,7 +94,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         { domain: before.domain, periodStart: before.periodStart, periodEnd: before.periodEnd },
       ])
     } catch (e) {
-      console.error('[flags/resolve] supersession notification failed:', e)
+      logError('flags/resolve: supersession notification failed', e, {
+        requestId: req.headers.get(REQUEST_ID_HEADER),
+      })
     }
     // A machine-read value the supplier had to fix is a review correction, and
     // the learning loop reads it like one. A value a person typed is not.
@@ -105,7 +111,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           correctedValue: request.value,
         })
       } catch (e) {
-        console.error('[flags/resolve] correction label capture failed:', e)
+        logError('flags/resolve: correction label capture failed', e, {
+          requestId: req.headers.get(REQUEST_ID_HEADER),
+        })
       }
     }
     return ok({ action: 'corrected', recordId: result.recordId })

@@ -15,6 +15,7 @@ import { prisma } from '@/lib/prisma'
 import { flagsNeedingEscalation, type SlaFlag } from '@/lib/stewardship/sla'
 import { sendNotification } from '@/lib/notifications'
 import { DOMAIN_LABELS } from '@/lib/domain-labels'
+import { logError } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -108,7 +109,7 @@ async function run() {
   )
   notified.forEach(r => {
     if (r.status === 'rejected') {
-      console.error('[escalate-flags] notification failed:', r.reason)
+      logError('escalate-flags: notification failed', r.reason)
     }
   })
 

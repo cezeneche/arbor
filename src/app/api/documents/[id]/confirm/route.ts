@@ -29,6 +29,8 @@ import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
 import { isCbamFieldName, parseGoodsLineFieldName } from '@/lib/nucleos/cbam-fields'
 import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
 import { enqueueCbamHandoff, runCbamHandoff, type CbamHandoffOutcome } from '@/lib/layer2/cbam-handoff'
+import { logError } from '@/lib/log'
+import { REQUEST_ID_HEADER } from '@/lib/request-id'
 
 const fieldSchema = z.object({
   fieldName: z.string(),
@@ -509,7 +511,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Cross-validation runs after commit — it reads accepted records and writes CV results.
   // Failures here do not roll back the confirmation (warnings only, not blocking).
   await runCrossValidation(entityId, documentId, document.documentType).catch(e =>
-    console.error('[confirm] runCrossValidation failed:', e),
+    logError('confirm: runCrossValidation failed', e, { requestId: req.headers.get(REQUEST_ID_HEADER) }),
   )
 
   // algebraic-constraint intake flagging: raise non-blocking
@@ -517,7 +519,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // balance, non-negativity, implausible sector intensity). Post-commit,
   // fail-soft — the brain must never block or roll back a confirmation.
   await runConstraintValidation(documentId).catch(e =>
-    console.error('[confirm] runConstraintValidation failed:', e),
+    logError('confirm: runConstraintValidation failed', e, { requestId: req.headers.get(REQUEST_ID_HEADER) }),
   )
 
   // capture calibration ground truth: compare what the reviewer
@@ -570,7 +572,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         })
       }
     } catch (e) {
-      console.error('[confirm] ground-truth label capture failed:', e)
+      logError('confirm: ground-truth label capture failed', e, {
+        requestId: req.headers.get(REQUEST_ID_HEADER),
+      })
     }
   }
 
@@ -579,7 +583,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     await notifyBuyersOfSupersession(entityId, supersededScopes)
   } catch (e) {
-    console.error('[confirm] supersession notification failed:', e)
+    logError('confirm: supersession notification failed', e, {
+      requestId: req.headers.get(REQUEST_ID_HEADER),
+    })
   }
 
   // fire record.certified webhooks for newly written Tier A records to
@@ -616,7 +622,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
       }
     } catch (e) {
-      console.error('[confirm] record.certified webhook failed:', e)
+      logError('confirm: record.certified webhook failed', e, {
+        requestId: req.headers.get(REQUEST_ID_HEADER),
+      })
     }
   }
 
@@ -637,7 +645,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     try {
       cbam = await runCbamHandoff(documentId)
     } catch (e) {
-      console.error('[confirm] CBAM case handoff failed:', e)
+      logError('confirm: CBAM case handoff failed', e, { requestId: req.headers.get(REQUEST_ID_HEADER) })
       cbam = {
         attempted: true,
         caseId: null,

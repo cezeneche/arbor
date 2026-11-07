@@ -5,6 +5,7 @@ import { hasSignedInUser } from '@/lib/session-presence'
 import { unauthenticatedAction } from '@/lib/unauthenticated-response'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { REQUEST_ID_HEADER, acceptRequestId } from '@/lib/request-id'
 
 // Create a middleware-only NextAuth instance using the Edge-safe config.
 // This avoids pulling in Prisma or bcryptjs into the Edge runtime bundle.
@@ -21,7 +22,7 @@ function redirectTo(req: NextRequest, path: string): NextResponse {
   return NextResponse.redirect(new URL(path, base))
 }
 
-export default auth(req => {
+function route(req: NextRequest & { auth: unknown }): NextResponse | undefined {
   const isAuthed = hasSignedInUser(req.auth)
   const isPublic = isPublicPath(req.nextUrl.pathname)
 
@@ -67,6 +68,17 @@ export default auth(req => {
   if (isAuthed && pending2fa && !req.nextUrl.pathname.startsWith('/2fa-verify') && !isPublic) {
     return redirectTo(req, '/2fa-verify')
   }
+}
+
+// Every request gets one ID (E6), passed to the route as a request header and
+// returned to the browser, redirects and refusals included.
+export default auth(req => {
+  const requestId = acceptRequestId(req.headers.get(REQUEST_ID_HEADER))
+  const forwarded = new Headers(req.headers)
+  forwarded.set(REQUEST_ID_HEADER, requestId)
+  const res = route(req) ?? NextResponse.next({ request: { headers: forwarded } })
+  res.headers.set(REQUEST_ID_HEADER, requestId)
+  return res
 })
 
 export const config = {
