@@ -63,6 +63,12 @@ export const SUB_PROCESSORS: SubProcessor[] = [
     dpaUrl: 'https://sentry.io/legal/dpa/',
   },
   {
+    name: 'Better Stack, Inc.',
+    activity: 'Uptime monitoring of a public health check; no customer data is sent',
+    location: 'To confirm',
+    dpaUrl: 'https://betterstack.com/dpa',
+  },
+  {
     name: 'WorkOS, Inc.',
     activity: 'Enterprise SSO authentication and SCIM directory provisioning',
     location: 'To confirm',
