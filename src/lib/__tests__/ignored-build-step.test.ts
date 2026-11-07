@@ -28,6 +28,7 @@ function commit(path: string): string {
 /** true = Vercel builds; false = it skips. */
 function builds(cmd: string, cwd: string, previousSha?: string): boolean {
   const env = {
+    NODE_ENV: 'test' as const,
     PATH: process.env.PATH ?? '',
     HOME: dir,
     ...(previousSha ? { VERCEL_GIT_PREVIOUS_SHA: previousSha } : {}),
