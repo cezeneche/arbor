@@ -125,10 +125,11 @@ def tenant_transaction(
     """
     conn.autocommit = False
     with conn.cursor() as cur:
-        # Drop to the authenticated role so RLS is enforced.
-        # The postgres superuser bypasses RLS by default; SET LOCAL ROLE
-        # authenticated simulates how PostgREST executes queries in production.
-        cur.execute("SET LOCAL ROLE authenticated")
+        # Drop to a role that is not the owner so RLS is enforced. The owner
+        # bypasses RLS. This used to be authenticated, but migration 014 took
+        # every privilege away from the Data API roles, so a test-only role
+        # with the application's privileges stands in.
+        cur.execute(f"SET LOCAL ROLE {RLS_PROBE_ROLE}")
         cur.execute(
             "SELECT set_config('app.current_tenant_id', %s, true)",
             (tenant_id,),
@@ -226,10 +227,35 @@ def tenant_b_db():
 _state: dict = {}
 
 
+RLS_PROBE_ROLE = "nucleos_rls_probe"
+
+
+def _ensure_probe_role(conn) -> None:
+    """A role that RLS binds, with the privileges the application role has on
+    cbam: read and write everywhere, minus what migration 006 revoked."""
+    with admin_transaction(conn) as cur:
+        cur.execute(f"""
+            DO $$ BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{RLS_PROBE_ROLE}') THEN
+                CREATE ROLE {RLS_PROBE_ROLE} NOLOGIN;
+              END IF;
+            END $$;
+            GRANT {RLS_PROBE_ROLE} TO CURRENT_USER;
+            GRANT USAGE ON SCHEMA public, cbam TO {RLS_PROBE_ROLE};
+            GRANT EXECUTE ON FUNCTION public.current_tenant_id() TO {RLS_PROBE_ROLE};
+            GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA cbam TO {RLS_PROBE_ROLE};
+            GRANT USAGE ON ALL SEQUENCES IN SCHEMA cbam TO {RLS_PROBE_ROLE};
+            REVOKE DELETE ON cbam.audit_log, cbam.cbam_snapshots FROM {RLS_PROBE_ROLE};
+            REVOKE UPDATE ON cbam.audit_log FROM {RLS_PROBE_ROLE};
+        """)
+
+
 @pytest.fixture(scope="module", autouse=True)
 def seed_and_cleanup(admin_db):
     """Insert test rows as admin (bypasses RLS) before all tests in this module,
     then delete them after all tests complete."""
+
+    _ensure_probe_role(admin_db)
 
     case_id_a  = _new_id()
     case_id_a2 = _new_id()  # second case for tenant_a

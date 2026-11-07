@@ -537,19 +537,14 @@ CREATE POLICY supplier_tokens_tenant_update ON cbam.cbam_supplier_tokens
   FOR UPDATE USING (tenant_id = public.current_tenant_id() OR public.current_tenant_id() IS NULL);
 
 -- =============================================================================
--- GRANT USAGE on cbam schema to Supabase roles
--- anon  → used for unauthenticated public routes (none in this app, but required)
--- authenticated → used for JWT-authenticated requests
+-- GRANT USAGE on cbam schema to service_role only
 -- service_role  → used by FastAPI server-side with service role key (bypasses RLS)
+-- anon and authenticated get nothing: they are the Data API's roles, and
+-- Nucleos never reads a table over the Data API (see 014_revoke_data_api_grants).
 -- =============================================================================
-GRANT USAGE ON SCHEMA cbam TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA cbam TO service_role;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA cbam TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA cbam TO service_role;
-GRANT SELECT ON cbam.cbam_emission_factors TO anon, authenticated;
-GRANT SELECT ON cbam.cbam_electricity_factors TO anon, authenticated;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA cbam
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA cbam
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO service_role;
