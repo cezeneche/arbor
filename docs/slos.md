@@ -10,11 +10,11 @@ Three promises about how Arbor behaves, each with how it's measured and what hap
 
 ## 1. Available
 
-**Measured by:** an uptime monitor calling `https://arbor-indol.vercel.app/api/health/ready` every minute. This is owner action O1, not yet set up. Readiness returns 200 only when the database answers within 3 seconds, Redis answers, Nucleos answers, and production settings are present. It returns 503 otherwise. So a Nucleos outage counts against Arbor's availability, which is right: CBAM features don't work without it.
+**Measured by:** a Better Stack uptime monitor (free tier) calling `https://arbor-indol.vercel.app/api/health/ready` every 3 minutes, set up on 7 November 2026 (owner action O1). Sentry's uptime monitoring would check every minute, but needs a paid seat. Readiness returns 200 only when the database answers within 3 seconds, Redis answers, Nucleos answers, and production settings are present. It returns 503 otherwise. So a Nucleos outage counts against Arbor's availability, which is right: CBAM features don't work without it.
 
-**Alert:** the monitor alerts after two consecutive failures. #arbor-alerts already hears about keepalive failures, Sentry errors and failed backups, but not about readiness itself.
+**Alert:** Better Stack opens an incident when a check fails and posts it to #arbor-alerts, alongside keepalive failures, Sentry errors and failed backups. At a 3-minute interval, an outage is noticed within about 3 to 6 minutes.
 
-**So far:** with no monitor, there's no measured number. The two Nucleos outages on 7 November ([postmortems](postmortems/README.md)) together took roughly 29 to 38 minutes of the budget.
+**So far:** measured from 7 November 2026. The two Nucleos outages on 7 November ([postmortems](postmortems/README.md)) together took roughly 29 to 38 minutes of the budget.
 
 ## 2. Documents are read promptly
 
