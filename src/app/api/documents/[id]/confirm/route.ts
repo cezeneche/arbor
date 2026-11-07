@@ -23,8 +23,8 @@ import { normaliseToSI, isSupportedUnit } from '@/lib/layer3/unit-conversion'
 import { DOCUMENT_FIELD_DEFINITIONS } from '@/lib/extraction/field-definitions'
 import { computeStaleAfterDate } from '@/lib/layer2/staleness'
 import { findActiveGranteeEntityIds } from '@/lib/layer3/grant-access'
-import { sendNotification } from '@/lib/notifications'
 import { dispatchWebhook } from '@/lib/webhooks/dispatch'
+import { notifyBuyersOfSupersession } from '@/lib/supersession-notice'
 import { isCbamRelevant } from '@/lib/nucleos/cbam-relevance'
 import { isCbamFieldName, parseGoodsLineFieldName } from '@/lib/nucleos/cbam-fields'
 import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
@@ -575,47 +575,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // notify any buyer with active access that a record they can see was
-  // corrected. Deduplicated per grantee+domain. Non-fatal.
-  if (supersededScopes.length > 0) {
-    try {
-      const supplier = await prisma.entity.findUnique({
-        where: { id: entityId },
-        select: { legalName: true },
-      })
-      const notified = new Set<string>()
-      for (const scope of supersededScopes) {
-        const grantees = await findActiveGranteeEntityIds(
-          entityId,
-          scope.domain,
-          scope.periodStart,
-          scope.periodEnd,
-        )
-        for (const granteeEntityId of grantees) {
-          const dedupKey = `${granteeEntityId}:${scope.domain}`
-          if (notified.has(dedupKey)) continue
-          notified.add(dedupKey)
-          await sendNotification({
-            entityId: granteeEntityId,
-            type: 'RECORD_SUPERSEDED',
-            payload: {
-              supplierName: supplier?.legalName ?? 'A supplier',
-              domain: scope.domain,
-              periodStart: scope.periodStart.toISOString().slice(0, 10),
-              periodEnd: scope.periodEnd.toISOString().slice(0, 10),
-            },
-          })
-          // webhook to the buyer for the supersession.
-          await dispatchWebhook(granteeEntityId, 'record.superseded', {
-            supplierEntityId: entityId,
-            domain: scope.domain,
-            periodStart: scope.periodStart.toISOString(),
-            periodEnd: scope.periodEnd.toISOString(),
-          })
-        }
-      }
-    } catch (e) {
-      console.error('[confirm] supersession notification failed:', e)
-    }
+  // corrected. Non-fatal.
+  try {
+    await notifyBuyersOfSupersession(entityId, supersededScopes)
+  } catch (e) {
+    console.error('[confirm] supersession notification failed:', e)
   }
 
   // fire record.certified webhooks for newly written Tier A records to

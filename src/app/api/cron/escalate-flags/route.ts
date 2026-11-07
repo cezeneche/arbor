@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
       resolvedAt: null,
       escalatedAt: null,
       dueAt: { not: null, lte: now },
+      dataRecord: { isActive: true },
     },
     select: {
       id: true,

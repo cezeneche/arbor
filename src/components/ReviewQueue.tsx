@@ -33,7 +33,15 @@ function readable(s: string): string {
   return s.replace(/_/g, ' ')
 }
 
-export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
+// emptyText: what the empty queue says. The page changes it when other things
+// on Review still need a decision, so it never claims everything is done.
+export function ReviewQueue({
+  initial,
+  emptyText = "Nothing to review. You're all caught up.",
+}: {
+  initial: ReviewDoc[]
+  emptyText?: string
+}) {
   const router = useRouter()
   const [docs, setDocs] = useState(initial)
   const [values, setValues] = useState<Record<string, Record<string, string>>>(() =>
@@ -197,7 +205,7 @@ export function ReviewQueue({ initial }: { initial: ReviewDoc[] }) {
               color: colours.textTertiary,
             }}
           >
-            Nothing to review. You&apos;re all caught up.
+            {emptyText}
           </p>
         </div>
       </div>

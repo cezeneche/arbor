@@ -58,3 +58,12 @@ export function auditPayloadMismatches(
   }
   return mismatches
 }
+
+// Chain entries that record an event rather than a record — benchmark consent,
+// an ingest batch, a third-party verification, a supplier keeping a flagged
+// value with a note — carry a namespaced recordId that names no DataRecord.
+const SYNTHETIC_RECORD_PREFIXES = ['consent_', 'batch_', 'verification_', 'flag_'] as const
+
+export function isSyntheticRecordId(recordId: string): boolean {
+  return SYNTHETIC_RECORD_PREFIXES.some(prefix => recordId.startsWith(prefix))
+}
