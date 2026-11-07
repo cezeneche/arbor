@@ -42,9 +42,22 @@ function flag(over: Partial<OpenFlag> = {}): OpenFlag {
     id: 'flag-1',
     severity: 'WARNING',
     flagType: 'CROSS_DOC_DISCREPANCY',
+    raisedByEntityId: null,
     dataRecord: record(),
     ...over,
   }
+}
+
+// What the route needs after the write commits: to tell a disputing buyer, and
+// to learn from a correction of a value the model read.
+const BEFORE = {
+  id: 'rec-1',
+  fieldName: 'electricity_kwh',
+  domain: 'ENERGY',
+  documentId: 'doc-1',
+  extractionMethod: 'DOCUMENT_AI',
+  periodStart: new Date('2026-07-01T00:00:00Z'),
+  periodEnd: new Date('2026-09-30T00:00:00Z'),
 }
 
 describe('checkFlagResolution', () => {
@@ -151,7 +164,7 @@ describe('resolveFlag', () => {
       request: { action: 'keep', note: '  The meter was replaced in August.  ' },
       now: NOW,
     })
-    expect(result).toEqual({ ok: true, action: 'kept' })
+    expect(result).toEqual({ ok: true, action: 'kept', before: BEFORE, disputedBy: null })
     expect(created).toEqual([])
     expect(flagUpdates).toEqual([
       {
@@ -184,7 +197,8 @@ describe('resolveFlag', () => {
       ok: true,
       action: 'corrected',
       recordId: 'rec-new',
-      scope: { domain: 'ENERGY', periodStart: record().periodStart, periodEnd: record().periodEnd },
+      before: BEFORE,
+      disputedBy: null,
     })
     expect(created).toHaveLength(1)
     expect(created[0]).toMatchObject({
@@ -237,6 +251,30 @@ describe('resolveFlag', () => {
       now: NOW,
     })
     expect(created[0]).toMatchObject({ originalValue: 150000, originalUnit: 'mj', value: 150000, unit: 'mj' })
+  })
+
+  it('names the buyer who raised a dispute, so they can be told the answer', async () => {
+    const { tx } = fakeTx(flag({ flagType: 'BUYER_DISPUTED', raisedByEntityId: 'buyer-1' }))
+    const result = await resolveFlag(tx as never, {
+      flagId: 'flag-1',
+      entityId: 'org',
+      userId: 'u1',
+      request: { action: 'keep', note: 'Checked against the meter.' },
+      now: NOW,
+    })
+    expect(result).toMatchObject({ ok: true, disputedBy: 'buyer-1' })
+  })
+
+  it('names no buyer for a flag a buyer did not raise', async () => {
+    const { tx } = fakeTx(flag({ flagType: 'LOW_CONFIDENCE', raisedByEntityId: 'buyer-1' }))
+    const result = await resolveFlag(tx as never, {
+      flagId: 'flag-1',
+      entityId: 'org',
+      userId: 'u1',
+      request: { action: 'keep', note: 'Checked.' },
+      now: NOW,
+    })
+    expect(result).toMatchObject({ ok: true, disputedBy: null })
   })
 
   it('writes nothing when it refuses', async () => {

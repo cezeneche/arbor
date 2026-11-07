@@ -42,21 +42,35 @@ export interface OpenFlag {
   id: string
   severity: Severity
   flagType: string
+  /** Set on BUYER_DISPUTED flags: the buyer who raised it. */
+  raisedByEntityId: string | null
   dataRecord: FlaggedRecord
+}
+
+/** The record as it was, for what runs after the write commits. */
+export interface RecordBefore {
+  id: string
+  fieldName: string
+  domain: DataDomain
+  documentId: string | null
+  extractionMethod: ExtractionMethod
+  periodStart: Date
+  periodEnd: Date
 }
 
 export type FlagResolutionRequest = { action: 'keep'; note: string } | { action: 'correct'; value: number }
 
 export type FlagRefusal = 'NOT_FOUND' | 'NOTE_REQUIRED' | 'NEEDS_EVIDENCE' | 'INVALID_VALUE' | 'UNCHANGED'
 
+type Settled = {
+  before: RecordBefore
+  /** The buyer whose dispute this answers, to be told how it was settled. */
+  disputedBy: string | null
+}
+
 export type FlagResolutionResult =
-  | { ok: true; action: 'kept' }
-  | {
-      ok: true
-      action: 'corrected'
-      recordId: string
-      scope: { domain: DataDomain; periodStart: Date; periodEnd: Date }
-    }
+  | ({ ok: true; action: 'kept' } & Settled)
+  | ({ ok: true; action: 'corrected'; recordId: string } & Settled)
   | { ok: false; reason: FlagRefusal }
 
 export const MAX_NOTE_LENGTH = 1000
@@ -106,13 +120,31 @@ export async function resolveFlag(
   // anything else is reported as not found, so other tenants' flags stay unseen.
   const flag = (await tx.validationFlag.findFirst({
     where: { id: input.flagId, resolvedAt: null, dataRecord: { entityId: input.entityId, isActive: true } },
-    select: { id: true, severity: true, flagType: true, dataRecord: { select: RECORD_SELECT } },
+    select: {
+      id: true,
+      severity: true,
+      flagType: true,
+      raisedByEntityId: true,
+      dataRecord: { select: RECORD_SELECT },
+    },
   })) as OpenFlag | null
 
   const refusal = checkFlagResolution(flag, input.request)
   if (refusal || !flag) return { ok: false, reason: refusal ?? 'NOT_FOUND' }
   const r = flag.dataRecord
   const shown = shownMeasurement(r)
+  const settled: Settled = {
+    before: {
+      id: r.id,
+      fieldName: r.fieldName,
+      domain: r.domain,
+      documentId: r.documentId,
+      extractionMethod: r.extractionMethod,
+      periodStart: r.periodStart,
+      periodEnd: r.periodEnd,
+    },
+    disputedBy: flag.flagType === 'BUYER_DISPUTED' ? flag.raisedByEntityId : null,
+  }
 
   if (input.request.action === 'keep') {
     const note = input.request.note.trim().slice(0, MAX_NOTE_LENGTH)
@@ -147,7 +179,7 @@ export async function resolveFlag(
       where: { id: flag.id, resolvedAt: null },
       data: { resolvedAt: input.now, resolvedNote: note },
     })
-    return { ok: true, action: 'kept' }
+    return { ok: true, action: 'kept', ...settled }
   }
 
   const { recordId } = await writeRecordWithAuditEntry(
@@ -178,10 +210,5 @@ export async function resolveFlag(
     where: { dataRecordId: r.id, resolvedAt: null },
     data: { resolvedAt: input.now, resolvedNote: 'Corrected: replaced by a new record.' },
   })
-  return {
-    ok: true,
-    action: 'corrected',
-    recordId,
-    scope: { domain: r.domain, periodStart: r.periodStart, periodEnd: r.periodEnd },
-  }
+  return { ok: true, action: 'corrected', recordId, ...settled }
 }
