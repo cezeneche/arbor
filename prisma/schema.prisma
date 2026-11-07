@@ -743,28 +743,32 @@ model AccuracyGroupMetric {
 // VALIDATION FLAG
 
 model ValidationFlag {
-  id           String     @id @default(cuid())
-  dataRecordId String
-  dataRecord   DataRecord @relation(fields: [dataRecordId], references: [id])
-  flagType     FlagType
-  message      String     @db.Text
-  severity     Severity
-  resolvedAt   DateTime?
-  resolvedNote String?
+  id               String     @id @default(cuid())
+  dataRecordId     String
+  dataRecord       DataRecord @relation(fields: [dataRecordId], references: [id])
+  flagType         FlagType
+  message          String     @db.Text
+  severity         Severity
+  resolvedAt       DateTime?
+  resolvedNote     String?
   // Stewardship. A flag with no owner is nobody's job, which is how a CRITICAL
   // finding sits open for a quarter. Routed at raise time to the steward for the
   // record's domain, falling back to an entity admin (src/lib/stewardship/assign.ts).
   // Nullable: a tenant with neither is UNASSIGNED, and the workload summary shows
   // that as its own bucket rather than hiding it.
-  assigneeId   String?
-  assignee     User?      @relation("FlagAssignee", fields: [assigneeId], references: [id])
-  assignedAt   DateTime?
-  assignedVia  String? // STEWARD | ENTITY_ADMIN — how ownership was reached
+  assigneeId       String?
+  assignee         User?      @relation("FlagAssignee", fields: [assigneeId], references: [id])
+  assignedAt       DateTime?
+  assignedVia      String? // STEWARD | ENTITY_ADMIN — how ownership was reached
   // Proportionate deadline from severity (CRITICAL 3d, WARNING 14d, INFO none).
   // Null means no deadline, never "overdue".
-  dueAt        DateTime?
+  dueAt            DateTime?
   // Stamped once by the escalation cron so an overdue flag notifies exactly once.
-  escalatedAt  DateTime?
+  escalatedAt      DateTime?
+  // The buyer who raised a BUYER_DISPUTED flag, so they can be told how the
+  // supplier answered it. Null for every other flag, and for disputes raised
+  // before this was recorded.
+  raisedByEntityId String?
 
   @@index([assigneeId, resolvedAt])
   @@index([dueAt, resolvedAt, escalatedAt])
@@ -1163,6 +1167,7 @@ enum NotificationType {
   DEFINITION_SUPERSEDED // wording you had agreed has been replaced by a new version
   FLAG_ASSIGNED // a data-quality flag was routed to you to resolve
   FLAG_OVERDUE // a flag passed its resolution deadline and was escalated
+  BUYER_DISPUTE_ANSWERED // the supplier kept or corrected a value you disputed
 }
 
 // SECTOR BENCHMARK

@@ -11,6 +11,7 @@ import { TierBadge } from '@/components/TierBadge'
 import { TrustIndicator } from '@/components/TrustIndicator'
 import type { ConfidencePosterior } from '@/lib/confidence/types'
 import { logRecordAccess } from '@/lib/layer3/grant-access'
+import { splitFlagsForBuyer } from '@/lib/layer3/flag-notes'
 
 const DOMAINS = [
   'ENERGY',
@@ -41,7 +42,8 @@ export default async function SupplierRecordsPage({ params }: { params: Promise<
   const candidateRecords = await prisma.dataRecord.findMany({
     where: { entityId: supplierId, isActive: true },
     include: {
-      validationFlags: { where: { resolvedAt: null } },
+      // Open flags, and settled ones the supplier explained with a note.
+      validationFlags: { where: { OR: [{ resolvedAt: null }, { resolvedNote: { not: null } }] } },
       document: { select: { id: true, fileName: true } },
     },
     orderBy: [{ domain: 'asc' }, { periodStart: 'desc' }],
@@ -233,8 +235,9 @@ export default async function SupplierRecordsPage({ params }: { params: Promise<
               <p style={sectionLabel}>{domain.replace(/_/g, ' ')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {domainRecords.map(record => {
-                  const hasFlags = record.validationFlags.length > 0
-                  const criticalFlags = record.validationFlags.filter(f => f.severity === 'CRITICAL')
+                  const { open, supplierNotes } = splitFlagsForBuyer(record.validationFlags)
+                  const hasFlags = open.length > 0
+                  const criticalFlags = open.filter(f => f.severity === 'CRITICAL')
 
                   return (
                     <div
@@ -281,6 +284,20 @@ export default async function SupplierRecordsPage({ params }: { params: Promise<
                             {criticalFlags[0].message}
                           </p>
                         )}
+                        {supplierNotes.map((n, i) => (
+                          <p
+                            key={i}
+                            style={{
+                              fontSize: typography.sizes.xs,
+                              fontWeight: typography.weights.light,
+                              color: colours.textSecondary,
+                              margin: '4px 0 0',
+                              maxWidth: '560px',
+                            }}
+                          >
+                            Flagged: {n.message} · Supplier&apos;s note: {n.note}
+                          </p>
+                        ))}
                       </div>
 
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>

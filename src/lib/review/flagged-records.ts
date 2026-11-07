@@ -42,7 +42,7 @@ function month(d: Date): string {
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
 }
 
-function periodLabel(start: Date, end: Date): string {
+export function periodLabel(start: Date, end: Date): string {
   const from = month(start)
   const to = month(end)
   return from === to ? from : `${from} – ${to}`

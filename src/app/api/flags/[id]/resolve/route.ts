@@ -7,10 +7,13 @@ import { parseNumericValue } from '@/lib/parse-numeric'
 import { runSerializable } from '@/lib/layer2/serializable'
 import { MAX_NOTE_LENGTH, resolveFlag, type FlagRefusal } from '@/lib/layer2/flag-resolution'
 import { notifyBuyersOfSupersession } from '@/lib/supersession-notice'
+import { tellDisputingBuyer } from '@/lib/dispute-answer'
+import { captureCorrectionLabel } from '@/lib/confidence/correction-label'
+import { prisma } from '@/lib/prisma'
 
 // A supplier settles a flag on their own record from Review: keep the value
 // with a note, or correct it. The rules are in resolveFlag (Layer 2); this reads
-// the request and, once a correction commits, tells buyers who can see it.
+// the request, then tells buyers and the learning loop what changed.
 const bodySchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('keep'), note: z.string().max(MAX_NOTE_LENGTH) }),
   z.object({ action: z.literal('correct'), value: z.union([z.string(), z.number()]) }),
@@ -62,11 +65,48 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return err(refusal.message, result.reason, refusal.status)
   }
 
+  // Everything below runs after the write committed and is best-effort: the
+  // supplier's decision is saved whether or not anyone hears about it.
+  const entityId = user.entityId as string
+  const { before, disputedBy } = result
+
+  if (disputedBy) {
+    try {
+      await tellDisputingBuyer({
+        supplierEntityId: entityId,
+        buyerEntityId: disputedBy,
+        record: before,
+        outcome: result.action,
+        ...(request.action === 'keep' ? { note: request.note.trim() } : {}),
+      })
+    } catch (e) {
+      console.error('[flags/resolve] dispute answer notification failed:', e)
+    }
+  }
+
   if (result.action === 'corrected') {
     try {
-      await notifyBuyersOfSupersession(user.entityId as string, [result.scope])
+      await notifyBuyersOfSupersession(entityId, [
+        { domain: before.domain, periodStart: before.periodStart, periodEnd: before.periodEnd },
+      ])
     } catch (e) {
       console.error('[flags/resolve] supersession notification failed:', e)
+    }
+    // A machine-read value the supplier had to fix is a review correction, and
+    // the learning loop reads it like one. A value a person typed is not.
+    if (before.extractionMethod === 'DOCUMENT_AI' && before.documentId && request.action === 'correct') {
+      try {
+        await captureCorrectionLabel(prisma, {
+          entityId,
+          documentId: before.documentId,
+          fieldName: before.fieldName,
+          domain: before.domain,
+          newRecordId: result.recordId,
+          correctedValue: request.value,
+        })
+      } catch (e) {
+        console.error('[flags/resolve] correction label capture failed:', e)
+      }
     }
     return ok({ action: 'corrected', recordId: result.recordId })
   }

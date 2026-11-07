@@ -67,6 +67,13 @@ export interface NotificationPayloads {
     suggestedValue: string | null
     note: string | null
   }
+  BUYER_DISPUTE_ANSWERED: {
+    supplierName: string
+    fieldLabel: string
+    period: string
+    outcome: 'kept' | 'corrected'
+    note: string | null
+  }
   DEFINITION_PROPOSED: {
     fieldDefinitionId: string
     fieldLabel: string
@@ -206,6 +213,10 @@ function notificationSubject(
       const p = payload as NotificationPayloads['FLAG_OVERDUE']
       return `${p.flagCount} item${p.flagCount === 1 ? '' : 's'} past the date they were due`
     }
+    case 'BUYER_DISPUTE_ANSWERED': {
+      const p = payload as NotificationPayloads['BUYER_DISPUTE_ANSWERED']
+      return `${p.supplierName} ${p.outcome === 'kept' ? 'stands by' : 'corrected'} the ${p.fieldLabel.toLowerCase()} you disputed`
+    }
     default:
       return `arbor notification`
   }
@@ -270,6 +281,14 @@ function notificationHtml(
     case 'FLAG_OVERDUE': {
       const p = payload as NotificationPayloads['FLAG_OVERDUE']
       return `<p><strong>${escapeHtml(p.flagCount)}</strong> item${p.flagCount === 1 ? '' : 's'} on your ${escapeHtml(p.domain.toLowerCase())} data ${p.flagCount === 1 ? 'has' : 'have'} gone past the date ${p.flagCount === 1 ? 'it was' : 'they were'} due, so we are letting you know as well as ${escapeHtml(p.stewardName)}.<br><a href="${appUrl}/records">See what is outstanding</a></p>`
+    }
+    case 'BUYER_DISPUTE_ANSWERED': {
+      const p = payload as NotificationPayloads['BUYER_DISPUTE_ANSWERED']
+      const answer =
+        p.outcome === 'kept'
+          ? `checked the value and says it is right${p.note ? `: &ldquo;${escapeHtml(p.note)}&rdquo;` : '.'}`
+          : 'has corrected it. The original is preserved.'
+      return `<p>You disputed <strong>${escapeHtml(p.fieldLabel)}</strong> for ${escapeHtml(p.period)}. <strong>${escapeHtml(p.supplierName)}</strong> ${answer}<br><a href="${appUrl}/supply-chain">View the record</a></p>`
     }
     default:
       return `<p><a href="${appUrl}">Log in to arbor</a></p>`

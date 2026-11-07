@@ -142,6 +142,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rec
           dataRecordId: record.id,
           flagType: 'BUYER_DISPUTED' as const,
           severity: 'WARNING' as const,
+          // So the buyer can be told how the supplier settles it.
+          raisedByEntityId: buyerEntityId,
           message:
             `A buyer disputes this value` +
             (suggestedValue ? ` (suggested: ${suggestedValue})` : '') +
