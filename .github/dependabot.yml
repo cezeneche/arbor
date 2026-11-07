@@ -18,15 +18,15 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
 
+  # One package per PR, not grouped: requirements.txt pins the whole tree, so a
+  # grouped update can be unresolvable (a 59-package group was), and each change
+  # must be checked against Vercel's bundle size and the golden set on its own.
   - package-ecosystem: pip
     directory: /nucleos/api
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
-    groups:
-      minor-and-patch:
-        update-types: [minor, patch]
+    open-pull-requests-limit: 3
 
   - package-ecosystem: pip
     directory: /brain

@@ -35,7 +35,6 @@
     "@types/pg": "^8.20.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
-    "@vercel/blob": "^2.4.0",
     "@vercel/oidc": "^4.0.7",
     "bcryptjs": "^3.0.3",
     "inngest": "^4.4.0",
