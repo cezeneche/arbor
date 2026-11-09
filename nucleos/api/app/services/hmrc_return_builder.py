@@ -113,6 +113,10 @@ class HMRCGoodsLine:
 class HMRCConsignment:
     consignment_reference: str
     import_date: date
+    # Calendar quarter (1-4) of import_date. The 2027 return must state it
+    # (Force of Law Notice, draft 13 July 2026, on reg. 10(3)). None when the
+    # import date could not be read: a guessed quarter would be a misstatement.
+    import_quarter: int | None
     origin_country: str
     goods_lines: list[HMRCGoodsLine]
     consignment_reference_source: str  # "consignment_reference" | "entry_reference" | "generated"
@@ -368,15 +372,22 @@ def build_hmrc_return(
             continue
 
         import_date_raw = shipment.get("import_date")
+        import_quarter: int | None
         try:
             if isinstance(import_date_raw, date):
                 import_dt = import_date_raw
             else:
                 import_dt = date.fromisoformat(str(import_date_raw))
+            import_quarter = (import_dt.month - 1) // 3 + 1
         except (ValueError, TypeError):
             import_dt = period_start
+            import_quarter = None
             warnings.append(
                 f"consignment_import_date_invalid:ref={ref}:defaulted_to_period_start"
+            )
+            warnings.append(
+                f"consignment_import_quarter_unknown:ref={ref}:the 2027 return must state "
+                "the quarter each good was imported in; add the import date"
             )
 
         cpr_for_consignment = _to_decimal(
@@ -518,6 +529,7 @@ def build_hmrc_return(
             consignments.append(HMRCConsignment(
                 consignment_reference        = ref,
                 import_date                  = import_dt,
+                import_quarter               = import_quarter,
                 origin_country               = origin,
                 goods_lines                  = goods_lines,
                 consignment_reference_source = ref_source,
@@ -580,6 +592,12 @@ def _default_serialiser(obj: Any) -> Any:
     if isinstance(obj, (date, datetime)):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serialisable")
+
+
+def _quarter_label(consignment: HMRCConsignment) -> str:
+    if consignment.import_quarter is None:
+        return "quarter not known"
+    return f"Q{consignment.import_quarter} {consignment.import_date.year}"
 
 
 def return_to_json(return_doc: HMRCReturnDocument) -> str:
@@ -803,7 +821,8 @@ def return_to_pdf(return_doc: HMRCReturnDocument) -> bytes:
         sub_label = (
             f"<b>Consignment: {consignment.consignment_reference}  |  "
             f"Origin: {consignment.origin_country}  |  "
-            f"Import date: {consignment.import_date.strftime('%d/%m/%Y')}</b>"
+            f"Import date: {consignment.import_date.strftime('%d/%m/%Y')} "
+            f"({_quarter_label(consignment)})</b>"
         )
         sched_data.append([
             Paragraph(sub_label, small_style),
