@@ -18,6 +18,21 @@ two concurrent builds could race the same migration. The most recent
 schema-reconciliation migration drops a table and a column — exactly the shape of
 change that must be a deliberate step, not a side effect of pressing "deploy".
 
+## Each project builds only when its own code changes
+
+Arbor (Vercel project `arbor`, root `.`) and Nucleos (`nucleos-api`, root
+`nucleos`) deploy from the same repository. Each `vercel.json` has an
+`ignoreCommand` that skips the build when nothing of that project changed since
+its last deployment (`VERCEL_GIT_PREVIOUS_SHA`): Arbor skips commits that touch
+only `nucleos/`, and Nucleos skips commits that touch nothing under it. On
+Vercel this shows as the deployment being canceled by the Ignored Build Step.
+
+That is expected, not a failure. Before it, every pull request built both
+projects, and on 7 November 2026 the Hobby plan's build limit stopped production
+deploys for a day. If `git` cannot tell what changed, the command builds rather
+than skips. To force a deploy of an unchanged project, use **Redeploy** on its
+latest deployment.
+
 ## The order to deploy in
 
 1. **Apply the migration**, against the production database, from a machine or job
