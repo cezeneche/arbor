@@ -4,7 +4,7 @@
 #
 aiohappyeyeballs==2.6.1
 supabase==2.30.0
-aiohttp==3.13.3
+aiohttp==3.14.4
 aiosignal==1.4.0
 aiosqlite==0.22.1
 annotated-doc==0.0.4
