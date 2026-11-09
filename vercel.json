@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- . ':(exclude)nucleos'",
+  "ignoreCommand": "if git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- . ':(exclude)nucleos'; then exit 0; else exit 1; fi",
   "crons": [
     { "path": "/api/cron/calibrate", "schedule": "0 3 * * *" },
     { "path": "/api/cron/accuracy", "schedule": "30 3 * * *" },
