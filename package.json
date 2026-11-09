@@ -25,7 +25,7 @@
     "test:all": "npm test && npm run test:python"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.99.0",
+    "@anthropic-ai/sdk": "^1.6.0",
     "@auth/prisma-adapter": "^2.11.3",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
