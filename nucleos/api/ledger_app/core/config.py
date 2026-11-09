@@ -225,8 +225,8 @@ def optional_startup_warnings() -> list[str]:
 
     if not AppConfig.supabase_enabled():
         warnings.append(
-            "SUPABASE_URL not set; Supabase client and Storage are disabled. "
-            "Set SUPABASE_URL + SUPABASE_SERVICE_KEY for production use."
+            "SUPABASE_URL not set; Supabase Storage is off, so audit exports "
+            "(GET /api/cases/{id}/audit-log?export=true) are not uploaded. Nothing else uses it."
         )
 
     if not AppConfig.anthropic_api_key():

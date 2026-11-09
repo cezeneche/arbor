@@ -10,8 +10,10 @@ How it works
 1. TenantContextMiddleware reads the Bearer token from the Authorization header.
 2. It decodes the JWT (shared_auth.jwt.decode_bearer_token) to get the
    AuthContext, which contains tenant_id.
-3. It calls Supabase's set_config() RPC to set app.current_tenant_id for the
-   duration of that database connection.
+3. When Supabase is configured (SUPABASE_URL set), it calls Supabase's
+   set_config() RPC to set app.current_tenant_id. That runs on Supabase's own
+   REST connection, not SQLAlchemy's, so queries still filter by tenant_id
+   explicitly; without SUPABASE_URL it makes no call at all.
 4. The context is cleared in the finally block after the response is sent.
 
 Routes excluded from tenant context:
@@ -36,6 +38,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from ledger_app.core.config import AppConfig
 from shared_auth.jwt import decode_bearer_token
 from shared_auth.models import AuthContext
 
@@ -97,6 +100,11 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         # it without decoding the JWT a second time
         request.state.auth = auth_ctx
         tenant_id = auth_ctx.tenant_id
+
+        # Without Supabase there is nothing to call: importing its client would
+        # fail on every request and log a warning saying so.
+        if not AppConfig.supabase_enabled():
+            return await call_next(request)
 
         # Set PostgreSQL session variable for RLS
         await _set_pg_tenant(tenant_id)
