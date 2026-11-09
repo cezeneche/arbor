@@ -23,10 +23,13 @@ Why the pull requests keep coming: Dependabot was switched on 7 November (E5 in 
 
 ## Arbor
 
-- [ ] **S6. npm alerts.** All four come from other packages' dependencies, none from Arbor's own code.
+- [x] **S6. npm alerts.** All four come from other packages' dependencies, none from Arbor's own code.
   - zod 3.25.76 (alert 276, high: memory exhaustion validating oversized collections). Comes from `inngest`, which runs in production. Arbor's own zod is 4.6.7 and not affected. Fix: an `inngest` update if one moves to a fixed zod, otherwise an npm `overrides` entry, tested against the Inngest functions.
+    - Left open, 9 November 2026. No 3.x release has the fix and inngest 4.26.2 (latest) still requires zod ^3.25, so overriding to zod 4 would break it. Exposure is small: inngest checks the request signature before parsing a body with zod, so only bodies Inngest signed reach it. Take the inngest release that moves to zod 4.
   - glob 10.5.0 (291) and minimatch 9.0.9 and 10.2.5 (292). From jest, typescript-eslint and, for glob, also `inngest` → gaxios → rimraf. Mostly development tooling. Fix with `overrides` if the parent packages haven't moved.
+    - Done 9 November 2026: none had moved, so `package.json` overrides lift glob 9–14.0.1 to ^14.0.2 and minimatch 7–11.0.0 to ^11.0.1. Only that tree changed in the lockfile; eslint's minimatch 3 is outside the range and untouched. Lint, type-check and all 2,587 tests pass. Remove the overrides once jest, typescript-eslint and rimraf depend on fixed versions.
   - deepmerge 4.3.1 (286, low). From jest only, development tooling, and no fixed version exists. Dismiss with that reason recorded.
+    - Dismissed 9 November 2026 as tolerable risk, with that reason.
 
 ## Owner decision
 
