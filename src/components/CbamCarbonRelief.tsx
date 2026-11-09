@@ -6,6 +6,7 @@ import { CbamCasePicker } from './CbamCasePicker'
 import { missingForCalculation } from '@/lib/nucleos/cpr-form'
 import type { CbamCaseSummary } from '@/lib/nucleos/cases-client'
 import type { PresentedReliefClaim, SchemeChoice } from '@/lib/nucleos/relief-presenter'
+import { countryName } from '@/lib/country-name'
 
 // Claiming relief for carbon already paid in the country of origin, one goods
 // line at a time.
@@ -489,7 +490,7 @@ function ClaimForm({
       >
         {options.length === 1
           ? `Carbon paid under the ${scheme?.name} can be set against the CBAM liability on these goods.`
-          : `Goods from ${origin} can carry relief under more than one scheme. Choose the one the carbon price was paid under.`}
+          : `Goods from ${countryName(origin)} can carry relief under more than one scheme. Choose the one the carbon price was paid under.`}
       </p>
 
       <div
@@ -836,7 +837,7 @@ function CaseRelief({ case_ }: { case_: CbamCaseSummary }) {
             {lines.map(l => (
               <option key={l.id} value={l.id}>
                 {l.cn_code ?? 'No code'} · {l.product_description || l.description || 'No description'}
-                {l.origin_country ? ` · from ${l.origin_country}` : ''}
+                {l.origin_country ? ` · from ${countryName(l.origin_country)}` : ''}
               </option>
             ))}
           </select>

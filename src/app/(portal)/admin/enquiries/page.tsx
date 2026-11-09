@@ -63,7 +63,8 @@ export default async function EnquiriesPage({
       <div style={{ marginBottom: spacing[5] }}>
         <h1 style={textStyles.pageTitle}>Enquiries</h1>
         <p style={{ ...textStyles.sectionSubtitle, margin: `${spacing[1]} 0 0` }}>
-          Pilot and institutional enquiries to follow up.
+          Pilot and institutional enquiries to follow up. Each new one also posts a Slack alert that links
+          here.
         </p>
       </div>
       <SectionViewNav

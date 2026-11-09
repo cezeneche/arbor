@@ -37,7 +37,7 @@ describe('schemeChoice', () => {
   it('says plainly when the origin has no recognised scheme', () => {
     expect(schemeChoice('TR', { claimable: false, warning: null, schemes: [] })).toMatchObject({
       eligible: false,
-      message: expect.stringContaining('Goods from TR'),
+      message: expect.stringContaining('Goods from Turkey'),
     })
   })
 
