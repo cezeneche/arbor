@@ -18,7 +18,7 @@ The owner's own items and the engineering backlog are in `docs/engineering-todo.
 - [x] **R4. The confirm route can notify about a failed attempt.** `supersededScopes` is declared outside the transaction callback, and `runSerializable` retries that callback on a write conflict. A failed attempt's pushes survive into the next, so post-commit notifications can repeat or name scopes that were never superseded.
   - Fix: the callback returns what it superseded, so only the committed attempt counts. Check the route for any other state that outlives an attempt.
   - Done. The callback now returns `{ recordIds, supersededScopes }`. Narrower than first described: notifications are de-duplicated per buyer and domain, so a repeated scope didn't double-send; the real harm was telling buyers about a supersession only the rolled-back attempt made. The route now has its first test (`confirm/__tests__/retry.test.ts`), which fails a first attempt with a write conflict after it superseded a record. Every other `runSerializable` caller was checked: the supplier submit route already resets its counter per attempt, and the rest keep no state outside the callback.
-  - Later: the route is 651 lines (validation, replacement, audit, notifications, CBAM handoff). Split it once R4 is covered by a test.
+  - Split (9 November 2026): the route had grown to 672 lines. It is now a 242-line orchestrator over `src/lib/layer2/confirm/` (request, check, prepare, write, after-commit). 23 tests written against the old route first pinned every answer it gives; all pass unchanged on the split.
 
 ## Maintainability
 
