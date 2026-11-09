@@ -1,6 +1,6 @@
 import { X509Certificate } from 'node:crypto'
 import { rootCertificates } from 'node:tls'
-import { databaseConnection, SUPABASE_ROOT_CA_2021 } from '@/lib/db-tls'
+import { databaseConnection, migrationDatabaseUrl, SUPABASE_ROOT_CA_2021 } from '@/lib/db-tls'
 
 // pg merges parameters parsed from the URL over the options passed beside it.
 // Testing through pg's own parser is the only way to know the URL cannot undo
@@ -84,5 +84,49 @@ describe('SUPABASE_ROOT_CA_2021', () => {
   it('has at least 90 days left before it expires', () => {
     const ninetyDays = 90 * 24 * 60 * 60 * 1000
     expect(new Date(cert.validTo).getTime() - Date.now()).toBeGreaterThan(ninetyDays)
+  })
+})
+
+describe('migrationDatabaseUrl', () => {
+  // Expected: unchanged. Reason: CI's Postgres service and local dev have no
+  // certificate, and the traffic never leaves the host.
+  it.each([
+    'postgresql://postgres:postgres@localhost:5432/arbor',
+    'postgresql://postgres:postgres@127.0.0.1:5432/arbor',
+  ])('leaves a local database alone: %s', url => {
+    expect(migrationDatabaseUrl(url)).toBe(url)
+  })
+
+  it('passes an unset URL through', () => {
+    expect(migrationDatabaseUrl(undefined)).toBeUndefined()
+  })
+
+  // Expected: sslmode=require. Reason: with no sslmode, Prisma's schema engine
+  // tries TLS and falls back to plaintext, and the Supabase pooler accepts
+  // plaintext, so a migration could run unencrypted.
+  it('requires TLS for a remote database', () => {
+    const url = new URL(migrationDatabaseUrl(REMOTE)!)
+    expect(url.searchParams.get('sslmode')).toBe('require')
+    expect(url.hostname).toBe('aws-0-eu-west-2.pooler.supabase.com')
+    expect(url.password).toBe('secret')
+  })
+
+  // Expected: the URL cannot weaken it. Reason: same rule as the app's
+  // connection, whatever the URL says.
+  it.each(['sslmode=disable', 'sslmode=prefer', 'sslmode=allow&sslaccept=accept_invalid_certs'])(
+    'overrides a weaker setting in the URL: %s',
+    query => {
+      const url = new URL(migrationDatabaseUrl(`${REMOTE}?${query}`)!)
+      expect(url.searchParams.getAll('sslmode')).toEqual(['require'])
+      expect(url.searchParams.has('sslaccept')).toBe(false)
+    },
+  )
+
+  // Expected: other parameters kept. Reason: the pooler needs pgbouncer and
+  // connection settings to stay as configured.
+  it('keeps parameters that are not about TLS', () => {
+    const url = new URL(migrationDatabaseUrl(`${REMOTE}?pgbouncer=true&connection_limit=1`)!)
+    expect(url.searchParams.get('pgbouncer')).toBe('true')
+    expect(url.searchParams.get('connection_limit')).toBe('1')
   })
 })
