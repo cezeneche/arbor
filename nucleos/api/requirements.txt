@@ -16,7 +16,7 @@ banks==2.5.1
 beautifulsoup4==4.14.3
 boto3==1.42.50
 botocore==1.42.50
-certifi==2026.1.4
+certifi==2026.10.23
 charset-normalizer==3.4.4
 colorama==0.4.6
 dataclasses-json==0.6.7
