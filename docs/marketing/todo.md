@@ -53,7 +53,8 @@ Started 30 September 2026. Decisions: CBAM is a **second audience** with its own
   - The **arbor ops team** handles the queue.
 - [ ] D4. **Owner + counsel:** retention schedule, then legal review of Privacy, Terms and DPA.
   - Done: Slack is added to `src/lib/legal/subprocessors.ts` with its DPA link. The rest of D4 is deferred to launch (owner's decision).
-- [ ] D5. Apply the pilot-enquiry migration to production before the form goes live.
+- [x] D5. Apply the pilot-enquiry migration to production before the form goes live.
+  - Done 30 September 2026: `20260929000000_pilot_enquiry` was applied to production before PR #128 merged, and a labelled test enquiry was saved (201) the same day.
 - [ ] D6. Full check before publishing: build, every page at phone to desktop widths, keyboard pass, form submission against a non-production database.
   - Done 30 September 2026:
     - 2208 tests pass and TypeScript is clean.

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import type { CbamCaseSummary } from '@/lib/nucleos/cases-client'
+import { countryName } from '@/lib/country-name'
 
 // Pick a case, and the work for it opens beneath the row.
 //
@@ -88,7 +89,7 @@ export function CbamCasePicker({
                   }}
                 >
                   {period}
-                  {c.origin_country ? ` · from ${c.origin_country}` : ''}
+                  {c.origin_country ? ` · from ${countryName(c.origin_country)}` : ''}
                   {c.sector ? ` · ${c.sector.replace(/_/g, ' ')}` : ''}
                 </span>
               </span>

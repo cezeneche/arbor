@@ -7,6 +7,7 @@
 // statement is attached. Nucleos applies the same rule to the return.
 
 import { cprDisplay } from './cpr-display'
+import { countryName } from '../country-name'
 import type { QualifyingSchemes, ReliefClaim } from './relief-client'
 
 export interface SchemeChoice {
@@ -34,7 +35,7 @@ export function schemeChoice(origin: string | null, schemes: QualifyingSchemes |
       eligible: false,
       message:
         schemes?.warning ??
-        `Goods from ${origin} are not covered by a carbon pricing scheme the UK recognises, so no relief can be claimed against them.`,
+        `Goods from ${countryName(origin)} are not covered by a carbon pricing scheme the UK recognises, so no relief can be claimed against them.`,
       options: [],
     }
   }
