@@ -8,9 +8,12 @@ import { join } from 'node:path'
 // skips commits that touch nothing under it. On 7 November every Dependabot PR
 // built both, and the Hobby plan's build limit stopped production deploys.
 //
-// Vercel's convention: the ignore command exits 0 to skip the build, anything
-// else to build. So an error (a base commit missing from a shallow clone) must
-// build, never skip. These run the exact commands from both vercel.json files.
+// Vercel's convention: the ignore command exits 0 to skip the build and 1 to
+// build. Any other exit code fails the deployment. git exits 128 when the
+// previous deployment's commit no longer exists, as after a rebase or force
+// push (Dependabot rebases its PRs), and on 9 November that failed the preview
+// of #190. So every error must become exit 1: build, never skip, never fail.
+// These run the exact commands from both vercel.json files.
 
 const REPO = join(__dirname, '..', '..', '..')
 const command = (file: string) => JSON.parse(readFileSync(join(REPO, file), 'utf8')).ignoreCommand as string
@@ -25,7 +28,7 @@ function commit(path: string): string {
   git('commit', '-q', '-m', `change ${path}`)
   return git('rev-parse', 'HEAD')
 }
-/** true = Vercel builds; false = it skips. */
+/** true = Vercel builds; false = it skips. Any other exit code fails the deployment. */
 function builds(cmd: string, cwd: string, previousSha?: string): boolean {
   const env = {
     NODE_ENV: 'test' as const,
@@ -33,7 +36,10 @@ function builds(cmd: string, cwd: string, previousSha?: string): boolean {
     HOME: dir,
     ...(previousSha ? { VERCEL_GIT_PREVIOUS_SHA: previousSha } : {}),
   }
-  return spawnSync('sh', ['-c', cmd], { cwd, env }).status !== 0
+  const status = spawnSync('sh', ['-c', cmd], { cwd, env }).status
+  if (status === 0) return false
+  if (status === 1) return true
+  throw new Error(`exit ${status}: Vercel would fail this deployment`)
 }
 
 beforeEach(() => {
@@ -75,6 +81,16 @@ it('compares against the last deployed commit, not just the newest one', () => {
   commit('src/page.ts')
   // The newest commit touched only Arbor, but Nucleos changed since its last deploy.
   expect(builds(NUCLEOS, join(dir, 'nucleos'), deployed)).toBe(true)
+})
+
+it('builds when the last deployed commit was rewritten away (rebase, force push)', () => {
+  const rebasedAway = commit('src/page.ts')
+  git('reset', '-q', '--hard', 'HEAD^')
+  git('reflog', 'expire', '--expire=now', '--all')
+  git('gc', '-q', '--prune=now')
+  commit('nucleos/main.py')
+  expect(builds(ARBOR, dir, rebasedAway)).toBe(true)
+  expect(builds(NUCLEOS, join(dir, 'nucleos'), rebasedAway)).toBe(true)
 })
 
 it('builds when it cannot tell, rather than skipping', () => {
