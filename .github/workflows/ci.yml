@@ -94,6 +94,9 @@ jobs:
       - name: Migrations match schema.prisma
         run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
 
+      - name: Every table has row-level security
+        run: node scripts/ci/check-row-level-security.mjs
+
   nucleos:
     runs-on: ubuntu-latest
     services:
