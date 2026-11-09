@@ -62,3 +62,26 @@ export function databaseConnection(connectionString: string | undefined): Databa
     ssl: { rejectUnauthorized: true, ca: [...rootCertificates, SUPABASE_ROOT_CA_2021] },
   }
 }
+
+// Prisma's schema engine, which `prisma migrate` uses, connects on its own and
+// reads TLS only from the URL; it never sees the options above. With no
+// sslmode it tries TLS and falls back to plaintext, so a migration could run
+// unencrypted. Remote URLs therefore get sslmode=require, replacing whatever
+// TLS settings they carry.
+//
+// This encrypts but does not verify the certificate: the schema engine refuses
+// Supabase's chain even when given Supabase's root (sslaccept=strict with
+// sslrootcert, checked 9 November 2026), and accepts it only unverified. The
+// app's own connections, which carry every certified write, stay verified.
+const PRISMA_TLS_PARAMS = ['sslmode', 'sslaccept', 'sslcert', 'sslidentity', 'sslpassword', 'sslrootcert']
+
+export function migrationDatabaseUrl(connectionString: string | undefined): string | undefined {
+  if (!connectionString) return connectionString
+
+  const url = new URL(connectionString)
+  if (LOCAL_HOSTS.has(url.hostname)) return connectionString
+
+  for (const param of PRISMA_TLS_PARAMS) url.searchParams.delete(param)
+  url.searchParams.set('sslmode', 'require')
+  return url.toString()
+}

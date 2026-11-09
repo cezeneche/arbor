@@ -2,6 +2,7 @@
 // npm install --save-dev prisma dotenv
 import 'dotenv/config'
 import { defineConfig } from 'prisma/config'
+import { migrationDatabaseUrl } from './src/lib/db-tls'
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
@@ -9,6 +10,7 @@ export default defineConfig({
     path: 'prisma/migrations',
   },
   datasource: {
-    url: process.env['DATABASE_URL'],
+    // Migrations always run over TLS to a remote database (see db-tls.ts).
+    url: migrationDatabaseUrl(process.env['DATABASE_URL']),
   },
 })
