@@ -9,7 +9,8 @@ Arbor's and Nucleos's databases are backed up every night by `.github/workflows/
   - `monthly/<arbor|nucleos>/<name>.dump.age`, the backup taken on the 1st of each month.
   - Each backup has a `<name>.json` manifest beside it: when it was taken, its SHA-256, the Postgres versions, and the restore drill's counts.
 - **What:** Arbor's `public` schema, and Nucleos's `public` and `cbam` schemas, as `pg_dump` custom-format archives. Every one was restored into an empty database and checked before it was encrypted: chains whole and linked, every record's hash on its entry, and each entity's restored chain identical to production at that moment.
-- **Not included:** files in Supabase Storage (uploaded documents) and Supabase's own schemas (`auth`, `storage`). Arbor signs users in itself, so `auth` holds nothing of Arbor's.
+- **Uploaded documents** (the private `documents` bucket in Supabase Storage): `documents/<entity id>/<file>.age`, one encrypted copy per file, made the first night after upload and kept (outside `daily/`, so the 35-day rule never deletes them). Each run writes `documents-manifests/documents-<time>.json`: files in storage, files in the backup, document records, and any record whose file cannot be recovered (the run fails if there is one). See "Uploaded documents" below.
+- **Not included:** Supabase's own schemas (`auth`, `storage`). Arbor signs users in itself, so `auth` holds nothing of Arbor's, and `storage` only indexes the files, which are backed up themselves.
 - **Who can read them:** only the holder of the age private key, which the owner keeps in a password manager. GitHub, Cloudflare and anyone holding these files can't decrypt them.
 
 ## Restore
@@ -58,6 +59,35 @@ You need `age`, the PostgreSQL client tools (version 18 or newer), and either th
    For Nucleos, use `KIND=nucleos SCHEMAS=public,cbam`.
 8. **Switch over.** Set `DATABASE_URL` to the restored database on the **arbor** Vercel project (or on **nucleos-api** for Nucleos) and redeploy. For Arbor, `npx prisma migrate status` should then report the database up to date, because the migration history table is restored with everything else.
 9. **Clean up.** Delete `arbor.dump`, the `.age` file and `~/arbor-backup-key.txt`.
+
+## Uploaded documents
+
+Each file is encrypted on its own, so you can restore one document or all of them.
+
+1. Get the key (step 1 above).
+2. Download what you need from R2, keeping the paths:
+   ```
+   aws s3 cp --recursive --endpoint-url $R2 s3://<bucket>/documents/ ./documents-backup/
+   ```
+   For one entity, add its id: `s3://<bucket>/documents/<entity id>/`.
+3. Decrypt each file to its original path. The path under `documents/`, less `.age`, is the file's path in the bucket and what `Document.blobUrl` holds:
+   ```
+   cd documents-backup && find . -name '*.age' | while read -r f; do
+     mkdir -p "../documents-restored/$(dirname "$f")"
+     age --decrypt --identity ~/arbor-backup-key.txt --output "../documents-restored/${f%.age}" "$f"
+   done
+   ```
+   Each copy's object metadata holds the original's `sha256` and `bytes` (`aws s3api head-object … --key documents/<path>.age`), to check one against.
+4. Upload them to the `documents` bucket of the project the app points at, at the same paths. With Supabase's S3 keys (below): `aws s3 cp --recursive --endpoint-url $SUPABASE_S3_ENDPOINT ../documents-restored/ s3://documents/`.
+5. Clean up: delete both folders and `~/arbor-backup-key.txt`.
+
+A file deleted from storage stays in the backup. If a document has to be erased (for example on a data-protection request), delete its `.age` copy from R2 as well.
+
+## Backup logins
+
+The backups read each database through its own read-only login, `arbor_backup`, never the app's: in Arbor's project as `scripts/backup/arbor-backup-role.sql` sets it up, and in Nucleos's the same way. Both need `BYPASSRLS`: every table has row-level security on, so any other login would read no rows. Their connection strings (Supabase's session pooler, user `arbor_backup.<project ref>`) are the `ARBOR_BACKUP_DATABASE_URL` and `NUCLEOS_BACKUP_DATABASE_URL` GitHub secrets.
+
+The documents job reads Supabase Storage with Storage's own S3 access keys, which reach storage only, not the database. In Arbor's Supabase project: Storage → Settings → S3 Connection. Copy the endpoint and region, create an access key, and set four GitHub secrets: `SUPABASE_S3_ENDPOINT`, `SUPABASE_S3_REGION`, `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY`. Without them the documents job fails, and says which are missing.
 
 ## Quarterly drill
 

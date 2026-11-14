@@ -11,10 +11,16 @@ name: Database backups
 # decrypt one: the private key is held by the owner alone. Restoring is
 # docs/runbooks/restore-database.md.
 #
+# The documents job copies each uploaded file in Supabase Storage's private
+# `documents` bucket to R2 once, encrypted the same way, and checks that every
+# document record's file is in the backup (scripts/backup/backup-documents.sh).
+#
 # Secrets: ARBOR_BACKUP_DATABASE_URL, NUCLEOS_BACKUP_DATABASE_URL (session-mode
 # or direct connection strings, not the transaction pooler), R2_ACCOUNT_ID,
 # R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_ENDPOINT (EU-jurisdiction
-# buckets), OPS_SLACK_WEBHOOK_URL.
+# buckets), OPS_SLACK_WEBHOOK_URL; for documents, SUPABASE_S3_ENDPOINT,
+# SUPABASE_S3_REGION, SUPABASE_S3_ACCESS_KEY_ID, SUPABASE_S3_SECRET_ACCESS_KEY
+# (Supabase Storage S3 access keys: storage only, not the service-role key).
 
 on:
   schedule:
@@ -93,6 +99,51 @@ jobs:
         if: failure()
         env:
           KIND: ${{ matrix.kind }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OPS_SLACK_WEBHOOK_URL: ${{ secrets.OPS_SLACK_WEBHOOK_URL }}
+        run: python3 scripts/backup/notify_failure.py
+
+  documents:
+    name: documents
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # Only pg, to read which files the document records point at.
+      - name: Install node dependencies
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+
+      # The AWS CLI is already on the runner; it talks to both Supabase's S3
+      # endpoint and R2.
+      - name: Install age
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq age
+
+      - name: Back up new documents, check every record's file is backed up
+        env:
+          SUPABASE_S3_ENDPOINT: ${{ secrets.SUPABASE_S3_ENDPOINT }}
+          SUPABASE_S3_REGION: ${{ secrets.SUPABASE_S3_REGION }}
+          SUPABASE_S3_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          SUPABASE_S3_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+          SOURCE_URL: ${{ secrets.ARBOR_BACKUP_DATABASE_URL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: scripts/backup/backup-documents.sh
+
+      - name: Tell the ops channel
+        if: failure()
+        env:
+          KIND: documents
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           OPS_SLACK_WEBHOOK_URL: ${{ secrets.OPS_SLACK_WEBHOOK_URL }}
         run: python3 scripts/backup/notify_failure.py
