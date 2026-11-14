@@ -161,6 +161,10 @@ try {
       'es2020',
       '--esModuleInterop',
       '--skipLibCheck',
+      // Compile these files with these options alone, not tsconfig.json's
+      // (TypeScript 6 refuses named files beside a tsconfig without it; 5.x
+      // ignored the tsconfig silently).
+      '--ignoreConfig',
     ],
     { cwd: REPO, stdio: 'pipe' },
   )
