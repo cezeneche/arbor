@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { useState } from 'react'
 import { colours, typography, spacing, textStyles } from '@/lib/design-system'
 import { CbamCasePicker } from './CbamCasePicker'
@@ -409,6 +411,15 @@ function CaseRequest({ caseId }: { caseId: string }) {
                 }}
               >
                 EU 2023/1773 Annex VI — world-average default values
+              </p>
+              <p style={{ ...textStyles.caption, lineHeight: 1.6, margin: `${spacing[2]} 0 0` }}>
+                To record it as a line&apos;s figure, open{' '}
+                <Link href={`/cbam/${encodeURIComponent(caseId)}`} style={{ color: colours.navy }}>
+                  the case
+                </Link>{' '}
+                and choose{' '}
+                <strong style={{ fontWeight: typography.weights.medium }}>Use the published default</strong>{' '}
+                on the line.
               </p>
             </>
           )}

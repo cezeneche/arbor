@@ -79,3 +79,18 @@ describe('presentGoodsLines', () => {
     expect(presentGoodsLines(undefined)).toEqual([])
   })
 })
+
+// Whether "Use the published default" can be offered: only on a line with no
+// figure of any kind recorded, so a supplier's figure is never replaced.
+describe('noFigureRecorded', () => {
+  const base = { id: 'gl-1', cn_code: '72083900', net_mass_kg: 24500 }
+  it('is true when nothing is recorded', () => {
+    expect(presentGoodsLine(base, 0).noFigureRecorded).toBe(true)
+  })
+  it.each([{ direct_kgco2e: 1000 }, { indirect_kgco2e: 50 }, { method: 'actual' }])(
+    'is false with %o',
+    over => {
+      expect(presentGoodsLine({ ...base, ...over }, 0).noFigureRecorded).toBe(false)
+    },
+  )
+})

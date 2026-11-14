@@ -1,4 +1,4 @@
-import { presentCalculation, presentLine } from '../emissions-presenter'
+import { plainNote, presentCalculation, presentLine } from '../emissions-presenter'
 import type { CalculatedLine, CalculationResult } from '../contract'
 
 function line(overrides: Partial<CalculatedLine> = {}): CalculatedLine {
@@ -166,5 +166,36 @@ describe('direct-only embedded total', () => {
     expect(
       presentLine(line({ direct_kgco2e: 1000, indirect_kgco2e: 500, embedded_tco2e: 1.5 })).countedNote,
     ).toBeNull()
+  })
+})
+
+// The engine's warnings are "code — explanation". The case page showed them
+// whole, so a person read `cbam_selector:markup_not_applied:UK` first.
+describe('plainNote', () => {
+  it('reads the explanation as a sentence and keeps the code apart', () => {
+    expect(
+      plainNote(
+        'cbam_selector:markup_not_applied:UK — no default-value mark-up schedule is confirmed for UK (Finance (No.2) Bill 2025-26 — no default-value mark-up provision confirmed)',
+      ),
+    ).toEqual({
+      text: 'No default-value mark-up schedule is confirmed for UK (Finance (No.2) Bill 2025-26 — no default-value mark-up provision confirmed).',
+      code: 'cbam_selector:markup_not_applied:UK',
+    })
+  })
+
+  // Expected: shown whole, no code. Reason: nothing to split, and dropping
+  // text the engine wrote would hide it.
+  it('shows a warning with no code as it is', () => {
+    expect(plainNote('Mass is above the plausible range.')).toEqual({
+      text: 'Mass is above the plausible range.',
+      code: null,
+    })
+  })
+
+  it('keeps a bare code rather than dropping it', () => {
+    expect(plainNote('cbam_selector:something_new')).toEqual({
+      text: 'cbam_selector:something_new',
+      code: null,
+    })
   })
 })

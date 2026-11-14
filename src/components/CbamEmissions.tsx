@@ -1,6 +1,7 @@
 import { colours, spacing, textStyles, typography } from '@/lib/design-system'
 import { REGIME_LABEL } from '@/lib/nucleos/jurisdiction'
 import type { RegimeCalculation } from '@/lib/nucleos/case-calculation'
+import { plainNote } from '@/lib/nucleos/emissions-presenter'
 
 // What the goods lines actually declare.
 //
@@ -69,6 +70,48 @@ function Figure({ label, value }: { label: string; value: string }) {
     <div>
       <p style={{ ...textStyles.eyebrow, marginBottom: '4px' }}>{label}</p>
       <p style={textStyles.value}>{value}</p>
+    </div>
+  )
+}
+
+// The engine's warnings as sentences. Its codes stay available for support,
+// out of the way of a person reading the figure.
+function Notes({ warnings, marginTop }: { warnings: string[]; marginTop: string }) {
+  const notes = warnings.map(plainNote)
+  const codes = notes.map(n => n.code).filter((c): c is string => c !== null)
+  return (
+    <div style={{ marginTop }}>
+      <ul
+        style={{
+          margin: 0,
+          paddingLeft: '18px',
+          fontSize: typography.sizes.xs,
+          fontWeight: typography.weights.light,
+          color: colours.textTertiary,
+          lineHeight: '1.6',
+        }}
+      >
+        {notes.map((n, i) => (
+          <li key={i}>{n.text}</li>
+        ))}
+      </ul>
+      {codes.length > 0 && (
+        <details style={{ marginTop: spacing[1] }}>
+          <summary style={{ ...textStyles.caption, color: colours.navy, cursor: 'pointer' }}>
+            Technical detail
+          </summary>
+          <p
+            style={{
+              ...textStyles.caption,
+              color: colours.textTertiary,
+              lineHeight: 1.6,
+              margin: `${spacing[1]} 0 0`,
+            }}
+          >
+            {codes.join(' · ')}
+          </p>
+        </details>
+      )}
     </div>
   )
 }
@@ -223,22 +266,7 @@ export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
                       </div>
                     )}
 
-                    {line.warnings.length > 0 && (
-                      <ul
-                        style={{
-                          margin: `${spacing[2]} 0 0`,
-                          paddingLeft: '18px',
-                          fontSize: typography.sizes.xs,
-                          fontWeight: typography.weights.light,
-                          color: colours.textTertiary,
-                          lineHeight: '1.6',
-                        }}
-                      >
-                        {line.warnings.map((w, i) => (
-                          <li key={i}>{w}</li>
-                        ))}
-                      </ul>
-                    )}
+                    {line.warnings.length > 0 && <Notes warnings={line.warnings} marginTop={spacing[2]} />}
 
                     {line.trace.length > 0 && (
                       <details style={{ marginTop: spacing[2] }}>
@@ -276,20 +304,7 @@ export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
               </div>
 
               {presented.warnings.length > 0 && (
-                <ul
-                  style={{
-                    margin: `${spacing[3]} 0 0`,
-                    paddingLeft: '18px',
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.light,
-                    color: colours.textTertiary,
-                    lineHeight: '1.6',
-                  }}
-                >
-                  {presented.warnings.map((w, i) => (
-                    <li key={i}>{w}</li>
-                  ))}
-                </ul>
+                <Notes warnings={presented.warnings} marginTop={spacing[3]} />
               )}
 
               {/* Which engine and which tables. A figure that cannot name them

@@ -25,6 +25,8 @@ export interface PresentedGoodsLine {
   declaredEmissions: string
   /** Present when no figure has been supplied. Says what to do about it. */
   emissionsNeeded: string | null
+  /** No figure of any kind is recorded, so the published default can be offered. */
+  noFigureRecorded: boolean
 }
 
 const DASH = '—'
@@ -89,6 +91,7 @@ export function presentGoodsLine(raw: CaseGoodsLine, index: number): PresentedGo
             'emissions from making them are still needed before this line can be declared.'
           : 'No emissions figure yet. Ask the supplier, or use the published default — ' +
             'the default is always available and always higher.',
+    noFigureRecorded: direct === null && indirect === null && str(raw.method) === null,
   }
 }
 

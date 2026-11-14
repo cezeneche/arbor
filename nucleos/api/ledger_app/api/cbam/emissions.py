@@ -322,6 +322,18 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
                         if computed is not None:
                             direct_value, indirect_value = computed
                             factor_version_used = _shared.FACTOR_TABLE_VERSION
+                        elif payload.require_default_factor:
+                            raise HTTPException(
+                                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                detail={
+                                    "error": "no_published_default",
+                                    "detail": (
+                                        f"No Annex VI default is published for {cn_code}, "
+                                        "so no default figure can be recorded "
+                                        "(EU 2023/1773 Annex VI)."
+                                    ),
+                                },
+                            )
                         else:
                             factor_warnings.append(
                                 f"cbam_factors:no_default_factor:{cn_code} — "
@@ -376,10 +388,21 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
             created = _shared._insert_returning(conn, "cbam_emissions", insert_payload)
             if factor_warnings:
                 created["factor_warnings"] = factor_warnings
-            return created
+            case_id = _shared._resolve_case_for_goods_line(conn, payload.goods_line_id)
     except HTTPException:
         raise
-    except IntegrityError:
+    except IntegrityError as exc:
+        if "cbam_emissions_unique_version" in str(exc) or "UNIQUE constraint failed" in str(exc):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "version_exists",
+                    "detail": (
+                        f"Goods line {payload.goods_line_id} already has emissions "
+                        f"version {payload.version}."
+                    ),
+                },
+            ) from exc
         allowed = ", ".join(_shared.ALLOWED_EMISSIONS_METHODS)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -395,3 +418,20 @@ def create_cbam_emissions(request: Request, payload: _shared.CBAMEmissionsCreate
             case_id=str(payload.goods_line_id),
         )
         raise HTTPException(status_code=500, detail="Internal server error")
+
+    # A figure that enters a return belongs on the case's trail, as a supplier's
+    # submission already is. Written after the commit: the trail records what landed.
+    if case_id:
+        _shared._write_audit_event(
+            str(case_id),
+            "emissions_recorded",
+            {
+                "goods_line_id": str(payload.goods_line_id),
+                "method": payload.calculation_method.value,
+                "version": payload.version,
+                "factor_table_version": factor_version_used,
+            },
+            actor_sub=getattr(getattr(request.state, "auth_context", None), "sub", "system"),
+            tenant_id=tenant_id,
+        )
+    return created
