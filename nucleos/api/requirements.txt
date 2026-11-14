@@ -7,7 +7,7 @@ supabase==2.30.0
 aiohttp==3.14.4
 aiosignal==1.4.0
 aiosqlite==0.22.1
-annotated-doc==0.0.4
+annotated-doc==0.0.6
 annotated-types==0.7.0
 anthropic>=0.84.0
 anyio==4.14.2
