@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "if git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- .; then exit 0; else exit 1; fi",
+  "ignoreCommand": "base=${VERCEL_GIT_PREVIOUS_SHA:-$(git merge-base HEAD origin/main 2>/dev/null)}; if [ -n \"$base\" ] && [ \"$base\" != \"$(git rev-parse HEAD)\" ] && git diff --quiet \"$base\" HEAD -- .; then exit 0; else exit 1; fi",
   "builds": [
     {
       "src": "api/index.py",
