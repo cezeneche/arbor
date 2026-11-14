@@ -87,6 +87,9 @@ class CBAMEmissionsCreate(BaseModel):
     calculation_method: EmissionsMethod
     version: int = Field(..., ge=1)
     production_route: str | None = None
+    # A person applying the published default must never record zero when no
+    # default exists; existing callers keep the zero-and-warning behaviour.
+    require_default_factor: bool = False
 
 
 class CBAMScopeCheckRequest(BaseModel):
