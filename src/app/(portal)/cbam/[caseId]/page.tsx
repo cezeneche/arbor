@@ -361,21 +361,9 @@ export default async function CbamCasePage({ params }: { params: Promise<{ caseI
                                 {line.emissionsNeeded}
                               </span>
                             )}
-                            {line.noFigureRecorded &&
-                              canWrite &&
-                              (jurisdiction === 'UK' ? (
-                                <CbamApplyDefault caseId={caseId} goodsLineId={line.id} />
-                              ) : (
-                                <span
-                                  style={{
-                                    display: 'block',
-                                    ...textStyles.caption,
-                                    color: colours.textTertiary,
-                                  }}
-                                >
-                                  The published default can be recorded on UK cases only for now.
-                                </span>
-                              ))}
+                            {line.noFigureRecorded && canWrite && (
+                              <CbamApplyDefault caseId={caseId} goodsLineId={line.id} />
+                            )}
                           </td>
                           <td style={cell}>
                             {verificationByLine.get(line.id) && (

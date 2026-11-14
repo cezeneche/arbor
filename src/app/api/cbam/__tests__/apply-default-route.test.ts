@@ -1,6 +1,7 @@
 /**
- * Recording the published default on a goods line: the caller's own line, on a
- * UK case, with no figure yet.
+ * Recording the published default on a goods line: the caller's own line, with
+ * no figure yet. Any regime: Nucleos stores the Annex VI value, the UK return
+ * uses it as it is, and the EU declaration adds the year's mark-up.
  */
 
 const writer = { user: { id: 'user-1', entityId: 'ent-1', role: 'ADMIN' } }
@@ -38,12 +39,12 @@ function line(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks()
-  access.mockResolvedValue({ ok: true, line: line(), record: { jurisdiction: 'UK' } })
+  access.mockResolvedValue({ ok: true, line: line() })
   apply.mockResolvedValue(undefined)
 })
 
 describe('POST published default', () => {
-  it('records the default on the caller’s own UK line', async () => {
+  it('records the default on the caller’s own line', async () => {
     const res = await post()
     expect(res.status).toBe(200)
     expect(access).toHaveBeenCalledWith('case-1', 'gl-1', 'ent-1')
@@ -56,23 +57,12 @@ describe('POST published default', () => {
     expect(apply).not.toHaveBeenCalled()
   })
 
-  // Expected: refused on EU and both-regime cases. Reason: the EU declaration
-  // builder reads a stored default without adding the legislated mark-up, so
-  // the file would understate the line.
-  it.each(['EU', 'BOTH'])('refuses on a %s case', async jurisdiction => {
-    access.mockResolvedValue({ ok: true, line: line(), record: { jurisdiction } })
-    const res = await post()
-    expect(res.status).toBe(409)
-    expect((await res.json()).error).toMatch(/UK cases only/)
-    expect(apply).not.toHaveBeenCalled()
-  })
-
   // Expected: refused. Reason: a supplier's figure, or a partial one, is never
   // replaced by the default from here.
   it.each([{ direct_kgco2e: 1000 }, { indirect_kgco2e: 50 }, { method: 'actual' }])(
     'refuses a line that already has a figure: %o',
     async over => {
-      access.mockResolvedValue({ ok: true, line: line(over), record: { jurisdiction: 'UK' } })
+      access.mockResolvedValue({ ok: true, line: line(over) })
       expect((await post()).status).toBe(409)
       expect(apply).not.toHaveBeenCalled()
     },

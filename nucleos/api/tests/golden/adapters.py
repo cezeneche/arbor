@@ -165,6 +165,15 @@ def _hmrc_return(inp: dict[str, Any]) -> Any:
     return build_hmrc_return(inp["report_package"], HMRCReturnInput(**payload))
 
 
+def _eu_declaration(inp: dict[str, Any]) -> Any:
+    from app.services.eu_xml_builder import build_xml_for_case
+    from ledger_app.api.cbam.report import eu_declaration_lines
+
+    case = inp["case"]
+    lines = eu_declaration_lines(inp["shipments"], reporting_year=int(case["reporting_year"]))
+    return build_xml_for_case(case, lines, generated_at=inp["generated_at"])
+
+
 ADAPTERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "customs_declaration": _customs_declaration,
     "mill_certificate": _mill_certificate,
@@ -175,6 +184,7 @@ ADAPTERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "free_allocation": _free_allocation,
     "default_value_markup": _default_value_markup,
     "hmrc_return": _hmrc_return,
+    "eu_declaration": _eu_declaration,
 }
 
 

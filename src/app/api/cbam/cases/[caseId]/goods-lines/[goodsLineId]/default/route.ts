@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { requireWriteAccess } from '@/lib/auth-helpers'
 import { getSessionUser } from '@/lib/session'
 import { resolveGoodsLineAccess } from '@/lib/nucleos/goods-line-access'
-import { resolveJurisdiction } from '@/lib/nucleos/jurisdiction'
 import {
   applyPublishedDefault,
   DefaultAlreadyRecordedError,
@@ -29,18 +28,6 @@ export async function POST(
   const access = await resolveGoodsLineAccess(caseId, goodsLineId, entityId)
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
-  // The EU declaration builder reads a stored default without adding the
-  // legislated mark-up, so the default is recorded on UK cases only until it does.
-  if (resolveJurisdiction(access.record.jurisdiction) !== 'UK') {
-    return NextResponse.json(
-      {
-        error:
-          'The published default can be recorded on UK cases only for now. The EU declaration ' +
-          'would leave out the legislated mark-up.',
-      },
-      { status: 409 },
-    )
-  }
   // Never replaces a supplier's figure, or completes a partial one.
   if (hasAnyFigure(access.line)) {
     return NextResponse.json({ error: 'This goods line already has an emissions figure.' }, { status: 409 })
