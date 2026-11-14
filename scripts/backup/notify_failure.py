@@ -1,10 +1,10 @@
-"""Tell the ops Slack channel a nightly database backup failed.
+"""Tell the ops Slack channel a nightly backup failed.
 
 Run by .github/workflows/backup.yml when a backup job fails. Rendered in the
 shared alert format (contract/alerts) by Nucleos's formatter, which needs only
 the standard library. Never fails the job itself: the run is already red.
 
-Environment: KIND (arbor | nucleos), RUN_URL, OPS_SLACK_WEBHOOK_URL.
+Environment: KIND (arbor | nucleos | documents), RUN_URL, OPS_SLACK_WEBHOOK_URL.
 BACKUP_ALERT_DRY_RUN=1 prints the Slack payload instead of sending it.
 """
 from __future__ import annotations
@@ -26,19 +26,32 @@ def main() -> None:
     kind = os.getenv("KIND", "unknown")
     name = NAMES.get(kind, kind)
     run_url = os.getenv("RUN_URL", "")
-    alert = Alert(
-        severity="critical",
-        source="Backups",
-        environment="production",
-        title=f"{name} database backup failed",
-        summary=(
+    if kind == "documents":
+        title = "Uploaded documents backup failed"
+        summary = (
+            "Last night's backup of uploaded documents did not finish, so new uploads "
+            "have no new copy outside Supabase. Files already backed up are untouched. "
+            "The run log says which step failed: listing, a download, encryption, the "
+            "upload, or the check that every document record's file is backed up."
+        )
+        facts = [("Bucket", "documents")]
+    else:
+        title = f"{name} database backup failed"
+        summary = (
             f"Last night's backup of the {name} database did not finish, so there is "
             "no new copy outside Supabase. The previous backups are untouched. "
             "The run log says which step failed: the dump, the restore drill, "
             "encryption or the upload."
-        ),
+        )
+        facts = [("Database", name)]
+    alert = Alert(
+        severity="critical",
+        source="Backups",
+        environment="production",
+        title=title,
+        summary=summary,
         at=datetime.now(timezone.utc),
-        facts=[("Database", name)],
+        facts=facts,
         action="Open the run, fix the cause, then re-run the workflow.",
         link=("Open the run", run_url) if run_url else None,
     )
