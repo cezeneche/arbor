@@ -46,6 +46,8 @@ Suggested order: A1 and A3 first (small; A1 corrects wrong information shown to 
   - Fixed: the CBAM deadline dates broke mid-word from 768 px up ("Janua / ry"); no skip link on any page; the privacy link in the request forms was marked by colour alone (1.9:1); code examples on `/docs/api` and the provider tables in the Privacy Policy and DPA scrolled sideways on phones but could not be reached by keyboard.
   - Not done: a pass with a real screen reader (VoiceOver). The structure it relies on checks out, but nobody has listened to the pages.
 
+- [ ] **B8. The EU declaration leaves out the default-value mark-up on a stored default.** Found 14 November 2026 while adding "Use the published default". A goods line whose recorded emissions are method `default` holds the raw Annex VI figure (for 24.5 t of 72083900: 49.245 t direct). The calculation recomputes a forced default with the mark-up (EU 2026: 10%, 54.17 t), but `eu_xml_builder.py` reads the stored figure as it is, so the EU file would understate the line by the mark-up. The HMRC return is right (the UK has no confirmed mark-up). Nucleos rule 5 says to flag calculation behaviour, not change it in passing, so the button records the default on UK cases only and says so on EU and both-regime cases. Fix: the EU builder applies the versioned mark-up to `default` lines (or stores the regime's marked-up figure), with a golden case; then lift the UK-only check in `src/app/api/cbam/cases/[caseId]/goods-lines/[goodsLineId]/default/route.ts`.
+
 ## C. Later: planned, built only when earned
 
 - [ ] **C1. Passkeys (WebAuthn).** The third step of the login-security roadmap. Password reset and two-factor sign-in are built; there is no `Authenticator` model yet.

@@ -129,6 +129,23 @@ function markupNote(line: CalculatedLine): string | null {
   )
 }
 
+export interface PlainNote {
+  /** The explanation, as a sentence. */
+  text: string
+  /** The engine's code, for support; null when the warning carried none. */
+  code: string | null
+}
+
+/** "code — explanation" → the explanation as a sentence, the code kept apart. */
+export function plainNote(warning: string): PlainNote {
+  const at = warning.indexOf(' — ')
+  const code = at > 0 ? warning.slice(0, at).trim() : ''
+  if (!code || /\s/.test(code)) return { text: warning, code: null }
+  const rest = warning.slice(at + 3).trim()
+  const sentence = rest.charAt(0).toUpperCase() + rest.slice(1)
+  return { text: /[.!?]$/.test(sentence) ? sentence : `${sentence}.`, code }
+}
+
 function countedNote(line: CalculatedLine): string | null {
   const { direct_kgco2e: direct, indirect_kgco2e: indirect, embedded_tco2e: embedded } = line
   if (![direct, indirect, embedded].every(v => typeof v === 'number' && Number.isFinite(v))) return null

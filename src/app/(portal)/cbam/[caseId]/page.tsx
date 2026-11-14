@@ -15,6 +15,7 @@ import { CbamVerification } from '@/components/CbamVerification'
 import { CbamWhyThisNumber } from '@/components/CbamWhyThisNumber'
 import { CbamSupplierHistory } from '@/components/CbamSupplierHistory'
 import { CbamAuditNarrative } from '@/components/CbamAuditNarrative'
+import { CbamApplyDefault } from '@/components/CbamApplyDefault'
 import { presentNarrative } from '@/lib/nucleos/narrative-presenter'
 import { prisma } from '@/lib/prisma'
 import { latestStatements, presentVerification } from '@/lib/nucleos/verification-presenter'
@@ -34,6 +35,8 @@ import { latestStatements, presentVerification } from '@/lib/nucleos/verificatio
 export default async function CbamCasePage({ params }: { params: Promise<{ caseId: string }> }) {
   const session = await requirePageSession()
   const entityId = getSessionUser(session).entityId as string
+  // A viewer cannot record a figure; the route refuses them too.
+  const canWrite = getSessionUser(session).role !== 'VIEWER'
   const { caseId } = await params
 
   // Ownership is decided before anything is read, not per section.
@@ -358,6 +361,21 @@ export default async function CbamCasePage({ params }: { params: Promise<{ caseI
                                 {line.emissionsNeeded}
                               </span>
                             )}
+                            {line.noFigureRecorded &&
+                              canWrite &&
+                              (jurisdiction === 'UK' ? (
+                                <CbamApplyDefault caseId={caseId} goodsLineId={line.id} />
+                              ) : (
+                                <span
+                                  style={{
+                                    display: 'block',
+                                    ...textStyles.caption,
+                                    color: colours.textTertiary,
+                                  }}
+                                >
+                                  The published default can be recorded on UK cases only for now.
+                                </span>
+                              ))}
                           </td>
                           <td style={cell}>
                             {verificationByLine.get(line.id) && (
@@ -419,8 +437,7 @@ export default async function CbamCasePage({ params }: { params: Promise<{ caseI
                 >
                   {gaps.blocking.map(gap => (
                     <li key={gap.raw}>
-                      {gap.where} is missing {gap.what}.{' '}
-                      <span style={{ ...textStyles.caption, color: colours.textTertiary }}>{gap.raw}</span>
+                      {gap.where} is missing {gap.what}.
                     </li>
                   ))}
                 </ul>
@@ -451,15 +468,31 @@ export default async function CbamCasePage({ params }: { params: Promise<{ caseI
                     >
                       {gaps.advisory.map(gap => (
                         <li key={gap.raw}>
-                          {gap.where} is missing {gap.what}.{' '}
-                          <span style={{ ...textStyles.caption, color: colours.textTertiary }}>
-                            {gap.raw}
-                          </span>
+                          {gap.where} is missing {gap.what}.
                         </li>
                       ))}
                     </ul>
                   </>
                 )}
+
+                {/* The tokens are what a support conversation needs; kept, but
+                    out of the way of the sentences a person acts on. */}
+                <details style={{ marginTop: spacing[2] }}>
+                  <summary style={{ ...textStyles.caption, color: colours.navy, cursor: 'pointer' }}>
+                    Technical detail
+                  </summary>
+                  <p
+                    style={{
+                      ...textStyles.caption,
+                      color: colours.textTertiary,
+                      lineHeight: 1.6,
+                      margin: `${spacing[1]} 0 0`,
+                      wordBreak: 'break-all',
+                    }}
+                  >
+                    {[...gaps.blocking, ...gaps.advisory].map(g => g.raw).join(' · ')}
+                  </p>
+                </details>
               </div>
             )}
 

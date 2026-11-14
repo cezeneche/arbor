@@ -6,9 +6,9 @@
 // a return — a blocking gap is why the report package and the EU declaration
 // refuse to build.
 //
-// Same rule as `flag-vocabulary`: the plain sentence goes in front of the raw
-// token and never replaces it. A user needs to know what to go and fix; a
-// support conversation needs the token.
+// Same rule as `flag-vocabulary`: the plain sentence leads and the raw token is
+// kept, never dropped. A user needs to know what to go and fix; a support
+// conversation needs the token (the case page keeps it under "Technical detail").
 //
 // An unrecognised token still shows. A vocabulary that dropped what it did not
 // know would hide the gap that is blocking the return, and the user would be

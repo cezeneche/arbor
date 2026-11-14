@@ -151,6 +151,7 @@ try {
       'src/lib/nucleos/supplier-history-client.ts',
       'src/lib/nucleos/supplier-history-presenter.ts',
       'src/lib/nucleos/narrative-client.ts',
+      'src/lib/nucleos/apply-default-client.ts',
       '--outDir',
       outDir,
       '--rootDir',
@@ -177,6 +178,7 @@ try {
   const verification = require(path.join(compiled, 'verification-client.js'))
   const { buildCaseEvidence } = require(path.join(compiled, 'case-evidence.js'))
   const { explainGoodsLineField } = require(path.join(compiled, 'explain-client.js'))
+  const { applyPublishedDefault } = require(path.join(compiled, 'apply-default-client.js'))
   const relief = require(path.join(compiled, 'relief-client.js'))
   const { getSupplierHistory } = require(path.join(compiled, 'supplier-history-client.js'))
   const narrativeClient = require(path.join(compiled, 'narrative-client.js'))
@@ -330,6 +332,23 @@ try {
       message.slice(0, 100),
     )
   }
+
+  console.log('\n── Published default ──')
+  // Same test again: the request reaches the emissions route and Nucleos accepts
+  // its fields (require_default_factor included). A 404 is a wrong path, a 422
+  // that is not "no published default" a body Nucleos does not accept.
+  let defaultErr = null
+  try {
+    await applyPublishedDefault(aLine, null)
+  } catch (e) {
+    defaultErr = e
+  }
+  const defaultMessage = defaultErr?.message ?? ''
+  check(
+    'recording the published default reaches a real route and its body is accepted',
+    !/: (404|422)$/.test(defaultMessage) && defaultMessage !== 'Not Found',
+    `${defaultErr?.name ?? 'ok'}: ${defaultMessage.slice(0, 100)}`,
+  )
 
   // HMRC's monthly rate comes from Nucleos's reference table, not the database,
   // so this one answers in full even on SQLite.
