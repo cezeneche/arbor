@@ -1,0 +1,63 @@
+{
+  "name": "EU declaration \u2014 two goods lines, a supplier's figure and a recorded default",
+  "why": "The file an EU declarant works from. It pins two things that were wrong until 14 November 2026: every line's recorded figures reaching the declaration (they reported zero), and a recorded published default carrying the EU mark-up for the reporting year (EU 2023/956 Art. 7(2), Annex IV), as the calculation does. The supplier's figure is never marked up.",
+  "adapter": "eu_declaration",
+  "input": {
+    "generated_at": "2027-02-01T09:00:00+00:00",
+    "case": {
+      "importer_eori": "GB123456789000",
+      "importer_name": "Northern Steel Stockholders Ltd",
+      "reporting_year": 2026,
+      "reporting_quarter": 4,
+      "jurisdiction": "EU"
+    },
+    "shipments": [
+      {
+        "shipment": {
+          "origin_country": "TR"
+        },
+        "goods_lines": [
+          {
+            "goods_line": {
+              "id": "GL-EU-1",
+              "cn_code": "72083900",
+              "net_mass_kg": 24500
+            },
+            "latest_emissions": {
+              "method": "default",
+              "direct_kgco2e": 49245,
+              "indirect_kgco2e": 6615,
+              "direct_embedded_kgco2e": 49245,
+              "indirect_embedded_kgco2e": 6615,
+              "factor_table_version": "2023",
+              "production_route": null
+            }
+          },
+          {
+            "goods_line": {
+              "id": "GL-EU-2",
+              "cn_code": "72083900",
+              "net_mass_kg": 10000
+            },
+            "latest_emissions": {
+              "method": "actual",
+              "direct_kgco2e": 18000,
+              "indirect_kgco2e": 2000,
+              "direct_embedded_kgco2e": 18000,
+              "indirect_embedded_kgco2e": 2000,
+              "factor_table_version": "2023",
+              "production_route": "BF_BOF"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "expected": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<cbam:quarterlyDeclaration xmlns:cbam=\"urn:ec.europa.eu:taxud:cbam:declaration:v1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"urn:ec.europa.eu:taxud:cbam:declaration:v1 cbam-declaration-v1.xsd\" version=\"1.0\" generatedAt=\"2027-02-01T09:00:00+00:00\">\n  <cbam:declarant>\n    <cbam:eori>GB123456789000</cbam:eori>\n    <cbam:name>Northern Steel Stockholders Ltd</cbam:name>\n  </cbam:declarant>\n  <cbam:reportingPeriod>\n    <cbam:periodCode>2026Q4</cbam:periodCode>\n    <cbam:year>2026</cbam:year>\n    <cbam:quarter>4</cbam:quarter>\n    <cbam:startDate>2026-10-01</cbam:startDate>\n    <cbam:endDate>2026-12-31</cbam:endDate>\n  </cbam:reportingPeriod>\n  <cbam:goodsImported>\n    <cbam:goodsLine lineNumber=\"1\">\n      <cbam:cnCode>72083900</cbam:cnCode>\n      <cbam:countryOfOrigin>TR</cbam:countryOfOrigin>\n      <cbam:netMassTonnes>24.500</cbam:netMassTonnes>\n      <cbam:embeddedEmissions>\n        <cbam:directEmissions>54.169500</cbam:directEmissions>\n        <cbam:indirectEmissions>7.276500</cbam:indirectEmissions>\n        <cbam:totalEmbedded>54.169500</cbam:totalEmbedded>\n        <cbam:specificEmbeddedEmissions>0.000000</cbam:specificEmbeddedEmissions>\n        <cbam:calculationMethod>DEFAULT</cbam:calculationMethod>\n      </cbam:embeddedEmissions>\n      <cbam:dataSource>\n        <cbam:factorTableVersion>2023</cbam:factorTableVersion>\n      </cbam:dataSource>\n    </cbam:goodsLine>\n    <cbam:goodsLine lineNumber=\"2\">\n      <cbam:cnCode>72083900</cbam:cnCode>\n      <cbam:countryOfOrigin>TR</cbam:countryOfOrigin>\n      <cbam:netMassTonnes>10.000</cbam:netMassTonnes>\n      <cbam:embeddedEmissions>\n        <cbam:directEmissions>18.000000</cbam:directEmissions>\n        <cbam:indirectEmissions>2.000000</cbam:indirectEmissions>\n        <cbam:totalEmbedded>18.000000</cbam:totalEmbedded>\n        <cbam:specificEmbeddedEmissions>0.000000</cbam:specificEmbeddedEmissions>\n        <cbam:calculationMethod>ESTIMATED</cbam:calculationMethod>\n      </cbam:embeddedEmissions>\n      <cbam:dataSource>\n        <cbam:factorTableVersion>2023</cbam:factorTableVersion>\n      </cbam:dataSource>\n      <cbam:productionRoute>BF_BOF</cbam:productionRoute>\n    </cbam:goodsLine>\n  </cbam:goodsImported>\n  <cbam:embeddedEmissions>\n    <cbam:totalDirectEmissions>72.169500</cbam:totalDirectEmissions>\n    <cbam:totalIndirectEmissions>9.276500</cbam:totalIndirectEmissions>\n    <cbam:totalEmbeddedEmissions>72.169500</cbam:totalEmbeddedEmissions>\n    <cbam:totalNetMassTonnes>34.500</cbam:totalNetMassTonnes>\n  </cbam:embeddedEmissions>\n  <cbam:cbamCertificates>\n    <cbam:grossLiabilityTco2e>72.169500</cbam:grossLiabilityTco2e>\n    <cbam:art9DeductionTco2e>0.000000</cbam:art9DeductionTco2e>\n    <cbam:netLiabilityTco2e>72.169500</cbam:netLiabilityTco2e>\n    <cbam:certificatesRequired>73</cbam:certificatesRequired>\n  </cbam:cbamCertificates>\n  <cbam:regulatoryReferences>\n    <cbam:ref>EU Regulation 2023/956 (CBAM framework)</cbam:ref>\n    <cbam:ref>Commission Implementing Regulation 2023/1773 (methodology)</cbam:ref>\n  </cbam:regulatoryReferences>\n</cbam:quarterlyDeclaration>\n",
+  "versions": {
+    "engine_version": "0.1.0",
+    "factor_table_version": "2023",
+    "factor_table_sha256": "328874065fab30ce",
+    "markup_table_version": "2026-eu-v1"
+  }
+}

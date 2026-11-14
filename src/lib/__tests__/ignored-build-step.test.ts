@@ -57,22 +57,25 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 it('builds only Nucleos when only Nucleos changed', () => {
+  const deployed = git('rev-parse', 'HEAD')
   commit('nucleos/main.py')
-  expect(builds(ARBOR, dir)).toBe(false)
-  expect(builds(NUCLEOS, join(dir, 'nucleos'))).toBe(true)
+  expect(builds(ARBOR, dir, deployed)).toBe(false)
+  expect(builds(NUCLEOS, join(dir, 'nucleos'), deployed)).toBe(true)
 })
 
 it('builds only Arbor when only Arbor changed', () => {
+  const deployed = git('rev-parse', 'HEAD')
   commit('src/page.ts')
-  expect(builds(ARBOR, dir)).toBe(true)
-  expect(builds(NUCLEOS, join(dir, 'nucleos'))).toBe(false)
+  expect(builds(ARBOR, dir, deployed)).toBe(true)
+  expect(builds(NUCLEOS, join(dir, 'nucleos'), deployed)).toBe(false)
 })
 
 it('builds both when both changed', () => {
+  const deployed = git('rev-parse', 'HEAD')
   writeFileSync(join(dir, 'src', 'page.ts'), 'b\n')
   commit('nucleos/main.py')
-  expect(builds(ARBOR, dir)).toBe(true)
-  expect(builds(NUCLEOS, join(dir, 'nucleos'))).toBe(true)
+  expect(builds(ARBOR, dir, deployed)).toBe(true)
+  expect(builds(NUCLEOS, join(dir, 'nucleos'), deployed)).toBe(true)
 })
 
 it('compares against the last deployed commit, not just the newest one', () => {
@@ -98,4 +101,34 @@ it('builds when it cannot tell, rather than skipping', () => {
   const unknown = 'f'.repeat(40)
   expect(builds(ARBOR, dir, unknown)).toBe(true)
   expect(builds(NUCLEOS, join(dir, 'nucleos'), unknown)).toBe(true)
+})
+
+// A branch's first deployment has no previous deployment to compare with.
+// Comparing with the newest commit alone missed earlier ones: #229's second
+// commit touched only Arbor, so its Nucleos preview was skipped although its
+// first commit changed Nucleos (14 November 2026).
+describe('a branch with no deployment yet', () => {
+  it('compares with where the branch left main, not just the newest commit', () => {
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+    commit('nucleos/main.py')
+    commit('src/page.ts')
+    expect(builds(NUCLEOS, join(dir, 'nucleos'))).toBe(true)
+    expect(builds(ARBOR, dir)).toBe(true)
+  })
+
+  it('still skips a project the branch never touched', () => {
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+    commit('src/page.ts')
+    commit('src/page.ts')
+    expect(builds(NUCLEOS, join(dir, 'nucleos'))).toBe(false)
+    expect(builds(ARBOR, dir)).toBe(true)
+  })
+
+  // Expected: build. Reason: with neither a previous deployment nor main to
+  // compare with, it cannot tell, and a skipped build is the costlier mistake.
+  it('builds when main cannot be found either', () => {
+    commit('src/page.ts')
+    expect(builds(NUCLEOS, join(dir, 'nucleos'))).toBe(true)
+    expect(builds(ARBOR, dir)).toBe(true)
+  })
 })

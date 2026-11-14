@@ -15,6 +15,7 @@ from shared_auth import require_scopes
 
 from . import _shared
 from ledger_app.db.rls import set_tenant_context
+from ledger_app.services.cbam_emissions_selector import select_and_calculate
 
 _log = logging.getLogger("nucleos.report")
 
@@ -376,6 +377,51 @@ def build_case_hmrc_return(
     )
 
 
+def eu_declaration_lines(shipments_payload: list[dict], *, reporting_year: int) -> list[dict]:
+    """A case's goods lines in the shape eu_xml_builder reads, each with its
+    latest emissions record merged on.
+
+    A line whose figure is the published default carries the stored Annex VI
+    value; the declaration needs it with the EU mark-up for the reporting year.
+    EU 2023/956 Art. 7(2), Annex IV — default values are marked up. The figure
+    comes from the same selector the calculation uses, so the declaration
+    cannot disagree with what the case shows.
+    """
+    lines: list[dict] = []
+    for ship_entry in shipments_payload:
+        shipment = ship_entry.get("shipment") or {}
+        for gl_entry in ship_entry.get("goods_lines") or []:
+            gl: dict = dict(gl_entry.get("goods_line") or {})
+            em = gl_entry.get("latest_emissions") or {}
+            direct = em.get("direct_embedded_kgco2e", em.get("direct_kgco2e"))
+            indirect = em.get("indirect_embedded_kgco2e", em.get("indirect_kgco2e"))
+            method = em.get("method") or em.get("calculation_method")
+
+            if str(method or "").lower() == "default" and gl.get("cn_code") and gl.get("net_mass_kg"):
+                selection = select_and_calculate(
+                    cn_code=str(gl["cn_code"]),
+                    net_mass_kg=Decimal(str(gl["net_mass_kg"])),
+                    direct_kgco2e_supplier=None,
+                    indirect_kgco2e_supplier=None,
+                    supplier_direct_confidence=0.0,
+                    supplier_indirect_confidence=0.0,
+                    production_route=em.get("production_route") or gl.get("production_route"),
+                    force_method="default",
+                    reporting_year=reporting_year,
+                    jurisdiction="EU",
+                )
+                direct, indirect = selection.direct_kgco2e, selection.indirect_kgco2e
+
+            gl["direct_embedded_kgco2e"] = direct
+            gl["indirect_embedded_kgco2e"] = indirect
+            gl["method"] = method
+            gl["factor_table_version"] = em.get("factor_table_version")
+            gl["production_route"] = em.get("production_route") or gl.get("production_route")
+            gl["origin_country"] = shipment.get("origin_country")
+            lines.append(gl)
+    return lines
+
+
 @router.post(
     "/cases/{case_id}/eu-xml",
     dependencies=[Depends(require_scopes(["cbam:write"]))],
@@ -446,19 +492,7 @@ def build_case_eu_xml(request: Request, case_id: UUID):
             },
         )
 
-    # Flatten to the goods-line shape the builder reads, merging each line's
-    # latest emissions record onto it.
-    goods_lines: list[dict] = []
-    for ship_entry in shipments_payload:
-        shipment = ship_entry.get("shipment") or {}
-        for gl_entry in ship_entry.get("goods_lines") or []:
-            gl: dict = dict(gl_entry.get("goods_line") or {})
-            em = gl_entry.get("latest_emissions") or {}
-            gl["direct_kgco2e"] = em.get("direct_kgco2e") or em.get("direct_embedded_kgco2e")
-            gl["indirect_kgco2e"] = em.get("indirect_kgco2e") or em.get("indirect_embedded_kgco2e")
-            gl["method"] = em.get("method")
-            gl["origin_country"] = shipment.get("origin_country")
-            goods_lines.append(gl)
+    goods_lines = eu_declaration_lines(shipments_payload, reporting_year=int(case_row["reporting_year"]))
 
     if not goods_lines:
         raise HTTPException(

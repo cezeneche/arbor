@@ -3,14 +3,13 @@
 // Supplier links and relief claims both act on a goods line named by the
 // browser. The line is accepted only when it sits on a case this entity owns,
 // which takes two checks: the case is the caller's, and the line is on it. The
-// line found is handed back, with the case it was read from.
+// line found is handed back, since the case has already been read to find it.
 
 import { getCbamCase } from './cases-client'
 import { resolveCaseAccess } from './case-ownership'
 
 export type GoodsLineAccess =
-  | { ok: true; line: Record<string, unknown>; record: Record<string, unknown> }
-  | { ok: false; status: 400 | 404 | 502; error: string }
+  { ok: true; line: Record<string, unknown> } | { ok: false; status: 400 | 404 | 502; error: string }
 
 export async function resolveGoodsLineAccess(
   caseId: unknown,
@@ -34,5 +33,5 @@ export async function resolveGoodsLineAccess(
     (l: unknown) => (l as { id?: unknown })?.id === g,
   ) as Record<string, unknown> | undefined
   if (!line) return { ok: false, status: 404, error: 'This goods line could not be found.' }
-  return { ok: true, line, record }
+  return { ok: true, line }
 }
