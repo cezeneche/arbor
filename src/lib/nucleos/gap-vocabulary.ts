@@ -48,6 +48,8 @@ const FIELD_WORDS: Record<string, string> = {
   net_mass_kg_missing: 'the weight of the goods',
   quantity_missing: 'the weight of the goods',
   emissions_missing: 'an emissions figure',
+  // Nucleos's one prefix-first token (cbam_data_quality._check_emissions).
+  missing_emissions: 'an emissions figure',
   direct_kgco2e_missing: 'the direct emissions figure',
   installation_id_missing: 'the installation the goods were made at',
   production_route_missing: 'how the goods were produced',
@@ -62,7 +64,8 @@ const FIELD_WORDS: Record<string, string> = {
  * One token → one sentence.
  *
  * Unrecognised tokens are de-underscored rather than guessed at:
- * `foo_bar_missing` reads as "foo bar", which is honest about what is known.
+ * `foo_bar_missing` (or `missing_foo_bar`) reads as "foo bar", which is honest
+ * about what is known.
  */
 export function explainGap(token: string, severity: GapSeverity): ExplainedGap {
   const field = fieldOf(token)
@@ -71,6 +74,7 @@ export function explainGap(token: string, severity: GapSeverity): ExplainedGap {
     known ??
     field
       .replace(/_missing$/, '')
+      .replace(/^missing_/, '')
       .replace(/_/g, ' ')
       .trim()
 

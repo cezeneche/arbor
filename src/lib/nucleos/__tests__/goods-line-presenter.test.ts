@@ -15,7 +15,7 @@ describe('presentGoodsLine', () => {
     )
     expect(p.mass).toBe('24.00 t')
     expect(p.declaredEmissions).toBe('45.00 tCO2e')
-    expect(p.origin).toBe('IN')
+    expect(p.origin).toBe('India')
     expect(p.position).toBe(1)
   })
 

@@ -140,3 +140,31 @@ describe('presentCalculation', () => {
     expect(presentCalculation(result({ total_embedded_tco2e: null })).totalEmbedded).toBe('—')
   })
 })
+
+// The Acme Steel case showed Per tonne 2.280 beside Embedded 49.25 t for
+// 24.5 t: the per-tonne figure counts indirect emissions and the embedded total,
+// as the UK charges, does not. Side by side they read as a contradiction.
+describe('direct-only embedded total', () => {
+  const ukLine = line({
+    emissions_method: 'DEFAULT',
+    direct_kgco2e: 49250,
+    indirect_kgco2e: 6620,
+    see_total_tco2e_per_t: 2.28,
+    embedded_tco2e: 49.25,
+  })
+
+  it('says the embedded total counts direct emissions only', () => {
+    expect(presentLine(ukLine).countedNote).toBe(
+      'Embedded counts direct emissions only; indirect emissions are shown but not counted. The per-tonne figure includes both.',
+    )
+  })
+
+  // Expected: no note. Reason: when nothing indirect was left out there is no
+  // gap between the figures to explain.
+  it('adds no note when the total includes everything', () => {
+    expect(presentLine(line()).countedNote).toBeNull()
+    expect(
+      presentLine(line({ direct_kgco2e: 1000, indirect_kgco2e: 500, embedded_tco2e: 1.5 })).countedNote,
+    ).toBeNull()
+  })
+})

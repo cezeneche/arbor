@@ -93,3 +93,20 @@ describe('the summary and the lists agree', () => {
     expect(several.summary).toContain('until they are filled in')
   })
 })
+
+// Nucleos names a missing emissions figure `missing_emissions`, prefix first,
+// unlike every other gap. Read as an unknown token it came out as "A goods
+// line is missing missing emissions" on the case page.
+describe('missing_emissions', () => {
+  it('reads as plain English', () => {
+    const g = explainGap('goods_line:95f58868-0df8-4724-acf5-484bcde59563:missing_emissions', 'blocking')
+    expect(g.what).toBe('an emissions figure')
+    expect(g.where).toBe('A goods line')
+  })
+
+  // Expected: the word "missing" once. Reason: any other prefix-first token
+  // would double it the same way.
+  it('never doubles "missing" for an unknown prefix-first token', () => {
+    expect(explainGap('goods_line:x:missing_some_field', 'blocking').what).toBe('some field')
+  })
+})

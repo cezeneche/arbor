@@ -23,7 +23,8 @@ describe('presentCase', () => {
     const row = presentCase(makeCase())
     expect(row.importer).toBe('Northern Steel Stockholders Ltd')
     expect(row.period).toBe('Q1 2027')
-    expect(row.sector).toBe('Iron Steel')
+    expect(row.sector).toBe('Iron and steel')
+    expect(row.origin).toBe('Turkey')
     expect(row.mass).toBe('24.5 t')
     expect(row.exposure).toBe('£184,500')
     expect(row.href).toBe('/cbam/case-1')
@@ -113,5 +114,39 @@ describe('summariseExposure', () => {
     const summary = summariseExposure([])
     expect(summary.total).toBe('—')
     expect(summary.note).toBeNull()
+  })
+})
+
+// The case page showed "TR" and "iron_steel" (raw codes) where a person reads.
+describe('presentCase: names, not codes', () => {
+  it.each([
+    ['iron_steel', 'Iron and steel'],
+    ['aluminium', 'Aluminium'],
+    ['cement', 'Cement'],
+    ['fertilisers', 'Fertilisers'],
+    ['hydrogen', 'Hydrogen'],
+    ['electricity', 'Electricity'],
+    ['some_new_sector', 'Some new sector'],
+  ])('names sector %s as %s', (code, name) => {
+    expect(presentCase(makeCase({ sector: code })).sector).toBe(name)
+  })
+
+  // Expected: Nucleos's sentence, with the sector's name in place of its code.
+  // Reason: the period in it is Nucleos's to state; only the code is unreadable.
+  it('names the sector in the exposure note', () => {
+    const row = presentCase(
+      makeCase({
+        estimated_liability_gbp: null,
+        estimated_liability_unavailable: {
+          reason: 'placeholder_rate',
+          sectors: ['iron_steel'],
+          detail:
+            'HMRC has not published a CBAM rate for iron_steel (annual 2026). No exposure figure can be shown until the Government Gateway rate notice is entered.',
+        },
+      }),
+    )
+    expect(row.exposureNote).toBe(
+      'HMRC has not published a CBAM rate for iron and steel (annual 2026). No exposure figure can be shown until the Government Gateway rate notice is entered.',
+    )
   })
 })
