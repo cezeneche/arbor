@@ -7,6 +7,7 @@
 // emissions", which is the opposite of "nobody has said yet".
 
 import type { CaseGoodsLine } from './declaration-payload'
+import { countryName } from '@/lib/country-name'
 
 export interface PresentedGoodsLine {
   /** Nucleos's id, so the line can be matched to its calculated counterpart. */
@@ -71,7 +72,7 @@ export function presentGoodsLine(raw: CaseGoodsLine, index: number): PresentedGo
             maximumFractionDigits: 2,
           })} t`
         : DASH,
-    origin: str(raw.origin_country) ?? DASH,
+    origin: str(raw.origin_country) ? countryName(str(raw.origin_country)!) : DASH,
     installation: str(raw.installation_name) ?? str(raw.installation_id) ?? DASH,
     declaredEmissions:
       declared === null

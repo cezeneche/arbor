@@ -5,6 +5,8 @@
 // can mislead.
 
 import type { CbamCaseSummary } from './cases-client'
+import { countryName } from '@/lib/country-name'
+import { sectorName, sectorNameInText } from './sector-name'
 
 export interface CasePresentation {
   id: string
@@ -25,6 +27,17 @@ export interface CasePresentation {
 
 function titleCase(value: string): string {
   return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// Nucleos's sentence, with each sector's name in place of its code. The period
+// in it is Nucleos's to state; only the code is unreadable.
+function exposureNote(c: CbamCaseSummary): string {
+  const unavailable = c.estimated_liability_unavailable
+  if (!unavailable?.detail) return 'No published rate — exposure cannot be shown'
+  return (unavailable.sectors ?? []).reduce(
+    (text, code) => text.split(code).join(sectorNameInText(code)),
+    unavailable.detail,
+  )
 }
 
 export function presentCase(c: CbamCaseSummary): CasePresentation {
@@ -53,8 +66,8 @@ export function presentCase(c: CbamCaseSummary): CasePresentation {
     id: c.id,
     importer: c.importer_name?.trim() || c.importer_eori?.trim() || 'Unknown importer',
     period,
-    sector: c.sector ? titleCase(c.sector) : '—',
-    origin: c.origin_country?.trim() || '—',
+    sector: c.sector ? sectorName(c.sector) : '—',
+    origin: c.origin_country?.trim() ? countryName(c.origin_country) : '—',
     mass,
     exposure: hasExposure
       ? `£${(c.estimated_liability_gbp as number).toLocaleString('en-GB', {
@@ -62,9 +75,7 @@ export function presentCase(c: CbamCaseSummary): CasePresentation {
           maximumFractionDigits: 0,
         })}`
       : '—',
-    exposureNote: hasExposure
-      ? null
-      : (c.estimated_liability_unavailable?.detail ?? 'No published rate — exposure cannot be shown'),
+    exposureNote: hasExposure ? null : exposureNote(c),
     status: c.status ? titleCase(c.status) : 'Draft',
     href: `/cbam/${encodeURIComponent(c.id)}`,
   }

@@ -170,9 +170,22 @@ export function CbamEmissions({ results }: { results: RegimeCalculation[] }) {
                     >
                       <Figure label="Direct" value={line.direct} />
                       <Figure label="Indirect" value={line.indirect} />
-                      <Figure label="Per tonne" value={line.seeTotal} />
+                      <Figure label="Per tonne, direct + indirect" value={line.seeTotal} />
                       <Figure label="Embedded" value={line.embedded} />
                     </div>
+
+                    {line.countedNote && (
+                      <p
+                        style={{
+                          ...textStyles.caption,
+                          color: colours.textSecondary,
+                          marginTop: spacing[2],
+                          lineHeight: '1.6',
+                        }}
+                      >
+                        {line.countedNote}
+                      </p>
+                    )}
 
                     {line.markupNote && (
                       <p

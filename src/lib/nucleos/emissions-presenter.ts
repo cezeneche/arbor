@@ -67,6 +67,12 @@ export interface PresentedLine {
   embedded: string
   /** Present only when a mark-up applied, e.g. "Includes a 20% mark-up". */
   markupNote: string | null
+  /**
+   * Present only when the embedded total leaves indirect emissions out (the UK,
+   * and the EU for most sectors). Without it the per-tonne figure, which counts
+   * both, reads as contradicting the total.
+   */
+  countedNote: string | null
   /** Why a higher-priority method was not used. Empty when none was rejected. */
   rejections: PresentedRejection[]
   /** The engine's own trace, verbatim. */
@@ -123,6 +129,17 @@ function markupNote(line: CalculatedLine): string | null {
   )
 }
 
+function countedNote(line: CalculatedLine): string | null {
+  const { direct_kgco2e: direct, indirect_kgco2e: indirect, embedded_tco2e: embedded } = line
+  if (![direct, indirect, embedded].every(v => typeof v === 'number' && Number.isFinite(v))) return null
+  if (indirect <= 0) return null
+  // Compared at the precision shown (0.01 t): the engine's figure, not a new one.
+  const directOnly = Math.abs(embedded * 1000 - direct) < 10
+  return directOnly
+    ? 'Embedded counts direct emissions only; indirect emissions are shown but not counted. The per-tonne figure includes both.'
+    : null
+}
+
 export function presentLine(line: CalculatedLine): PresentedLine {
   return {
     lineId: line.line_id,
@@ -140,6 +157,7 @@ export function presentLine(line: CalculatedLine): PresentedLine {
           })} tCO2e`
         : DASH,
     markupNote: markupNote(line),
+    countedNote: countedNote(line),
     rejections: presentRejections(line.rejected_methods),
     trace: line.decision_trace ?? [],
     warnings: line.warnings ?? [],
